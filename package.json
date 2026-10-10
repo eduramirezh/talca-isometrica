@@ -1,0 +1,8 @@
+{
+  "name": "talca-isometrica",
+  "private": true,
+  "description": "three.js local solo para pruebas sin conexión (tools/screenshot.py). La página publicada lo carga desde cdnjs.",
+  "devDependencies": {
+    "three": "0.128.0"
+  }
+}

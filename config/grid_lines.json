@@ -1,0 +1,5 @@
+{
+  "_comentario": "Posición de cada calle numerada en metros de grilla (y para Norte/Sur, x para Oriente/Poniente). Mediana de los nodos OSM de cada calle a menos de 900 m de la plaza, revisada a mano: 7 Sur se interpoló y se cortó en 9 Oriente / 10 Norte / 8 Sur / 7 Poniente porque más afuera la grilla se deforma. Lo usa el lector de direcciones del mapa. Regenerar candidatos con: python pipeline/geocode.py lines",
+  "ns": [["8 Sur",-967],["7 Sur",-838],["6 Sur",-711],["5 Sur",-570],["4 Sur",-452],["3 Sur",-314],["2 Sur",-196],["1 Sur",-74],["1 Norte",60],["2 Norte",210],["3 Norte",341],["4 Norte",540],["5 Norte",686],["6 Norte",824],["7 Norte",980],["8 Norte",1127],["9 Norte",1254],["10 Norte",1381]],
+  "op": [["7 Poniente",-807],["6 Poniente",-690],["5 Poniente",-567],["4 Poniente",-440],["3 Poniente",-311],["2 Poniente",-193],["1 Poniente",-78],["1 Oriente",62],["2 Oriente",189],["3 Oriente",311],["4 Oriente",436],["5 Oriente",557],["6 Oriente",686],["7 Oriente",824],["8 Oriente",939],["9 Oriente",1073]]
+}
