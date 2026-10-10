@@ -20,7 +20,7 @@ El entorno de trabajo no tenía salida a OpenStreetMap: Overpass, Nominatim y lo
 
 1. **Manzanas del Censo 2017 (INE)** en GeoJSON, repositorio [jiboncom/chile_geojson](https://github.com/jiboncom/chile_geojson). Se usaron los tres archivos de la Región del Maule:
    - `IND`: manzanas con datos de personas y viviendas.
-   - `SIN_INF`: manzanas sin información, que en la práctica son parques, riberas, recintos y terrenos institucionales. La maqueta las pinta como parque. No todas lo son: en el centro hay manzanas comerciales e institucionales sin viviendas (frente a la Plaza de Armas, el Mercado Central, las Escuelas Concentradas). Esas se revisaron contra la imagen satelital y se listan en `config/manzanas.json`; `build.py` las marca como construidas (tipo 3).
+   - `SIN_INF`: manzanas sin información, que en la práctica son parques, riberas, recintos y terrenos institucionales. La maqueta las pinta como parque. No todas lo son: en el centro hay manzanas comerciales e institucionales sin viviendas (frente a la Plaza de Armas, el Mercado Central, las Escuelas Concentradas). Esas se revisaron contra la imagen satelital y se listan en `config/manzanas.json`; `build.py` las marca como construidas (tipo 3). Para revisar otra, `python pipeline/satellite.py <id-de-lugar>` superpone las manzanas a la imagen satelital.
    - `ALDEA`: aldeas.
 
    Dentro de la maqueta quedan 3.134 manzanas con datos y 322 sin información. Cada manzana trae `TOTAL_PERS` y `TOTAL_VIVI`, que se usan para la densidad. El sistema de referencia es EPSG:4674 (SIRGAS 2000), que a esta escala equivale a WGS84.

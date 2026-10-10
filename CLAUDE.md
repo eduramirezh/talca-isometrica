@@ -13,11 +13,12 @@ make elevation build            # tras editar elevation.py (requiere raw/dem/; n
 make fetch                      # descarga raw/ (solo la primera vez)
 make validate                   # distancia entre cada lugar y su dirección en la grilla (requiere raw/)
 python tools/screenshot.py shots/x.png --hash corte-apelaciones [--size 390x844] [--dark] [--js "..."]
+python pipeline/satellite.py plaza-de-armas [500]   # manzanas sobre imagen satelital, en diagnostics/
 python pipeline/geocode.py address "2 Norte 781"
 python pipeline/diagnostics.py centro          # panel PNG en diagnostics/
 ```
 
-Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.py`. Imprime las estadísticas de generación y los errores de consola. Una vista de escritorio y una de móvil suelen bastar.
+Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.py`. Imprime las estadísticas de generación y los errores de consola. Una vista de escritorio y una de móvil suelen bastar. Si el Python del sistema no tiene Playwright (o Pillow para `satellite.py`), `uv run --with playwright python tools/screenshot.py …` funciona sin instalar nada; los navegadores ya están en la caché de Playwright.
 
 ## Arquitectura
 
@@ -26,7 +27,7 @@ Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.
 `raw/` + `config/trazados.json` → `process_geometry.py` → `data/geometry.json`
 `raw/dem/S36W072.hgt.gz` (SRTM) → `elevation.py` → `data/elevation.json`
 `pois.py` → `data/pois.json`, `data/pois.csv`
-`build.py` inyecta geometry + elevation (como `DATA.elev`) + `config/grid_lines.json` (como `DATA.lines`) + pois en `src/template.html`, reemplazando los marcadores `/*DATA*/` y `/*POIS*/`.
+`build.py` marca como construidas (tipo 3) las manzanas de `config/manzanas.json` e inyecta geometry + elevation (como `DATA.elev`) + `config/grid_lines.json` (como `DATA.lines`) + pois en `src/template.html`, reemplazando los marcadores `/*DATA*/` y `/*POIS*/`.
 
 **Coordenadas.** Todo usa «metros de grilla» (`common.loc` / `common.unloc`):
 - El origen es la Plaza de Armas.
@@ -91,6 +92,7 @@ Para publicar: sube `dist/talca.html`, el fragmento, no `index.html`.
 - **Grilla irregular.** La grilla es regular solo en el centro, hasta unas 9–10 cuadras de la plaza. Más afuera las calles se curvan, y cerca de la vía férrea (11–12 Oriente) faltan números.
 - **La Alameda (4 Norte).** Es una avenida con parque central de unos 70 m. Las direcciones sobre ella necesitan `side_off` de 45–95 m, no 14.
 - **Calles bajo las manzanas.** Las manzanas del censo pueden contener pasajes interiores. Por eso las calles se dibujan encima de las manzanas (y 0,12–0,15 contra 0,10) y los edificios se generan a lo largo de las calles, no del borde de la manzana.
+- **Manzanas «sin información».** El Censo da ese tipo (1) a toda manzana sin viviendas, y la plantilla la pinta como parque (`built` falso: sin lotes, árboles densos). En el centro muchas son comercio o recintos. Si una se ve verde y no lo es, compruébalo con `pipeline/satellite.py` y agrega un punto dentro de ella en `config/manzanas.json`; no edites `data/geometry.json`, que `make data` regenera.
 - **Datos fuera del grafo.** El grafo de cicloconecta excluye autopistas (la Ruta 5 no está) y ferrocarriles. Por eso esos trazados están en `config/trazados.json`.
 - **Navegadores sin GPU.** En Chromium sin GPU (las capturas) hay que usar SwiftShader; ver los argumentos en `tools/screenshot.py`.
 - **Árboles.** `IcosahedronGeometry` ya viene sin índice en r128; `treeGeo()` lo detecta para no llamar a `toNonIndexed()`.

@@ -50,6 +50,7 @@ pipeline/
   geocode.py             geocodificador de la numeración de Talca y validador
   build.py               plantilla + datos -> dist/
   diagnostics.py         paneles PNG para revisar trazados contra las manzanas
+  satellite.py           imagen satelital con las manzanas encima (qué hay de verdad en cada una)
 src/template.html        toda la aplicación: CSS, UI y motor three.js (r128)
 data/                    datos procesados (versionados)
 dist/                    resultado: talca.html (fragmento) e index.html (página completa)

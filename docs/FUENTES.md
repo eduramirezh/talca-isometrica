@@ -9,6 +9,7 @@
 | Puntos de lugares y anclas de trazados | OpenStreetMap, consultado a través de [Mapcarta](https://mapcarta.com) | ODbL (OSM) | Coordenadas de la mayoría de los lugares, pasos bajo nivel, puentes, estación |
 | Elevación (SRTM 1", tesela S36W072) | NASA / USGS, Shuttle Radar Topography Mission, vía los [Terrain Tiles de AWS](https://registry.opendata.aws/terrain-tiles/) | Dominio público (SRTM) | Relieve de la maqueta y altura del lector |
 | Monumentos | [Consejo de Monumentos Nacionales](https://www.monumentos.gob.cl) | Información pública | Coordenadas UTM y fechas de Catedral, Mercado, Escuelas Concentradas, Edificio de los Servicios Públicos, La Victoria, ramal Talca–Constitución |
+| Imagen satelital | [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9) (Esri, Maxar, Earthstar Geographics) | Solo consulta; las teselas no se incluyen en la maqueta | Revisión de las manzanas «sin información» que están construidas (`config/manzanas.json`, `pipeline/satellite.py`) |
 
 La atribución de OpenStreetMap y del INE está en la pestaña «Acerca» del mapa. Manténgala en cualquier versión publicada.
 
