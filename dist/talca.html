@@ -549,6 +549,7 @@ function buildModels(B,S){ // S: models drawn without the window shader
   // campus buildings just sit on their lowest corner
   const reserve=(x,y,w,d,pad=true)=>{rectOcc(x,y,w,d);B.dy=pad?padAt(x-w/2,y-d/2,x+w/2,y+d/2):groundMin(rotRect(x,y,w,d));};
   let p;
+  // ==== hito: plaza-de-armas ====
   // Plaza de Armas: kiosk + paths
   p=at('plaza-de-armas');{const x=p.x,y=p.y;reserve(x,y,118,118);
     B.quadXY(rotRect(x,y,96,5,Math.PI/4),0.34,C('#E4DDCB'));B.quadXY(rotRect(x,y,96,5,-Math.PI/4),0.35,C('#E4DDCB'));
@@ -557,6 +558,10 @@ function buildModels(B,S){ // S: models drawn without the window shader
     for(const a of ngon(x,y,4.6,8))B.prism(rotRect(a[0],a[1],.35,.35),1.3,5.2,C('#3F5A4E'),C('#3F5A4E'),false);
     pyramid(B,ngon(x,y,5.6,8),5.2,2.8,C('#3F5A4E'));
     MODELS['plaza-de-armas']={x,y,h:8};}
+  // ==== hito: gore-maule ====
+  // ==== hito: municipalidad ====
+  // ==== hito: memorial-firma ====
+  // ==== hito: catedral ====
   // Catedral de San Agustín, on the plaza's west side, facing east; built on S (its windows are drawn, not shaded).
   // Plan from OpenStreetMap: church w114237041 (nave, transept, segmental apse to the west, round baptistery by the
   // façade, sacristy to the north), bell tower w798980080 at the 1 Norte corner, front steps w799225255. Frame from
@@ -649,6 +654,7 @@ function buildModels(B,S){ // S: models drawn without the window shader
     // the façade's windows glow at night
     for(const u of [1.2,FM,7.8]){const g=G(u,-32.8);GLOW.push(g[0],S.dy+10,g[1]);}
     const c=G(4,-4);MODELS.catedral={x:c[0],y:c[1],h:26};S.dy=0;}
+  // ==== hito: corte-apelaciones ====
   // Corte de Apelaciones: classical, portico facing Alameda (south)
   p=at('corte-apelaciones');{const x=p.x,y=p.y;const wall=C('#EAE1CB'),roof=C('#8E8B84');reserve(x,y,70,40);
     B.prism(rotRect(x,y,48,28),0.3,14,wall,roof);B.prism(rotRect(x,y,50,30),14,15,shade(wall,.93),shade(wall,.97));
@@ -658,10 +664,15 @@ function buildModels(B,S){ // S: models drawn without the window shader
     B.prism(rotRect(x+26,y-4,26,22),0.3,10,C('#DCD3BF'),roof); // juzgados civiles
     B.prism(rotRect(x,y,.35,.35),15,26,C('#555'),C('#555'),false);B.face([[x,25.5,-y],[x+5,25.5,-y],[x+5,22.5,-y],[x,22.5,-y]],[0,0,1],C('#D52B1E'));
     MODELS['corte-apelaciones']={x,y,h:27};}
+  // ==== hito: garantia-top ====
   p=at('garantia-top');{const x=p.x,y=p.y+4;reserve(x,y,56,36);B.prism(rotRect(x,y,52,30),0.3,11,C('#B9C3C9'),C('#8F979C'));B.prism(rotRect(x,y-15.2,52,.6),3.5,9.5,C('#48606E'),C('#48606E'),false);MODELS['garantia-top']={x,y,h:12};}
+  // ==== hito: fiscalia-local ====
   p=at('fiscalia-local');{const x=p.x,y=p.y+2;reserve(x,y,48,36);B.prism(rotRect(x,y,44,32),0.3,17,C('#CDD4D7'),C('#9CA3A6'));for(let k=0;k<4;k++)B.prism(rotRect(x,y-16.1,44,.4),2+k*3.8,4.2+k*3.8,C('#3F5566'),C('#3F5566'),false);MODELS['fiscalia-local']={x,y,h:18};}
+  // ==== hito: juzgado-familia ====
   p=at('juzgado-familia');{const x=p.x,y=p.y;reserve(x,y,34,26);B.prism(rotRect(x,y,30,22),0.3,21,C('#D9D4C8'),C('#9D9A93'));MODELS['juzgado-familia']={x,y,h:22};}
+  // ==== hito: servicios-publicos ====
   p=at('servicios-publicos');{const x=p.x+6,y=p.y;reserve(x,y,64,52);const w=C('#E5D8BC');B.prism(rotRect(x,y,60,48),0.3,19,w,C('#A39C8E'));B.prism(rotRect(x-26,y,8,14),19,26,shade(w,1.02),C('#A39C8E'));MODELS['servicios-publicos']={x:x-26,y,h:27};}
+  // ==== hito: ex-carcel ====
   // Ex Cárcel: the walls follow its block (manzana 3–4 Norte, 2–3 Poniente), each side pulled in until it clears the
   // streets around it; the point is a sourced coordinate west of the block's centre, so the model is not centred on it
   p=at('ex-carcel');{const b=blocks[blockAt(p.x,p.y)];let [x0,y0,x1,y1]=b.bb;x0+=2;y0+=2;x1-=2;y1-=2;
@@ -675,16 +686,23 @@ function buildModels(B,S){ // S: models drawn without the window shader
     for(let k=0;k<3;k++)B.prism(rotRect(x-w*.06,y-d*.25+k*d*.25,w*.62,10),0.3,7,C('#CDBFA2'),C('#8C8A86'));
     B.prism(rotRect(x+w*.36,y+d*.18,14,d*.36),0.3,5,C('#CDBFA2'),C('#8C8A86'));
     MODELS['ex-carcel']={x,y,h:11};}
+  // ==== hito: mercado-central ====
   p=at('mercado-central');{const x=p.x,y=p.y;reserve(x,y,100,62);const b=C('#A8543B');B.prism(rotRect(x,y,96,58),0.3,7,b,b,false);
     B.gable([[x-48,y-29],[x+48,y-29],[x+48,y+29],[x-48,y+29]],7,7.01,9,b,C('#8B8F92'));
     for(const [dx,dy] of [[-48,-29],[48,-29],[48,29],[-48,29]])B.prism(rotRect(x+dx,y+dy,4,4),0.3,11,shade(b,1.08),C('#EDE3CF'));MODELS['mercado-central']={x,y,h:16};}
+  // ==== hito: escuelas-concentradas ====
+  // ==== hito: casa-independencia ====
   p=at('casa-independencia');{const x=p.x,y=p.y;reserve(x,y,40,34);const w=C('#F3EEE2'),t=C('#A94F36');
     B.gable([[x-18,y-15],[x+18,y-15],[x+18,y-7],[x-18,y-7]],0.3,4.6,2.6,w,t);
     B.gable([[x-18,y+15],[x-18,y-7],[x-10,y-7],[x-10,y+15]],0.3,4.6,2.6,w,t);
     B.gable([[x+18,y-7],[x+18,y+15],[x+10,y+15],[x+10,y-7]],0.3,4.6,2.6,w,t);
     B.quadXY(rotRect(x,y+4,20,20),0.34,C('#9FAE6A'));MODELS['casa-independencia']={x,y,h:8};}
+  // ==== hito: teatro-regional ====
   p=at('teatro-regional');{const x=p.x,y=p.y;reserve(x,y,52,42);B.prism(rotRect(x,y,48,38),0.3,14,C('#7E3B33'),C('#6A6560'));B.prism(rotRect(x+6,y+4,26,24),14,22,C('#8A4A40'),C('#6A6560'));B.prism(rotRect(x,y-19.2,40,.6),1,12,C('#3F5566'),C('#3F5566'),false);MODELS['teatro-regional']={x,y,h:23};}
+  // ==== hito: la-victoria ====
   p=at('la-victoria');{const x=p.x,y=p.y;B.dy=padAt(x-7,y-7,x+7,y+7);B.flat(ngon(x,y,7,12),0.36,C('#E3DCCB'));B.prism(rotRect(x,y,4.5,4.5),0.36,4,C('#D9D3C6'),C('#D9D3C6'));B.prism(ngon(x,y,.9,8),4,15,C('#E8E4DA'),C('#E8E4DA'));B.prism(rotRect(x,y,1.4,1.4),15,18,C('#C9A43A'),C('#C9A43A'));MODELS['la-victoria']={x,y,h:19};}
+  // ==== hito: liceo-abate-molina ====
+  // ==== hito: estadio ====
   // Estadio Fiscal, built on S (no window shader: terrace risers are vertical faces). The layout is OpenStreetMap's
   // (pitch w815575960, track r11198725, bowl w1073859992, site w1417437668, the four lighting masts, the entrances), in
   // a frame centred on the pitch: u across it (+ toward the east stand), v along it (+ toward 5 Norte). The point in
@@ -784,19 +802,25 @@ function buildModels(B,S){ // S: models drawn without the window shader
     // hockey pitch: white border, blue court
     S.quadXY(hk,0.33,K.line);{const c=hk.reduce((a,p)=>[a[0]+p[0]/4,a[1]+p[1]/4],[0,0]);S.quadXY(hk.map(p=>[c[0]+(p[0]-c[0])*.93,c[1]+(p[1]-c[1])*.93]),0.36,K.hockey);}
     MODELS.estadio={x:X,y:Y,h:20};S.dy=0;}
+  // ==== hito: estacion ====
   p=at('estacion');{const x=p.x-8,y=p.y;reserve(x,y,30,110);const w=C('#EAD9B8');
     B.gable([[x-6,y-40],[x-6,y+40],[x+6,y+40],[x+6,y-40]],0.3,8,4,w,C('#A94F36'));
     B.prism(rotRect(x,y,8,8),0.3,15,shade(w,1.03),w);pyramid(B,rotRect(x,y,8.5,8.5),15,4,C('#6A5A4C'));
     B.prism(rotRect(x+12,y,6,120),0.3,1.1,C('#C8C2B4'),C('#C8C2B4'));B.prism(rotRect(x+12,y,5,90),4.2,4.6,C('#6F6D6A'),C('#7D7B77'));
     MODELS.estacion={x,y,h:19};}
+  // ==== hito: hospital-regional ====
   p=at('hospital-regional');{const x=p.x,y=p.y;reserve(x,y,140,80);B.prism(rotRect(x,y,120,34),0.3,26,C('#EEF0EF'),C('#B5BCC0'));B.prism(rotRect(x-30,y+30,40,30),0.3,14,C('#E3E8E8'),C('#B5BCC0'));
     B.flat(ngon(x+30,y,8,16),26.2,C('#D24B45'));B.flat(ngon(x+30,y,6.5,16),26.3,C('#EEF0EF'));MODELS['hospital-regional']={x,y,h:27};}
+  // ==== hito: mall-plaza-maule ====
   p=at('mall-plaza-maule');{const x=p.x,y=p.y;reserve(x,y,230,160);B.prism(rotRect(x,y+20,200,100),0.3,13,C('#DDD3C0'),C('#B9B3A6'));B.quadXY(rotRect(x,y-55,210,50),0.33,C('#7E7B77'));
     for(let k=0;k<10;k++)B.quadXY(rotRect(x-90+k*20,y-55,.5,40),0.36,C('#E8E4DA'));MODELS['mall-plaza-maule']={x,y:y+20,h:14};}
+  // ==== hito: utalca-derecho ====
   p=at('utalca-derecho');{const x=p.x,y=p.y;const r=rng(99);
     for(let k=0;k<11;k++){const bx=x-220+r()*440,by=y-170+r()*340;if(occAt(bx,by))continue;const w=26+r()*24,d=12+r()*10;reserve(bx,by,w+6,d+6,false);B.prism(rotRect(bx,by,w,d),0.3,8+r()*9,pick(r,[C('#E7E1D3'),C('#C9B79A'),C('#D6D8D2'),C('#B6613F')]),C('#9D9A93'));}
     MODELS['utalca-derecho']={x,y,h:18};}
+  // ==== hito: ucm-derecho ====
   p=at('ucm-derecho');{const x=p.x,y=p.y;const r=rng(7);for(let k=0;k<6;k++){const bx=x-120+r()*240,by=y-90+r()*180;if(occAt(bx,by))continue;const w=24+r()*20,d=12+r()*8;reserve(bx,by,w+6,d+6,false);B.prism(rotRect(bx,by,w,d),0.3,7+r()*7,pick(r,[C('#E7E1D3'),C('#D8CBB5'),C('#EFEDE6')]),C('#9D9A93'));}MODELS['ucm-derecho']={x,y,h:14};}
+  // ==== fin de los hitos ====
   B.dy=0;S.dy=0;
 }
 
