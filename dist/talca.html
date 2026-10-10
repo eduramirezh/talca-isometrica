@@ -338,6 +338,9 @@ function sampleTri(A,x,y){let u=(x-EX0)/ES,v=(y-EY0)/ES;u=u<0?0:u>ENX-1.0001?ENX
   const i=Math.floor(u),j=Math.floor(v);u-=i;v-=j;const k=j*ENX+i;
   return u+v<=1?A[k]+u*(A[k+1]-A[k])+v*(A[k+ENX]-A[k]):A[k+ENX+1]+(1-u)*(A[k+ENX]-A[k+ENX+1])+(1-v)*(A[k+1]-A[k+ENX+1]);}
 const E=(x,y)=>sampleTri(EH,x,y);
+// the diorama ends where the terrain grid does: nothing is laid outside it
+const EX1=EX0+(ENX-1)*ES,EY1=EY0+(ENY-1)*ES;
+const inTerrain=(x,y)=>x>=EX0&&x<=EX1&&y>=EY0&&y<=EY1;
 const node=(i,j)=>Math.min(ENY-1,Math.max(0,j))*ENX+Math.min(ENX-1,Math.max(0,i));
 const ENRM=new Float32Array(EN_*3);
 function terrainNormals(){for(let j=0;j<ENY;j++)for(let i=0;i<ENX;i++){
@@ -431,7 +434,9 @@ GB.prototype.onGround=function(q,off,col){
   for(let j=1;j<q.length-1;j++){this.I[this.ni++]=base;this.I[this.ni++]=base+j;this.I[this.ni++]=base+j+1;}};
 // drape(src): src holds flat ground layers (y = small layer offset). Each triangle is cut along the terrain mesh's
 // edges (x and y grid lines and the cell diagonals), so every piece lies inside one terrain triangle and, raised by
-// E(), stays coplanar with it: the layer offsets of a few centimetres keep working on any slope.
+// E(), stays coplanar with it: the layer offsets of a few centimetres keep working on any slope. The cuts include the
+// grid's outer lines, so a piece is either inside the terrain or outside it (rivers and roads that run past the
+// diorama's edge): the outside ones are dropped.
 const CUTS=[p=>(p[0]-EX0)/ES,p=>(p[1]-EY0)/ES,p=>(p[0]-EX0+p[1]-EY0)/ES];
 function cutAt(q,f,k){const A=[],B=[];for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length],fp=f(p),fr=f(r);
     if(fp<=k)A.push(p);if(fp>=k)B.push(p);
@@ -446,7 +451,8 @@ function drape(src){
         for(let k=Math.floor(lo)+1;k<hi;k++){const [A,B]=cutAt(q,f,k);if(A.length>2)nxt.push(A);q=B;}
         if(q.length>2)nxt.push(q);}
       polys=nxt;}
-    const col=[C[a],C[a+1],C[a+2]];for(const q of polys)out.onGround(q,P[a+1],col);}
+    const col=[C[a],C[a+1],C[a+2]];for(const q of polys){let cx=0,cy=0;for(const p of q){cx+=p[0];cy+=p[1];}
+      if(inTerrain(cx/q.length,cy/q.length))out.onGround(q,P[a+1],col);}}
   return out;
 }
 
@@ -751,7 +757,7 @@ function terrainMesh(){
   const edge=(pts,n)=>{for(let k=0;k<pts.length-1;k++){const [a,b]=[pts[k],pts[k+1]];const ha=E(a[0],a[1]),hb=E(b[0],b[1]);
       const q=(y0a,y0b,y1a,y1b,c)=>S.face([[a[0],y0a,-a[1]],[b[0],y0b,-b[1]],[b[0],y1b,-b[1]],[a[0],y1a,-a[1]]],n,c);
       q(ha-3,hb-3,ha,hb,top);q(BOT+16,BOT+16,ha-3,hb-3,soil);q(BOT+9,BOT+9,BOT+16,BOT+16,strat);q(BOT,BOT,BOT+9,BOT+9,soil);}};
-  const X1=EX0+(ENX-1)*ES,Y1=EY0+(ENY-1)*ES,xs=[],ys=[];for(let i=0;i<ENX;i++)xs.push(EX0+i*ES);for(let j=0;j<ENY;j++)ys.push(EY0+j*ES);
+  const X1=EX1,Y1=EY1,xs=[],ys=[];for(let i=0;i<ENX;i++)xs.push(EX0+i*ES);for(let j=0;j<ENY;j++)ys.push(EY0+j*ES);
   edge(xs.map(x=>[x,EY0]),[0,0,1]);edge(xs.map(x=>[x,Y1]),[0,0,-1]);edge(ys.map(y=>[EX0,y]),[-1,0,0]);edge(ys.map(y=>[X1,y]),[1,0,0]);
   grp.add(new T.Mesh(S.geo(),new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
   return grp;
@@ -759,7 +765,7 @@ function terrainMesh(){
 
 /* =============== street lights (night) =============== */
 function lamps(){
-  const pts=[];streets.forEach(s=>{if(s.c>3)return;let acc=0;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);let u=(35-acc%35);while(u<L){const t=u/L;const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t;pts.push(x,E(x,y)+6,-y);u+=35;}acc+=L;}});
+  const pts=[];streets.forEach(s=>{if(s.c>3)return;let acc=0;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);let u=(35-acc%35);while(u<L){const t=u/L;const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t;if(inTerrain(x,y))pts.push(x,E(x,y)+6,-y);u+=35;}acc+=L;}});
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pts,3));
   const c=document.createElement('canvas');c.width=c.height=32;const x=c.getContext('2d');const gr=x.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,225,150,1)');gr.addColorStop(.35,'rgba(255,200,110,.5)');gr.addColorStop(1,'rgba(255,190,90,0)');x.fillStyle=gr;x.fillRect(0,0,32,32);
   const m=new T.PointsMaterial({size:9,sizeAttenuation:false,map:new T.CanvasTexture(c),transparent:true,depthWrite:false,blending:T.AdditiveBlending});
