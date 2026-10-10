@@ -460,6 +460,7 @@ function drape(src){
 const PAL={
   field:hex('#BDB98A'), fields:['#B9B783','#C5BE8E','#AEB27A','#C9B98A','#A7AE73','#BFB585','#9FAA6E','#CDBF93'].map(hex),
   lot:hex('#D8D0BC'), park:hex('#A3B06C'), open:hex('#B7B884'), plaza:hex('#CFC7B0'),
+  lawn:hex('#97AA5E'), edging:hex('#7D9150'), gravel:hex('#D8C69C'),
   asphalt:hex('#65615D'), asphalt2:hex('#57534F'), bank:hex('#CDBB94'), water:hex('#4E8FA6'), water2:hex('#5E9DB2'),
   ballast:hex('#8A7C6C'), rail:hex('#3B3431'),
   walls:['#EFE7D6','#E8D4B8','#DFC6A8','#F1EBE0','#D9CFC0','#E7C9B0','#CFD6C8','#E3D7A8','#E9DCCB','#D6C0A6'].map(hex),
@@ -642,22 +643,26 @@ function cityGen(B,Btree){
     }
   });
   B.dy=0;
-  // trees: parks and backyards
+  // trees: parks first, then backyards thinned to what is left of the budget (in block order the backyards used it
+  // all up and the last blocks, the Alameda among them, got none). The Alameda's rows come from alamedaPark().
   let ntree=0;const MAXT=36000;
-  blocks.forEach((b,bi)=>{
+  const isPark=bi=>blocks[bi].t!==0||bi===PLAZA_BI;
+  const yards=blocks.reduce((s,b,bi)=>isPark(bi)?s:s+b.A/1100,0);let kYard=1;
+  const scatter=bi=>{const b=blocks[bi];
     const r=rng(bi*31+5);let n;
-    const park=b.t!==0||bi===PLAZA_BI;
-    if(park){ // parks / open
+    if(isPark(bi)){ // parks / open
       n=b.A<40000?b.A/150:b.A/900;n=Math.min(n,1400);
-    }else n=b.A/1100;
+    }else n=b.A/1100*kYard;
     let tries=n*3;
     while(n>0&&tries-->0&&ntree<MAXT){
       const x=b.bb[0]+r()*(b.bb[2]-b.bb[0]),y=b.bb[1]+r()*(b.bb[3]-b.bb[1]);
       if(!pip([x,y],b.r))continue;if(occAt(x,y))continue;if(nearStreet(x,y,1.2))continue;
-      const alam=(b.t!==0&&Math.abs(y-(540+ (x)*0))<60&&x>-1800&&x<1700);
-      (alam&&r()<.35?PO:TR).push([x,y,0.8+r()*0.6,r()]);n--;ntree++;
+      TR.push([x,y,0.8+r()*0.6,r()]);n--;ntree++;
     }
-  });
+  };
+  blocks.forEach((b,bi)=>{if(isPark(bi)&&!ALAM.has(bi))scatter(bi);});
+  kYard=Math.min(1,(MAXT-ntree)/yards);
+  blocks.forEach((b,bi)=>{if(!isPark(bi))scatter(bi);});
   return {TR,PO,nb};
 }
 
@@ -685,8 +690,10 @@ function buildBase(){
   // blocks
   blocks.forEach((b,bi)=>{let col;
     if(bi===PLAZA_BI)col=PAL.park; else if(b.t===0){col=PAL.lot;}
+    else if(ALAM.has(bi))col=PAL.lawn;
     else col=b.A<40000?PAL.park:PAL.open;
     B.flat(b.r,0.1,col);});
+  alamedaGround(B);
   // plaza de armas block recolor handled by trees
   // rivers
   const W=DATA.widths||{claro:[70,22],lircay:[60,40],piduco:[12,5]};
@@ -702,6 +709,40 @@ function buildBase(){
 }
 const PO_FIELD=[];
 const PLAZA_BI=blockAt(BYID['plaza-de-armas'].x,BYID['plaza-de-armas'].y);
+// La Alameda: the park strips down the middle of the avenue (no census data, under 80 m deep, centroid on the avenue).
+// Blocks with census data inside the strip keep their buildings.
+const ALAM=(()=>{const g=[];streets.forEach(s=>{if(/Alameda/.test(s.name||''))for(let i=0;i<s.pts.length-1;i++)g.push([...s.pts[i],...s.pts[i+1]]);});
+  const o=new Set();blocks.forEach((b,bi)=>{if(b.t!==0&&b.bb[3]-b.bb[1]<80&&g.some(s=>segDist2(b.cx,b.cy,...s)<38*38))o.add(bi);});return o;})();
+// Each strip is a linear park: a gravel paseo down the middle with lawn edging, a cross walk and a round plaza at
+// mid-block (around the landmark when one stands in the strip, else a fountain or a plinth), benches and lamps along
+// the paseo, and four staggered rows of big trees. alamedaGround() lays the flat parts (draped by buildBase),
+// alamedaPark() the objects and the trees.
+const ALAM_LAMPS=[];
+const box=(x0,y0,x1,y1)=>[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
+function alamedaPlan(bi){const b=blocks[bi];if(b._al)return b._al;
+  const [x0,y0,x1,y1]=b.bb,cy=(y0+y1)/2;let px=(x0+x1)/2,lm=null;
+  for(const k in MODELS){const m=MODELS[k];if(m.x>x0&&m.x<x1&&Math.abs(m.y-cy)<20){px=m.x;lm=k;}}
+  return b._al={x0:x0+5,x1:x1-5,y0:y0+3,y1:y1-3,cy,px,lm,pr:lm?11:8};}
+function alamedaGround(B){
+  ALAM.forEach(bi=>{const a=alamedaPlan(bi);if(a.x1-a.x0<20)return;const {x0,x1,cy,px,pr}=a;
+    B.quadXY(box(x0,cy-6.5,x1,cy+6.5),0.107,PAL.edging);B.quadXY(box(px-4.5,a.y0,px+4.5,a.y1),0.107,PAL.edging);B.flat(ngon(px,cy,pr+2,20),0.107,PAL.edging);
+    B.quadXY(box(x0,cy-4.5,x1,cy+4.5),0.114,PAL.gravel);B.quadXY(box(px-2.5,a.y0,px+2.5,a.y1),0.114,PAL.gravel);B.flat(ngon(px,cy,pr,20),0.114,PAL.gravel);});
+}
+function alamedaPark(B){const TR=[],C=hex,stone=C('#D2CAB8'),iron=C('#3B4240'),wood=C('#7A5A3E');
+  ALAM.forEach(bi=>{const b=blocks[bi],a=alamedaPlan(bi),r=rng(bi*53+11);if(a.x1-a.x0<20)return;const {x0,x1,cy,px,pr}=a;
+    if(!a.lm){B.dy=groundMin(ngon(px,cy,6,8));
+      if(r()<.5){B.prism(ngon(px,cy,5.5,16),0.3,0.95,stone,PAL.water2);B.prism(ngon(px,cy,1.1,8),0.95,2.6,stone,C('#E6E0D2'));}
+      else{B.prism(rotRect(px,cy,3.2,3.2),0.3,3.4,stone,stone);B.prism(ngon(px,cy,.7,8),3.4,5.6,C('#56614F'),C('#56614F'));}}
+    const clear=(x,m)=>Math.abs(x-px)>pr+m;
+    for(let x=x0+6;x<x1-3;x+=16)for(const sd of[-1,1]){
+      if(clear(x,3)){B.dy=E(x,cy+sd*3.7);B.prism(rotRect(x,cy+sd*3.7,2.2,.7),0.3,0.75,wood,shade(wood,1.15));}
+      const lx=x+8,ly=cy+sd*5.5;if(lx<x1-3&&clear(lx,3)){B.dy=E(lx,ly);B.prism(rotRect(lx,ly,.3,.3),0.3,4.4,iron,iron);B.prism(rotRect(lx,ly,.9,.9),4.4,4.8,iron,C('#F1E6C4'));ALAM_LAMPS.push(lx,ly);}}
+    for(const [v,o] of [[11,0],[20,4.5]])for(const sd of[-1,1])for(let x=x0+2+o;x<x1+3;x+=9){
+      const tx=x+(r()-.5)*1.4,ty=cy+sd*v+(r()-.5)*1.4;
+      if(!clear(tx,4)||!pip([tx,ty],b.r)||occAt(tx,ty)||nearStreet(tx,ty,1.5))continue;
+      TR.push([tx,ty,1.25+r()*.35,r()]);}});
+  B.dy=0;return TR;
+}
 function buildCerro(B){ // Cerro La Virgen: the hill is real terrain now; the statue stands at the sanctuary
   const p=BYID['cerro-la-virgen'];const cx=p.x,cy=p.y;const top=groundMin(rotRect(cx,cy,5,5));
   B.prism(rotRect(cx,cy,5,5),top-3,top+3,hex('#D9D3C6'),hex('#D9D3C6'));B.prism(ngon(cx,cy,1.3,8),top+3,top+13,hex('#F6F4EE'),hex('#F6F4EE'));pyramid(B,ngon(cx,cy,1.5,8),top+13,2.2,hex('#F6F4EE'));
@@ -765,7 +806,8 @@ function terrainMesh(){
 
 /* =============== street lights (night) =============== */
 function lamps(){
-  const pts=[];streets.forEach(s=>{if(s.c>3)return;let acc=0;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);let u=(35-acc%35);while(u<L){const t=u/L;const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t;if(inTerrain(x,y))pts.push(x,E(x,y)+6,-y);u+=35;}acc+=L;}});
+  const pts=[];for(let i=0;i<ALAM_LAMPS.length;i+=2){const x=ALAM_LAMPS[i],y=ALAM_LAMPS[i+1];pts.push(x,E(x,y)+4.6,-y);}
+  streets.forEach(s=>{if(s.c>3)return;let acc=0;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);let u=(35-acc%35);while(u<L){const t=u/L;const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t;if(inTerrain(x,y))pts.push(x,E(x,y)+6,-y);u+=35;}acc+=L;}});
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pts,3));
   const c=document.createElement('canvas');c.width=c.height=32;const x=c.getContext('2d');const gr=x.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,225,150,1)');gr.addColorStop(.35,'rgba(255,200,110,.5)');gr.addColorStop(1,'rgba(255,190,90,0)');x.fillStyle=gr;x.fillRect(0,0,32,32);
   const m=new T.PointsMaterial({size:9,sizeAttenuation:false,map:new T.CanvasTexture(c),transparent:true,depthWrite:false,blending:T.AdditiveBlending});
@@ -1017,7 +1059,7 @@ function boot(){
     scene.add(terrainMesh());
     const base=buildBase();scene.add(new T.Mesh(base.geo(),matFlat));
     buildCerro(B);const hillTrees=wildTrees();
-    const {TR,PO,nb}=cityGen(B);
+    const {TR,PO,nb}=cityGen(B);TR.push(...alamedaPark(B));
     // riparian poplars/willows
     const rip=[];const r=rng(77);
     for(const [k,w] of [['claro',70],['lircay',60],['piduco',12]]){const pts=chaikin(dec(DATA.water[k]),3);for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const nx=-(b[1]-a[1])/L,ny=(b[0]-a[0])/L;
