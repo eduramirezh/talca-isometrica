@@ -3,6 +3,14 @@
 ## Sin publicar
 
 - **Los demás hitos, sobre su planta real.** Siguiendo el método del Estadio y la Catedral (METODOLOGIA §9), cada hito se rehízo sobre su planta de OpenStreetMap, con alturas, techos y colores de fotos fechadas y estética de pixel art. Varios resultaron ser otra cosa que lo que mostraba el modelo anterior.
+  - *Plaza de Armas y su entorno.*
+    - **Plaza de Armas** (OSM w479529034 y sus prados): esquinas redondeadas, doce prados con solera blanca entre las diagonales y los anillos, y las cuatro plazuelas de los ejes (kiosco de fierro fundido con cúpula de zinc al oriente, piletas al norte y al poniente, memorial del coronel Carlos Spano al sur), la pileta central de piedra pintada de azul con su fuente verde de dos tazas, la estatua de Monseñor Larraín y palmeras canarias en las entradas de las diagonales. Fotos de 2014 a 2024. Los árboles vuelven a la plaza, solo en los prados y en la hilera del borde; de noche se encienden los faroles.
+    - **Gobierno Regional del Maule**, modelo nuevo (w275506471): no está en la antigua Intendencia (al otro lado de 1 Oriente, en reconstrucción desde 2021) sino en la torre de diez pisos de 1 Norte 771, con cintas de vidrio azul sobre un podio.
+    - **Municipalidad**, modelo nuevo (w310186641): bloque moderno blanco de tres pisos sobre una terraza de piedra, con portal alto, alero ancho, palmera y bandera.
+    - **Memorial Firma de la Independencia**, modelo nuevo: el O'Higgins de bronce que firma el acta inclinado sobre una mesa, frente a la Municipalidad (2016).
+    - **Edificio de los Servicios Públicos** (w214849867, w191869528): art déco, frente simétrico de cuatro pisos con cuerpo central de cinco, pilastras escalonadas, zócalo oscuro, marquesina y lucernario sobre el atrio. Antes era una caja con una torre.
+    - **Casa de la Independencia** (w214849869): casa colonial de un piso alrededor de dos patios, con muros rojo óxido, ventanas con rejas y techos de teja a cuatro aguas; los patios salen de la imagen satelital.
+    - La plaza, la Catedral y los edificios del lado norte comparten un mismo nivel, para que el terreno no quede inclinado entre ellos.
   - *Barrio judicial de la Alameda.*
     - **Corte de Apelaciones** (OSM w723911157): no es un templo clásico sino el edificio de piedra clara de c. 2004. La Corte está retirada tras una explanada, con un pórtico de piedra que enmarca un muro cortina y una caja de vidrio con celosías; el ala de los Juzgados de Letras llega a la línea de la Alameda, con zócalo de granito y una ranura de vidrio; ~24 m. Fotos de Wikimedia Commons (2005–2015).
     - **Juzgado de Garantía y TOP** (w563110572): bloque de ladrillo de tres pisos con acceso vidriado bajo un alero sobre columnas blancas, un volumen con ranura de vidrio y techo verde claro con claraboya. Referencia: Google Street View (2024).

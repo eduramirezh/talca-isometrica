@@ -555,17 +555,183 @@ function buildModels(B,S){ // S: models drawn without the window shader
   const reserve=(x,y,w,d,pad=true)=>{rectOcc(x,y,w,d);B.dy=pad?padAt(x-w/2,y-d/2,x+w/2,y+d/2):groundMin(rotRect(x,y,w,d));};
   let p;
   // ==== hito: plaza-de-armas ====
-  // Plaza de Armas: kiosk + paths
-  p=at('plaza-de-armas');{const x=p.x,y=p.y;reserve(x,y,118,118);
-    B.quadXY(rotRect(x,y,96,5,Math.PI/4),0.34,C('#E4DDCB'));B.quadXY(rotRect(x,y,96,5,-Math.PI/4),0.35,C('#E4DDCB'));
-    B.quadXY(rotRect(x,y,4,100),0.33,C('#E4DDCB'));B.quadXY(rotRect(x,y,100,4),0.33,C('#E4DDCB'));
-    B.flat(ngon(x,y,9,16),0.4,C('#E9E3D3'));B.prism(ngon(x,y,5.2,8),0.4,1.3,C('#F2EEE4'),C('#F2EEE4'));
-    for(const a of ngon(x,y,4.6,8))B.prism(rotRect(a[0],a[1],.35,.35),1.3,5.2,C('#3F5A4E'),C('#3F5A4E'),false);
-    pyramid(B,ngon(x,y,5.6,8),5.2,2.8,C('#3F5A4E'));
-    MODELS['plaza-de-armas']={x,y,h:8};}
+  // helpers for the landmarks round the plaza (they could be shared): a Canary palm (ringed trunk, dark crown, eight
+  // arched fronds in two greens) and a Chilean flag on a pole, both on S at S.dy, in grid metres
+  const palmS=(x,y,h,r0=0)=>{const tr=C('#6E5B48'),cr=C('#4E7A3C'),fr=[C('#5F8C45'),C('#4E7A3A')];occMark(rotRect(x,y,3,3));
+    for(let z=0.3,k=0;z<h-.6;z+=1.2,k++)S.prism(ngon(x,y,k%2?.45:.5,6),z,Math.min(z+1.2,h-.6),k%2?shade(tr,.9):tr,tr);
+    S.prism(ngon(x,y,.8,6),h-.6,h+.3,cr,cr);
+    for(let i=0;i<8;i++){const t=r0+i*Math.PI/4,c=Math.cos(t),s=Math.sin(t),P=(d,w,z)=>[x+c*d-s*w,z,-(y+s*d+c*w)];
+      S.face([P(.3,-.3,h+.2),P(.3,.3,h+.2),P(2.2,.7,h+.6),P(2.2,-.7,h+.6)],null,fr[i%2]);
+      S.face([P(2.2,-.7,h+.6),P(2.2,.7,h+.6),P(4,.25,h-1),P(4,-.25,h-1)],null,fr[i%2]);}};
+  const flagS=(x,y,h0,ph)=>{const pole=C('#D9D9D6'),f=(x0,x1,z0,z1,c)=>{const t=h0+ph-.2;
+      for(const sg of [1,-1])S.face([[x+x0,t-z1,-y],[x+x1,t-z1,-y],[x+x1,t-z0,-y],[x+x0,t-z0,-y]],[0,0,sg],c);};
+    S.prism(rotRect(x,y,.22,.22),h0,h0+ph,pole,pole);f(.1,2.2,.75,1.5,C('#C8322B'));f(.1,.85,0,.75,C('#2B4C8C'));f(.85,2.2,0,.75,C('#F2F0EA'));};
+  // Plaza de Armas, built on S in grid metres (the plaza is aligned with the grid). Plan from OpenStreetMap: park
+  // w479529034 (rounded corners), the twelve lawn beds w1186645153–64 between the diagonal walks, the inner ring and
+  // the outer ring, the two lawns along 1 Norte (w556036456, w556036459), the four round plazuelas on the cross axes
+  // (kiosk w223617018 to the east, fountains n11021259067 north and n3428801896 west, the Carlos Spano memorial
+  // n11021258973 in a flower bed to the south), the central fountain n3428801388 and the Monseñor Larraín statue
+  // n11021259030. Above the ground, from photos on Wikimedia Commons: the octagonal cast-iron bandstand on a stone base
+  // under a scaled zinc dome (2014, 2022), the central fountain's stone basin, painted blue, with a green iron
+  // two-tier fountain (2018), the Spano stone (2024), tiled walks with darker bands, lawns edged with white curbs
+  // (2024), Canary palms flanking the diagonal entrances (2024). The trees are the generic park trees, kept to the
+  // lawns and to the row along the edge (OSM maps that row), so the walks stay clear. Approximate: the north and west
+  // fountains (no photos: drawn as plain basins), the bands' grid, which trees are palms (only the four entrance
+  // pairs are drawn), the kiosk's steps. The lamps' glow is real (the plaza is lit), their positions are not.
+  // Method: docs/METODOLOGIA.md §9; style: docs/ESTETICA.md.
+  {const K={pave:C('#D6CDBD'),band:C('#C2B6A3'),sett:C('#ACA497'),curb:C('#ECE7DC'),grass:C('#5F9840'),grass2:C('#72AC4D'),
+      bed:C('#4E7A3C'),bloom:C('#C77D8E'),stone:C('#A9A49A'),stone2:C('#BDB8AD'),water:C('#4F86B5'),iron:C('#2F2D2C'),
+      green:C('#33544A'),zinc:C('#A9ADAB'),granite:C('#B3AEA4'),marble:C('#E4E0D6'),
+      lamp:C('#F1E6C4')};
+    const Q=a=>{const o=[];for(let i=0;i<a.length;i+=2)o.push([a[i],a[i+1]]);return o;};
+    const PZ=Q([38.9,-54.2,35.8,-54.5,-21.3,-54,-29.9,-54,-35.8,-52.5,-41.2,-49.6,-47.4,-44.3,-51.5,-38.9,-53.5,-32.2,-55.7,-23.9,
+      -55.7,22.4,-55,34.9,-53.3,40.4,-51.5,43.9,-47.7,48.9,-43.7,52,-39.2,53.7,-34.7,54.8,36.6,53.1,40.3,52.5,43.8,50.4,49.6,43.6,
+      53.8,38.2,55.7,30.3,56.2,-29.9,55.8,-34.7,53.2,-41.1,48.4,-47.7,41.6,-53]);
+    const LAWNS=[[-13.4,16.8,-4.5,7.9,-1.9,8.7,0.5,8.9,3,8.4,5.3,7.1,14.3,15.5,13.7,16.3,7.6,19.6,0.1,20.8,-7.1,20],
+      [17.2,12.3,8.4,3.9,9.2,2.3,9.8,-1,9.2,-4.3,8.5,-5.8,17.3,-14.2,19.9,-11.4,22.1,-4.1,21.8,2.9,19.7,9.4],
+      [-8.3,3.9,-17.1,13.1,-18.6,12,-21.8,5.6,-22,-1.9,-21.3,-8.8,-18.4,-14.8,-17.4,-16,-7.7,-6.5,-8.7,-4.8,-9.3,-2.7,-9.5,0,-8.9,2.7],
+      [-4.3,-9.7,-13.5,-18.9,-12.1,-20.1,-5.7,-22.8,0.7,-23,9,-21.3,14.5,-18,5.6,-8.9,3.3,-9.9,0.5,-10.3,-2.2,-10.2],
+      [-15.6,18.8,-30.1,32.5,-28,34.9,-8.3,34.8,-9.4,32,-9.6,28.5,-8.9,25.5,-7.7,23.7,-6.6,23],
+      [7.7,34.4,8.7,31.6,8.3,28.2,7.4,25.8,4.9,22.7,8.6,22.4,16.6,17.4,30.4,30.9,28,34.2],
+      [-33.1,28.7,-35.7,26,-35.5,5.1,-31.9,6.3,-28.6,6.1,-26.3,5.3,-25,4.5,-24.8,6.8,-20.9,13.9,-19.6,15.5],
+      [33.1,27.6,19.6,14.1,21.7,11.7,23.8,5.7,26.8,7.8,30.7,8.4,33.5,8.2,35.5,6.7,35.7,24.4],
+      [-35.5,-10.4,-35.1,-27.8,-32,-30.8,-19.6,-18.3,-21,-16.2,-24.1,-10.6,-24.6,-9.1,-28.2,-11.2,-32,-11.4],
+      [-28.4,-34.2,-26.2,-36.4,-7,-36.6,-8.7,-34.7,-9,-31.3,-8.1,-27.7,-6.9,-26.5,-14.3,-23.4,-16.5,-21.9],
+      [28,-33.3,24.3,-36.3,7.4,-36.5,9.1,-34.6,9.5,-31.2,8.7,-27.6,7.7,-26.4,15.1,-23.4,17.7,-21.6],
+      [24.4,-7.9,22.9,-13.1,20.1,-17.8,31,-29.5,35.1,-25.8,35.3,-8.6,33.2,-9.9,29,-10,26.2,-9.3],
+      [5.3,52.3,38,52.2,39.3,51.8,41.7,49.1,41.6,47.4,39.9,46.7,38.3,46.1,5.3,47.8,3.1,49.7,3.5,51.4],
+      [-31,48.3,-3,48,-2.3,49.4,-2.1,51.7,-3.2,52.7,-4.9,53.2,-7,53.5,-30.1,54,-32.2,52.8,-32.3,51.1,-32.2,49.2]].map(Q);
+    // polygon tools: signed area, inset by d (mitred), a segment clipped to a convex polygon
+    const area=q=>{let a=0;for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length];a+=p[0]*r[1]-r[0]*p[1];}return a/2;};
+    const inset=(q,d)=>{const s=area(q)>0?1:-1,n=q.length;return q.map((p,i)=>{const a=q[(i+n-1)%n],b=q[(i+1)%n];
+      const l1=Math.hypot(p[0]-a[0],p[1]-a[1])||1,l2=Math.hypot(b[0]-p[0],b[1]-p[1])||1;
+      const n1=[-(p[1]-a[1])/l1*s,(p[0]-a[0])/l1*s],n2=[-(b[1]-p[1])/l2*s,(b[0]-p[0])/l2*s],k=Math.max(.35,1+n1[0]*n2[0]+n1[1]*n2[1]);
+      return [p[0]+(n1[0]+n2[0])*d/k,p[1]+(n1[1]+n2[1])*d/k];});};
+    const clip=(a,b,q)=>{let t0=0,t1=1;const s=area(q)>0?1:-1,d=[b[0]-a[0],b[1]-a[1]];
+      for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length],nx=-(r[1]-p[1])*s,ny=(r[0]-p[0])*s;
+        const num=nx*(a[0]-p[0])+ny*(a[1]-p[1]),den=nx*d[0]+ny*d[1];
+        if(Math.abs(den)<1e-9){if(num<0)return null;continue;}const t=-num/den;if(den>0)t0=Math.max(t0,t);else t1=Math.min(t1,t);if(t0>=t1)return null;}
+      return [[a[0]+d[0]*t0,a[1]+d[1]*t0],[a[0]+d[0]*t1,a[1]+d[1]*t1]];};
+    const disc=(x,y,r,h,col,n=16)=>S.flat(ngon(x,y,r,n,Math.PI/n),h,col);
+    // the ground is levelled. Its height is the level of the buildings round the plaza too (MODELS[...].pad): terrain
+    // nodes are 40 m apart and the last pad pushed sets the ones it shares, so neighbouring pads at different heights
+    // would tilt the plaza. The procedural park trees keep to the lawns and to a 4 m row along the edge
+    S.dy=padAt(-56,-55,56.5,55.2);
+    {const row0=inset(PZ,4.5),row1=inset(PZ,8.5);
+      for(let gx=Math.floor((-57-XMIN)/OC);gx<=Math.floor((57-XMIN)/OC);gx++)for(let gy=Math.floor((-56-YMIN)/OC);gy<=Math.floor((56-YMIN)/OC);gy++){
+        const c=[XMIN+(gx+.5)*OC,YMIN+(gy+.5)*OC];if(!pip(c,PZ)||LAWNS.some(q=>pip(c,q))||(pip(c,row0)&&!pip(c,row1)))continue;occ[gy*ocW+gx]=1;}}
+    // paving, darker bands every 6 m, sett round the west fountain
+    S.flat(PZ,0.30,K.pave);const pin=inset(PZ,.6);
+    for(let k=-54;k<=54;k+=6){for(const [a,b] of [[[k,-60],[k,60]],[[-60,k],[60,k]]]){const s=clip(a,b,pin);if(!s)continue;
+      const v=k===s[0][0]&&k===s[1][0];S.quadXY(v?[[k-.25,s[0][1]],[k+.25,s[0][1]],[k+.25,s[1][1]],[k-.25,s[1][1]]]:[[s[0][0],k-.25],[s[1][0],k-.25],[s[1][0],k+.25],[s[0][0],k+.25]],0.33,K.band);}}
+    disc(-30.7,-2.3,7.2,0.36,K.sett,24);
+    // lawns: a white curb round each bed, grass in two tones
+    LAWNS.forEach((q,i)=>{S.flat(q,0.39,K.curb);S.flat(inset(q,.45),0.42,i%2?K.grass2:K.grass);});
+    // central fountain: stone basin painted blue inside, green iron fountain in two tiers
+    {const x=0.2,y=-1.4;S.prism(ngon(x,y,3.6,16,Math.PI/16),0.3,1.0,K.stone,K.stone2);disc(x,y,3.1,1.03,K.water);
+      S.prism(ngon(x,y,.9,8),1.0,1.6,K.green,K.green);S.prism(ngon(x,y,1.7,8,Math.PI/8),1.6,1.95,K.green,K.green);
+      S.prism(ngon(x,y,.32,6),1.95,3.3,K.green,K.green);S.prism(ngon(x,y,.95,8,Math.PI/8),3.3,3.55,K.green,K.green);S.prism(ngon(x,y,.28,6),3.55,4.4,K.green,K.green);}
+    // north and west fountains: plain round basins with a spout (no photos)
+    for(const [x,y] of [[-0.8,29.7],[-30.7,-2.3]]){S.prism(ngon(x,y,2.6,16,Math.PI/16),0.3,0.95,K.stone,K.stone2);disc(x,y,2.15,0.98,K.water);
+      S.prism(ngon(x,y,.4,6),0.98,2.2,K.stone2,K.stone2);}
+    // bandstand (OSM octagon, r 4.4): stone base with steps toward the plaza's centre, eight iron columns, a railing,
+    // the cornice with a stepped pediment on each face, a zinc dome in two tones and a finial
+    {const x=30.2,y=-0.5,a0=Math.PI/8;S.prism(ngon(x,y,4.6,8,a0),0.3,1.6,K.stone,K.stone2);
+      S.prism(rotRect(x-5.2,y,1.4,3.2),0.3,0.75,K.stone2,K.stone2);S.prism(rotRect(x-4.9,y,1,3.2),0.75,1.2,K.stone2,K.stone2);
+      S.prism(ngon(x,y,4.15,8,a0),1.6,2.5,K.iron,K.iron,false);
+      for(const c of ngon(x,y,4.15,8,a0))S.prism(rotRect(c[0],c[1],.4,.4),2.5,5.5,K.iron,K.iron,false);
+      S.prism(ngon(x,y,4.8,8,a0),5.5,6.3,K.iron,K.iron);
+      for(let i=0;i<8;i++){const t=i*Math.PI/4,cx=x+Math.cos(t)*4.3,cy=y+Math.sin(t)*4.3;
+        S.prism(rotRect(cx,cy,.3,2.4,t),6.3,6.75,K.iron,K.iron);S.prism(rotRect(cx,cy,.3,1.2,t),6.75,7.2,K.iron,K.iron);}
+      pyramid(S,ngon(x,y,3.9,8,a0),6.3,2.3,K.zinc);S.prism(ngon(x,y,.3,6),8.4,9.2,K.iron,K.iron);
+      GLOW.push(x,S.dy+5,y);}
+    // Carlos Spano memorial: a round flower bed with a white curb, a stone pedestal and the inscribed granite slab
+    {const x=0.2,y=-31.4;disc(x,y,3.8,0.39,K.curb);disc(x,y,3.35,0.42,K.bed);
+      for(let i=0;i<8;i++){const t=i*Math.PI/4+.3;S.quadXY(rotRect(x+Math.cos(t)*2.5,y+Math.sin(t)*2.5,.6,.6,t),0.45,K.bloom);}
+      S.prism(ngon(x,y,.9,8,Math.PI/8),0.3,1.0,K.marble,K.marble);S.prism(rotRect(x,y,2.1,.55),1.0,3.1,K.granite,K.granite);}
+    // Monseñor Larraín: a white statue on a stone plinth
+    {const x=-35.2,y=27.5;S.prism(rotRect(x,y,1.5,1.5),0.3,2.1,K.stone2,K.stone);S.prism(rotRect(x,y,.8,.6),2.1,3.6,K.marble,K.marble);
+      S.prism(rotRect(x,y,.45,.45),3.6,4.1,K.marble,K.marble);}
+    // Canary palms flanking the diagonal entrances
+    [[26.5,32.5],[32.5,25],[-26.5,32.5],[-31,23],[26.5,-32.5],[32.5,-25],[-26.5,-32.5],[-32.5,-25]].forEach(([x,y],i)=>palmS(x,y,11+(i%3)*1.2,i*.4));
+    // lamps on the inner ring at the diagonals and round the central fountain
+    for(const [r,n,a] of [[23.6,8,Math.PI/8],[8.6,4,Math.PI/4]])for(const c of ngon(0.2,-1.2,r,n,a)){
+      S.prism(rotRect(c[0],c[1],.3,.3),0.3,4.2,K.green,K.green);S.prism(rotRect(c[0],c[1],.7,.7),4.2,4.9,K.green,K.lamp);GLOW.push(c[0],S.dy+4.6,c[1]);}
+    MODELS['plaza-de-armas']={x:0,y:0,h:9,pad:S.dy};S.dy=0;}
   // ==== hito: gore-maule ====
+  // Gobierno Regional del Maule, 1 Norte 771: the office tower on the plaza's north side (not the historic Intendencia,
+  // which stands across 1 Oriente, w275506476). Built on S in grid metres. Plan from OpenStreetMap w275506471: a
+  // three-floor podium along 1 Norte (y 69–82) and the ten-floor tower behind it. Above the ground, from photos on
+  // Wikimedia Commons (2017, 2018, the tower behind the Municipalidad and seen down 1 Norte): grey frame with ribbons of
+  // blue glass on every floor, a solid grey core in the middle of the east face, a thin roof slab and plant on the
+  // roof, the flag on the podium. Approximate: the height (10 floors as tagged, ~3.2 m each), the west and north faces
+  // (drawn like the east), the podium's windows. It stands on the plaza's level (MODELS[...].pad) with walls 10 m
+  // deep: the Catedral's lower pad tilts the ground under its west side. Method: docs/METODOLOGIA.md §9.
+  {const F=localFrame(0,0,Math.PI/2),H=MODELS['plaza-de-armas'].pad;
+    const K={wall:C('#C6C8C4'),wall2:C('#B5B8B4'),core:C('#A3A7A6'),groove:C('#8E9291'),glass:C('#6A8DAB'),glass2:C('#5C7F9E'),
+      white:C('#E8E6E0'),flat:C('#8F8A82'),plant:C('#A7AAA7'),dark:C('#3B4653')};
+    const {box,WU,WV,rect}=facade(S,F,K);
+    occMark([[-55.9,69.2],[-27.3,69.1],[-27.3,81.6],[-29.6,81.6],[-29.5,109.9],[-55.7,110]]);PADS.push([-55.9,69.1,-27.3,110,H]);S.dy=H;
+    // podium: three floors with ribbon windows, a flat roof behind a white edge
+    box(-55.9,69.1,-27.3,81.6,-6,9.6,K.wall2,K.flat);
+    for(const [mk,s0,s1] of [[o=>WV(69.1,-1,o),-55.9,-27.3],[o=>WU(-27.3,1,o),69.1,81.6],[o=>WU(-55.9,-1,o),69.1,81.6]]){const w=mk(.06);
+      rect(w,s0+.8,s1-.8,1.0,3.7,K.glass2);for(const h of [4.6,7.6])rect(w,s0+.8,s1-.8,h,h+1.5,K.glass);rect(mk(.09),s0,s1,9.1,9.6,K.white);}
+    // tower: ground floor glazed, then nine floors of a grey spandrel under a glass ribbon (two tones by floor)
+    box(-55.8,81.6,-29.6,110,-6,33,K.wall,K.flat);
+    const FL=[[1.0,3.8]];for(let k=1;k<10;k++){const f=4.3+(k-1)*3.2;FL.push([f+.95,f+3.0]);}
+    const ribbons=(w,spans,from=0)=>FL.forEach(([a,b],i)=>{if(a<from)return;for(const [s0,s1] of spans)rect(w,s0,s1,a,b,i%2?K.glass2:K.glass);});
+    for(const [u,sg] of [[-29.6,1],[-55.8,-1]]){const w=WU(u,sg);ribbons(w,[[83,93.6],[100.4,108.6]]);
+      rect(w,93.6,100.4,4.3,33,K.core);for(let k=1;k<10;k++){const f=4.3+k*3.2-.25;rect(WU(u,sg,.09),93.6,100.4,f,f+.3,K.groove);}}
+    ribbons(WV(110,1),[[-54.4,-31]]);ribbons(WV(81.6,-1),[[-54.4,-31]],10);
+    // roof: a thin white slab a little wider than the tower, plant rooms and the lift shaft
+    box(-56.3,81.1,-29.1,110.5,33,33.5,K.white,K.white);box(-51,87,-38,103,33.5,35.6,K.plant,K.flat);box(-35.5,92,-31.5,100,33.5,37,K.plant,K.flat);
+    flagS(-31,72,9.6,7);
+    MODELS['gore-maule']={x:-42.7,y:93,h:38};S.dy=0;}
   // ==== hito: municipalidad ====
+  // Municipalidad de Talca, 1 Norte 797, on the corner of 1 Oriente facing the plaza. Built on S. Plan from
+  // OpenStreetMap: building w310186641 (25 × 25 m) and its forecourt w813330084 on 1 Norte; frame from the building's
+  // west side (A 88.85°): u east, v north, the front at v = −12.45. Above the ground, from photos on Wikimedia Commons
+  // (2018): a white modernist block of three floors raised on a terrace of rough grey stone with steps; a tall white
+  // portal frames the glazed entrance and the window above it, a column of square windows each side; the top floor is
+  // set back behind a ribbon of glass under a wide white eave with a wooden soffit; a hipped roof (light grey on the
+  // satellite); a Canary palm and the flag in front. Approximate: the heights (~15 m to the eave, measured against the
+  // front's width), the side and rear windows (no photos). On the plaza's level (MODELS[...].pad). Method: §9.
+  {const F=localFrame(43.7,89.4,88.85*Math.PI/180),{G,R}=F,H=MODELS['plaza-de-armas'].pad;
+    const K={white:C('#ECE9E2'),white2:C('#D9D5CB'),stone:C('#86827A'),stone2:C('#9A958B'),glass:C('#3B4653'),glass2:C('#2C3540'),
+      door:C('#4D5D66'),roof:C('#C3C5C2'),step:C('#D9D3C5'),pave:C('#D3CABA'),band:C('#BFB4A2')};
+    const {box,WU,WV,rect}=facade(S,F,K);
+    occMark(R(-12.6,-12.5,12.6,12.5));occMark(R(-16,-21.5,15.8,-12.5));PADS.push([27.6,66,59.5,102.2,H]);S.dy=H;
+    // forecourt: paving with darker bands, the stone terrace and its steps
+    S.flat(R(-16,-21.5,15.8,-12.45),0.30,K.pave);for(let u=-14;u<15;u+=6)S.quadXY(R(u-.25,-21.5,u+.25,-12.45),0.33,K.band);
+    box(-9.5,-15.6,9.5,-12.45,0.3,1.3,K.stone,K.stone2);
+    box(1.5,-17.1,6.5,-16.4,0.3,0.6,K.step,K.step);box(1.5,-16.4,6.5,-15.6,0.3,0.95,K.step,K.step);
+    // body: two floors of white wall over a stone plinth, the top floor set back behind a ribbon of glass
+    box(-12.55,-12.45,12.55,12.45,-6,9.8,K.white,K.white);box(-11.6,-11.5,11.6,11.5,9.8,12.9,K.white2,K.white);
+    const sides=[[o=>WV(-12.45,-1,o),-12.55,12.55],[o=>WU(12.55,1,o),-12.45,12.45],[o=>WV(12.45,1,o),-12.55,12.55],[o=>WU(-12.55,-1,o),-12.45,12.45]];
+    const top=[o=>WV(-11.5,-1,o),o=>WU(11.6,1,o),o=>WV(11.5,1,o),o=>WU(-11.6,-1,o)];
+    sides.forEach(([mk,s0,s1],i)=>{const w=mk(.06);rect(w,s0,s1,0.3,1.3,K.stone);
+      for(let s=-10.8,k=0;s<10.7;s+=1.8,k++)rect(top[i](.06),s,s+1.8,10.2,12.5,k%2?K.glass2:K.glass);
+      if(i===0)return;for(let s=s0+2.3;s<s1-1;s+=3.6)for(const h of [2.4,6.3]){rect(w,s-.95,s+.95,h-.2,h+2.2,K.white2);rect(mk(.12),s-.7,s+.7,h,h+2,K.glass);}});
+    // the front: the portal (a white frame 0.4 m proud) round the doors and the window above, square windows each side
+    box(-4.4,-12.85,4.4,-12.45,1.3,9.8,K.white,K.white);
+    {const w=WV(-12.85,-1),wf=WV(-12.85,-1,.12);rect(w,-3.7,3.7,1.3,5.0,K.door);rect(wf,-3.7,3.7,5.0,5.6,K.white);rect(w,-3.7,3.7,5.6,9.2,K.glass);
+      for(const u of [-1.2,1.2])rect(wf,u-.15,u+.15,5.6,9.2,K.white);
+      const ws=WV(-12.45,-1),wsf=WV(-12.45,-1,.12);for(const u of [-8.4,8.4])for(const h of [2.4,6.3]){rect(ws,u-1.1,u+1.1,h-.25,h+2.25,K.white2);rect(wsf,u-.8,u+.8,h,h+2,K.glass);}}
+    // eave: a white band all round, wider than the walls, and a hipped roof
+    S.prism(R(-14.2,-14.1,14.2,14.1),12.9,14.5,K.white,K.white,false);pyramid(S,R(-14.2,-14.1,14.2,14.1),14.5,2.4,K.roof);
+    {const g=G(0.8,-16.6);palmS(g[0],g[1],12.5,.3);}
+    {const g=G(-7.4,-14.2);flagS(g[0],g[1],1.3,10.5);}
+    MODELS.municipalidad={x:43.7,y:89.4,h:18};S.dy=0;}
   // ==== hito: memorial-firma ====
+  // Memorial Firma de la Independencia (Pamela Galleguillos, 2016; OSM node 7597212247), in the Municipalidad's
+  // forecourt by the palm: a life-size bronze O'Higgins standing at a table with turned legs, leaning over the act with
+  // a quill (photo on Wikimedia Commons, 2017). At this scale it is a few pixels: the table's stone top, the figure
+  // leaning east over it. On the plaza's level (MODELS[...].pad), on the forecourt the Municipalidad paves.
+  {const H=MODELS['plaza-de-armas'].pad,x=44.9,y=71.7,bz=C('#8A6A48'),bz2=C('#6F5439'),top=C('#A8A69E');S.dy=H;
+    for(const [dx,dy] of [[-.45,-.25],[.45,-.25],[-.45,.25],[.45,.25]])S.prism(rotRect(x+.3+dx,y+dy,.18,.18),0.3,0.95,bz,bz);
+    S.prism(rotRect(x+.3,y,1.3,.75),0.95,1.08,top,top);
+    S.prism(rotRect(x-.7,y,.45,.4),0.3,1.0,bz2,bz2);S.prism(rotRect(x-.55,y,.5,.45),1.0,1.55,bz,bz);S.prism(rotRect(x-.3,y,.3,.3),1.42,1.75,bz,bz);
+    MODELS['memorial-firma']={x,y,h:3};S.dy=0;}
   // ==== hito: catedral ====
   // Catedral de San Agustín, on the plaza's west side, facing east; built on S (its windows are drawn, not shaded).
   // Plan from OpenStreetMap: church w114237041 (nave, transept, segmental apse to the west, round baptistery by the
@@ -582,10 +748,11 @@ function buildModels(B,S){ // S: models drawn without the window shader
       tile:C('#A35C42'),tile2:C('#8E4F3A'),flat:C('#8F8A82'),glass:C('#3B4653'),glass2:C('#2C3540'),door:C('#5A4636'),
       bell:C('#2E2C2B'),spire:C('#3F5C4E'),iron:C('#3A3A3A'),step:C('#D9D3C5'),step2:C('#C6BFAF')};
     const {box,WL,WV,WU,rect,arch,glass,roof}=facade(S,F,K);
-    // footprint (OSM church + tower + steps); it levels the ground and keeps the city off it
+    // footprint (OSM church + tower + steps); it levels the ground and keeps the city off it. The pad takes the plaza's
+    // level: pads within ~80 m share terrain nodes and the last one registered wins, which tilted the plaza's west side
     const fp=Gs([[-10,-35],[16,-35],[16,-32.4],[21.7,-32.4],[21.7,-25.8],[16,-25.8],[16,6],[24,6],[24,25],[13,25],[13,24],
       [7,27],[3,28.5],[-2,27],[-6,22.5],[-9,22.5],[-9,17],[-18,17],[-18,6],[-10,6],[-10,-23],[-13.3,-26],[-10,-29]]);
-    occMark(fp);S.dy=padAt(Math.min(...fp.map(p=>p[0])),Math.min(...fp.map(p=>p[1])),Math.max(...fp.map(p=>p[0])),Math.max(...fp.map(p=>p[1])));
+    occMark(fp);S.dy=MODELS['plaza-de-armas'].pad;PADS.push([Math.min(...fp.map(p=>p[0])),Math.min(...fp.map(p=>p[1])),Math.max(...fp.map(p=>p[0])),Math.max(...fp.map(p=>p[1])),S.dy]);
     // front steps (OSM stairs): a landing and two treads, in two tones
     box(-10,-33,16,-28,0.3,0.9,K.step2,K.step);box(-10,-34,16,-33,0.3,0.7,K.step2,K.step2);box(-10,-35,16,-34,0.3,0.5,K.step2,K.step);
     // aisles: brick to 8.5 m under a shed roof that climbs to the nave; arched windows in 8 bays between white
@@ -660,53 +827,737 @@ function buildModels(B,S){ // S: models drawn without the window shader
     for(const u of [1.2,FM,7.8]){const g=G(u,-32.8);GLOW.push(g[0],S.dy+10,g[1]);}
     const c=G(4,-4);MODELS.catedral={x:c[0],y:c[1],h:26};S.dy=0;}
   // ==== hito: corte-apelaciones ====
-  // Corte de Apelaciones: classical, portico facing Alameda (south)
-  p=at('corte-apelaciones');{const x=p.x,y=p.y;const wall=C('#EAE1CB'),roof=C('#8E8B84');reserve(x,y,70,40);
-    B.prism(rotRect(x,y,48,28),0.3,14,wall,roof);B.prism(rotRect(x,y,50,30),14,15,shade(wall,.93),shade(wall,.97));
-    for(let i=0;i<6;i++)B.prism(rotRect(x-12.5+i*5,y-16.5,1.3,1.3),0.3,12,C('#F4EFE3'),C('#F4EFE3'));
-    B.prism(rotRect(x,y-16.5,28,4),12,13.2,wall,wall);
-    B._c=[x,-(y-16.5)];B.face([[x-14,13.2,-(y-18.5)],[x+14,13.2,-(y-18.5)],[x,17.4,-(y-18.5)]],null,shade(wall,1.02));B._c=null;
-    B.prism(rotRect(x+26,y-4,26,22),0.3,10,C('#DCD3BF'),roof); // juzgados civiles
-    B.prism(rotRect(x,y,.35,.35),15,26,C('#555'),C('#555'),false);B.face([[x,25.5,-y],[x+5,25.5,-y],[x+5,22.5,-y],[x,22.5,-y]],[0,0,1],C('#D52B1E'));
-    MODELS['corte-apelaciones']={x,y,h:27};}
+  // Corte de Apelaciones de Talca and the Juzgados de Letras (4 Norte 609 and 615), one stone-clad building of about
+  // 2004 (new in a 2005 photo) north of the Alameda, between 2 and 1 Poniente; built on S, windows drawn by hand.
+  // Plan from OpenStreetMap w723911157, in the frame of landmark.py frame corte-apelaciones 723911157: v runs north
+  // (away from the Alameda), u east. Two parts: the Corte (u -16.6..5, set back 16 m behind a paved forecourt) and the
+  // Juzgados wing (u 5..18.2), which comes forward to the Alameda's building line at v=-31.9. Heights and colours from
+  // Wikimedia Commons photos (2005, 2013, 2015), measured against the wing's 13 m front: ground floor plus five, ~24 m.
+  // The Corte's front is a stone portal (a pier on the west, a deep slab on top, the Juzgados wing as its east side)
+  // framing a recessed glass curtain wall, with a lighter glass box in a white frame standing proud of it; the west
+  // face has a louvred glass strip. The wing: grey granite plinth, a glazed recess over its entrance and a narrow
+  // glass slot on the front, a column of small windows a floor on its west side, flagpole at the corner. Roof
+  // blue-grey with plant boxes (Esri imagery). Approximate: the rear and east faces (no photos; windows drawn like the
+  // west side's), the depth of the portal and the glass box, the stone's coursing. Method: docs/METODOLOGIA.md §9.
+  {const F=localFrame(-167.1,592.6,91.3*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={stone:C('#ECE8DF'),stone2:C('#E0DBD0'),plinth:C('#ABA9A3'),white:C('#EEEBE3'),roof:C('#8D97A0'),plant:C('#B9B7B1'),
+      glass:C('#4C6B78'),glass2:C('#405D69'),mull:C('#8C9CA3'),boxg:C('#6A8B92'),boxg2:C('#5D7D85'),louv:C('#C8D2D0'),
+      door:C('#2E3A40'),win:C('#3B4653'),pave:C('#D9D3C5'),pave2:C('#C6BFAF'),mast:C('#707070'),red:C('#C8352B'),blue:C('#2D4F9A'),fw:C('#F1EEE6')};
+    const {box,WL,WV,WU,rect}=facade(S,F,K);
+    const H=24,HT=H-.03,FL=[0.3,4.3,7.9,11.5,15.1,18.7]; // roof line (walls stop 3 cm under the roof: no seams); floor levels (ground floor 4 m, then 3.6 m)
+    // footprint (OSM) plus the paved forecourt to the Alameda's sidewalk: levels the ground and keeps the city off it
+    const fp=Gs([[-16.6,-43],[18.2,-43],[18.2,17.3],[6,17.4],[5.6,8],[0.5,7.8],[0.5,18],[-13.7,17.8],[-11.5,4.7],[-16.7,4.7]]);
+    occMark(fp);S.dy=padAt(Math.min(...fp.map(p=>p[0])),Math.min(...fp.map(p=>p[1])),Math.max(...fp.map(p=>p[0])),Math.max(...fp.map(p=>p[1])));
+    // stone walls in courses of two tones (one band per half floor), a white coping, a roof with plant boxes
+    const courses=(w,s0,s1,h0=4.3,h1=H-.45)=>{for(let h=h0,k=0;h<h1-1e-6;h+=1.8,k++)if(k%2)rect(w,s0,s1,h,Math.min(h+1.8,h1),K.stone2);};
+    const windows=(w,ss,wd=1.2)=>{for(const f of FL.slice(1))for(const s of ss)rect(WL(w.a,w.b,w.out,.09),s-wd/2,s+wd/2,f+1,f+2.5,K.win);};
+    const wall=(a,b,out)=>Object.assign(WL(a,b,out),{a,b,out});
+    // forecourt: paving in strips, two steps up to the Corte's door
+    for(let v=-43,k=0;v<-16.1-1e-6;v+=3,k++)S.quadXY(R(-16.6,v,v<-31.9?18.2:5,Math.min(v+3,v<-31.9?-31.9:-16.1)),0.33,k%2?K.pave2:K.pave);
+    box(-12.6,-18.4,4.8,-17.2,0.3,0.55,K.pave2,K.pave);box(-12.6,-17.2,4.8,-16.1,0.3,0.8,K.pave2,K.pave);
+    // the Corte: the main mass behind the curtain wall (v -12 back to the rear, OSM outline)
+    const cor=[[-16.6,-12],[-16.7,4.7],[-11.5,4.7],[-13.7,17.8],[0.5,18],[0.5,7.8],[5,8],[5,-12]];
+    S.prism(Gs(cor),0.3,HT,K.stone,K.roof,false);
+    // portal: west pier and the deep slab on top, the stone ends 0.45 m proud as a white coping
+    box(-16.6,-16.1,-13.1,-12,0.3,HT,K.stone,K.roof,false);box(-13.1,-16.1,5,-12,20.4,HT,K.stone,K.roof,false);
+    {const w=WV(-16.1,-1);rect(w,-16.6,-13.1,0.3,4.3,K.plinth);rect(WV(-16.1,-1,.09),-16.6,5,H-.45,H,K.white);
+      rect(WV(-16.1,-1,.09),-13.1,5,20.4,20.85,K.white);courses(w,-16.6,-13.1);courses(w,-13.1,5,20.4);}
+    // recessed curtain wall at v=-12: glass in floor bands of two tones, light spandrels, mullions every 3 m, doors
+    {const w=WV(-12,-1),w2=WV(-12,-1,.09),w3=WV(-12,-1,.12);
+      FL.forEach((f,k)=>{rect(w,-13.1,5,f,k<5?FL[k+1]:20.4,k%2?K.glass2:K.glass);if(k)rect(w2,-13.1,5,f-.25,f+.25,K.mull);});
+      for(let u=-13.1+3;u<5-1;u+=3)rect(w3,u-.2,u+.2,4.3,20.4,K.mull);
+      rect(w3,-12.2,-8.2,0.3,3.4,K.door);rect(w2,-13.1,5,3.5,4.05,K.mull);}
+    // the glass box proud of it: louvred glass on three sides, white frame (top and west edge), stone base
+    {const u0=-5,u1=2.5,v0=-15.4,v1=-12,h1=17.6;box(u0,v0,u1,v1,0.3,h1,K.boxg,K.white);
+      box(u0-.5,v0-.5,u1+.5,v1,h1,h1+.6,K.white,K.white);box(u0-.5,v0-.5,u0,v1,0.3,h1,K.white,K.white);
+      for(const [w,wl,s0,s1] of [[WV(v0,-1,.09),WV(v0,-1,.12),u0,u1],[WU(u1,1,.09),WU(u1,1,.12),v0,v1]]){rect(w,s0,s1,0.3,4.3,K.stone);
+        for(let h=4.3,k=0;h<h1-.5;h+=1.8,k++){if(k%2)rect(w,s0,s1,h,h+1.8,K.boxg2);rect(wl,s0,s1,h+1.3,h+1.7,K.louv);}}}
+    // west face: plinth, courses, a louvred glass strip
+    {const w=WU(-16.6,-1),w2=WU(-16.6,-1,.09),w3=WU(-16.6,-1,.12);rect(w,-16.1,4.7,0.3,4.3,K.plinth);courses(w,-16.1,-9.5);courses(w,1.5,4.7);
+      rect(w2,-9.5,1.5,4.3,H-1.2,K.glass);for(let h=5.5;h<H-1.5;h+=1.2)rect(w3,-9.5,1.5,h,h+.4,K.louv);rect(WU(-16.6,-1,.09),-16.1,4.7,H-.45,H,K.white);}
+    // Corte rear faces: windows a floor (approximate)
+    {const wv=wall([-13.7,17.8],[0.5,18],[0,1]);rect(wv,0,wv.L,0.3,4.3,K.plinth);windows(wv,[2.5,6.5,10.5]);
+      const e=wall([5,8],[0.5,7.8],[0,1]);windows(e,[1.5,3.5]);}
+    // Juzgados wing
+    {const u0=5,u1=18.2,v0=-31.9,v1=17.3;box(u0,v0,u1,v1,0.3,HT,K.stone,K.roof,false);
+      const s=WV(v0,-1),s2=WV(v0,-1,.09),s3=WV(v0,-1,.12);rect(s,u0,u1,0.3,4.3,K.plinth);courses(s,9.6,13.6);courses(s,15.3,u1);courses(s,u0,5.8);
+      rect(s2,u0,u1,H-.45,H,K.white);
+      // glazed recess over the entrance and the slot: glass in floor bands
+      FL.forEach((f,k)=>{const t=k<5?FL[k+1]:H-1;rect(s2,5.8,9.6,f,t,k%2?K.glass2:K.glass);rect(s2,13.6,15.3,Math.max(f,4.3),t,k%2?K.glass:K.glass2);});
+      rect(s3,6.2,9.2,0.3,3.2,K.door);box(5.6,v0-1.6,9.8,v0,3.7,4.1,K.white,K.white);
+      // west side (seen from 2 Poniente): plinth, courses, a column of small windows per floor; east and rear
+      const w=wall([u0,v0],[u0,-16.2],[-1,0]),ws=WU(u0,-1);rect(ws,v0,-16.2,0.3,4.3,K.plinth);courses(ws,v0,-16.2);
+      rect(WU(u0,-1,.09),v0,-16.2,H-.45,H,K.white);windows(w,[4,10],1);
+      const e=wall([u1,v0],[u1,v1],[1,0]),es=WU(u1,1);rect(es,v0,v1,0.3,4.3,K.plinth);courses(es,v0,v1);rect(WU(u1,1,.09),v0,v1,H-.45,H,K.white);
+      windows(e,[4,10,16,22,28,34,40,45]);
+      const n=wall([u0+.8,v1],[u1,v1],[0,1]);rect(WV(v1,1),u0+.8,u1,0.3,4.3,K.plinth);windows(n,[3,6.5,10]);}
+    // one flat roof over the whole outline (OSM), with plant boxes
+    S.flat(Gs([[-16.6,-16.1],[-16.7,4.7],[-11.5,4.7],[-13.7,17.8],[0.5,18],[0.5,7.8],[5,8],[5,17.3],[18.2,17.3],[18.2,-31.9],[5,-31.9],[5,-16.1]]),H,K.roof);
+    box(-9,0,-3,6,H,H+1.6,K.plant,K.plant);box(-1,-6,3,-2,H,H+1.2,K.plant,K.plant);box(8,-8,15,-2,H,H+1.8,K.plant,K.plant);
+    box(9,4,13,9,H,H+1.2,K.plant,K.plant);
+    // flagpole at the wing's corner, with the Chilean flag
+    {const pu=4,pv=-34.5;box(pu-.2,pv-.2,pu+.2,pv+.2,0.3,13,K.mast,K.mast);
+      for(const sg of [-1,1]){const fw=WV(pv+sg*.05,sg,0);rect(fw,pu-3,pu-1.2,11.6,12.8,K.fw);rect(fw,pu-1.2,pu,11.6,12.8,K.blue);rect(fw,pu-3,pu,10.4,11.6,K.red);}}
+    const c=G(1,-6);MODELS['corte-apelaciones']={x:c[0],y:c[1],h:27};S.dy=0;}
   // ==== hito: garantia-top ====
-  p=at('garantia-top');{const x=p.x,y=p.y+4;reserve(x,y,56,36);B.prism(rotRect(x,y,52,30),0.3,11,C('#B9C3C9'),C('#8F979C'));B.prism(rotRect(x,y-15.2,52,.6),3.5,9.5,C('#48606E'),C('#48606E'),false);MODELS['garantia-top']={x,y,h:12};}
+  // Juzgado de Garantía and Tribunal de Juicio Oral en lo Penal (4 Norte 541), a three-storey brick building north
+  // of the Alameda between 3 and 2 Poniente, built on S with windows drawn by hand. Plan from OpenStreetMap
+  // w563110572, in the frame of landmark.py frame garantia-top 563110572 (v north, away from the Alameda; u east):
+  // a 35 × 35 m block with a forward wing on the Alameda side. Heights, materials and colours from Google Street View
+  // (March 2024) and current Google imagery: red-brown brick to ~12.5 m with a white coping; the entrance is a glass
+  // curtain wall under a thin flat canopy on slender white columns, between a brick volume with a tall glass slot
+  // (east) and the main block (west); a pale green roof with a skylight over the centre. Behind a white palisade fence
+  // (not drawn: too thin) and a paved yard. Approximate: the depth of the glazed porch, the rear and east faces (no
+  // views; windows drawn by floor), the skylight's size. Method: docs/METODOLOGIA.md §9.
+  {const F=localFrame(-285.5,577.4,92.4*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={brick:C('#A6553D'),brick2:C('#984D37'),white:C('#ECE7DC'),roof:C('#B3BFA3'),sky:C('#3B4653'),
+      glass:C('#4C6B78'),glass2:C('#405D69'),mull:C('#8C9CA3'),win:C('#3B4653'),door:C('#2E3A40'),col:C('#EEEBE3'),
+      pave:C('#CFCAC0'),pave2:C('#C2BDB2'),flagb:C('#2D4F9A'),flagr:C('#C8352B')};
+    const {box,WL,WV,WU,rect}=facade(S,F,K);
+    const H=12.5,HT=H-.03,FL=[0.3,4.5,8.5]; // roof line (walls stop 3 cm under it); floor levels
+    // footprint (OSM) plus the paved yard to the Alameda's sidewalk
+    const fp=Gs([[-16,-28],[19,-28],[19,29],[-16,29]]);
+    occMark(fp);S.dy=padAt(Math.min(...fp.map(p=>p[0])),Math.min(...fp.map(p=>p[1])),Math.max(...fp.map(p=>p[0])),Math.max(...fp.map(p=>p[1])));
+    for(let v=-28,k=0;v<-6-1e-6;v+=3.5,k++)S.quadXY(R(-16,v,19,Math.min(v+3.5,-6)),0.33,k%2?K.pave2:K.pave);
+    // brick in floor bands of two tones, a white coping on every outer wall
+    const bands=(w,s0,s1)=>{FL.forEach((f,k)=>{if(k%2)rect(w,s0,s1,f,k<2?FL[k+1]:H-.45,K.brick2);});rect(WL(w.a,w.b,w.out,.09),0,w.L,H-.45,H,K.white);};
+    const wall=(a,b,out)=>Object.assign(WL(a,b,out),{a,b,out});
+    const windows=(w,ss,wd=1.4)=>{for(const f of FL.slice(1))for(const s of ss)rect(WL(w.a,w.b,w.out,.12),s-wd/2,s+wd/2,f+1,f+2.6,K.win);};
+    // the volumes: main block (OSM outline behind the porch) and the brick volume with the slot on the east
+    const main=[[-16,-6],[-12,-6],[-12,-9],[-1,-9],[-1,-6],[9,-6],[9,-9],[19,-9],[19,29],[-16,29]];
+    S.prism(Gs(main),0.3,HT,K.brick,K.roof,false);box(-1,-14,9,-6,0.3,HT,K.brick,K.roof,false);
+    S.flat(Gs([[-16,-6],[-12,-6],[-12,-9],[-1,-9],[-1,-14],[9,-14],[9,-9],[19,-9],[19,29],[-16,29]]),H,K.roof);
+    // outer walls: bands, coping and windows (by floor; the west face has a glazed strip by its south corner)
+    const outs=[[[-16,29],[-16,-6],[-1,0]],[[-16,-6],[-12,-6],[0,-1]],[[-1,-14],[9,-14],[0,-1]],[[9,-14],[9,-9],[1,0]],
+      [[9,-9],[19,-9],[0,-1]],[[19,-9],[19,29],[1,0]],[[19,29],[-16,29],[0,1]],[[-1,-6],[-1,-14],[-1,0]]];
+    const W=outs.map(([a,b,o])=>{const w=wall(a,b,o);bands(w,0,w.L);return w;});
+    windows(W[0],[8,12,16,20,24,28]);windows(W[5],[6,10,14,18,22,26,30,34]);windows(W[6],[4,8,12,16,20,24,28,32]);windows(W[4],[3,7]);
+    rect(WL(W[0].a,W[0].b,W[0].out,.12),30,34,4.5,11.4,K.glass);for(const h of [6,8.5,11])rect(WL(W[0].a,W[0].b,W[0].out,.15),30,34,h-.2,h+.2,K.mull);
+    // the brick volume's front: a tall glass slot; the flagpole in front of it
+    {const w=W[2];rect(WL(w.a,w.b,w.out,.12),5.6,6.8,1,11.5,K.glass);rect(WL(w.a,w.b,w.out,.12),5.6,6.8,0.3,1,K.door);}
+    {const pu=3,pv=-15.6;box(pu-.2,pv-.2,pu+.2,pv+.2,0.3,10.5,K.mull,K.mull);
+      for(const w of [WV(pv-.05,-1,0),WV(pv+.05,1,0)]){rect(w,pu+.2,pu+1.4,9.2,10.2,K.flagb);rect(w,pu+1.4,pu+3,9.2,10.2,K.col);rect(w,pu+.2,pu+3,8.2,9.2,K.flagr);}}
+    // glazed porch: curtain wall at v=-9 between the main block and the brick volume, the canopy and its columns
+    {const w=WV(-9,-1),w2=WV(-9,-1,.09),w3=WV(-9,-1,.12);
+      FL.forEach((f,k)=>{rect(w,-12,-1,f,k<2?FL[k+1]:11,k%2?K.glass2:K.glass);if(k)rect(w2,-12,-1,f-.2,f+.2,K.mull);});
+      for(let u=-10;u<-1;u+=2.2)rect(w3,u-.15,u+.15,4.7,11,K.mull);rect(w3,-8.5,-4.5,0.3,3.4,K.door);
+      box(-13,-14.6,-1,-9,11,11.6,K.col,K.col);
+      for(let u=-11.6;u<-1;u+=3)S.prism(Gs(ngon(u,-13.8,.3,8)),0.3,11,K.col,K.col,false);}
+    // roof: the skylight over the central hall, plant boxes
+    box(-6,12,14,19,H,H+1.2,K.white,K.sky);box(10,-4,15,0,H,H+1.3,K.white,K.white);box(-12,22,-8,26,H,H+1,K.white,K.white);
+    const c=G(1.5,8);MODELS['garantia-top']={x:c[0],y:c[1],h:14};S.dy=0;}
   // ==== hito: fiscalia-local ====
-  p=at('fiscalia-local');{const x=p.x,y=p.y+2;reserve(x,y,48,36);B.prism(rotRect(x,y,44,32),0.3,17,C('#CDD4D7'),C('#9CA3A6'));for(let k=0;k<4;k++)B.prism(rotRect(x,y-16.1,44,.4),2+k*3.8,4.2+k*3.8,C('#3F5566'),C('#3F5566'),false);MODELS['fiscalia-local']={x,y,h:18};}
+  // Fiscalía Local de Talca (4 Norte 703, at 1 Poniente), the Ministerio Público building delivered by the MOP in
+  // late 2021 (four floors, terrace and basement, 3,297 m²); built on S, windows drawn by hand. Plan from OpenStreetMap
+  // w975848488 (28.6 × 48.5 m), in the frame of landmark.py frame fiscalia-local 975848488: v north, u east. Heights,
+  // materials and colours from Google Street View (March 2024) and a press photo of the delivery (Radio Agricultura,
+  // December 2021): dark slate cladding in courses, white concrete bands at the floor slabs; on 1 Poniente a ribbon
+  // window on the second floor and grey aluminium louvres over the top two, with orange panels behind them; on the
+  // Alameda corner a glazed ground floor under a light grey panelled box topped by a white steel pergola; the
+  // institution's emblem and two flagpoles on the front; a forecourt of red pavers. ~13.6 m to the coping, 15.4 m
+  // to the box. The Esri imagery predates it (empty lot); the roof follows current Google imagery. Approximate: the
+  // east and north faces (no views; drawn like the west face), the box's depth, the louvres' pattern, the rooftop
+  // terrace. Method: docs/METODOLOGIA.md §9.
+  {const F=localFrame(-43.7,585.5,Math.PI/2),{G,Gs,V,N3,R}=F;
+    const K={slate:C('#737981'),slate2:C('#686E76'),white:C('#E6E4DE'),conc:C('#C9C7C1'),roof:C('#9EA1A0'),deck:C('#B9AF9E'),
+      panel:C('#C2C4C3'),panel2:C('#B3B6B6'),louv:C('#A9ADAF'),louv2:C('#868C90'),orange:C('#D27A3E'),
+      glass:C('#3E5560'),glass2:C('#34474F'),mull:C('#8C9CA3'),win:C('#3B4653'),steel:C('#ECEBE6'),
+      pave:C('#C38A7B'),pave2:C('#AF7C6F'),pole:C('#D8D8D4'),plant:C('#B9B7B1')};
+    const {box,WL,WV,WU,rect}=facade(S,F,K);
+    const H=13.6,HT=H-.03,U0=-14.3,U1=14.3,V0=-24.3,V1=24.3;
+    // footprint (OSM) plus the paved forecourt to the Alameda's sidewalk
+    const fp=Gs([[U0,-37],[U1,-37],[U1,V1],[U0,V1]]);
+    occMark(fp);S.dy=padAt(Math.min(...fp.map(p=>p[0])),Math.min(...fp.map(p=>p[1])),Math.max(...fp.map(p=>p[0])),Math.max(...fp.map(p=>p[1])));
+    for(let v=-37,k=0;v<V0-1e-6;v+=2.6,k++)S.quadXY(R(U0,v,U1,Math.min(v+2.6,V0)),0.33,k%2?K.pave2:K.pave);
+    // the main block; the corner box (u U0..-3, v V0..-14) stands proud of it from the first-floor slab up
+    const BU=-3,BV=-14;
+    S.prism(Gs([[BU,V0],[U1,V0],[U1,V1],[U0,V1],[U0,BV],[BU,BV]]),0.3,HT,K.slate,K.roof,false);
+    S.flat(Gs([[U0,V0],[U1,V0],[U1,V1],[U0,V1]]),H,K.roof);
+    const wall=(a,b,out)=>Object.assign(WL(a,b,out),{a,b,out}),at=(w,o)=>WL(w.a,w.b,w.out,o);
+    const slate=(w,s0,s1,h0,h1)=>{for(let h=h0,k=0;h<h1-1e-6;h+=1.1,k++)if(k%2)rect(w,s0,s1,h,Math.min(h+1.1,h1),K.slate2);};
+    // a side in the 1 Poniente manner: slate ground floor with paired windows, white slab band, ribbon window,
+    // band, louvres with orange panels between concrete piers, white coping
+    const side=(w,s0,s1,seed)=>{slate(w,s0,s1,0.3,4.3);rect(at(w,.09),s0,s1,4.3,4.8,K.white);
+      rect(w,s0,s1,4.8,7.6,K.glass);for(let s=s0+1.5;s<s1-.5;s+=1.6)rect(at(w,.09),s-.12,s+.12,4.8,7.6,K.mull);
+      rect(at(w,.09),s0,s1,7.6,8.2,K.white);
+      for(let h=8.2,k=0;h<13-1e-6;h+=.6,k++)rect(w,s0,s1,h,h+.6,k%2?K.louv2:K.louv);
+      let j=0;for(let s=s0+1;s<s1-2;s+=2.2,j++)for(let r=0;r<3;r++)if((j*5+r*3+seed)%7<2)rect(at(w,.09),s,s+1.6,8.6+r*1.5,9.6+r*1.5,K.orange);
+      for(let s=s0;s<=s1+1e-6;s+=Math.max(4,(s1-s0)/Math.round((s1-s0)/9.5)))rect(at(w,.12),Math.max(s0,s-.5),Math.min(s1,s+.5),4.8,13,K.conc);
+      rect(at(w,.12),s0,s1,13,H,K.white);
+      for(let s=s0+2;s<s1-1.5;s+=4.5)for(const d of [-.75,.75])rect(at(w,.12),s+d-.55,s+d+.55,1.5,2.7,K.win);};
+    const W=wall([U0,V1],[U0,BV],[-1,0]);side(W,0,W.L,1);
+    const E=wall([U1,V0],[U1,V1],[1,0]);side(E,0,E.L,4);
+    const N=wall([U1,V1],[U0,V1],[0,1]);side(N,0,N.L,2);
+    // the front's slate part: courses, two white bands, small framed windows, the big window, emblem and flagpoles
+    {const w=WV(V0,-1),w2=WV(V0,-1,.09),w3=WV(V0,-1,.12);slate(w,BU,U1,0.3,H-.45);
+      rect(w2,BU,U1,3.9,4.4,K.white);rect(w2,BU,U1,7.9,8.4,K.white);rect(w2,BU,U1,H-.45,H,K.white);
+      for(const u of [-1.2,.6,2.8,4.6,6.8,8.6]){rect(w2,u-.8,u+.8,1.2,2.9,K.white);rect(w3,u-.55,u+.55,1.45,2.65,K.win);}
+      rect(w2,7.6,11.6,4.9,7.4,K.white);rect(w3,7.9,11.3,5.2,7.1,K.win);
+      rect(w2,2.7,4.5,10,11.6,K.white);rect(w2,1.8,5.4,9.3,9.7,K.white);
+      for(const u of [10.2,11.4])box(u-.2,V0-1.2,u+.2,V0-.8,0.3,12.4,K.pole,K.pole);}
+    // the corner: glazed ground floor (curtain walls in two tones with mullions), the panelled box above it
+    // (light panels to the Alameda, dark louvres to 1 Poniente), the steel pergola on top
+    {const g=WV(V0,-1),gw=WU(U0,-1);rect(g,U0,BU,0.3,4.3,K.glass);rect(gw,V0,BV,0.3,4.3,K.glass);
+      for(let u=U0+1.6;u<BU;u+=1.8)rect(WV(V0,-1,.09),u-.12,u+.12,0.3,4.3,K.mull);
+      for(let v=V0+1.6;v<BV;v+=1.8)rect(WU(U0,-1,.09),v-.12,v+.12,0.3,4.3,K.mull);
+      box(U0,V0,BU,BV,0.3,4.3,K.glass,K.glass,false);
+      const X0=U0-.6,Y0=V0-.6,HB=15.4;box(X0,Y0,BU,BV,4.3,HB,K.panel,K.roof);
+      {const w=WV(Y0,-1);for(let h=4.3,k=0;h<HB-.5;h+=1.2,k++)if(k%2)rect(w,X0,BU,h,h+1.2,K.panel2);rect(WV(Y0,-1,.09),X0,BU,HB-.4,HB,K.white);}
+      {const w=WU(X0,-1);for(let h=4.3,k=0;h<HB-.4;h+=.6,k++)rect(w,Y0,BV,h,h+.6,k%2?K.louv2:K.louv);rect(WU(X0,-1,.09),Y0,BV,HB-.4,HB,K.white);}
+      rect(WU(BU,1),Y0,V0,4.3,HB,K.panel);
+      const pg=[[X0+.2,Y0+.2],[BU-.4,Y0+.2],[BU-.4,BV-.4],[X0+.2,BV-.4]];
+      for(const [u,v] of pg)box(u,v,u+.4,v+.4,HB,HB+2.3,K.steel,K.steel);
+      box(X0+.2,Y0+.2,BU,Y0+.6,HB+2.3,HB+2.7,K.steel,K.steel);box(X0+.2,BV-.4,BU,BV,HB+2.3,HB+2.7,K.steel,K.steel);
+      box(X0+.2,Y0+.6,X0+.6,BV-.4,HB+2.3,HB+2.7,K.steel,K.steel);box(BU-.4,Y0+.6,BU,BV-.4,HB+2.3,HB+2.7,K.steel,K.steel);
+      box(X0+.6,(Y0+BV)/2-.2,BU-.4,(Y0+BV)/2+.2,HB+2.3,HB+2.7,K.steel,K.steel);}
+    // roof: terrace deck to the north-east, plant boxes
+    S.quadXY(R(2,6,U1-1,V1-1),H+.05,K.deck);box(-10,-6,-4,0,H,H+1.4,K.plant,K.plant);box(-9,6,-4,12,H,H+1.1,K.plant,K.plant);
+    const c=G(0,-2);MODELS['fiscalia-local']={x:c[0],y:c[1],h:18};S.dy=0;}
   // ==== hito: juzgado-familia ====
-  p=at('juzgado-familia');{const x=p.x,y=p.y;reserve(x,y,34,26);B.prism(rotRect(x,y,30,22),0.3,21,C('#D9D4C8'),C('#9D9A93'));MODELS['juzgado-familia']={x,y,h:22};}
+  // Juzgado de Familia de Talca: the court's own building on 5 Oriente at 3 Norte, opened in August 2012 after the
+  // 2010 earthquake ("de modernas y funcionales líneas", Supreme Court speech at the opening, pjud.cl). Drawn on S.
+  // Plan from OpenStreetMap (w392091760, 6 levels; the corner to 3 Norte cut on the diagonal); frame from
+  // landmark.py frame juzgado-familia 392091760: u east (5 Oriente), v north (3 Norte). Blue hipped metal roof from
+  // the Esri imagery (date unknown). No photos found of the façades: they are drawn as a plain modern block (light
+  // walls, a glazed ground floor, window bands between piers on the five upper floors, a low glazed entrance in
+  // the cut corner), so colours, rhythm and the entrance are approximate; the height is OSM's six levels at ~3 m.
+  {const F=localFrame(528.5,309.4,90.8*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={wall:C('#D9D2C2'),rim:C('#EEE8DA'),glass:C('#4D5D66'),glass2:C('#3B4653'),roof:C('#4A6496'),roof2:C('#3F5684'),
+      flat:C('#8F8A82'),door:C('#5A4636'),white:C('#EEE8DA'),tile:C('#4A6496'),tile2:C('#3F5684')};
+    const {box,WL,rect}=facade(S,F,K);
+    const P=[[-11.37,-17.52],[9.36,-17.45],[8.46,3.14],[2.66,7.46],[2.43,12.19],[-11.36,12.26]];
+    const fp=Gs(P);occMark(fp);
+    S.dy=padAt(Math.min(...fp.map(p=>p[0])),Math.min(...fp.map(p=>p[1])),Math.max(...fp.map(p=>p[0])),Math.max(...fp.map(p=>p[1])));
+    const TOP=19.2;S.prism(fp,0.3,TOP,K.wall,K.flat);
+    // each side: plinth, glazed ground floor between piers, five floors of window bands between white piers,
+    // white cornice. The diagonal corner is the entrance (below)
+    for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],du=b[0]-a[0],dv=b[1]-a[1],L=Math.hypot(du,dv),out=[dv/L,-du/L];
+      const w=WL(a,b,out),w2=WL(a,b,out,.09),w3=WL(a,b,out,.12);if(i===2)continue;
+      rect(w2,0,L,TOP-.6,TOP,K.rim);rect(w,0,L,0.3,0.8,K.flat);
+      const n=Math.max(1,Math.round(L/4)),d=L/n;
+      for(let k=0;k<n;k++)rect(w,k*d+.4,(k+1)*d-.4,0.8,3.6,K.glass2);
+      rect(w2,0,L,4,4.4,K.rim);
+      for(let f=0;f<5;f++){const h=4.4+f*2.96;rect(w,.5,L-.5,h+.7,h+2.1,K.glass);}
+      const m=Math.max(1,Math.round(L/1.8)),e=(L-1)/m;for(let k=0;k<=m;k++){const s=.5+k*e;rect(w3,s-.22,s+.22,4.4,TOP-.6,K.rim);}}
+    // cut corner on 5 Oriente and 3 Norte: a two-storey glass entrance with a canopy, the floors above set on it
+    {const a=P[2],b=P[3],du=b[0]-a[0],dv=b[1]-a[1],L=Math.hypot(du,dv),out=[dv/L,-du/L],w=WL(a,b,out),w2=WL(a,b,out,.09),w3=WL(a,b,out,.12);
+      rect(w,0,L,0.3,7.3,K.glass2);rect(w2,0,L,7.3,7.8,K.rim);for(let f=0;f<4;f++){const h=7.8+f*2.85;rect(w,.4,L-.4,h+.6,h+2,K.glass);}
+      rect(w2,0,L,TOP-.6,TOP,K.rim);rect(w3,L/2-1.2,L/2+1.2,0.3,3,K.door);
+      const o=2.2,q=[[a[0],a[1]],[b[0],b[1]],[b[0]+out[0]*o,b[1]+out[1]*o],[a[0]+out[0]*o,a[1]+out[1]*o]];S.prism(Gs(q),3.4,3.75,K.rim,K.rim);}
+    // blue hipped roof (satellite) behind a low rim
+    pyramid(S,fp,TOP,3,K.roof);
+    const c=G(-1.5,-3);MODELS['juzgado-familia']={x:c[0],y:c[1],h:24};S.dy=0;}
   // ==== hito: servicios-publicos ====
-  p=at('servicios-publicos');{const x=p.x+6,y=p.y;reserve(x,y,64,52);const w=C('#E5D8BC');B.prism(rotRect(x,y,60,48),0.3,19,w,C('#A39C8E'));B.prism(rotRect(x-26,y,8,14),19,26,shade(w,1.02),C('#A39C8E'));MODELS['servicios-publicos']={x:x-26,y,h:27};}
+  // Edificio de los Servicios Públicos (c. 1930, Monumento Histórico since 2008), across 1 Oriente from the plaza, built
+  // on S in grid metres. Plan from OpenStreetMap: w214849867 plus the Tesorería's corner w191869528 (one building, one
+  // façade on 1 Oriente), with the light wells cut into its north and south sides. Above the ground, from photos on
+  // Wikimedia Commons (2012, 2022): Art Deco in greige concrete, a symmetric front on 1 Oriente of four floors with a
+  // five-floor central block, pilasters in pairs rising above the parapet in steps, a dark plinth, a canopy over the
+  // doors, and a covered atrium under a skylight (2024, interior). Approximate: the side and rear façades (no photos:
+  // the front's window rhythm), the floor heights (~3.7 m), the skylight's size. It stands on the plaza's level
+  // (MODELS[...].pad); its walls go 10 m down, as the Casa de la Independencia's lower pad tilts the ground to its
+  // north-east. The Antigua Intendencia (w275506476) to its north is not modelled. Method: docs/METODOLOGIA.md §9.
+  {const F=localFrame(0,0,Math.PI/2),H=MODELS['plaza-de-armas'].pad;
+    const K={wall:C('#B9B3A5'),pil:C('#CBC6B9'),plinth:C('#6E6C66'),glass:C('#3B4653'),glass2:C('#2C3540'),door:C('#4A3F3A'),
+      flat:C('#8F8A82'),sky:C('#A9B2B5'),canopy:C('#5B5A55')};
+    const {box,WU,WV,rect}=facade(S,F,K);
+    occMark([[72.4,-28.5],[113.7,-28.3],[113.7,28.1],[72.3,27.6]]);PADS.push([72.4,-28.5,113.7,28.1,H]);S.dy=H;
+    const F4=[[2,3.8],[5.6,7.5],[9.3,11.2],[13,14.8]],F5=F4.concat([[16.7,18.5]]),bays=(w,s0,s1,fl,wd=1.5,step=3.4,skip)=>{
+      const n=Math.max(1,Math.round((s1-s0)/step)),st=(s1-s0)/n;
+      for(let k=0;k<n;k++){const s=s0+st*(k+.5);if(skip&&skip(s))continue;fl.forEach(([a,b],i)=>rect(w,s-wd/2,s+wd/2,a,b,i%2?K.glass2:K.glass));}};
+    // masses: the front wing on 1 Oriente, the central block a floor higher, the rear round the atrium
+    box(72.5,-28.4,84,27.5,-6,15.8,K.wall,K.flat);box(84,-23.8,100.5,23.5,-6,15.8,K.wall,K.flat);box(100.5,-28.2,113.6,28,-6,15.8,K.wall,K.flat);
+    box(72.5,-8,86,8,-6,19.6,K.wall,K.flat);box(88,-9,104,9,15.8,17.3,K.glass2,K.sky);
+    // the front: plinth, windows in bays, doors under a canopy, pilasters in pairs with stepped tops
+    {const w=WU(72.5,-1),wp=WU(72.5,-1,.12);rect(w,-28.4,27.5,0.3,1.4,K.plinth);rect(wp,-28.4,-8,15.2,15.8,K.pil);rect(wp,8,27.5,15.2,15.8,K.pil);
+      bays(w,-27.6,-9.2,F4);bays(w,9.2,26.7,F4);bays(w,-6.6,6.6,F5,2.2,4.4,s=>false);rect(WU(72.5,-1,.12),-3.4,3.4,0.3,4.3,K.door);
+      box(70.7,-5,72.5,5,4.4,4.9,K.canopy,K.canopy);
+      for(const s of [-8,-6.6,6.6,8])box(72.05,s-.35,72.5,s+.35,1.4,20.6,K.pil,K.pil),box(72.15,s-.2,72.5,s+.2,20.6,21.4,K.pil,K.pil);
+      for(const s of [-27.9,-21.7,-15.5,-9.3,9.3,15.5,21.7,27])box(72.15,s-.3,72.5,s+.3,1.4,16.5,K.pil,K.pil),box(72.25,s-.15,72.5,s+.15,16.5,17,K.pil,K.pil);}
+    // the other sides: plinth and windows in the front's rhythm
+    for(const [w,s0,s1] of [[WV(27.5,1),72.5,84],[WV(23.5,1),84,100.5],[WV(28,1),100.5,113.6],[WV(-28.4,-1),72.5,84],
+      [WV(-23.8,-1),84,100.5],[WV(-28.2,-1),100.5,113.6],[WU(113.6,1),-28.2,28]]){rect(w,s0,s1,0.3,1.4,K.plinth);bays(w,s0+.6,s1-.6,F4);}
+    MODELS['servicios-publicos']={x:93,y:0,h:22};S.dy=0;}
   // ==== hito: ex-carcel ====
-  // Ex Cárcel: the walls follow its block (manzana 3–4 Norte, 2–3 Poniente), each side pulled in until it clears the
-  // streets around it; the point is a sourced coordinate west of the block's centre, so the model is not centred on it
-  p=at('ex-carcel');{const b=blocks[blockAt(p.x,p.y)];let [x0,y0,x1,y1]=b.bb;x0+=2;y0+=2;x1-=2;y1-=2;
-    const hit=(ax,ay,bx,by)=>{for(let t=0;t<=1;t+=.05)if(nearStreet(ax+(bx-ax)*t,ay+(by-ay)*t,2.5))return true;return false;};
-    for(let k=0;k<60;k++){let m=false;
-      if(hit(x0,y0,x0,y1)){x0+=.5;m=true;}if(hit(x1,y0,x1,y1)){x1-=.5;m=true;}
-      if(hit(x0,y0,x1,y0)){y0+=.5;m=true;}if(hit(x0,y1,x1,y1)){y1-=.5;m=true;}if(!m)break;}
-    const x=(x0+x1)/2,y=(y0+y1)/2,w=x1-x0,d=y1-y0;reserve(x,y,w+2,d+2);const wc=C('#D8C49A');
-    for(const r of [rotRect(x,y1-.6,w,1.2),rotRect(x,y0+.6,w,1.2),rotRect(x1-.6,y,1.2,d),rotRect(x0+.6,y,1.2,d)])B.prism(r,0.3,6,wc,shade(wc,1.05));
-    for(const [cx,cy] of [[x0+2,y0+2],[x1-2,y0+2],[x0+2,y1-2],[x1-2,y1-2]]){B.prism(rotRect(cx,cy,4,4),0.3,10,shade(wc,.95),wc);pyramid(B,rotRect(cx,cy,5,5),10,2.5,C('#7E6F5C'));}
-    for(let k=0;k<3;k++)B.prism(rotRect(x-w*.06,y-d*.25+k*d*.25,w*.62,10),0.3,7,C('#CDBFA2'),C('#8C8A86'));
-    B.prism(rotRect(x+w*.36,y+d*.18,14,d*.36),0.3,5,C('#CDBFA2'),C('#8C8A86'));
-    MODELS['ex-carcel']={x,y,h:11};}
+  // Ex Cárcel Pública de Talca (CCP Talca, 4 Norte 550; the clinic at 520 is part of it), the whole block between
+  // 3 and 4 Norte, 2 and 3 Poniente; built on S. There has been a prison here since 1864; the present compound was
+  // rebuilt in reinforced concrete after the 1928 earthquake (1930, architect Luis Nieto), got two cell pavilions in
+  // 1953 (likely the two long two-storey ones) and later works (Municipalidad de Talca, «Origen y evolución de la
+  // Cárcel Pública en Talca»). It was still in use in 2024–2025; with La Laguna open (2025) the State has said it will
+  // release the site for a civic centre. Nothing is demolished: this is the compound as it stands in Google Street
+  // View (2013, 2024) and current Google and Esri imagery. Plan from OpenStreetMap (prison w111123020, buildings
+  // w952226028–37), in the frame of landmark.py frame ex-carcel 111123020 (v north, u east), clipped to the map's
+  // block. What is seen: a 7.5 m concrete perimeter wall painted cream with pilasters and coiled wire on top, guard
+  // towers at the corners (SW on a chamfer, SE darker), the one-storey Gendarmería-green front on the Alameda with a
+  // taller entrance block and hipped roofs, a barrel-vaulted hall, the two-storey pavilions, a hipped ring around a
+  // court, a covered court with a blue roof, sheds and yards. Approximate: the NE and NW towers (not seen), the
+  // entrance block's place along the front, the sheds on the west side (not in OSM), heights (OSM levels). The
+  // towers' night lights are licence. Method: docs/METODOLOGIA.md §9.
+  {const F=localFrame(-253.1,409.9,89.2*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={wall:C('#D5C79E'),pil:C('#BDB6A3'),wire:C('#4A4C4E'),tower:C('#B7B2A6'),tower2:C('#5A5E62'),win:C('#3B4653'),
+      green:C('#7DB85C'),green2:C('#4F8545'),upper:C('#AEB8A8'),white:C('#ECE7DC'),door:C('#4A3F3A'),
+      tile:C('#B6BBBA'),tile2:C('#A5AAA9'),rust:C('#94634A'),rust2:C('#835841'),metal:C('#9EA3A3'),metal2:C('#8D9292'),
+      blue:C('#8FAEC4'),blue2:C('#7F9EB5'),conc:C('#CFC8B8'),yard:C('#CDBF9F'),pave:C('#BDB7AB'),gable:C('#CFC8B8')};
+    const {box,WL,WV,WU,rect}=facade(S,F,K);
+    const U0=-49.5,U1=53,V0=-58,VN=38.5,VF=61; // walls west/east/south/north; the frontage runs to the sidewalk
+    const site=Gs([[U0,V0],[U1,V0],[U1,VF],[U0,VF]]);
+    occMark(site);NOLOTS.push(site);
+    S.dy=padAt(Math.min(...site.map(p=>p[0])),Math.min(...site.map(p=>p[1])),Math.max(...site.map(p=>p[0])),Math.max(...site.map(p=>p[1])));
+    // hipped roof over an axis-aligned (u,v) rectangle, eaves at h, ridge rh higher, in two tones
+    const hip=(u0,v0,u1,v1,h,rh,c1,c2)=>{const o=.4;u0-=o;v0-=o;u1+=o;v1+=o;const h0=h-.25;
+      if(u1-u0>=v1-v0){const d=(v1-v0)/2,vm=(v0+v1)/2;
+        S.face([V(u0,v0,h0),V(u1,v0,h0),V(u1-d,vm,h+rh),V(u0+d,vm,h+rh)],null,c1);S.face([V(u1,v1,h0),V(u0,v1,h0),V(u0+d,vm,h+rh),V(u1-d,vm,h+rh)],null,c1);
+        S.face([V(u0,v1,h0),V(u0,v0,h0),V(u0+d,vm,h+rh)],null,c2);S.face([V(u1,v0,h0),V(u1,v1,h0),V(u1-d,vm,h+rh)],null,c2);}
+      else{const d=(u1-u0)/2,um=(u0+u1)/2;
+        S.face([V(u0,v1,h0),V(u0,v0,h0),V(um,v0+d,h+rh),V(um,v1-d,h+rh)],null,c1);S.face([V(u1,v0,h0),V(u1,v1,h0),V(um,v1-d,h+rh),V(um,v0+d,h+rh)],null,c1);
+        S.face([V(u0,v0,h0),V(u1,v0,h0),V(um,v0+d,h+rh)],null,c2);S.face([V(u1,v1,h0),V(u0,v1,h0),V(um,v1-d,h+rh)],null,c2);}};
+    // gable roof with the ridge along v (sheds and pavilions): bays in two tones, gable ends in concrete
+    const shed=(u0,v0,u1,v1,h,rh,c1,c2)=>{const um=(u0+u1)/2,o=.4;for(let v=v0,k=0;v<v1-1e-6;v+=6,k++){const e=Math.min(v+6,v1),c=k%2?c2:c1;
+        S.face([V(u0-o,v,h-.2),V(u0-o,e,h-.2),V(um,e,h+rh),V(um,v,h+rh)],null,c);S.face([V(u1+o,e,h-.2),V(u1+o,v,h-.2),V(um,v,h+rh),V(um,e,h+rh)],null,c);}
+      S.face([V(u0,v0,h),V(u1,v0,h),V(um,v0,h+rh)],N3(0,-1),K.gable);S.face([V(u1,v1,h),V(u0,v1,h),V(um,v1,h+rh)],N3(0,1),K.gable);};
+    // the yards inside the wall, the parking strip in front
+    S.quadXY(R(U0,V0,U1,57),0.32,K.yard);S.quadXY(R(U0,57,U1,VF),0.32,K.pave);
+    // perimeter wall: cream, pilasters every ~8 m outside, coiled wire on top; the SW corner is chamfered
+    const CH=5,T=.8,HW=7.5,ring=[[U0,V0+CH],[U0+CH,V0],[U1,V0],[U1,VN],[U0,VN]];
+    for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length],L=Math.hypot(b[0]-a[0],b[1]-a[1]),du=(b[0]-a[0])/L,dv=(b[1]-a[1])/L,nu=dv,nv=-du;
+      const q=[[a[0],a[1]],[b[0],b[1]],[b[0]-nu*T,b[1]-nv*T],[a[0]-nu*T,a[1]-nv*T]];S.prism(Gs(q),0.3,HW,K.wall,K.pil);
+      const qw=[[a[0]-nu*.1,a[1]-nv*.1],[b[0]-nu*.1,b[1]-nv*.1],[b[0]-nu*(T-.1),b[1]-nv*(T-.1)],[a[0]-nu*(T-.1),a[1]-nv*(T-.1)]];S.prism(Gs(qw),HW,HW+.45,K.wire,K.wire);
+      if(i===4)continue; // the north side stands behind the front buildings
+      const w=WL(a,b,[nu,nv],.25);const n=Math.max(1,Math.round(L/8));for(let k=1;k<n;k++){const s=k*L/n;rect(w,s-.45,s+.45,0.3,HW,K.pil);}
+      rect(WL(a,b,[nu,nv],.06),0,L,0.3,1.0,K.pil);}
+    // guard towers: a shaft, a cabin with a band of windows, a hipped cap
+    const tower=(u,v,sh)=>{box(u-1.7,v-1.7,u+1.7,v+1.7,0.3,8.2,sh,sh);box(u-1.5,v-1.5,u+1.5,v+1.5,8.2,10.6,K.tower,K.tower);
+      for(const [sg,ax] of [[-1,'v'],[1,'v'],[-1,'u'],[1,'u']]){const w=ax==='v'?WV(v+sg*1.5,sg):WU(u+sg*1.5,sg);rect(w,(ax==='v'?u:v)-1.1,(ax==='v'?u:v)+1.1,8.9,10,K.win);}
+      pyramid(S,R(u-1.9,v-1.9,u+1.9,v+1.9),10.6,1.4,K.metal2);const g=G(u,v);GLOW.push(g[0],S.dy+11,g[1]);};
+    tower(U0+2.2,V0+2.2,K.tower);tower(U1-1.2,V0+1.2,K.tower2);tower(U1-1.2,VN-1.2,K.tower);tower(U0+1.2,VN-1.2,K.tower);
+    // front on the Alameda: one storey in Gendarmería green with a dark plinth, framed barred windows, hipped roofs;
+    // the entrance block stands two storeys, its upper floor grey-green, with three tall bays and a stepped cornice
+    const front=(u0,v0,u1,v1,h,roof,roof2)=>{box(u0,v0,u1,v1,0.3,h,K.green,roof,false);hip(u0,v0,u1,v1,h,1.6,roof,roof2);
+      const w=WV(v1,1);rect(w,u0,u1,0.3,1.1,K.green2);rect(WV(v1,1,.09),u0,u1,h-.4,h,K.white);
+      for(let u=u0+2.2;u<u1-1.5;u+=3.6){rect(WV(v1,1,.09),u-.95,u+.95,1.5,3.1,K.white);rect(WV(v1,1,.12),u-.75,u+.75,1.7,2.9,K.win);}
+      for(const [x,sg] of [[u0,-1],[u1,1]]){rect(WU(x,sg),v0,v1,0.3,1.1,K.green2);rect(WU(x,sg,.09),v0,v1,h-.4,h,K.white);}};
+    front(U0,43,-33,57,4.4,K.rust,K.rust2);front(-32,44,6,57,4.6,K.tile,K.tile2);front(10,43,21,50,4.2,K.tile,K.tile2);
+    front(21,41,51,55,4.2,K.tile,K.tile2);box(-6,40,6,44,0.3,4.6,K.green,K.metal);
+    {const u0=-19,u1=-7,v0=51,v1=57.6;box(u0,v0,u1,v1,0.3,8.2,K.green,K.metal);box(u0-.3,v0-.3,u1+.3,v1+.3,8.2,8.7,K.white,K.white);
+      box(u0+1,v1-1,u1-1,v1+.2,8.7,9.2,K.white,K.white);
+      const w=WV(v1,1),w2=WV(v1,1,.09),w3=WV(v1,1,.12);rect(w,u0,u1,4.6,8.2,K.upper);rect(w,u0,u1,0.3,1.1,K.green2);
+      for(const [a,b] of [[u0+1,u0+3.6],[u0+4.7,u1-4.7],[u1-3.6,u1-1]]){rect(w2,a-.3,b+.3,0.3,6.6,K.white);rect(w3,a,b,0.3,6.3,K.door);}
+      for(const u of [u0+2.3,(u0+u1)/2,u1-2.3])rect(w3,u-.6,u+.6,7,7.9,K.win);
+      for(const [x,sg] of [[u0,-1],[u1,1]])rect(WU(x,sg),v0,v1,4.6,8.2,K.upper);
+      for(const u of [u0+1.4,u1-1.4])box(u-.2,v1+.6,u+.2,v1+1,0.3,9.5,K.pil,K.pil);}
+    // inside: the barrel-vaulted hall (OSM 028) with its lower foot to the south-west
+    {const u0=-26,u1=-14,v0=-22,v1=34,h=5.5,r=(u1-u0)/2,um=(u0+u1)/2;box(u0,v0,u1,v1,0.3,h,K.conc,K.conc,false);
+      const arc=[];for(let i=0;i<=8;i++){const t=Math.PI*i/8;arc.push([um-r*Math.cos(t),h+3.6*Math.sin(t)]);}
+      for(let i=0;i<8;i++){const [ua,ha]=arc[i],[ub,hb]=arc[i+1];S.face([V(ua,v0,ha),V(ua,v1,ha),V(ub,v1,hb),V(ub,v0,hb)],null,i%2?K.metal2:K.metal);}
+      for(const [v,sg] of [[v0,-1],[v1,1]])S.face(arc.map(([u,hh])=>V(u,v,hh)),N3(0,sg),K.conc);
+      for(const u of [u0,u1])for(let v=v0+3;v<v1-2;v+=4)rect(WU(u,u===u0?-1:1,.06),v-.8,v+.8,2.4,4.4,K.win);
+      box(-48,-36,-13,-22,0.3,4,K.conc,K.metal);}
+    // sheds along the west wall (imagery, not in OSM), the south block (031), the pavilions (029, 030)
+    box(-47.5,-20,-28,8,0.3,4,K.conc,K.metal,false);shed(-47.5,-20,-28,8,4,1.2,K.rust,K.rust2);
+    box(-47.5,10,-28,36,0.3,4,K.conc,K.tile,false);shed(-47.5,10,-28,36,4,1.2,K.tile,K.tile2);
+    box(-45,-50,-5,-36.5,0.3,3.8,K.conc,K.metal);
+    for(const [u0,u1,c1,c2] of [[-4.7,4.5,K.rust,K.rust2],[4.5,19.6,K.metal,K.metal2]]){const v0=u0<0?-49.5:-49,v1=u0<0?-11.5:4;
+      box(u0,v0,u1,v1,0.3,7,K.conc,K.conc,false);shed(u0,v0,u1,v1,7,1.4,c1,c2);
+      for(const [u,sg] of [[u0,-1],[u1,1]])for(let v=v0+2.5;v<v1-1.5;v+=3.5)for(const f of [1.8,4.8])rect(WU(u,sg),v-.6,v+.6,f,f+1.1,K.win);}
+    // the hipped ring around a court (032), the covered court (033) and the east shed (034)
+    box(-2,23,26,38,0.3,4.5,K.conc,K.tile,false);hip(-2,23,26,38,4.5,2,K.tile,K.tile2);
+    box(16,9,26,23,0.3,4.5,K.conc,K.tile,false);hip(16,9,26,23,4.5,2,K.tile,K.tile2);
+    box(28,8,46,36,0.3,6,K.conc,K.blue,false);shed(28,8,46,36,6,1.2,K.blue,K.blue2);
+    box(29,-29,48,6.5,0.3,5,K.conc,K.metal,false);shed(29,-29,48,6.5,5,1.3,K.metal,K.metal2);
+    const c=G(2,-8);MODELS['ex-carcel']={x:c[0],y:c[1],h:12};S.dy=0;}
   // ==== hito: mercado-central ====
-  p=at('mercado-central');{const x=p.x,y=p.y;reserve(x,y,100,62);const b=C('#A8543B');B.prism(rotRect(x,y,96,58),0.3,7,b,b,false);
-    B.gable([[x-48,y-29],[x+48,y-29],[x+48,y+29],[x-48,y+29]],7,7.01,9,b,C('#8B8F92'));
-    for(const [dx,dy] of [[-48,-29],[48,-29],[48,29],[-48,29]])B.prism(rotRect(x+dx,y+dy,4,4),0.3,11,shade(b,1.08),C('#EDE3CF'));MODELS['mercado-central']={x,y,h:16};}
+  // Mercado Central (1890, Monumento Histórico 1998), the whole block between 4 and 5 Oriente, 1 Sur and 1 Norte;
+  // drawn on S. Plan from OpenStreetMap: the perimeter range w114237042 (west, south and east wings, 13 m deep, with
+  // chamfered corners on 1 Sur and the passage from 1 Sur to the hall), the central hall w110971686, the north shed
+  // w798984630 on 1 Norte and the corner shops w975735413/w975735414. Frame localFrame(502, -16, 90°): u = grid x
+  // (east), v = grid y (north). Since the 2010 earthquake and the fires of 2014 it is closed, fenced and roofed with
+  // rusty iron; a restoration is planned (GORE/SUBDERE, archaeological survey in 2026). Elevations from photos on
+  // Wikimedia Commons (2017, 2018, the 1 Sur front and a pavilion on Oriente) and the restoration project's render:
+  // white stucco range with a cornice, pilasters, shop fronts and mezzanine windows; entrance pavilions with a big
+  // arch closed by an iron grille between two smaller arches; corner pavilions on 1 Sur. Roofs from the Esri
+  // imagery (undated): rusty iron on the range, a light shed roof on the north, and a hall in three bays, each a
+  // lantern and a curved slope. The north wall carries a mural (photo, 2015), drawn as colour blocks. Approximate:
+  // all heights (no measured elevation), the hall's walls and its roof's current state (fire damage unknown), the
+  // Oriente pavilions' position and the inner courtyard. No night lights: the building is closed.
+  {const F=localFrame(502,-16,Math.PI/2),{G,Gs,V,N3,R}=F;
+    const K={wall:C('#DCD5C6'),wallIn:C('#CBC4B5'),white:C('#EFEAE0'),whiteSh:C('#D3CDC0'),plinth:C('#BDB6A8'),
+      tile:C('#8A5E48'),tile2:C('#79523F'),gable:C('#DCD5C6'),flat:C('#8F8A82'),shed:C('#C9C9C1'),shed2:C('#B5B7B0'),
+      hall:C('#CFC8BA'),lantern:C('#DCD6BF'),slope:C('#AEB5A6'),slope2:C('#9DA597'),glass:C('#3B4653'),glass2:C('#2C3540'),
+      shutter:C('#5E5A55'),door:C('#5A4636'),iron:C('#3A3A3A'),yard:C('#BDB197'),
+      mural:['#C8553D','#E2B33C','#4F8A8B','#7A9A3B','#B4372C','#3E6D9C','#E9DDC6','#D9822B'].map(C)};
+    const {box,WL,WV,WU,rect,arch,roof}=facade(S,F,K),shedRoof=facade(S,F,{...K,tile:K.shed,tile2:K.shed2}).roof;
+    const fp=Gs([[-54,-40],[-49,-44],[51,-44],[54,-41],[54,62],[-54,62]]);
+    occMark(fp);S.dy=padAt(G(-54,0)[0],G(0,-44)[1],G(54,0)[0],G(0,62)[1]);
+    // edges of a convex (u,v) polygon as walls facing out, details o metres in front
+    const edges=(q,o)=>{let cu=0,cv=0;q.forEach(p=>{cu+=p[0]/q.length;cv+=p[1]/q.length;});
+      return q.map((a,i)=>{const b=q[(i+1)%q.length],du=b[0]-a[0],dv=b[1]-a[1],L=Math.hypot(du,dv);let out=[dv/L,-du/L];
+        if(out[0]*((a[0]+b[0])/2-cu)+out[1]*((a[1]+b[1])/2-cv)<0)out=[-out[0],-out[1]];return WL(a,b,out,o);});};
+    const H=7.4,PH=8.4; // eaves of the range and top of its street parapet
+    // courtyard (rubble and gravel since the market closed)
+    S.flat(Gs([[-41,-31],[41,-31],[41,40],[-41,40]]),0.3,K.yard);
+    // the range: south wing with the chamfered corners, west and east wings, north shed; rusty iron roofs behind a
+    // white parapet on the street side
+    S.prism(Gs([[-54,-40],[-49,-44],[49,-44],[54,-40],[54,-31],[-54,-31]]),0.3,H,K.wall,K.wall,false);
+    box(-54,-31,-41,62,0.3,H,K.wall,K.wall,false);box(41,-31,54,62,0.3,H,K.wall,K.wall,false);
+    box(-41,40,41,62,0.3,6.2,K.wall,K.wall,false);
+    roof('v',-34,62,-53.4,-41,H,2,6,[0,1]);roof('v',-34,62,41,53.4,H,2,6,[0,1]);roof('u',-47.5,47.5,-43.4,-31,H,2,6,[0,0]);
+    shedRoof('u',-47.5,47.5,40,61.4,6.2,2.4,8,[0,0]);
+    box(-45,-44,45,-43.6,H-.2,PH,K.wall,K.white);box(-54,-35,-53.6,62,H-.2,PH,K.wall,K.white);box(53.6,-35,54,62,H-.2,PH,K.wall,K.white);
+    // street fronts in bays: white pilasters, plinth, shop fronts (shuttered), a band, mezzanine windows, cornice
+    const front=(a,b,out,skip)=>{const w=WL(a,b,out),wb=WL(a,b,out,.09),wp=WL(a,b,out,.12),n=Math.round(w.L/4.5),bw=w.L/n;
+      rect(w,0,w.L,0.3,0.9,K.plinth);rect(wb,0,w.L,3.8,4.15,K.white);rect(wb,0,w.L,6.7,7.2,K.white);rect(wb,0,w.L,PH-.35,PH,K.white);
+      for(let k=0;k<=n;k++)rect(wp,Math.max(0,k*bw-.3),Math.min(w.L,k*bw+.3),0.3,PH-.35,K.white);
+      for(let k=0;k<n;k++){const c=(k+.5)*bw;if(skip&&c>skip[0]&&c<skip[1])continue;
+        rect(w,c-1.5,c+1.5,0.9,3.5,K.shutter);rect(w,c-1.05,c+1.05,4.5,6.3,k%2?K.glass2:K.glass);}};
+    front([-44,-44],[44,-44],[0,-1],[34,54]);front([-54,62],[-54,-35],[-1,0],[44,64]);front([54,-35],[54,62],[1,0],[33,53]);
+    // entrance pavilions: a block above the range with a big arch closed by an iron grille between two smaller
+    // arches, white pilasters, cornice and a stepped attic; the 1 Sur one opens the passage to the hall
+    const pav=(a,b,out)=>{const L=Math.hypot(b[0]-a[0],b[1]-a[1]),du=(b[0]-a[0])/L,dv=(b[1]-a[1])/L,bk=[-out[0]*13,-out[1]*13];
+      const q=[a,b,[b[0]+bk[0],b[1]+bk[1]],[a[0]+bk[0],a[1]+bk[1]]];
+      box(Math.min(...q.map(p=>p[0])),Math.min(...q.map(p=>p[1])),Math.max(...q.map(p=>p[0])),Math.max(...q.map(p=>p[1])),0.3,10.6,K.wall,K.flat);
+      const w=WL(a,b,out),wb=WL(a,b,out,.09),wp=WL(a,b,out,.12),m=L/2;
+      rect(w,0,L,0.3,0.9,K.plinth);rect(wb,0,L,9.3,9.8,K.white);rect(wb,0,L,10.25,10.6,K.white);
+      for(const s of [0,L-1])rect(wp,s,s+1,0.3,10.25,K.white);
+      arch(w,m,6,0.9,9.3,K.white);arch(wp,m,4.8,0.9,8.7,K.iron);
+      for(const d of [-4.6,4.6]){arch(w,m+d,2.8,0.9,7.2,K.white);arch(wp,m+d,2,0.9,6.8,K.glass);}
+      const c=[a[0]+du*m,a[1]+dv*m],t=[du,dv];
+      for(const [hw,h0,h1] of [[3.6,10.6,11.4],[2,11.4,12.2]]){const p0=[c[0]-t[0]*hw,c[1]-t[1]*hw],p1=[c[0]+t[0]*hw,c[1]+t[1]*hw],k=[-out[0]*.8,-out[1]*.8];
+        const qq=[p0,p1,[p1[0]+k[0],p1[1]+k[1]],[p0[0]+k[0],p0[1]+k[1]]];
+        box(Math.min(...qq.map(p=>p[0])),Math.min(...qq.map(p=>p[1])),Math.max(...qq.map(p=>p[0])),Math.max(...qq.map(p=>p[1])),h0,h1,K.white,K.white);}};
+    pav([-8,-45],[7,-45],[0,-1]);pav([-55,15.5],[-55,0.5],[-1,0]);pav([55,0.5],[55,15.5],[1,0]);
+    // corner pavilions on 1 Sur: chamfered, a door under an arch on the chamfer, arched windows on the streets
+    for(const sg of [-1,1]){const q=[[-54,-40],[-49,-44],[-44,-44],[-44,-35],[-54,-35]].map(p=>[p[0]*sg,p[1]]);if(sg>0)q.reverse();
+      S.prism(Gs(q),0.3,10.2,K.wall,K.flat);
+      const ew=edges(q,.06),eb=edges(q,.09),ep=edges(q,.12);
+      for(let i=0;i<q.length;i++){const w=ew[i],a=q[i],b=q[(i+1)%q.length];
+        if(Math.abs(a[0])===44&&Math.abs(b[0])===44||a[1]===-35&&b[1]===-35)continue; // the inner sides
+        rect(w,0,w.L,0.3,0.9,K.plinth);rect(eb[i],0,w.L,8.9,9.4,K.white);rect(eb[i],0,w.L,9.85,10.2,K.white);
+        if(a[0]!==b[0]&&a[1]!==b[1]){arch(w,w.L/2,3.6,0.9,7.6,K.white);arch(ep[i],w.L/2,2.6,0.9,7.1,K.door);}
+        else{arch(w,w.L/2,2.6,0.9,7.2,K.white);arch(ep[i],w.L/2,1.8,1.2,6.8,K.glass);}}}
+    // inner faces on the courtyard: plain, with doors
+    for(const [w,s0,s1] of [[WV(-31,1),-41,41],[WU(-41,1),-31,40],[WU(41,-1),-31,40],[WV(40,-1),-41,41]])
+      for(let s=s0+4;s<s1-2;s+=8)rect(w,s-1,s+1,0.3,3,K.door);
+    // passage from 1 Sur to the hall
+    box(-4,-31,3,-16.5,0.3,6,K.wallIn,K.flat);
+    // the hall: plain walls with a row of arched windows and a cornice, three roof bays from south to north, each a
+    // curved slope (three facets in two tones) up to a flat lantern with a skylight strip and a clerestory facing north
+    box(-26,-16.5,27,32.5,0.3,10,K.hall,K.hall,false);
+    for(const [w,s0,s1] of [[WV(-16.5,-1),-26,27],[WV(32.5,1),-26,27],[WU(-26,-1),-16.5,32.5],[WU(27,1),-16.5,32.5]]){
+      rect(w,s0,s1,0.3,1,K.plinth);for(let s=s0+3;s<s1-2;s+=4.2)arch(w,s,1.4,5.2,8.6,K.glass);}
+    for(const [w,s0,s1] of [[WV(-16.5,-1,.09),-26,27],[WV(32.5,1,.09),-26,27],[WU(-26,-1,.09),-16.5,32.5],[WU(27,1,.09),-16.5,32.5]])rect(w,s0,s1,9.4,10,K.white);
+    {const L=49/3;for(let k=0;k<3;k++){const va=-16.5+k*L,vb=va+L,pr=[[va,10],[va+4,11.6],[va+8,12.8],[vb-4,13.6],[vb,13.6]];
+      for(let i=0;i<3;i++){const [v0,h0]=pr[i],[v1,h1]=pr[i+1];S.face([V(-26.3,v0,h0),V(27.3,v0,h0),V(27.3,v1,h1),V(-26.3,v1,h1)],N3(0,-(h1-h0),v1-v0),i%2?K.slope2:K.slope);}
+      S.face([V(-26.3,vb-4,13.6),V(27.3,vb-4,13.6),V(27.3,vb,13.6),V(-26.3,vb,13.6)],[0,1,0],K.lantern);
+      for(let u=-24;u<26;u+=6)S.face([V(u,vb-3.6,13.63),V(u+3.6,vb-3.6,13.63),V(u+3.6,vb-2.6,13.63),V(u,vb-2.6,13.63)],[0,1,0],K.glass);
+      const cw=WV(vb,1,.02);rect(cw,-26.3,27.3,10,13.6,K.wallIn);for(let u=-25;u<26;u+=2.5)rect(WV(vb,1,.06),u,u+1.6,10.6,13,K.glass);
+      for(const [u,sg] of [[-26.3,-1],[27.3,1]])S.face(pr.concat([[vb,10]]).map(([v,h])=>V(u,v,h)),N3(sg,0),K.hall);}}
+    // the mural on the 1 Norte wall, in blocks of colour; plain corner shops at both ends
+    {const w=WV(62,1),wb=WV(62,1,.09);let s=-40,k=0;const ws=[5,3,6,4,7,3,5,4];
+      while(s<40){const e=Math.min(40,s+ws[k%8]);rect(w,s,e,0.9,3.2,K.mural[k%8]);rect(w,s,e,3.2,5.4,K.mural[(k*3+5)%8]);s=e;k++;}
+      rect(w,-41,41,0.3,0.9,K.plinth);rect(wb,-41,41,5.8,6.2,K.white);
+      for(const [a,b] of [[-54,-41],[41,54]]){rect(w,a,b,0.3,0.9,K.plinth);for(let u=a+2.2;u<b-1;u+=4.3){rect(w,u-1.4,u+1.4,0.9,3.5,K.shutter);rect(w,u-1,u+1,4.5,6.3,K.glass);}}}
+    const c=G(0,8);MODELS['mercado-central']={x:c[0],y:c[1],h:16};S.dy=0;}
   // ==== hito: escuelas-concentradas ====
+  // Escuelas Concentradas (1939–1941, Monumento Histórico 2013), on the north half of the block between 3 and 4
+  // Oriente, facing Plaza Cienfuegos and 1 Sur; drawn on S. Plan from OpenStreetMap: the U-shaped school w110971696
+  // (a south wing with the clock tower in the middle, west and east wings around the schoolyard, open to 1 Norte) and
+  // the plaza w107754260. Frame localFrame(375, 15, 90°): u = grid x (east), v = grid y (north). Closed since the 2010
+  // earthquake. Elevation from photos on Wikimedia Commons (2014, 2018): two storeys, the ground floor painted red
+  // (windows boarded up), the upper one cream with ribbon windows; a central tower with two orange piers, two slit
+  // windows and a round clock; a one-storey red block with a rounded corner at the south-east end ("Escuela Superior
+  // de Hombres"). Courts in the yard and the plaza's paving, lawn and sunken amphitheatre from the Esri imagery
+  // (undated). Approximate: the heights (proportions from the photos, ~9 m eaves, ~14 m tower), flat roofs (they are
+  // low iron roofs behind the parapet), the court side and the north ends (no photos), the wings' widths. No lights.
+  {const F=localFrame(375,15,Math.PI/2),{G,Gs,V,N3,R}=F;
+    const K={red:C('#B5433A'),red2:C('#9E3B33'),cream:C('#E6DCC2'),white:C('#F0EADB'),roof:C('#8A6A58'),orange:C('#D88A55'),
+      glass:C('#3B4653'),glass2:C('#2C3540'),board:C('#B39A62'),dark:C('#2E2C2B'),sign:C('#7FA7C9'),tile:C('#8A6A58'),tile2:C('#7A5E4E'),
+      yard:C('#C9B98F'),clay:C('#B0644A'),court:C('#58758C'),line:C('#F3F0E6'),pave:C('#CFC7B0'),pave2:C('#BDB49C'),lawn:C('#8FA85A')};
+    const {box,WL,WV,WU,rect}=facade(S,F,K);
+    const site=Gs([[-57,-83],[56,-83],[56,34],[-57,34]]);NOLOTS.push(site);
+    const fp=[[[-36,-35],[36,-35],[36,-25],[-36,-25]],[[-56,-33],[-36,-33],[-36,-23],[-56,-23]],[[-56,-23],[-46,-23],[-46,34],[-56,34]],
+      [[36,-28],[56,-28],[56,-23],[36,-23]],[[46,-23],[56,-23],[56,32],[46,32]],[[36,-33],[56,-33],[56,-28],[36,-28]],[[-57,-83],[56,-83],[56,-36],[-57,-36]]];
+    fp.forEach(q=>occMark(Gs(q)));S.dy=padAt(G(-57,0)[0],G(0,-83)[1],G(56,0)[0],G(0,34)[1]);
+    // Plaza Cienfuegos in front: paving, a lawn strip with a central walk, the sunken amphitheatre in two-tone steps
+    S.flat(Gs([[-57,-83],[56,-83],[56,-35],[-57,-35]]),0.3,K.pave);
+    for(const [a,b] of [[-52,-6],[6,50]])S.quadXY(R(a,-41,b,-36.5),0.33,K.lawn);
+    for(let k=0;k<4;k++){const r0=19-k*3,r1=r0-3,arc=[];for(let i=0;i<=12;i++){const t=Math.PI*i/12;arc.push([Math.cos(t),Math.sin(t)]);}
+      for(let i=0;i<12;i++)S.face([V(arc[i][0]*r0,-66+arc[i][1]*r0,.33+k*.03),V(arc[i+1][0]*r0,-66+arc[i+1][1]*r0,.33+k*.03),V(arc[i+1][0]*r1,-66+arc[i+1][1]*r1,.33+k*.03),V(arc[i][0]*r1,-66+arc[i][1]*r1,.33+k*.03)],[0,1,0],k%2?K.pave2:K.pave);}
+    // schoolyard with two courts
+    S.flat(Gs([[-46,-23],[46,-23],[46,34],[-46,34]]),0.3,K.yard);
+    S.quadXY(R(-23,-17,-8,11),0.33,K.line);S.quadXY(R(-22.5,-16.5,-8.5,10.5),0.36,K.clay);
+    S.quadXY(R(8,-19,24,10),0.33,K.line);S.quadXY(R(8.5,-18.5,23.5,9.5),0.36,K.court);
+    // the U: a red ground floor and a cream upper floor under a flat roof with a pale cornice
+    const GF=4.6,TOP=8.6;
+    for(const q of fp.slice(0,5)){const [u0,v0]=q[0],[u1,v1]=q[2];box(u0,v0,u1,v1,0.3,GF,K.red,K.red,false);box(u0,v0,u1,v1,GF,TOP,K.cream,K.roof);}
+    // a façade from a to b (u,v) facing out: boarded and glazed windows below, ribbon windows above between piers
+    const floors=(a,b,out,skip)=>{const w=WL(a,b,out),wb=WL(a,b,out,.09),n=Math.max(1,Math.round(w.L/4)),bw=w.L/n;
+      rect(wb,0,w.L,TOP-.4,TOP,K.white);rect(w,0,w.L,0.3,0.8,K.red2);
+      for(let k=0;k<n;k++){const c=(k+.5)*bw;if(skip&&c>skip[0]&&c<skip[1])continue;
+        rect(w,c-bw/2+.3,c+bw/2-.3,5.3,7.7,k%2?K.glass2:K.glass);rect(w,c-1.5,c+1.5,1.3,3.8,k%3===1?K.glass:K.board);}};
+    floors([-36,-35],[36,-35],[0,-1],[33,39]);floors([-56,-33],[-36,-33],[0,-1]);floors([-56,34],[-56,-33],[-1,0]);floors([56,-28],[56,32],[1,0]);
+    floors([-56,34],[-46,34],[0,1]);floors([46,32],[56,32],[0,1]);floors([-36,-25],[36,-25],[0,1],[33,39]);floors([-46,-23],[-46,34],[1,0]);floors([46,34],[46,-23],[-1,0]);
+    floors([36,-28],[56,-28],[0,-1]);floors([-46,-23],[-36,-23],[0,1]);floors([36,-23],[46,-23],[0,1]);
+    // the one-storey red block with a rounded corner at the south-east end
+    {const q=[[36,-33],[53,-33]];for(let i=1;i<=6;i++){const t=-Math.PI/2+Math.PI/2*i/6;q.push([53+3*Math.cos(t),-30+3*Math.sin(t)]);}q.push([56,-28],[36,-28]);
+      S.prism(Gs(q),0.3,4.8,K.red,K.roof);const w=WV(-33,-1),wb=WV(-33,-1,.09);rect(wb,36,53,4.3,4.8,K.white);rect(w,36,53,0.3,0.8,K.red2);
+      for(const c of [40,45,50])rect(w,c-1.7,c+1.7,1.3,3.7,K.glass);}
+    // clock tower (~14 m): orange piers framing two slit windows, a round clock and a sign band at the top
+    box(-3,-35.6,3,-27,0.3,14.5,K.cream,K.roof);
+    {const w=WV(-35.6,-1),wp=WV(-35.6,-1,.12);rect(w,-3,3,0.3,GF,K.red);
+      for(const s of [-3,2])rect(wp,s,s+1,0.3,14.5,K.orange);for(const s of [-1.5,.6])rect(WV(-35.6,-1,.09),s,s+.9,1.2,10.8,K.dark);
+      rect(w,-.9,.9,12,13.4,K.dark);rect(w,-.6,.6,11.7,13.7,K.dark);rect(wp,-.3,.3,12.5,12.9,K.white);rect(w,-2,2,13.85,14.35,K.sign);}
+    const c=G(0,-24);MODELS['escuelas-concentradas']={x:c[0],y:c[1],h:16};S.dy=0;}
   // ==== hito: casa-independencia ====
-  p=at('casa-independencia');{const x=p.x,y=p.y;reserve(x,y,40,34);const w=C('#F3EEE2'),t=C('#A94F36');
-    B.gable([[x-18,y-15],[x+18,y-15],[x+18,y-7],[x-18,y-7]],0.3,4.6,2.6,w,t);
-    B.gable([[x-18,y+15],[x-18,y-7],[x-10,y-7],[x-10,y+15]],0.3,4.6,2.6,w,t);
-    B.gable([[x+18,y-7],[x+18,y+15],[x+10,y+15],[x+10,y-7]],0.3,4.6,2.6,w,t);
-    B.quadXY(rotRect(x,y+4,20,20),0.34,C('#9FAE6A'));MODELS['casa-independencia']={x,y,h:8};}
+  // Casa de la Independencia (Museo O'Higginiano y de Bellas Artes), 1 Norte 875 at 2 Oriente: a one-storey colonial
+  // house round two courtyards, built on S. Plan from OpenStreetMap w214849869 (the outline, with the recesses on its
+  // west side and the annex to the north-west); the courtyards and the wings between them from the Esri imagery (the
+  // outline has no holes). Frame: origin at the south-west corner, u along 1 Norte (A 90.92°), v north. Above the
+  // ground, from a photo on Wikimedia Commons of the 2 Oriente side (2022): oxblood walls with a darker plinth,
+  // barred windows and plank doors, clay-tile roofs on exposed rafters (the dark band under the eaves). Hipped roofs
+  // as on the imagery. Approximate: the wings' widths (±1 m), the eave height (~4.4 m), the 1 Norte front and the
+  // courtyard walls (no photos: the side's rhythm), the trees in the courtyards. Method: docs/METODOLOGIA.md §9.
+  {const F=localFrame(147.1,70.5,90.92*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={wall:C('#A23B32'),wall2:C('#8F332B'),plinth:C('#7A2B25'),rafter:C('#4A2E26'),tile:C('#AE6446'),tile2:C('#97573D'),
+      vano:C('#2E2C2B'),door:C('#4A3426'),patio:C('#CDBB9C'),grass:C('#6E9A48'),trunk:C('#6E5B48'),leaf:C('#5A8A3E'),leaf2:C('#4C7835')};
+    const {box,WU,WV,rect}=facade(S,F,K);
+    const fp=[[147.1,70.5],[184.3,71.1],[183.7,113.5],[163.1,113.2],[162.9,125],[147.2,124.8],[147.3,114.6],[152.6,114.7],[152.8,98.8],
+      [147.6,98.8],[147.8,85.3],[153.8,85.4],[153.8,80],[146.9,79.9]];
+    occMark(fp);S.dy=padAt(146.9,70.5,184.3,125);
+    // hipped roof over a rectangle: eaves o m out and k·o lower, ridge along the longer side, the long slopes in one
+    // tone and the hips in the other
+    const hip=(u0,v0,u1,v1,h,k=.47,o=.6)=>{u0-=o;v0-=o;u1+=o;v1+=o;const w=u1-u0,d=v1-v0,r=Math.min(w,d)/2,t=h+r*k-o*k,e=h-o*k,um=(u0+u1)/2,vm=(v0+v1)/2;
+      const f=(q,c)=>S.face(q,null,c);
+      if(w>=d){const a=V(u0+r,vm,t),b=V(u1-r,vm,t);f([V(u0,v0,e),V(u1,v0,e),b,a],K.tile);f([V(u1,v1,e),V(u0,v1,e),a,b],K.tile);
+        f([V(u0,v1,e),V(u0,v0,e),a],K.tile2);f([V(u1,v0,e),V(u1,v1,e),b],K.tile2);}
+      else{const a=V(um,v0+r,t),b=V(um,v1-r,t);f([V(u0,v1,e),V(u0,v0,e),a,b],K.tile);f([V(u1,v0,e),V(u1,v1,e),b,a],K.tile);
+        f([V(u0,v0,e),V(u1,v0,e),a],K.tile2);f([V(u1,v1,e),V(u0,v1,e),b],K.tile2);}};
+    // wings round the south courtyard (u 11.5–27, v 8.3–20.5) and the north one (u 15–30.5, v 26–38.8); walls to 4.4 m
+    const HW=4.4,wings=[[0,0,37.2,8.3],[0,8.3,11.5,20.5],[27,8.3,37.2,20.5],[0,20.5,37.2,26],[5.6,26,15,42.7],[30.5,26,37.2,42.7],[15,38.8,30.5,42.7]];
+    // walls (the west wing's walls step back round the recess on its outer side, OSM), then the roofs
+    for(const [u0,v0,u1,v1] of wings)if(u0||v0!==8.3)box(u0,v0,u1,v1,0.3,HW,K.wall,K.wall,false);
+    for(const [u0,v0,u1,v1] of [[0,8.3,11.5,9.4],[6.7,9.4,11.5,14.9],[0,14.9,11.5,20.5],[0.6,26,5.6,28.3]])box(u0,v0,u1,v1,0.3,HW,K.wall,K.wall,false);
+    box(0.1,42.7,15.9,54.3,0.3,4.0,K.wall2,K.wall2,false);
+    for(const [u0,v0,u1,v1] of wings)hip(u0,v0,u1,v1,HW);hip(0.1,42.7,15.9,54.3,4.0);
+    // courtyards: brick paving and a tree in the south one, lawn and trees in the north one (trees as on the imagery)
+    S.flat(R(11.5,8.3,27,20.5),0.32,K.patio);S.flat(R(15,26,30.5,38.8),0.32,K.grass);S.flat(R(21.8,26,23.8,38.8),0.35,K.patio);
+    const tree=(u,v,s)=>{const g=G(u,v);S.prism(ngon(g[0],g[1],.35,6),0.3,2.6*s,K.trunk,K.trunk);
+      S.prism(ngon(g[0],g[1],2.4*s,8,Math.PI/8),2.6*s,5*s,K.leaf2,K.leaf);pyramid(S,ngon(g[0],g[1],2.4*s,8,Math.PI/8),5*s,1.6*s,K.leaf);};
+    tree(19.5,14.5,1);tree(18.5,32,1.15);tree(27,34.5,1);
+    // outside walls: plinth, the rafters' shadow under the eaves, barred windows and plank doors
+    const outer=[[o=>WV(0,-1,o),0,37.2],[o=>WU(37.2,1,o),0,42.7],[o=>WV(42.7,1,o),15.9,37.2],[o=>WU(0,-1,o),0,9.4],[o=>WV(54.3,1,o),0.1,15.9]];
+    for(const [mk,s0,s1] of outer){const w=mk(.06);rect(w,s0,s1,0.3,0.8,K.plinth);rect(mk(.09),s0,s1,3.95,HW,K.rafter);}
+    {const w=WV(0,-1),wd=WV(0,-1,.12);for(const u of [3.5,8,12.5,24.7,29.2,33.7])rect(w,u-.55,u+.55,1.2,3.0,K.vano);
+      rect(wd,17.3,19.9,0.3,3.3,K.door);rect(w,16.9,20.3,3.3,3.6,K.plinth);}
+    {const w=WU(37.2,1),wd=WU(37.2,1,.12);for(const v of [3.5,8,12.5,17,21.5,26,30.5])rect(w,v-.55,v+.55,1.2,3.0,K.vano);
+      for(const v of [34.2,36.4])rect(w,v-.4,v+.4,2.2,3.0,K.vano);rect(wd,38.6,40.4,0.3,3.2,K.door);}
+    // courtyard walls: doors along the galleries
+    for(const [mk,s0,s1] of [[o=>WV(8.3,1,o),11.5,27],[o=>WV(20.5,-1,o),11.5,27],[o=>WU(11.5,1,o),8.3,20.5],[o=>WU(27,-1,o),8.3,20.5],
+      [o=>WV(26,1,o),15,30.5],[o=>WV(38.8,-1,o),15,30.5],[o=>WU(15,1,o),26,38.8],[o=>WU(30.5,-1,o),26,38.8]]){const w=mk(.06);
+      rect(w,s0,s1,0.3,0.8,K.plinth);for(let s=s0+2.5;s<s1-1.5;s+=4)rect(mk(.12),s-.6,s+.6,0.3,2.8,K.door);}
+    const c=G(18.6,21.4);MODELS['casa-independencia']={x:c[0],y:c[1],h:9};S.dy=0;}
   // ==== hito: teatro-regional ====
-  p=at('teatro-regional');{const x=p.x,y=p.y;reserve(x,y,52,42);B.prism(rotRect(x,y,48,38),0.3,14,C('#7E3B33'),C('#6A6560'));B.prism(rotRect(x+6,y+4,26,24),14,22,C('#8A4A40'),C('#6A6560'));B.prism(rotRect(x,y-19.2,40,.6),1,12,C('#3F5566'),C('#3F5566'),false);MODELS['teatro-regional']={x,y,h:23};}
+  // Teatro Regional del Maule (2005), on the corner of the Alameda and 1 Oriente, drawn on S. Plan from OpenStreetMap
+  // (w214851535; frame from landmark.py frame teatro-regional 214851535: v runs east along the Alameda, u south,
+  // the Alameda front is u=-20.5). Volumes from the Esri imagery (flat pale roofs, the fly tower in the east third
+  // with plant on top) and from photos on Wikimedia Commons (File:TalcaTeatro.jpg, 2005; File:Talca (37060017476).jpg,
+  // 2017): cream stucco hall ~11 m (OSM height 11.2), a banded cylinder, the fly tower ~18.5 m, a low wing with the
+  // marquee to the east and, at the 1 Oriente corner, the lobby under a cantilevered roof: a glass front leaning
+  // out behind vertical timber louvres. Approximate: the heights (±1.5 m, scaled from the photos), the west and
+  // south sides (no photos), the brown box by the cylinder (2017 photo). The timber soffits can't be seen from
+  // above, so the visor's roof edge carries a band of their colour (licence); the lobby's night glow is licence too.
+  {const F=localFrame(97.9,442.2,1.4*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={wall:C('#E2D2A6'),wall2:C('#CDBB8E'),tower:C('#ECE5D1'),roof:C('#C8C5BC'),roof2:C('#B5B2A9'),white:C('#F1EEE6'),
+      wood:C('#B0663A'),louvre:C('#C49A6C'),glass:C('#3B4653'),glass2:C('#2C3540'),brown:C('#6E4B3A'),step:C('#D9D3C5'),step2:C('#C6BFAF'),
+      plant:C('#B9B4A8'),tile:C('#D9D6CC'),tile2:C('#D9D6CC')};
+    const {box,WV,WU,rect}=facade(S,F,K);
+    const fp=Gs([[7,-33],[7,10],[13,10],[13,23],[-20.5,23],[-20.5,-33]]);occMark(fp);occMark(Gs([[-29,-34],[-20.5,-34],[-20.5,23],[-29,23]])); // the forecourt on the Alameda stays clear
+    S.dy=padAt(Math.min(...fp.map(p=>p[0])),Math.min(...fp.map(p=>p[1])),Math.max(...fp.map(p=>p[0])),Math.max(...fp.map(p=>p[1]))+3);
+    // a flat-roofed block with a white coping round its top
+    const blk=(u0,v0,u1,v1,h0,h1,wall,top=K.roof)=>{box(u0,v0,u1,v1,h0,h1,wall,top);
+      for(const [w,a,b] of [[WV(v0,-1,.09),u0,u1],[WV(v1,1,.09),u0,u1],[WU(u0,-1,.09),v0,v1],[WU(u1,1,.09),v0,v1]])rect(w,a,b,h1-.45,h1,K.white);};
+    // auditorium: plain cream walls with two reveal bands
+    blk(-20.5,-15.5,7,8,0.3,11.2,K.wall);
+    for(const [w,a,b] of [[WU(-20.5,-1),-15.5,8],[WU(7,1),-15.5,8]])for(const h of [4.4,8])rect(w,a,b,h,h+.3,K.wall2);
+    rect(WU(-20.5,-1,.12),-11,-9.6,0.3,8,K.glass);
+    // fly tower, paler, with plant on its roof (satellite)
+    blk(-16,5,10,20.5,0.3,18.5,K.tower);box(-12,8,1,17,18.5,19.8,K.plant,K.roof2);
+    for(const [w,a,b] of [[WV(20.5,1),-16,10],[WU(-16,-1),5,20.5],[WU(10,1),5,20.5]])rect(w,a,b,11.2,11.5,K.wall2);
+    // east: low wing on the Alameda with the marquee on two posts; back of house to the south
+    blk(-20.5,8,-16,23,0.3,4.6,K.wall);blk(7,10,13,23,0.3,8,K.wall);blk(-16,20.5,7,23,0.3,8,K.wall);
+    rect(WU(-20.5,-1),9.5,21.5,0.3,2.8,K.glass);
+    box(-23.2,9.5,-20.5,19.5,3,4.3,K.white,K.roof);rect(WU(-23.2,-1),9.5,19.5,3.35,3.95,K.wall2);
+    for(const v of [10.2,18.8])box(-22.9,v-.2,-22.5,v+.2,0.3,3,K.white,K.white);
+    // brown box by the cylinder (2017)
+    box(-21,-9,-16,-1.5,0.3,6.6,K.brown,K.roof2);rect(WU(-21,-1),-8,-2.5,0.3,2.8,K.glass);
+    // banded cylinder on the Alameda front
+    {const c=G(-20,-12.8);for(let h=0.3,k=0;h<11.8;k++){const h1=Math.min(11.8,h+(k%2?.5:2.4));S.prism(ngon(c[0],c[1],3.1,16,Math.PI/16),h,h1,k%2?K.wall2:K.wall,K.wall);h=h1;}
+      S.prism(ngon(c[0],c[1],3.25,16,Math.PI/16),11.8,12.2,K.white,K.roof);}
+    // lobby block at the 1 Oriente corner: walls, the glazed ground floor under a canopy, the leaning glass front
+    // with timber louvres, white cheeks and the cantilevered roof
+    blk(-18.5,-33,7,-15.5,0.3,12.6,K.wall);
+    rect(WU(-18.5,-1),-32.5,-16,0.3,4.5,K.glass);for(let v=-31;v<-16;v+=3)rect(WU(-18.5,-1,.12),v-.2,v+.2,0.3,4.5,K.white);
+    rect(WV(-33,-1),-18,4,0.3,4.5,K.glass);
+    box(-21.2,-33,-18.5,-15.5,4.5,5.2,K.wood,K.roof2);
+    {const lean=(u,h)=>u-(h-5.2)*1.8/7.7,P=(u,v,h)=>V(lean(u,h),v,h),n=N3(-7.7,0,-1.8);
+      S.face([P(-20.5,-33,5.2),P(-20.5,-15.5,5.2),P(-20.5,-15.5,12.9),P(-20.5,-33,12.9)],n,K.glass);
+      for(let v=-32.4,k=0;v<-15.6;v+=1,k++)S.face([P(-20.62,v,5.2),P(-20.62,v+.45,5.2),P(-20.62,v+.45,12.9),P(-20.62,v,12.9)],n,k%2?K.louvre:K.wood);
+      for(const [v,sg] of [[-33,-1],[-15.5,1]])S.face([V(-18.5,v,5.2),V(-20.5,v,5.2),V(-22.3,v,12.9),V(-18.5,v,12.9)],N3(0,sg),K.white);
+      box(-23.4,-33.6,-18.5,-15,12.9,14,K.white,K.roof);rect(WU(-23.4,-1),-33.6,-15,12.9,13.45,K.wood);rect(WV(-33.6,-1),-23.4,-18.5,12.9,13.45,K.wood);}
+    // entrance steps under the canopy
+    box(-22.6,-31,-20.5,-18,0.3,0.55,K.step2,K.step);box(-21.8,-31,-20.5,-18,0.55,0.8,K.step2,K.step2);
+    // the glazed lobby glows at night, in front of its leaning glass (licence)
+    for(const v of [-29,-24,-19]){const g=G(-21.9,v);GLOW.push(g[0],S.dy+8,g[1]);}
+    const c=G(-6,-5);MODELS['teatro-regional']={x:c[0],y:c[1],h:21};S.dy=0;}
   // ==== hito: la-victoria ====
-  p=at('la-victoria');{const x=p.x,y=p.y;B.dy=padAt(x-7,y-7,x+7,y+7);B.flat(ngon(x,y,7,12),0.36,C('#E3DCCB'));B.prism(rotRect(x,y,4.5,4.5),0.36,4,C('#D9D3C6'),C('#D9D3C6'));B.prism(ngon(x,y,.9,8),4,15,C('#E8E4DA'),C('#E8E4DA'));B.prism(rotRect(x,y,1.4,1.4),15,18,C('#C9A43A'),C('#C9A43A'));MODELS['la-victoria']={x,y,h:19};}
+  // Monumento La Victoria: the obelisk to the Batallón Cívico de Talca (1904) crowned by the bronze Victory (León
+  // Cugnot and Guillaume per the CMN, 1868, made for Lima's Dos de Mayo monument and taken in 1882), back on it since 2011.
+  // It stands on the paved island where 1 Oriente splits around the Alameda (OSM w214851537, statue node at the
+  // centre), drawn on S. Frame from landmark.py frame la-victoria 214851537: u east, v north. The map's carriageways
+  // are wider than the real ones (11 m), so the island is drawn narrower than OSM's 14 m, between them. Elevation
+  // from a 2026 photo (File:Monumento al 2 de Mayo.jpg, right half) scaled by a van, ~20 m in all, and the 1898 one
+  // (File:Victoriatalca1.jpg): stepped plinth, grey granite dado with white marble plaques on each face (CMN), a stage
+  // with arched niches and medallions, a coursed obelisk, a dark capital and the dark bronze winged Victory with arms
+  // raised (laurel crown and sword). Approximate: every measure (±1 m), the niches' carving, which way the Victory
+  // faces (drawn facing south), the island's paving pattern (satellite: pale paving, no lawn).
+  {const F=localFrame(57.4,509.6,90.3*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={pave:C('#DDD6C6'),pave2:C('#D0C8B6'),curb:C('#C9C3B6'),stone:C('#9E9B93'),stone2:C('#8F8C84'),stoneLt:C('#B3AFA6'),
+      marble:C('#F0ECE2'),niche:C('#5E5C57'),bronze:C('#3C4540'),bronze2:C('#2F3632'),iron:C('#3B4240'),lamp:C('#F1E6C4'),
+      white:C('#ECE7DC'),glass:C('#3B4653'),glass2:C('#2C3540'),tile:C('#8F8A82'),tile2:C('#8F8A82')};
+    const {WL,rect,arch}=facade(S,F,K);
+    // the island between the carriageways as the map draws them (west edge u=-3.6, east 4.9; the Alameda's lanes
+    // at v -23 and +25); its north end narrows where the two branches of 1 Oriente meet
+    const isl=[[-3.6,-20.6],[-2.1,-22.1],[3.4,-22.1],[4.9,-20.6],[4.9,12.5],[1.6,17.5],[-0.6,17.5],[-3.6,14]];
+    const fp=Gs(isl);occMark(fp);
+    S.dy=padAt(Math.min(...fp.map(p=>p[0])),Math.min(...fp.map(p=>p[1])),Math.max(...fp.map(p=>p[0])),Math.max(...fp.map(p=>p[1])));
+    // curb and paving in bands of two tones across the island
+    S.prism(fp,0.3,0.42,K.curb,K.curb);
+    S.flat(Gs([[-3.2,-20.4],[-1.9,-21.7],[3.2,-21.7],[4.5,-20.4],[4.5,12.4],[1.4,17.1],[-.4,17.1],[-3.2,13.9]]),0.45,K.pave);
+    for(let v=-19.5;v<8;v+=5)S.quadXY(R(-3.2,v,4.5,v+2.5),0.48,K.pave2);
+    // two lamps on the island (photos), like the Alameda's, lit at night
+    for(const v of [-15,11]){const g=G(.6,v);S.prism(rotRect(g[0],g[1],.3,.3),0.45,4.6,K.iron,K.iron);S.prism(rotRect(g[0],g[1],.9,.9),4.6,5,K.iron,K.lamp);GLOW.push(g[0],S.dy+4.8,g[1]);}
+    // the monument, centred on the OSM statue node
+    const mu=-0.2,mv=-0.8,sq=(a,h0,h1,wall,top)=>S.prism(R(mu-a,mv-a,mu+a,mv+a),h0,h1,wall,top);
+    const faces=(a,o)=>[[[mu-a,mv-a],[mu+a,mv-a],[0,-1]],[[mu+a,mv-a],[mu+a,mv+a],[1,0]],[[mu+a,mv+a],[mu-a,mv+a],[0,1]],[[mu-a,mv+a],[mu-a,mv-a],[-1,0]]].map(([a0,b0,out])=>WL(a0,b0,out,o));
+    // stepped plinth: three treads in two tones
+    sq(2.9,0.3,0.75,K.stoneLt,K.stoneLt);sq(2.55,0.75,1.05,K.stone,K.stone2);sq(2.2,1.05,1.35,K.stoneLt,K.stoneLt);
+    // dado with a white marble plaque on each face, a moulded cap
+    sq(1.9,1.35,3.6,K.stone,K.stone);for(const w of faces(1.9,.06)){rect(w,w.L/2-1,w.L/2+1,1.95,3.15,K.marble);rect(w,0,w.L,1.35,1.7,K.stone2);}
+    sq(2.1,3.6,3.95,K.stoneLt,K.stoneLt);sq(1.75,3.95,4.3,K.stone2,K.stone2);
+    // stage with an arched niche and a white medallion on each face, corner piers, cornice
+    sq(1.35,4.3,7,K.stone,K.stone);
+    for(const w of faces(1.35,.06))arch(w,w.L/2,1.3,4.6,6.7,K.niche);
+    for(const w of faces(1.35,.12))rect(w,w.L/2-.35,w.L/2+.35,5.3,6.1,K.marble);
+    sq(1.6,7,7.35,K.stoneLt,K.stoneLt);sq(1.25,7.35,7.7,K.stone2,K.stone2);
+    // coursed obelisk: stepped courses in two tones, narrowing upward
+    for(let k=0;k<7;k++){const h0=7.7+k*1.1,a=.95-k*.06;sq(a,h0,h0+1.1,k%2?K.stone2:K.stone,K.stone);}
+    // dark capital (flared), a round base and the Victory
+    sq(.75,15.4,15.75,K.bronze2,K.bronze2);sq(.6,15.75,16.2,K.bronze,K.bronze);sq(.95,16.2,16.6,K.bronze2,K.bronze);
+    S.prism(Gs(ngon(mu,mv,.45,8)),16.6,17.1,K.bronze,K.bronze);
+    // the Victory: robe in stepped tiers, torso, head; both arms raised (sword and laurel crown) and wings spread
+    // behind her, facing south (-v)
+    const fig=(u0,v0,u1,v1,h0,h1,c)=>S.prism(R(mu+u0,mv+v0,mu+u1,mv+v1),h0,h1,c,c);
+    fig(-.55,-.5,.55,.5,17.1,18.1,K.bronze);fig(-.45,-.4,.45,.4,18.1,19.2,K.bronze2);fig(-.35,-.3,.35,.3,19.2,20.1,K.bronze);
+    fig(-.2,-.25,.2,.15,20.1,20.6,K.bronze);
+    fig(-.6,-.2,-.35,.05,19.6,21.3,K.bronze2);fig(.35,-.2,.6,.05,19.6,21.1,K.bronze2);
+    fig(-.55,-.15,-.4,0,21.3,22.3,K.bronze); // sword
+    fig(.25,-.2,.95,.05,21.1,21.35,K.bronze);fig(.25,-.2,.95,.05,21.75,22,K.bronze);fig(.25,-.2,.45,.05,21.35,21.75,K.bronze);fig(.75,-.2,.95,.05,21.35,21.75,K.bronze); // crown
+    for(const sg of [-1,1]){const P=(u,h)=>V(mu+u*sg,mv+.35,h),Q=(u,h)=>V(mu+u*sg,mv+.2,h);
+      const w=[[.3,19.4],[1.6,20.6],[1.9,22.2],[.5,20.4]];
+      S.face(w.map(p=>P(...p)),N3(0,1),K.bronze2);S.face(w.map(p=>Q(...p)),N3(0,-1),K.bronze);}
+    const c=G(mu,mv);MODELS['la-victoria']={x:c[0],y:c[1],h:23};S.dy=0;}
   // ==== hito: liceo-abate-molina ====
+  // Liceo Abate Molina, on the Alameda between 5 and 6 Oriente, drawn on S. Plan from OpenStreetMap: the historic
+  // building r9394557 (a front range set back behind a forecourt, two wings to the street with light wells), the
+  // new range w798161251 ("Zona Nueva", rebuilt after the 2010 earthquake, which brought down part of the school;
+  // reconstruction 2012–2015, Cooperativa) and the school grounds w798996848. Frame from landmark.py frame
+  // liceo-abate-molina 798161253: u east, v north; the front range's face is v=-19 (the pavilion, -21). The historic
+  // front still stands (File:Monumento A Molina1.jpg, 2024; File:Talca liceo abate molina.jpg, 2005): white walls
+  // between cream piers, arched windows upstairs, a raised cream pavilion with the "Liceo de Hombres" panel and a
+  // flag, iron railings on a white wall, and the Abate Molina statue (1861) on its pedestal in front. Roofs (grey
+  // metal, hipped), the covered courts with pale green roofs and the pool hall to the north from the Esri imagery
+  // (date unknown). Approximate: heights (two storeys, ~10 m; scaled from the 2024 photo with the door), the side
+  // and inner façades (drawn like the front), the new range's look (no photos), the courts' roofs.
+  {const F=localFrame(597.6,583.4,90.7*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={white:C('#ECE7DC'),whiteSh:C('#D9D3C6'),cream:C('#E0CDA4'),cream2:C('#D2BD90'),plinth:C('#C9C3B6'),
+      glass:C('#3B4653'),glass2:C('#2C3540'),door:C('#5A4636'),roof:C('#ADABA4'),roof2:C('#9D9B94'),flat:C('#8F8A82'),
+      newWall:C('#E4E0D6'),newBand:C('#B65A3C'),court:C('#B7C7A4'),court2:C('#A7B994'),hall:C('#E8E6E0'),
+      pave:C('#D8D1C1'),pave2:C('#CCC4B2'),pitch:C('#7D8E8C'),line:C('#F3F0E6'),iron:C('#3A3A3A'),mast:C('#707070'),
+      red:C('#C8312A'),blue:C('#2C4A8C'),stone:C('#7F8A80'),stone2:C('#6F7A71'),bronze:C('#3C4540'),bronze2:C('#2F3632'),
+      tile:C('#ADABA4'),tile2:C('#9D9B94')};
+    const {box,WL,WV,WU,rect,arch}=facade(S,F,K);
+    // the grounds: no procedural lots inside the school's fence; level pad under all of it
+    const site=Gs([[-40,-30],[-36,-33],[8,-33],[9,-31],[10,-29],[20,-29],[22,-31],[22,-33],[69,-34],[73,-30],[71,92],[68,95],[-41,94]]);
+    NOLOTS.push(site);
+    S.dy=padAt(Math.min(...site.map(p=>p[0])),Math.min(...site.map(p=>p[1]))-3,Math.max(...site.map(p=>p[0])),Math.max(...site.map(p=>p[1])));
+    const bld=(u0,v0,u1,v1)=>occMark(R(u0,v0,u1,v1));
+    // hipped roof over a rectangle, eaves at h (0.4 m overhang), ridge rh higher, along its longer side
+    const hip=(u0,v0,u1,v1,h,rh,o=.4)=>{u0-=o;v0-=o;u1+=o;v1+=o;const alU=u1-u0>=v1-v0,hw=(alU?v1-v0:u1-u0)/2;
+      if(alU){const vm=(v0+v1)/2,a=Math.min(u0+hw,(u0+u1)/2),b=Math.max(u1-hw,(u0+u1)/2);
+        S.face([V(u0,v0,h),V(u1,v0,h),V(b,vm,h+rh),V(a,vm,h+rh)],null,K.roof);S.face([V(u1,v1,h),V(u0,v1,h),V(a,vm,h+rh),V(b,vm,h+rh)],null,K.roof2);
+        S.face([V(u0,v1,h),V(u0,v0,h),V(a,vm,h+rh)],null,K.roof2);S.face([V(u1,v0,h),V(u1,v1,h),V(b,vm,h+rh)],null,K.roof);}
+      else{const um=(u0+u1)/2,a=Math.min(v0+hw,(v0+v1)/2),b=Math.max(v1-hw,(v0+v1)/2);
+        S.face([V(u0,v1,h),V(u0,v0,h),V(um,a,h+rh),V(um,b,h+rh)],null,K.roof2);S.face([V(u1,v0,h),V(u1,v1,h),V(um,b,h+rh),V(um,a,h+rh)],null,K.roof);
+        S.face([V(u0,v0,h),V(u1,v0,h),V(um,a,h+rh)],null,K.roof);S.face([V(u1,v1,h),V(u0,v1,h),V(um,b,h+rh)],null,K.roof2);}};
+    // the historic façade: white wall, cream piers between bays, plinth and cornice; a window below and an arched
+    // one above in each bay. mk(o) gives the wall at offset o; s0..s1 along it
+    const H=10;
+    const bays=(mk,s0,s1,piers=true)=>{const w=mk(.06),n=Math.max(1,Math.round((s1-s0)/4.4)),d=(s1-s0)/n;
+      rect(w,s0,s1,0.3,1.1,K.plinth);rect(mk(.09),s0,s1,H-.6,H,K.white);
+      if(piers)for(let k=0;k<=n;k++){const s=s0+k*d;rect(mk(.12),Math.max(s0,s-.45),Math.min(s1,s+.45),0.3,H-.6,K.cream);}
+      for(let k=0;k<n;k++){const c=s0+(k+.5)*d;rect(w,c-.7,c+.7,1.6,3.6,K.glass);arch(w,c,1.4,5.2,8.2,K.glass);rect(mk(.09),c-.85,c+.85,4.9,5.2,K.whiteSh);}};
+    const fU=(u,sg)=>o=>WU(u,sg,o),fV=(v,sg)=>o=>WV(v,sg,o);
+    const range=(u0,v0,u1,v1,sides,hipIt=true)=>{box(u0,v0,u1,v1,0.3,H,K.white,K.flat);bld(u0,v0,u1,v1);
+      for(const sd of sides){if(sd==='S')bays(fV(v0,-1),u0,u1);if(sd==='N')bays(fV(v1,1),u0,u1);if(sd==='W')bays(fU(u0,-1),v0,v1);if(sd==='E')bays(fU(u1,1),v0,v1);}
+      if(hipIt)hip(u0,v0,u1,v1,H,1.8);};
+    // front range, either side of the pavilion
+    range(-9,-19,9,-6,['S','N']);range(23,-19,42,-6,['S','N']);
+    // west wing (to 5 Oriente): south front, a west range, an inner range, and the bits between the two light wells
+    range(-40,-33,-9,-23,['S','W','E']);range(-40,-23,-28.5,22,['W']);range(-19.5,-23,-9,22,['E']);
+    range(-28.5,-16,-19.5,-9,[]);range(-28.5,9,-19.5,22,['N']);range(-16,22,-9,30,['N','E']);
+    // east wing (to 6 Oriente) round its light well
+    range(42,-34,73,-24,['S','E','W']);range(42,-24,52,10,['W']);range(62,-24,73,10,['E']);range(42,10,73,21,['W','E']);range(42,21,53,31,['N','W']);
+    // pavilion: cream mass with a white centre bay, the doorway, the panel and the flag, a little higher
+    {const u0=9,u1=23,v0=-21,v1=-6,PH=12.7;box(u0,v0,u1,v1,0.3,PH,K.cream,K.flat);bld(u0,v0,u1,v1);
+      const w=WV(v0,-1),w2=WV(v0,-1,.09),w3=WV(v0,-1,.12);
+      rect(w,u0,u1,0.3,1.1,K.plinth);rect(w2,u0,u1,PH-.5,PH,K.white);rect(w2,u0,u1,10,10.4,K.cream2);
+      rect(w,12.4,19.6,1.1,10,K.white);rect(w,9.7,11.7,1.1,10,K.white);rect(w,20.3,22.3,1.1,10,K.white);
+      for(const c of [14.6,17.4])arch(w3,c,1.9,5.3,8.9,K.glass);for(const c of [10.7,21.3])arch(w3,c,1.1,5.3,8.6,K.glass);
+      for(const c of [10.7,21.3])rect(w3,c-.55,c+.55,1.7,3.7,K.glass);
+      rect(w3,14.8,17.2,1.1,3.8,K.door);rect(w2,13.6,18.4,11.05,11.95,K.white);
+      for(const [u,sg] of [[u0,-1],[u1,1]]){const s=WU(u,sg);rect(s,v0,v1,0.3,1.1,K.plinth);rect(WU(u,sg,.09),v0,v1,PH-.5,PH,K.white);}
+      // steps to the door
+      box(14.2,-23.4,17.8,-21,0.3,0.55,K.plinth,K.pave);box(14.2,-22.6,17.8,-21,0.55,0.8,K.plinth,K.pave);
+      // flag on the parapet (Chile: white over red, blue canton)
+      box(15.85,-13.6,16.15,-13.3,PH,20,K.mast,K.mast);
+      const fw=WV(-13.45,-1,.2),fq=(s,h)=>fw.q(s,h);
+      S.face([fq(16.15,19.2),fq(18.45,19.2),fq(18.45,19.8),fq(16.15,19.8)],fw.n,K.white);S.face([fq(16.15,18.6),fq(18.45,18.6),fq(18.45,19.2),fq(16.15,19.2)],fw.n,K.red);
+      const fb=WV(-13.45,-1,.23);S.face([fb.q(16.15,19.2),fb.q(16.85,19.2),fb.q(16.85,19.8),fb.q(16.15,19.8)],fb.n,K.blue);}
+    // new range (2 storeys, plain, a terracotta band; look approximate): north bar and two legs
+    {const nb=(u0,v0,u1,v1)=>{box(u0,v0,u1,v1,0.3,7.6,K.newWall,K.flat);bld(u0,v0,u1,v1);hip(u0,v0,u1,v1,7.6,1.4);};
+      nb(-40,43,72,57);nb(-40,22,-28.5,43);nb(61,21,72,43);
+      for(const [w,a,b] of [[WV(43,-1),-28.5,61],[WV(57,1),-40,72],[WU(-40,-1),22,57],[WU(72,1),21,57],[WU(-28.5,1),22,43],[WU(61,-1),21,43]]){
+        rect(w,a,b,3.6,4,K.newBand);for(let s=a+2;s<b-1.5;s+=3.5){rect(w,s-.8,s+.8,1.2,3,K.glass);rect(w,s-.8,s+.8,4.8,6.6,K.glass);}}}
+    // covered courts (pale green, ribbed) and the pool hall to the north (satellite)
+    {const hall=(u0,v0,u1,v1,h,wall,c1,c2)=>{box(u0,v0,u1,v1,0.3,h,wall,K.flat,false);bld(u0,v0,u1,v1);
+        for(let u=u0,k=0;u<u1-.01;u+=3,k++){const e=Math.min(u+3,u1),c=k%2?c2:c1;const vm=(v0+v1)/2;
+          S.face([V(u,v0-.4,h),V(e,v0-.4,h),V(e,vm,h+2.2),V(u,vm,h+2.2)],null,c);S.face([V(e,v1+.4,h),V(u,v1+.4,h),V(u,vm,h+2.2),V(e,vm,h+2.2)],null,c);}
+        for(const [u,sg] of [[u0,-1],[u1,1]])S.face([V(u,v0,h),V(u,v1,h),V(u,(v0+v1)/2,h+2.2)],N3(sg,0),wall);};
+      hall(-24,70,1,93,7,K.hall,K.court,K.court2);hall(1,70,29.5,93,7,K.hall,K.court,K.court2);
+      box(32,70,56,89,0.3,6.5,K.hall,K.hall);bld(32,70,56,89);for(const [w,a,b] of [[WV(70,-1),32,56],[WU(56,1),70,89]])for(let s=a+2;s<b-1;s+=3)rect(w,s-.9,s+.9,3.5,5.6,K.glass);}
+    // main patio: paving and the basketball court (OSM w646462667)
+    S.quadXY(R(-8.8,-5.8,41.8,20.8),0.32,K.pave);S.quadXY(R(2,4,31,19),0.36,K.pitch);
+    for(const q of [R(2,4,31,4.5),R(2,18.5,31,19),R(2,4,2.5,19),R(30.5,4,31,19),R(16.25,4,16.75,19)])S.quadXY(q,0.39,K.line);
+    // forecourt: paving, the white wall with iron railings and piers along the Alameda, the gate
+    S.quadXY(R(-9,-33,42,-19),0.32,K.pave2);occMark(R(-9,-37,42,-19));
+    {const fw=(a,b)=>{box(a,-33.3,b,-32.9,0.3,0.9,K.white,K.white);box(a,-33.15,b,-33.05,0.9,2.1,K.iron,K.iron);
+        for(let u=a;u<=b+.01;u+=(b-a)/Math.max(1,Math.round((b-a)/4.5)))box(u-.3,-33.4,u+.3,-32.8,0.3,2.4,K.white,K.white);};
+      fw(-9,13.6);fw(18.4,42);for(const u of [13.6,18.4])box(u-.4,-33.5,u+.4,-32.7,0.3,3,K.white,K.white);}
+    // the Abate Molina statue on its pedestal, on the pavement in front of the gate (2024 photo)
+    {const su=16,sv=-35;box(su-.9,sv-.9,su+.9,sv+.9,0.3,0.8,K.stone2,K.stone2);box(su-.7,sv-.7,su+.7,sv+.7,0.8,3,K.stone,K.stone);
+      box(su-.85,sv-.85,su+.85,sv+.85,3,3.35,K.stone2,K.stone);
+      box(su-.45,sv-.35,su+.45,sv+.35,3.35,4.6,K.bronze,K.bronze2);box(su-.35,sv-.3,su+.35,sv+.3,4.6,5.4,K.bronze2,K.bronze);
+      box(su-.2,sv-.2,su+.2,sv+.2,5.4,5.85,K.bronze,K.bronze);box(su-.85,sv-.3,su-.45,sv+.3,3.35,4.1,K.bronze2,K.bronze2);}
+    const c=G(16,-12);MODELS['liceo-abate-molina']={x:c[0],y:c[1],h:21};S.dy=0;}
   // ==== hito: estadio ====
   // Estadio Fiscal, built on S (no window shader: terrace risers are vertical faces). The layout is OpenStreetMap's
   // (pitch w815575960, track r11198725, bowl w1073859992, site w1417437668, the four lighting masts, the entrances), in
@@ -808,23 +1659,477 @@ function buildModels(B,S){ // S: models drawn without the window shader
     S.quadXY(hk,0.33,K.line);{const c=hk.reduce((a,p)=>[a[0]+p[0]/4,a[1]+p[1]/4],[0,0]);S.quadXY(hk.map(p=>[c[0]+(p[0]-c[0])*.93,c[1]+(p[1]-c[1])*.93]),0.36,K.hockey);}
     MODELS.estadio={x:X,y:Y,h:20};S.dy=0;}
   // ==== hito: estacion ====
-  p=at('estacion');{const x=p.x-8,y=p.y;reserve(x,y,30,110);const w=C('#EAD9B8');
-    B.gable([[x-6,y-40],[x-6,y+40],[x+6,y+40],[x+6,y-40]],0.3,8,4,w,C('#A94F36'));
-    B.prism(rotRect(x,y,8,8),0.3,15,shade(w,1.03),w);pyramid(B,rotRect(x,y,8.5,8.5),15,4,C('#6A5A4C'));
-    B.prism(rotRect(x+12,y,6,120),0.3,1.1,C('#C8C2B4'),C('#C8C2B4'));B.prism(rotRect(x+12,y,5,90),4.2,4.6,C('#6F6D6A'),C('#7D7B77'));
-    MODELS.estacion={x,y,h:19};}
+  // Estación de Talca (1929, reinforced concrete; restored 2017), on the east side of 11 Oriente, with the Plaza
+  // Estación in front; drawn on S. Plan from OpenStreetMap: station building w435220677 (a one-storey range with a
+  // central pavilion toward the plaza and a small annex at its south end), the concrete train shed w435101367 along
+  // its east side over the first platform and track, the long open platform w474659928 to the south. Frame from
+  // landmark.py frame estacion 435220677: X=1498.8, Y=-217.0, A=89.3°, v along the building (north), u toward the
+  // tracks (east). Elevations from photos on Wikimedia Commons: the front in 2017 and 2024 (white wings with grey
+  // pilasters and wooden windows, a grey pavilion with three doors and a stepped attic, steps along the front), the
+  // shed in 1929, 2004, 2014, 2017 and 2024 (concrete frames: an arcade on the sides, a big arch at each end, a
+  // lantern along the ridge). Tracks: the main line is the base layer's (config/trazados.json, ~u 46); the shed's
+  // track and two yard tracks between it and the main line follow the OSM yard, simplified to straight, approximate
+  // lengths. Approximate: heights (from the photos' proportions), the roofs' colours (Esri imagery), the annex.
+  // The pavilion's wall lamps (seen in the photos) glow at night.
+  {const F=localFrame(1498.8,-217,89.3*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={white:C('#ECE7DC'),grey:C('#A4A9AA'),grey2:C('#8E9394'),wood:C('#8A4A2E'),glass:C('#3B4653'),glass2:C('#2C3540'),
+      tile:C('#9CA1A3'),tile2:C('#8D9294'),gable:C('#ECE7DC'),conc:C('#B9B4AA'),conc2:C('#CAC5BB'),void:C('#45423E'),
+      sroof:C('#767A7C'),sroof2:C('#6A6E70'),pave:C('#CFC7B0'),step:C('#D9D3C5'),step2:C('#C6BFAF'),plat:C('#C8C2B4'),
+      edge:C('#E2B33C'),ballast:PAL.ballast,rail:PAL.rail,buffer:C('#B4372C')};
+    const {box,WL,WV,WU,rect,arch,roof}=facade(S,F,K);
+    const shed=facade(S,F,{...K,tile:K.sroof,tile2:K.sroof2,gable:K.conc,white:K.conc2});
+    const core=R(-14,-60,41,80);occMark(core);occMark(R(9,-252,22,-60));occMark(R(31,-130,41,120));
+    const pad=padAt(Math.min(...core.map(p=>p[0])),Math.min(...core.map(p=>p[1])),Math.max(...core.map(p=>p[0])),Math.max(...core.map(p=>p[1])));S.dy=pad;
+    // forecourt and steps along the front
+    S.quadXY(R(-14,-25,-3.5,33),0.3,K.pave);
+    for(let k=0;k<3;k++)box(-6+k*.8,-19,-2.4,33,0.3,0.5+k*.2,K.step2,k%2?K.step2:K.step);
+    // the range: white walls on a grey plinth, grey pilasters, wooden windows, a white cornice, a grey iron roof
+    const FL=0.9,EAV=5.5;box(-2.5,-19,11,33,0.3,EAV,K.white,K.white,false);box(-7,-25,11,-19,0.3,4.6,K.white,K.tile2);
+    roof('v',-19.4,33.4,-2.5,11,EAV,2,6,[1,1]);
+    const wing=(a,b,out)=>{const w=WL(a,b,out),wb=WL(a,b,out,.09),wp=WL(a,b,out,.12),n=Math.max(1,Math.round(w.L/4.4)),bw=w.L/n;
+      rect(w,0,w.L,0.3,FL+.3,K.grey2);rect(wb,0,w.L,EAV-.5,EAV,K.white);
+      for(let k=0;k<=n;k++)rect(wp,Math.max(0,k*bw-.35),Math.min(w.L,k*bw+.35),0.3,EAV-.5,K.grey);
+      for(let k=0;k<n;k++){const c=(k+.5)*bw;rect(w,c-1.1,c+1.1,FL+.8,FL+3.4,K.wood);rect(wb,c-.8,c+.8,FL+1.1,FL+3.1,k%2?K.glass2:K.glass);}};
+    wing([-2.5,-19],[-2.5,0],[-1,0]);wing([-2.5,14],[-2.5,33],[-1,0]);wing([-2.5,33],[11,33],[0,1]);wing([-7,-25],[11,-25],[0,-1]);wing([-7,-19],[-7,-25],[-1,0]);
+    // central pavilion: grey, three tall doors under transoms, a white cornice and a stepped attic
+    box(-3.5,0,6,14,0.3,7.6,K.grey,K.tile2);pyramid(S,R(-3.8,-.3,6.3,14.3),7.6,1.8,K.tile);
+    {const w=WV(0,-1),wu=WU(-3.5,-1),wb=WU(-3.5,-1,.09),wp=WU(-3.5,-1,.12);rect(wu,0,14,0.3,FL+.3,K.grey2);rect(wb,0,14,7,7.6,K.white);
+      for(const c of [2.4,7,11.6]){rect(wb,c-1.5,c+1.5,FL+.3,FL+5,K.white);rect(wp,c-1.2,c+1.2,FL+.3,FL+3.5,K.wood);rect(wp,c-1.2,c+1.2,FL+3.8,FL+4.7,K.glass);}
+      for(const [hw,h0,h1] of [[5,7.6,8.3],[3.4,8.3,9],[1.8,9,9.7]]){box(-3.5,7-hw,-2.3,7+hw,h0,h1,K.grey,K.grey2);rect(WU(-3.5,-1,.09),7-hw,7+hw,h1-.3,h1,K.white);}
+      for(const c of [2.4,7,11.6]){const g=G(-4.2,c);GLOW.push(g[0],S.dy+FL+5.4,g[1]);}}
+    // the train shed: concrete frames every 6.2 m, an arcade on the free sides, a big arch at each end, an iron roof
+    // with a lantern along the ridge
+    const S0=-50,S1=74,SU0=11,SU1=30,SE=7.5;
+    box(SU0,S0,SU1,S1,0.3,SE,K.conc,K.conc,false);shed.roof('v',S0,S1,SU0,SU1,SE,4,6.2,[1,1]);
+    box(18.4,S0+.5,22.6,S1-.5,10,13.2,K.conc,K.sroof2);shed.roof('v',S0+.5,S1-.5,18.4,22.6,13.2,.8,6.2,[1,1]);
+    {const n=20,bw=(S1-S0)/n;
+      for(const [u,sg,ranges] of [[SU1,1,[[S0,S1]]],[SU0,-1,[[S0,-25],[33,S1]]]]){const w=WU(u,sg),wp=WU(u,sg,.12);
+        for(let k=0;k<n;k++){const c=S0+(k+.5)*bw;if(!ranges.some(([a,b])=>c>a&&c<b))continue;arch(w,c,4.2,FL,6.2,K.void);}
+        for(let k=0;k<=n;k++){const s=S0+k*bw;if(ranges.some(([a,b])=>s>=a-1&&s<=b+1))rect(wp,Math.max(S0,s-.4),Math.min(S1,s+.4),0.3,SE,K.conc2);}
+        rect(WU(u,sg,.09),S0,S1,SE-.5,SE,K.conc2);}
+      for(const [v,sg] of [[S0,-1],[S1,1]]){const w=WV(v,sg);arch(w,20.5,13,0.3,10.4,K.void);
+        rect(WV(v,sg,.12),SU0,SU0+1.2,0.3,SE,K.conc2);rect(WV(v,sg,.12),SU1-1.2,SU1,0.3,SE,K.conc2);
+        for(const u of [19.4,21.6])rect(WV(v+sg*.5,sg),u-.5,u+.5,10.6,12.6,K.glass);}
+      for(const sg of [-1,1])for(let k=0;k<n;k++){const c=S0+(k+.5)*bw;rect(WU(sg<0?18.4:22.6,sg),c-1.6,c+1.6,10.8,12.6,k%2?K.glass2:K.glass);}}
+    // tracks: ballast, two rails (broad gauge), drawn in short pieces that follow the ground outside the pad;
+    // the open platform south of the shed with its yellow edge; buffer stops at the yard tracks' ends
+    const ES2=40,near=(v)=>v>-60-ES2&&v<80+ES2;
+    const piece=(v0,v1,fn)=>{const vm=(v0+v1)/2,g=G(20,vm);S.dy=near(vm)?Math.max(pad,E(g[0],g[1])):E(g[0],g[1]);fn(v0,v1);S.dy=pad;};
+    const track=(u,v0,v1)=>{for(let v=v0;v<v1-1e-6;v+=24){const e=Math.min(v1,v+24);piece(v,e,(a,b)=>{S.quadXY(R(u-1.7,a,u+1.7,b),0.32,K.ballast);
+      for(const d of [-.84,.84])S.quadXY(R(u+d-.2,a,u+d+.2,b),0.38,K.rail);});}};
+    track(20,-250,S0);track(20,S1,96);track(33.5,-130,120);track(38.5,-110,110);
+    for(const [u,v] of [[33.5,-130],[33.5,120],[38.5,-110],[38.5,110]])box(u-1.1,v-.4,u+1.1,v+.4,0.3,1.4,K.buffer,K.white);
+    for(let v=-242;v<S0-1e-6;v+=24){const e=Math.min(S0,v+24);piece(v,e,(a,b)=>{box(10,a,17.4,b,0.3,1.0,K.plat,K.plat);S.quadXY(R(17.4,a,18,b),1.0,K.edge);box(17.4,a,18,b,0.3,0.99,K.plat,K.plat,false);});}
+    const c=G(10,8);MODELS.estacion={x:c[0],y:c[1],h:16};S.dy=0;}
   // ==== hito: hospital-regional ====
-  p=at('hospital-regional');{const x=p.x,y=p.y;reserve(x,y,140,80);B.prism(rotRect(x,y,120,34),0.3,26,C('#EEF0EF'),C('#B5BCC0'));B.prism(rotRect(x-30,y+30,40,30),0.3,14,C('#E3E8E8'),C('#B5BCC0'));
-    B.flat(ngon(x+30,y,8,16),26.2,C('#D24B45'));B.flat(ngon(x+30,y,6.5,16),26.3,C('#EEF0EF'));MODELS['hospital-regional']={x,y,h:27};}
+  // Hospital Regional de Talca: the new hospital (in use in stages from 2013, fully open 2017; 85 000 m², seismic
+  // isolation) on the block between 13 and 14 Oriente, 1 and 2 Norte; drawn on S. Plan from OpenStreetMap: the
+  // site r/w618536526, the main building w8550475/w618536195 (a nine-storey tower along 1 Norte over a two-storey
+  // podium with two light wells and a patio), the older three-storey block to the north w618536206 (yellow roof with
+  // solar panels, drawn in rows), the low blocks on the west (w618536201, w618536203) and the small ones w618536209, w618536211,
+  // w618536213. Frame localFrame(1770, 150, 90°): u = grid x (east), v = grid y (north); the tower is not split from
+  // the podium in OSM, so its depth (27 m) comes from the Esri imagery, which also shows the podium's green roofs, a
+  // pergola grid over its west half and the raised helipad (the emergency unit's, Minsal 2013). Elevation from photos
+  // on Wikimedia Commons (2014, 2015): white, horizontal sunshades on every floor, dark glazing, the end walls framed
+  // by nested chamfered white ribs, a red volume at street level. Approximate: heights (nine storeys, ~38 m; podium
+  // ~10 m), the end walls' lattice (drawn as a window grid), the north and west blocks' elevations (a 2005 photo of the
+  // yellow annex), the green roof's paths. Night: a few lit windows on the tower (the hospital works around the clock).
+  {const F=localFrame(1770,150,Math.PI/2),{G,Gs,V,N3,R}=F;
+    const K={white:C('#EEEDE8'),white2:C('#DADAD4'),roof:C('#C9C9C4'),glass:C('#4D5D66'),glass2:C('#3B4653'),red:C('#B4372C'),
+      green:C('#7E9B5A'),green2:C('#8FA85A'),path:C('#E3E0D6'),padc:C('#B9B8B2'),yellow:C('#D3AE5E'),yroof:C('#BCA562'),roof2:C('#B5B8AE'),solar:C('#3E4A5C'),
+      orange:C('#C8693E'),grey:C('#E3E1DA'),groof:C('#B9BCBC'),tile:C('#C9C9C4'),tile2:C('#B9B9B4')};
+    const {box,WL,WV,WU,rect}=facade(S,F,K);
+    const quad=(w,pts,col)=>S.face(pts.map(([s,h])=>w.q(s,h)),w.n,col);
+    // a (u,v) polygon (any orientation, may be concave) as walls h0..h1 and a flat roof; returns the walls (WL) so
+    // they can take window bands
+    const extrude=(q,h0,h1,wall,top)=>{let A=0;q.forEach((p,i)=>{const r=q[(i+1)%q.length];A+=p[0]*r[1]-r[0]*p[1];});const sg=A>0?1:-1,ws=[];
+      q.forEach((a,i)=>{const b=q[(i+1)%q.length],du=b[0]-a[0],dv=b[1]-a[1],L=Math.hypot(du,dv);if(L<.01)return;const out=[sg*dv/L,-sg*du/L],y0=h0<=0.31?h0-4:h0;
+        S.face([V(a[0],a[1],y0),V(b[0],b[1],y0),V(b[0],b[1],h1),V(a[0],a[1],h1)],N3(out[0],out[1]),wall);ws.push(WL(a,b,out));});
+      S.flat(Gs(q),h1,top);return ws;};
+    const bands=(ws,hs,col)=>{for(const w of ws)if(w.L>3)for(const [h0,h1] of hs)rect(w,.6,w.L-.6,h0,h1,col);};
+    const site=Gs([[108,95],[113,88],[113,23],[107,22],[107,-106],[102,-112],[-99,-109],[-106,-98],[-113,65],[-102,83],[-81,93],[-46,101],[-12,109],[25,116],[70,113],[91,105]]);
+    NOLOTS.push(site);
+    const main=R(-75,-88,96,2);occMark(main);const pad=padAt(G(-75,0)[0],G(0,-88)[1],G(96,0)[0],G(0,101)[1]);S.dy=pad;
+    // podium: two storeys around two light wells and a patio against the tower; green roofs with paths, a white
+    // pergola grid over the west half
+    const PH=10;
+    for(const [u0,v0,u1,v1] of [[-75,-60,-48,2],[-48,-60,-34,-41],[-48,-17,-34,2],[-34,-60,-7,2],[-7,-60,7,-40],[-7,-17,7,2],[7,-60,40,2],[40,-41,71,2],[71,-60,96,2]])
+      box(u0,v0,u1,v1,0.3,PH,K.white,u1<=-7?K.roof2:K.green);
+    for(const [w,s0,s1] of [[WU(-75,-1),-60,2],[WU(96,1),-60,2],[WV(2,1),-75,96],[WU(-48,1),-41,-17],[WU(-34,-1),-41,-17],[WV(-41,1),-48,-34],[WV(-17,-1),-48,-34],
+      [WU(-7,1),-40,-17],[WU(7,-1),-40,-17],[WV(-40,1),-7,7],[WV(-17,-1),-7,7],[WU(40,1),-60,-41],[WU(71,-1),-60,-41],[WV(-41,-1),40,71]])
+      for(const [h0,h1] of [[1.6,3.8],[6,8.2]])rect(w,s0+.6,s1-.6,h0,h1,h0<3?K.glass2:K.glass);
+    for(const [w,s0,s1] of [[WU(-75,-1,.09),-60,2],[WU(96,1,.09),-60,2],[WV(2,1,.09),-75,96]])for(const h of [4.6,9.4])rect(w,s0,s1,h,h+.6,K.white2);
+    for(let u=-72;u<-8;u+=9)S.quadXY(R(u,-58,u+.6,0),PH+.04,K.path);for(let v=-56;v<0;v+=9)S.quadXY(R(-74,v,-8,v+.6),PH+.05,K.path);
+    for(const [a,b] of [[[42,-39],[60,-20]],[[60,-20],[48,-2]],[[72,-58],[94,-30]],[[94,-30],[76,-2]],[[8,-58],[30,-36]]]){
+      const du=b[0]-a[0],dv=b[1]-a[1],L=Math.hypot(du,dv),nu=-dv/L*.35,nv=du/L*.35;
+      S.face([V(a[0]-nu,a[1]-nv,PH+.04),V(b[0]-nu,b[1]-nv,PH+.04),V(b[0]+nu,b[1]+nv,PH+.04),V(a[0]+nu,a[1]+nv,PH+.04)],[0,1,0],K.path);}
+    for(const [u0,v0,u1,v1] of [[8,-58,40,-36],[72,-58,95,-31],[41,-39,70,-21]])S.quadXY(R(u0,v0,u1,v1),PH+.02,K.green2);
+    // raised block of the emergency unit with the helipad: grey deck, white disc, red cross
+    box(16,-33,38,-9,PH,15.6,K.white,K.padc);for(const [h0,h1] of [[11.4,13.8]])rect(WV(-33,-1),16.6,37.4,h0,h1,K.glass);
+    {const o=ngon(0,0,6.5,16).map(([a,b])=>G(27+a,-21+b));S.flat(o,15.64,K.white);
+      S.quadXY(R(22.5,-22,31.5,-20),15.68,K.red);S.quadXY(R(26,-25.5,28,-16.5),15.69,K.red);}
+    // the tower: nine storeys, a sunshade at every floor over a dark band of glass, white fins every 9 m, a glazed
+    // ground floor with a red volume; end walls framed by three nested chamfered white ribs; plant room on the roof
+    const T0=-50,T1=94,TV0=-87,TV1=-60,TH=38;
+    box(T0,TV0,T1,TV1,0.3,TH,K.white,K.roof);box(-30,-80,74,-67,TH,41,K.white,K.roof);
+    for(const [v,sg] of [[TV0,-1],[TV1,1]]){const w=WV(v,sg),wb=WV(v,sg,.09),wp=WV(v,sg,.12);
+      if(sg<0){rect(w,T0+1,T1-1,0.3,5,K.glass2);rect(wp,78,90,0.3,6,K.red);}
+      for(let h=5.5;h<TH-1;h+=4){rect(w,T0+.6,T1-.6,h+1.3,h+3.1,(h-5.5)%8?K.glass:K.glass2);rect(wb,T0,T1,h,h+.8,K.white);}
+      rect(wb,T0,T1,TH-.6,TH,K.white);for(let u=T0;u<=T1+1e-6;u+=9)rect(wp,Math.max(T0,u-.35),Math.min(T1,u+.35),sg<0?0.3:PH,TH,K.white);}
+    for(const [u,sg] of [[T0,-1],[T1,1]]){const w=WL([u,TV0],[u,TV1],[sg,0]),L=TV1-TV0;
+      // s runs along the wall from its south corner: a shaded field with a window grid, then the ribs, 1.2 m deep
+      rect(WL([u,TV0],[u,TV1],[sg,0],.03),0,L,0.3,TH,K.white2);
+      for(let h=5.5;h<TH-2;h+=4)for(let x=2.5;x<25;x+=3)rect(w,x-.7,x+.7,h+1,h+3,((x+h)|0)%2?K.glass:K.glass2);
+      const P=(x,h,o)=>V(u+sg*o,TV0+x,h),rib=pts=>{S.face(pts.map(([x,h])=>P(x,h,1.2)),N3(sg,0),K.white);
+        pts.forEach((p,i)=>{const q=pts[(i+1)%pts.length],ns=q[1]-p[1],nh=-(q[0]-p[0]),l=Math.hypot(ns,nh),d=N3(0,ns/l);
+          S.face([P(...p,.02),P(...q,.02),P(...q,1.2),P(...p,1.2)],[d[0],nh/l,d[2]],ns/l>.5?K.white2:K.white);});};
+      for(const [i,top,ch] of [[0,36.5,7],[3.6,31,5.5],[7.2,25.5,3.8]]){const L0=1+i,L1=26-i,rw=1.1;
+        rib([[L0,0.3],[L0+rw,0.3],[L0+rw,top-ch],[L0,top-ch]]);rib([[L1-rw,0.3],[L1,0.3],[L1,top-ch],[L1-rw,top-ch]]);
+        rib([[L0,top-ch],[L0+rw,top-ch],[L0+ch+rw,top-rw],[L0+ch,top]]);rib([[L1-rw,top-ch],[L1,top-ch],[L1-ch,top],[L1-ch-rw,top-rw]]);
+        rib([[L0+ch,top-rw],[L1-ch,top-rw],[L1-ch,top],[L0+ch,top]]);}}
+    for(let u=T0+8;u<T1-4;u+=18)for(const h of [13.5,21.5,29.5])for(const [v,o] of [[TV0,-1.2],[TV1,1.2]]){const g=G(u+(h%16),v+o);GLOW.push(g[0],S.dy+h+2,g[1]);}
+    // the north block (yellow walls, an orange stripe, window bands, yellow roof) and the low ones around
+    {S.dy=pad;const q=[[-8,96],[31,95],[31,101],[52,101],[52,95],[72,95],[72,82],[82,82],[82,69],[72,69],[72,53],[81,53],[81,29],[27,28],[27,45],[23,45],[23,1],[17,1],[16,23],[16,45],[-8,46]];
+      occMark(Gs(q));const ws=extrude(q,0.3,12.4,K.yellow,K.yroof);bands(ws,[[1.6,3.2],[5.6,7.2],[9.6,11.2]],K.glass);
+      for(const [u0,u1] of [[-4,20],[30,68]])for(let v=50;v<92;v+=4.5)S.quadXY(R(u0,v,u1,v+2.2),12.44,K.solar);
+      for(const w of ws)if(w.L>3)rect(w,.3,w.L-.3,4.2,4.8,K.orange);}
+    for(const [q,h] of [[[[-107,-5],[-106,-16],[-104,-22],[-90,-22],[-87,-1],[-84,-1],[-85,32],[-81,32],[-81,42],[-85,42],[-85,54],[-108,54]],8.2],
+      [[[-100,-27],[-95,-27],[-95,-31],[-83,-31],[-80,-73],[-93,-73],[-93,-78],[-97,-78]],8.2],[[[7,22],[16,23],[17,2],[10,2],[10,5],[7,5]],5],
+      [[[37,13],[30,13],[30,17],[23,17],[23,7],[37,7]],5],[[[77,108],[94,99],[93,96],[97,95],[92,86],[70,98],[67,95],[63,97],[68,106],[74,104]],7.6]]){
+      const g=Gs(q);occMark(g);S.dy=groundMin(g)-.3;const ws=extrude(q,0.3,h,K.grey,K.groof);bands(ws,h>6?[[1.4,3.2],[5,6.8]]:[[1.4,3.4]],K.glass);}
+    const c=G(10,-40);MODELS['hospital-regional']={x:c[0],y:c[1],h:44};S.dy=0;}
   // ==== hito: mall-plaza-maule ====
-  p=at('mall-plaza-maule');{const x=p.x,y=p.y;reserve(x,y,230,160);B.prism(rotRect(x,y+20,200,100),0.3,13,C('#DDD3C0'),C('#B9B3A6'));B.quadXY(rotRect(x,y-55,210,50),0.33,C('#7E7B77'));
-    for(let k=0;k<10;k++)B.quadXY(rotRect(x-90+k*20,y-55,.5,40),0.36,C('#E8E4DA'));MODELS['mall-plaza-maule']={x,y:y+20,h:14};}
+  // Mall Plaza Maule, on S (its windows are drawn). Plan from OpenStreetMap: the mall w110780381, the hotel and
+  // casino w110781510, the parking lot w311050604, the site w101568633 (landuse=commercial). The mall's OSM outline
+  // also takes in the parking lot to the north-west (it has been there since 2020, perhaps for the underground deck
+  // under it); the imagery shows cars there, so that part is drawn as a lot and the building stops at its south edge.
+  // Frame from landmark.py frame mall-plaza-maule 110780381: v along the long side, toward 2 Norte (NNE), u toward
+  // Av. Circunvalación. The masses read in the Esri imagery: the galleria's lens-shaped vault with its blue dome, the
+  // anchors' flat and ribbed roofs, the hotel's slab with a pool on the north podium. The east front on the central
+  // lot (photos on Wikimedia Commons, 2025-03, CC BY 4.0) is a curved brick façade, ~12 m, with large glazed bays over
+  // a grey band, a white coping and the four-colour logo. Approximate: every height (none measured: ~12 m for the
+  // mall, a 2-storey façade; vault and dome from the imagery's shadows; the hotel's slab ~24 m, five floors of rooms
+  // on the casino), the dome's size, the hotel's split between slab and podium, the anchors' façades (no photos).
+  {const F=localFrame(3328.2,-322.5,74.7*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={clad:C('#D9D5CC'),clad2:C('#C9C5BC'),white:C('#ECE7DC'),roof:C('#B3AFA6'),roof2:C('#A8A49A'),roof3:C('#C4BFB3'),
+      brick:C('#B07552'),band:C('#9A9A96'),glass:C('#4D5D66'),glass2:C('#3B4653'),vault:C('#D8D6CE'),vault2:C('#C6C3BA'),
+      dome:C('#3E6F80'),dome2:C('#4A8396'),hvac:C('#8F8C86'),asph:C('#65615D'),stall:C('#716D68'),line:C('#E8E4DA'),
+      pool:C('#4E8FA6'),hotel:C('#E3E1DA'),podium:C('#8C8A86'),grass:C('#7FA05A'),
+      logo:[C('#3A7FC1'),C('#7DB343'),C('#F2C230'),C('#E0533A')]};
+    const {box,WL,rect}=facade(S,F,K);
+    // walls of a counter-clockwise (u,v) ring from h0 to h1, a white coping on top; col(i) picks each side's colour
+    const walls=(ring,h0,h1,col)=>{for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length],L=Math.hypot(b[0]-a[0],b[1]-a[1]);
+      if(L<.01)continue;const w=WL(a,b,[(b[1]-a[1])/L,-(b[0]-a[0])/L],0),c=typeof col==='function'?col(i):col;
+      S.face([w.q(0,h0),w.q(L,h0),w.q(L,h1-.5),w.q(0,h1-.5)],w.n,c);S.face([w.q(0,h1-.5),w.q(L,h1-.5),w.q(L,h1),w.q(0,h1)],w.n,K.white);}};
+    const slab=(ring,h0,h1,col,top)=>{walls(ring,h0,h1,col);S.flat(Gs(ring),h1,top);};
+    const SITE=[[-97,113],[-99,6],[-82,6],[-90,-208],[95,-213],[96,-97],[96,-79],[98,113]].reverse();
+    const site=Gs(SITE);NOLOTS.push(site);occMark(site);
+    S.dy=padAt(Math.min(...site.map(p=>p[0])),Math.min(...site.map(p=>p[1])),Math.max(...site.map(p=>p[0])),Math.max(...site.map(p=>p[1])));
+    // the site's asphalt, the lots' stall rows (lighter bands with a white line between the two rows of a bay)
+    S.flat(site,.3,K.asph);
+    const rows=(v,u0,u1)=>{S.quadXY(R(u0,v-5.2,u1,v-.25),.33,K.stall);S.quadXY(R(u0,v+.25,u1,v+5.2),.33,K.stall);S.quadXY(R(u0,v-.25,u1,v+.25),.36,K.line);};
+    for(const v of [-63,-79,-95,-111])rows(v,-1,v<-108?46:78);
+    for(let v=6;v<106;v+=15){const ue=v<57?-30+9*(v+3)/60:-21+2*(v-57)/53;rows(v,-93,ue-6);}
+    S.quadXY(R(88,-112,95,60),.33,K.grass); // the planted strip along Av. Circunvalación
+    // the mall: one block at 12 m, its east front on the central lot (sides 3-9) a curved brick façade
+    const MALL=[[-80,-200],[15,-200],[17,-129],[-15,-129],[-13,-121],[-10,-112],[-8,-103],[-7,-93],[-7,-78],[-9,-52],[-10,-48],[-2,-46],[7,-46],
+      [7,-51],[89,-51],[90,-4],[83,-3],[84,78],[86,105],[34,105],[33,66],[19,66],[19,61],[8,61],[9,109],[-19,110],[-18,63],[-14,62],[-14,50],
+      [-17,50],[-21,57],[-30,-3],[-80,-7]];
+    const BRICK=i=>i>=3&&i<=9;
+    slab(MALL,.3,12,i=>BRICK(i)?K.brick:i%2?K.clad:K.clad2,K.roof);occMark(Gs(MALL));
+    // the brick front: shop windows, a grey band, tall glazed bays between brick piers
+    for(let i=3;i<=9;i++){const a=MALL[i],b=MALL[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]),out=[(b[1]-a[1])/L,-(b[0]-a[0])/L];
+      const w=WL(a,b,out),w2=WL(a,b,out,.09),n=Math.max(1,Math.round(L/8.5)),bw=L/n;
+      rect(w2,0,L,4.2,5.4,K.band);
+      for(let k=0;k<n;k++){const s0=k*bw+1.1,s1=(k+1)*bw-1.1;if(s1-s0<1.5)continue;rect(w,s0,s1,.3,3.8,K.glass2);
+        for(let h=5.6,j=0;h<10.6;h+=1.7,j++)rect(w,s0,s1,h,Math.min(h+1.7,10.6),j%2?K.glass2:K.glass);}}
+    {const a=MALL[8],b=MALL[9],L=Math.hypot(b[0]-a[0],b[1]-a[1]),w=WL(a,b,[(b[1]-a[1])/L,-(b[0]-a[0])/L],.12);
+      [[0,0],[1,0],[0,1],[1,1]].forEach(([i,j],k)=>rect(w,L-6+i*1.2,L-4.8+i*1.2,9.8+j*1.2,11+j*1.2,K.logo[k]));}
+    // anchors: the north-east store's ribbed roof (bays of two tones), the south-west block's plant on its roof
+    for(let v=-51,k=0;v<61;v+=7,k++)S.quadXY(R(7.5,v,83,Math.min(61,v+7)),12.03,k%2?K.roof3:K.roof);
+    for(let v=66,k=0;v<104;v+=6,k++)S.quadXY(R(34.5,v,85,Math.min(104.5,v+6)),12.03,k%2?K.roof3:K.roof2);
+    S.quadXY(R(-79.5,-199.5,-36,-130),12.03,K.roof2);S.quadXY(R(-36,-199.5,14.5,-130),12.03,K.roof3);
+    for(const [u,v] of [[-70,-188],[-58,-176],[-70,-160],[-48,-188],[-58,-146],[-20,-180],[2,-160],[-45,-160]])box(u-2,v-1.5,u+2,v+1.5,12,13.6,K.hvac,K.clad);
+    // the galleria: a lens-shaped vault (OSM's outline, the imagery's tips) over the mall, ribs in two tones, a
+    // stepped glass dome west of its ridge
+    {const N=[-54,-20],Sx=[-38,-144],c=[(N[0]+Sx[0])/2,(N[1]+Sx[1])/2],Lh=Math.hypot(Sx[0]-N[0],Sx[1]-N[1])/2,d=[(N[0]-Sx[0])/(2*Lh),(N[1]-Sx[1])/(2*Lh)],p=[d[1],-d[0]];
+      const n=16,at=(t,s)=>{const w=19*(1-t*t);return [c[0]+d[0]*Lh*t+p[0]*w*s,c[1]+d[1]*Lh*t+p[1]*w*s];},rh=t=>7*Math.sqrt(Math.max(0,1-t*t));
+      const leaf=[];for(let i=0;i<=n;i++)leaf.push(at(-1+2*i/n,1));for(let i=n-1;i>0;i--)leaf.push(at(-1+2*i/n,-1));
+      walls(leaf,12,15,K.clad);
+      for(let i=0;i<n;i++){const t0=-1+2*i/n,t1=t0+2/n,col=i%2?K.vault2:K.vault;
+        for(const s of [1,-1]){const a0=at(t0,s),a1=at(t1,s),m0=at(t0,0),m1=at(t1,0);
+          const P=[V(...a0,15),V(...a1,15),V(...m1,15+rh(t1)),V(...m0,15+rh(t0))],e=[P[2][0]-P[0][0],P[2][1]-P[0][1],P[2][2]-P[0][2]],f=[P[3][0]-P[1][0],P[3][1]-P[1][1],P[3][2]-P[1][2]];
+          let nn=[e[1]*f[2]-e[2]*f[1],e[2]*f[0]-e[0]*f[2],e[0]*f[1]-e[1]*f[0]];if(nn[1]<0)nn=nn.map(x=>-x);const L=Math.hypot(...nn);S.face(P,nn.map(x=>x/L),col);}}
+      const dc=G(-56,-76);[[8,15,19.6,K.dome],[7,19.6,21.2,K.dome2],[5.6,21.2,22.5,K.dome],[3.8,22.5,23.4,K.dome2],[1.4,23.4,24.6,K.white]]
+        .forEach(([r,h0,h1,col])=>S.prism(ngon(dc[0],dc[1],r,8,Math.PI/8),h0,h1,col,col));}
+    // hotel and casino: the casino's podium (OSM outline), the hotel's slab with bands of windows, the pool on the
+    // north podium
+    const HOT=[[51,-120],[69,-120],[69,-117],[88,-117],[86,-199],[50,-200],[50,-196],[35,-196],[36,-127],[51,-127]].reverse();
+    slab(HOT,.3,7,K.glass,K.podium);occMark(Gs(HOT));
+    for(const [a,b] of HOT.map((p,i)=>[p,HOT[(i+1)%HOT.length]])){const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<4)continue;
+      const w=WL(a,b,[(b[1]-a[1])/L,-(b[0]-a[0])/L],.06);for(const h of [2.2,4.6])rect(w,0,L,h,h+.5,K.band);}
+    box(52,-198,87,-138,7,24,K.hotel,K.roof3);
+    for(const w of [WL([52,-198],[52,-138],[-1,0]),WL([87,-138],[87,-198],[1,0]),WL([87,-198],[52,-198],[0,-1]),WL([52,-138],[87,-138],[0,1])])
+      for(let h=8.6;h<23;h+=3.2)rect(w,1,w.L-1,h,h+1.5,K.glass);
+    box(45,-138,87,-119,7,13,K.hotel,K.roof3);S.quadXY(R(48,-134,58,-124),13.03,K.pool);
+    for(const [u,v] of [[60,-185],[75,-170],[64,-155],[78,-148]])box(u-2,v-1.5,u+2,v+1.5,24,25.4,K.hvac,K.clad);
+    const m=G(-30,-70);MODELS['mall-plaza-maule']={x:m[0],y:m[1],h:20};S.dy=0;}
   // ==== hito: utalca-derecho ====
-  p=at('utalca-derecho');{const x=p.x,y=p.y;const r=rng(99);
-    for(let k=0;k<11;k++){const bx=x-220+r()*440,by=y-170+r()*340;if(occAt(bx,by))continue;const w=26+r()*24,d=12+r()*10;reserve(bx,by,w+6,d+6,false);B.prism(rotRect(bx,by,w,d),0.3,8+r()*9,pick(r,[C('#E7E1D3'),C('#C9B79A'),C('#D6D8D2'),C('#B6613F')]),C('#9D9A93'));}
-    MODELS['utalca-derecho']={x,y,h:18};}
+  // Universidad de Talca, Campus Lircay, on S. The campus's 89 buildings are OpenStreetMap's (building=* inside the
+  // campus w101562805; the 3-node triangle w717752034 is left out: the imagery shows a field there), extruded in one
+  // frame centred on the Facultad de Ciencias Jurídicas y Sociales (w983402844), from landmark.py frame
+  // utalca-derecho 983402844: v toward the campus's north side (NE), u toward the south-east. Heights from
+  // building:levels where OSM has them (3.5 m a storey), otherwise two storeys (one under 160 m²) and a few read from
+  // the Esri imagery's shadows; roof colours from the imagery; walls in the campus's beige (photos on Wikimedia
+  // Commons, 2014, CC BY-SA 4.0: Cs Agrarias, Psicologia, Odontologia, Geomatica, Nueva Biblioteca, Gimnasio de la
+  // UTAL). Detail where the campus is recognisable: the round Instituto de Biología, the library's white fins, the
+  // blue porticoes of Psicología and Odontología, the orange gym, the light-blue pyramid of Salas 300, the stadium's
+  // track and pitches. The law faculty (the marker) is drawn on its real two-winged plan as a plain two-storey block:
+  // there is no photo of it. Approximate: every height without building:levels, the gyms' roofs, the lawn (the
+  // buildings' hull, a little wider). Each building stands on its lowest corner (no pads); the ground layers are
+  // draped on the terrain, the lawn under the streets.
+  {const F=localFrame(2589.6,2788.6,51.8*Math.PI/180),{G,Gs,V}=F;
+    const K={beige:C('#E3D9C4'),white:C('#ECE7DC'),glass:C('#4D5D66'),glass2:C('#3B4653'),blue:C('#2F4FA0'),orange:C('#D2642F'),
+      lawn:C('#93A85E'),asph:C('#6E6A65'),track:C('#B9573B'),field:C('#6B9B45'),line:C('#F3F0E6'),clay:C('#A8553A'),
+      W:C('#D8D6CE'),G:C('#C4BFB3'),D:C('#6A6E72'),B:C('#8E6E5E'),R:C('#9C5A44'),LB:C('#9CC3D6'),GR:C('#8FA68B'),OL:C('#9EA36E'),BL:C('#5B78A8')};
+    const {WL,rect,arch}=facade(S,F,K);
+    const walls=(ring,h0,h1,col,cop=K.white)=>{for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length],L=Math.hypot(b[0]-a[0],b[1]-a[1]);
+      if(L<.01)continue;const w=WL(a,b,[(b[1]-a[1])/L,-(b[0]-a[0])/L],0);
+      S.face([w.q(0,h0),w.q(L,h0),w.q(L,h1-.5),w.q(0,h1-.5)],w.n,col);S.face([w.q(0,h1-.5),w.q(L,h1-.5),w.q(L,h1),w.q(0,h1)],w.n,cop);}};
+    const sides=ring=>ring.map((a,i)=>{const b=ring[(i+1)%ring.length],L=Math.hypot(b[0]-a[0],b[1]-a[1]),out=[(b[1]-a[1])/L,-(b[0]-a[0])/L];return {L,a,b,out,w:WL(a,b,out)};});
+    // ground: lawn between the blocks (0.10) and the streets (0.12+), lots, the stadium's track and pitches, tennis
+    {const Lg=new GB(1<<13),lay=(ring,o,c)=>Lg.flat(Gs(ring),o,c);
+      lay([[-232.5,-394],[-230,-425.5],[-225,-453.5],[-94,-491.5],[44.5,-452.5],[59.5,-445.5],[293,-327],[375.5,126.5],[355.5,173],[272,328],[239,361.5],[226.5,358.5],[26,269.5],[-69.5,225.5],[-80,214.5],[-85.5,201.5]],.11,K.lawn);
+      NOLOTS.push(Gs([[5,387.5],[-19,348],[-78,247],[-111.5,161],[-144.5,63.5],[-237,-237],[-342.5,-596.5],[-277,-615],[-250,-626],[-192,-556.5],[-158,-523],[-101.5,-521.5],[-30.5,-539],[26.5,-513],[271,-498.5],[284,-467],[312,-382.5],[446,-505],[479.5,-553.5],[514,-578.5],[524,-571.5],[560,-325.5],[609,33.5],[649.5,344.5],[480,274],[449,280.5],[467.5,477],[205,405.5],[65,369]]));
+      for(const r of [[[200.5,-276],[211.5,-299],[220,-295],[217,-288],[228,-283],[220.5,-266.5]],[[-58.5,67],[-62.5,43.5],[-55,42],[-56.5,35.5],[-34,33.5],[-29,66],[-50,73]],
+        [[8,28.5],[31,18.5],[40,54.5],[29,56],[6.5,39.5]],[[24.5,-118],[28.5,-122.5],[35,-141.5],[50,-137],[41.5,-113]],[[-4.5,-132.5],[26,-122.5],[24.5,-118],[-6,-127.5]],
+        [[-103,-146],[-82,-157.5],[-73,-141.5],[-94,-130]],[[-78.5,-261.5],[-65,-255],[-62,-249],[-83,-207],[-86,-211.5],[-96.5,-221.5]],[[158.5,-36.5],[163,-50.5],[227.5,-28],[222.5,-14]],
+        [[311,79],[328.5,70.5],[340,77],[336,100],[323,103.5],[310,93.5]],[[-193.5,-414],[-176.5,-457],[-132,-439],[-140,-419.5],[-155.5,-426],[-165,-402.5]],
+        [[130.5,47.5],[125,65.5],[107.5,56.5],[122.5,43.5]],[[-112,-319.5],[-114,-315.5],[-166,-340.5],[-164,-344.5]],[[-205.5,-365.5],[-182.5,-354.5],[-185,-350],[-208,-361]],
+        [[109.5,-361],[103,-347],[16.5,-387.5],[23,-401.5]],[[75,-200],[78.5,-203],[152.5,-168],[147,-165]]])lay(r,.155,K.asph);
+      lay([[63,178],[69.5,191],[73.5,211],[71,225.5],[63,239],[50,247.5],[33.5,255],[27.5,254.5],[-63.5,211.5],[-73,201.5],[-78,188.5],[-80,173],[-76,161],[-68,148],[-59,139.5],[-44.5,132.5],[-28,132]],.17,K.track);
+      for(const p of [[[27.5,246.5],[-66,200.5],[-36,139.5],[57.5,186]],[[84.5,236.5],[99.5,205],[118,214.5],[102,245.5]],[[103.5,246],[119.5,215.5],[136,224],[120.5,254.5]]]){
+        lay(p,.18,K.line);const c=p.reduce((s,q)=>[s[0]+q[0]/4,s[1]+q[1]/4],[0,0]);lay(p.map(q=>[c[0]+(q[0]-c[0])*.95,c[1]+(q[1]-c[1])*.95]),.2,K.field);}
+      lay([[312.5,150],[330,106],[362.5,119.5],[343.5,164]],.17,K.clay);
+      const d=drape(Lg);S.dy=0;
+      for(let t=0;t<d.ni;t+=3){const k=d.I[t]*3;S.face([0,1,2].map(j=>{const m=d.I[t+j]*3;return [d.P[m],d.P[m+1],d.P[m+2]];}),[0,1,0],[d.C[k],d.C[k+1],d.C[k+2]]);}}
+    // the buildings: [height, storeys, roof colour, detail, ring (u,v) flattened]
+    for(const [h,st,rk,sp,fl] of [
+      [7.5,2,'W','blue',[-141,-414.5,-112.5,-400.5,-99,-388.5,-92.5,-381.5,-111.5,-364,-99.5,-346.5,-118,-337,-125,-346.5,-133.5,-338.5,-145.5,-350,-152.5,-355,-160.5,-355.5,-166.5,-360.5,-169.5,-361,-169.5,-362,-185,-363,-185.5,-371.5,-196,-371.5,-198.5,-372.5,-199.5,-371.5,-207.5,-375.5,-213,-374,-218.5,-377.5,-220,-381,-222.5,-382.5,-216,-396,-205.5,-391,-200.5,-394,-195,-392.5,-192.5,-387.5,-193,-385.5,-191.5,-386,-192,-391,-186.5,-391.5,-186,-401.5,-168.5,-400.5,-169,-390.5,-156.5,-387]], // 44768733 Esc. Odontología
+      [7.5,2,'W','',[-154.5,-294,-117.5,-276.5,-113,-279,-109.5,-278.5,-107,-275.5,-107.5,-271.5,-94.5,-265.5,-98,-255.5,-112,-262,-118.5,-250,-115.5,-248.5,-118.5,-242.5,-121,-244,-130.5,-226,-138.5,-230,-135.5,-236,-154.5,-249.5,-164,-260,-172,-272.5,-172.5,-276,-175.5,-282,-174,-286.5,-170,-289.5,-165,-287,-162.5,-280,-158,-282,-159,-285,-154.5,-286.5,-153.5,-282.5,-151.5,-283.5]], // 44768736 Facultad de Economía y Negocios
+      [9,2,'G','round',[90,-242.5,91,-249,93,-254.5,96.5,-259.5,101,-263.5,106.5,-266,112.5,-267.5,119,-267,124.5,-265.5,130,-262,134,-258,137,-252.5,139,-246.5,139,-240.5,137.5,-234.5,134.5,-229,130.5,-224.5,125.5,-221,119.5,-219,113.5,-218.5,107.5,-219.5,102,-222.5,97,-226,93.5,-231,91,-236.5]], // 44865375 Instituto de Biología
+      [7.5,2,'LB','pyr',[222,122.5,260,140,256,149.5,252.5,148,238,180,203,164]], // 309746869 Salas 300 (Peumo)
+      [7.5,2,'W','',[-11.5,-278,-11.5,-282.5,6.5,-289.5,18.5,-297,20.5,-302,38.5,-293.5,35.5,-288.5,47.5,-245.5,2,-268,3.5,-270.5]], // 442493480 Espacio Bicentenario
+      [11.5,3,'D','lib',[51.5,-44.5,90,-26.5,70.5,17,47,-10,54.5,-16.5,44.5,-30.5]], // 917637798 Biblioteca Central
+      [5,1,'W','',[73.5,-153,69,-148,57,-164.5,58.5,-170,48.5,-184,68,-195,72,-193.5,80.5,-188.5,88,-180,92.5,-168,93.5,-157,90.5,-145,86,-135]], // 303261474 Casino
+      [11,3,'GR','',[174,119.5,158,154.5,183,166,176,181.5,130.5,160.5,137,146,146.5,150.5,151.5,138.5,148,137,159,112.5]], // 443732242 Escuela de Arquitectura
+      [11,0,'W','barrel',[238,297.5,259.5,319.5,232.5,348,220.5,344.5,219,339.5,212.5,336.5,211,325]], // 1040052971 Gimnasio 2
+      [7.5,2,'W','',[-73,-333,-83,-330.5,-73,-353,-84,-358,-81,-365,-58,-353.5,-50.5,-370.5,-44.5,-367.5,-49.5,-356.5,-42.5,-353,-64,-307.5]], // 303261932 Escuela de Tecnología Médica
+      [10,0,'D','gym',[273.5,206.5,277,208,279.5,200.5,304.5,210.5,289.5,247,261,235]], // 44868710 Gimnasio 1
+      [7.5,2,'GR','',[-41.5,-232,-31,-238,-24.5,-229,-14,-220,-7.5,-219,-2.5,-215,13.5,-211.5,24,-212.5,26,-199.5,10.5,-198,-5,-202,-6,-200,-4,-198.5,-7.5,-193,-25,-201.5,-22,-207.5,-20.5,-207.5,-20,-208.5,-33,-219.5]], // 44768724 Salas 800
+      [7.5,2,'LB','',[144,19,148.5,17,149.5,14,157.5,8,169,-3.5,180.5,2,179.5,18.5,180,28.5,178.5,30.5,180,36.5,168,42,159.5,33,147,32]], // 44865382 Salas Manuel Toso G. (200)
+      [7.5,2,'G','',[182,56.5,191.5,37,238,58.5,231.5,73,220.5,68,218,73]], // 44865383 Salas 500 (Prosperidad I)
+      [7.5,2,'W','',[-55.5,-437.5,-46.5,-456.5,-1.5,-434.5,-10.5,-415.5]], // 589489462 Ed. Prosperidad II
+      [7.5,2,'G','',[258.5,-324,257,-321,261,-319,263.5,-324.5,283,-315.5,269.5,-286,241,-299.5,248.5,-316.5,245.5,-318,250.5,-327.5]], // 1088641896 Jardín Infantil
+      [7.5,2,'W','blue',[-141.5,-194,-134.5,-191.5,-125,-184.5,-119.5,-179,-117,-180.5,-109.5,-169.5,-112.5,-166.5,-109,-149,-115.5,-127,-125,-131.5,-121,-142,-120.5,-151,-122.5,-160,-137,-156,-141,-163,-129,-173.5,-135.5,-179,-144.5,-183]], // 303261472 Escuela de Psicología
+      [8,2,'W','law',[-11,-28,5,-28.5,5,-6.5,9,-6.5,11.5,1.5,7.5,4,17.5,19.5,3.5,26.5,-9.5,6.5,-13,7,-14.5,2,-11,1]], // 983402844 Facultad de Ciencias Jurídicas y Sociales
+      [7.5,2,'W','',[168,219.5,173,221.5,174,220,189,226.5,188,228.5,191,229.5,195,239.5,181.5,245,178.5,251.5,168,247,159.5,249.5,155.5,238.5,152.5,237.5,149.5,230.5,152.5,225.5]], // 44868725 Escuela de Diseño
+      [7.5,2,'G','',[-88,-389,-72,-424,-56,-416.5,-63.5,-401,-56.5,-398,-54,-403.5,-45.5,-399.5,-54.5,-381,-62.5,-384.5,-60,-389.5,-68,-393,-73.5,-382]], // 303261935 Ciencias Biomédicas Básicas
+      [7.5,2,'LB','',[177.5,121,157,111.5,161,102,164,103.5,170.5,88.5,164.5,85.5,171.5,70,192,79,177.5,111,181.5,112.5]], // 443732243 Instituto de Matemática y Física
+      [4.5,1,'GR','',[186.5,101,193.5,86.5,243,109,236.5,123.5]], // 303261473 Taller de arquitectura primer año
+      [7.5,2,'W','',[134.5,-225.5,171.5,-208,176.5,-218.5,192,-211.5,184.5,-195.5,182,-197,179.5,-191.5,129.5,-215]], // 44865366 Facultad de Ciencias Agrarias
+      [7.5,2,'G','',[-210,-408,-221,-413.5,-216.5,-441,-194.5,-430,-193.5,-432,-188.5,-429.5,-200.5,-405,-203,-406,-207,-398.5,-203,-396.5,-205.5,-391,-216,-396]], // 947172454 Esc. Terapia Ocupacional
+      [7.5,2,'G','',[180.5,195,191,171,217.5,183.5,205,207]], // 303261469 Escuela de Música
+      [7.5,2,'W','',[59.5,93,49.5,88.5,54.5,77.5,64.5,82,63,85,75,90.5,57,129.5,45,124]], // 44868718 Admin de Campus
+      [7.5,2,'B','',[-89.5,-477.5,-58.5,-461.5,-67,-444.5,-98,-460]], // 1040497934 Escuela de Enfermería y Nutrición
+      [7.5,2,'B','',[164,-292,172,-308,204,-293,196,-276.5,183.5,-283,181.5,-279.5,173.5,-283.5,175,-286.5]], // 44865373 Centro Tecnológico de la Vid y Vino (CTVV)
+      [7.5,2,'W','',[182,-238,197.5,-271.5,214,-264,200.5,-234.5,198.5,-235.5,196.5,-231]], // 44865372 Centro de Pomáceas (CP)
+      [7.5,2,'OL','',[165,84,129.5,68.5,136,53.5,171.5,70]], // 443732241 Edificio de Idiomas
+      [7.5,2,'G','',[-65,-224.5,-46.5,-215.5,-56.5,-194,-58.5,-195,-62,-188.5,-78.5,-197]], // 44768737 Clínica de Kinesiología
+      [7.5,2,'G','',[216.5,-108.5,235,-99,221,-71.5,205,-79,208,-84.5,205,-86]], // 947178039 Lab. Escuela Nutrición
+      [7.5,2,'W','',[3,-312,3.5,-316.5,7,-325.5,14.5,-333,25.5,-335.5,36.5,-330,42,-320,29,-315.5,28.5,-311,19.5,-316.5,17,-312,13.5,-314.5,12,-311,7.5,-312.5,5,-308]], // 44768735 CTA
+      [7.5,2,'G','',[208,-118.5,219,-113,197,-70,186,-75.5]], // 947178040 
+      [4,1,'W','',[275.5,181,261.5,175,277.5,138.5,291,144.5]], // 409329950 Esc. Bioinformática
+      [7.5,2,'G','',[-51,-78.5,-43,-85,-33,-72,-35,-70.5,-31.5,-66,-2.5,-50.5,-7.5,-41,-42,-60.5,-40,-64]], // 44868717 Facultad de Ciencias de la Salud
+      [7.5,2,'G','',[297.5,-58.5,283,-24.5,268.5,-30.5,282.5,-65]], // 1040052970 Centro de Inocuidad Alimentaria
+      [7.5,2,'G','',[240.5,-45,229,-50.5,248,-88,254,-85.5,257.5,-92.5,263.5,-90]], // 947178035 Centro de Ecología Integrativa
+      [7.5,2,'W','',[53.5,-85.5,57,-84.5,57,-82,68,-78,67.5,-76,88.5,-68,83.5,-55,71.5,-59.5,70.5,-54,62.5,-57,64.5,-65,48.5,-70]], // 917637799 VDE
+      [7.5,2,'B','',[44.5,-437.5,59,-430.5,43.5,-397.5,29,-404.5]], // 1040497933 Salas Arrayán
+      [7.5,2,'W','',[240,123,247,107.5,277.5,122,270.5,137]], // 717585960 Ex Aulas 100
+      [7.5,2,'B','',[55.5,-410.5,87.5,-396.5,82.5,-385.5,75.5,-388.5,73.5,-383.5,53,-393,55,-397.5,50.5,-399.5]], // 1089596000 Dirección de Personas, Programa de Formación Fundamental
+      [7.5,2,'W','',[-4,64,-10.5,62,-21,60.5,-19.5,47.5,-14,47.5,-4.5,50,1,39,6,41,1.5,52.5,12,59,15,61.5,7.5,70]], // 983402846 Dirección Tecnologica de Información (DTI)
+      [7.5,2,'W','',[-16.5,-335.5,1,-326.5,-5.5,-314.5,-9,-316.5,-10.5,-305.5,-30.5,-305.5]], // 1089594166 Banco Santander
+      [7.5,2,'W','',[35,-143.5,44,-172.5,56.5,-168,53.5,-155.5,58.5,-153,53,-138]], // 358997879 
+      [7.5,2,'G','',[101,-28,109,-24,107.5,-20.5,119,-15,120.5,-18.5,127.5,-15,119.5,1.5,93,-11.5]], // 44865381 Café Barcelona
+      [6,0,'D','',[224.5,250,222.5,278,206.5,277,209,249]], // 1303545411 Galpón Arquitectura
+      [7.5,2,'G','',[-65,-114,-59.5,-126,-66,-129,-60.5,-137.5,-46,-126,-53.5,-111,-55,-99,-67,-100.5]], // 44868716 Centro Tecnológico de Suelos y Cultivos
+      [7.5,2,'BL','',[172.5,-344,188,-336.5,186.5,-333.5,190.5,-331.5,192,-334.5,204,-329,198.5,-317.5,186.5,-323,187.5,-325,183.5,-327,183,-325,167,-332.5]], // 1090301474 Módulos Ciencias
+      [7.5,2,'G','',[-52,-234.5,-55,-228,-32.5,-217.5,-40.5,-200,-51.5,-205,-46.5,-215.5,-60.5,-222.5,-59,-225.5,-64,-227.5,-58.5,-238]], // 1051964837 Clínica de Fonoaudiología
+      [7.5,2,'G','',[241.5,-112.5,256.5,-105,259.5,-96,254,-85.5,233,-96]], // 947178036 Laboratorio de Fenómica Vegetal
+      [4,0,'G','',[-106.5,-441.5,-94,-435.5,-107,-408.5,-119,-414.5]], // 1088641072 
+      [7.5,2,'LB','',[256.5,59,272,66,262,87.5,246.5,80]], // 842584759 PACE / Sala Siberia
+      [7.5,2,'B','',[-6.5,-141,-10.5,-145.5,-9,-151,28,-137,24,-127.5,-5.5,-138]], // 44868715 Escuela de Kinesiología
+      [4,1,'LB','',[279,97.5,274,109,257.5,101,268,78,278,82.5,272.5,94.5]], // 409329949 Videojuegos y Realidad Virtual
+      [7.5,2,'G','',[315.5,159,338,168.5,332,182.5,309.5,172]], // 1039913304 Salas 100 (Liquidambar)
+      [7.5,2,'G','',[242.5,-91,226,-59,217,-63.5,233,-96]], // 947178037 
+      [7.5,2,'LB','',[281,25,300.5,34.5,303.5,50.5,275,37]], // 842584757 Vicerrectoría de Formación
+      [7.5,2,'G','',[239,298.5,240.5,296,241.5,290.5,250,290.5,250,296.5,256,297.5,259,301.5,260,305.5,264.5,306,264.5,315,260.5,315.5,258,318]], // 1287085992 
+      [7.5,2,'W','',[115.5,-307,134,-298,127,-283,108.5,-292]], // 1088641897 Lab. Docencia Citra
+      [7.5,2,'W','',[32,-72.5,13.5,-78.5,19.5,-97.5,34,-93,30.5,-82.5,34.5,-81]], // 443732240 Centro de Investigación en Células Madres
+      [7.5,2,'R','',[140.5,-303.5,147.5,-317.5,167,-307,159.5,-293.5]], // 155047189 Centro de Investigación y Transferencia en Riego y Agroclimatología (CITRA)
+      [7.5,2,'D','',[61.5,-340.5,60,-339,51,-344.5,51.5,-347,46,-348.5,48.5,-358.5,63.5,-352,76,-341,68.5,-335.5]], // 44768722 Escuela de Administración Pública
+      [4,1,'G','',[182.5,148,189.5,133,199.5,137.5,200.5,135.5,202.5,136.5,201.5,139,204,140,203,141.5,205.5,143,204,146,201.5,145,197,155,196,154.5,194,158,187.5,155,189,151]], // 1212556120 Auditorio FAMD (Ex Salón Diego Portales)
+      [7.5,2,'G','',[223.5,-122,241.5,-112.5,235,-99,216.5,-108.5]], // 947178038 Ceap
+      [7.5,2,'G','',[245,-14.5,268,-10,265,4.5,256,2.5,256.5,0.5,242.5,-2.5]], // 917637800 Salas 600
+      [7.5,2,'D','',[4.5,-368.5,14.5,-370,27.5,-367.5,35.5,-364,31,-354.5,25.5,-357.5,24,-356.5,20.5,-357,20,-358.5,7.5,-357.5]], // 44768723 Vicerrectoría Académica
+      [7.5,2,'B','',[91.5,-385.5,100.5,-381,104,-388,112.5,-383.5,109.5,-376.5,117,-373,114,-366,88,-378.5]], // 1089595999 Dir Com
+      [7.5,2,'B','',[122,5,124,15,96.5,20,95,10]], // 1145094446 Sala de Oración
+      [7.5,2,'G','',[-62,-188.5,-58.5,-195,-45,-188.5,-52.5,-173.5,-69,-181.5,-64.5,-190]], // 801865675 Laboratorio de Kinesiología
+      [4,1,'G','',[283,71.5,273,67,280.5,50.5,296.5,57.5,291.5,68,285.5,65.5]], // 303261934 Ingeniería Civil Industrial y Plan Común
+      [7.5,2,'G','',[291.5,-4.5,304.5,0.5,298.5,13,284,7.5]], // 1303552051 Salas Quillay
+      [7.5,2,'B','',[-6.5,-141,-5.5,-136,-27,-134,-28.5,-143.5,-10.5,-145.5]], // 1051964838 Escuela de Fonoaudiología
+      [7.5,2,'G','',[-74.5,-425.5,-85,-403,-92.5,-406.5,-82,-429]], // 1088641071 
+      [7.5,2,'G','',[244.5,36.5,248.5,26,264,33,259.5,43.5]], // 842584758 Instituto Lab. Matemáticas
+      [7.5,2,'G','',[94.5,206,88,220.5,82,217.5,84,213,78.5,210.5,83,201]], // 1040052973 Dolape
+      [7.5,2,'G','',[-60,-373.5,-64,-365.5,-80,-373,-76,-381]], // 1089595998 
+      [7.5,2,'G','',[279.5,137,285,125,296,130.5,291,142]], // 717585959 Lab. Bioinformática
+      [4,1,'G','',[242.5,84.5,254.5,90,250,99.5,238,94.5]], // 1260669244 Gestión Curricular
+      [4,1,'G','',[-25.5,-395.5,-17.5,-392,-23.5,-378,-31.5,-382]], // 1089596002 
+      [4,1,'LB','',[267.5,45.5,279,50.5,274.5,60.5,263,55]], // 1497788666 Cowork VR de Formación
+      [4,1,'G','',[283,71.5,278,82.5,268,78,273,67]], // 1497788668 CIVE y Gestión Curricular
+      [4,1,'G','',[65.5,-258,59.5,-260.5,64.5,-270,62.5,-271,64.5,-276,72.5,-272]], // 1089594167 
+      [4,1,'G','',[181.5,169,183.5,170,186.5,163,190.5,164.5,188,170,191,171,186.5,182,182.5,180,184.5,175,180,173]], // 1212556122 
+      [4,1,'G','',[-36.5,-186,-42.5,-174.5,-48.5,-177.5,-43,-189]], // 1040497935 Laboratorio de Control Motor Humano
+      [4,1,'G','',[19.5,-415,30,-410.5,27.5,-404,17,-408.5]], // 1089596001 Academia Docente
+      [4,1,'G','',[163.5,142,178,148.5,176,152.5,162,146]], // 1212556121 
+      [4,1,'G','',[224,123.5,226.5,119,234.5,122.5,232,127.5]], // 1212556134 
+      [4,1,'G','',[-1.5,100,0,105.5,-3,106.5,-4.5,101]], // 1287195901 
+    ]){const ring=[];for(let i=0;i<fl.length;i+=2)ring.push([fl[i],fl[i+1]]);const q=Gs(ring);S.dy=groundMin(q);occMark(q);
+      walls(ring,-2,h,sp==='gym'?K.orange:sp==='lib'?K.white:K.beige,sp==='blue'?K.blue:K.white);
+      const sd=sides(ring);
+      // storeys of windows; the library: glazing behind white fins every 2.6 m
+      if(sp==='lib'){for(const {L,w,a,b,out} of sd){if(L<4)continue;rect(w,.6,L-.6,.6,h-1.2,K.glass);const w2=WL(a,b,out,.12);
+        for(let s=1.3;s<L-.6;s+=2.6)rect(w2,s-.3,s+.3,0,h-.5,K.white);}}
+      else if(sp!=='gym')for(const {L,w} of sd){if(L<4)continue;for(let k=0;k<st;k++)rect(w,.9,L-.9,1.1+k*3.5,2.5+k*3.5,k%2?K.glass2:K.glass);}
+      // a blue portico on the longest side, with a glazed arch
+      if(sp==='blue'){const m=sd.reduce((x,y)=>y.L>x.L?y:x),s=m.L/2;rect(WL(m.a,m.b,m.out,.09),s-5,s+5,0,h-.5,K.blue);arch(WL(m.a,m.b,m.out,.12),s,7,.3,h-1.6,K.glass2);}
+      let cu=0,cv=0;ring.forEach(p=>{cu+=p[0]/ring.length;cv+=p[1]/ring.length;});
+      // the round Instituto de Biología: a ring of roof facets in two tones up to a central drum
+      if(sp==='round'){S.flat(q,h,K.G);const I=p=>{const L=Math.hypot(p[0]-cu,p[1]-cv);return [cu+(p[0]-cu)*8/L,cv+(p[1]-cv)*8/L];};
+        for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length];S.face([V(...a,h),V(...b,h),V(...I(b),h+2.5),V(...I(a),h+2.5)],null,i%2?K.G:K.W);}
+        S.prism(ngon(...G(cu,cv),8,16),h,h+2.5,K.W,K.D);}
+      else if(sp==='pyr'||sp==='barrel'||sp==='gym'){S.flat(q,h,K[rk]);pyramid(S,q,h,sp==='pyr'?4:3,K[rk]);}
+      else S.flat(q,h,K[rk]);}
+    const m=G(0,0);MODELS['utalca-derecho']={x:m[0],y:m[1],h:12};S.dy=0;}
   // ==== hito: ucm-derecho ====
-  p=at('ucm-derecho');{const x=p.x,y=p.y;const r=rng(7);for(let k=0;k<6;k++){const bx=x-120+r()*240,by=y-90+r()*180;if(occAt(bx,by))continue;const w=24+r()*20,d=12+r()*8;reserve(bx,by,w+6,d+6,false);B.prism(rotRect(bx,by,w,d),0.3,7+r()*7,pick(r,[C('#E7E1D3'),C('#D8CBB5'),C('#EFEDE6')]),C('#9D9A93'));}MODELS['ucm-derecho']={x,y,h:14};}
+  // Universidad Católica del Maule, Campus San Miguel, on S. Every building is OpenStreetMap's (building=* ways and
+  // multipolygons inside the campus w110778753), in one frame for the campus, from landmark.py frame ucm-derecho
+  // 584278610 (the old cloister): v toward the campus's north side (NNE), u toward the athletics track. Heights from
+  // building:levels where OSM has them (about 3.5 m a storey), otherwise read from the Esri imagery's shadows; roof
+  // colours from the imagery. The imagery predates the Facultad de Ingeniería (w977018964) and Salas I (w1418118536),
+  // drawn from OSM alone as plain blocks. Detail where the campus is recognisable: the one-storey cloister around the
+  // Patio de las Palmeras and the Patio de los Naranjos (relation 8254810), its ranges under clay-tile gable roofs
+  // over grey block walls with a red plinth (photos on Wikimedia Commons, Ucm 1.jpg 2005 public domain, Ucm 3.jpg
+  // 2006 CC BY-SA 3.0); the two faculties by the north entrance under big hipped roofs; the Facultad de Ciencias
+  // Sociales y Económicas, which teaches law (the marker goes there), with its blue roof strip and the domed rotunda
+  // at its west end; the red roof of the Parque Tecnológico; the gym's ribbed roof; the athletics track. Approximate:
+  // every height without building:levels, the cloister's split into ranges (traced from its outline), the rotunda's
+  // size. Each building stands on its lowest corner (no pads: the campus slopes ~5 m in the model), and the lawns,
+  // lots and track are draped on the terrain (the lawn just under the streets).
+  {const F=localFrame(4106.6,-654.0,74.2*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={block:C('#B9B4A8'),block2:C('#ABA699'),plinth:C('#A9503B'),tile:C('#A35C42'),tile2:C('#8E4F3A'),wood:C('#6B5444'),
+      white:C('#ECE7DC'),cream:C('#E6E1D3'),light:C('#E3E1DA'),grey:C('#C9C5BC'),glass:C('#4D5D66'),glass2:C('#3B4653'),dark:C('#2E2C2B'),
+      roof:C('#C4BFB3'),roofW:C('#D8D6CE'),roofD:C('#5F6468'),roofB:C('#8A6A55'),metal:C('#9AA3A6'),metal2:C('#8C959A'),
+      hall:C('#C3C9CB'),hall2:C('#AEB8BE'),red:C('#B5443A'),red2:C('#A23D34'),blue:C('#3E5C9A'),dome:C('#B8BDBF'),dome2:C('#A3A9AC'),
+      beige:C('#D8CC9F'),atrium:C('#6F95B8'),green:C('#4F8A5E'),lawn:C('#8FA85A'),asph:C('#6E6A65'),track:C('#B9573B'),
+      field:C('#6B9B45'),court:C('#4F7FA8')};
+    const {box,WL,WV,WU,rect,roof}=facade(S,F,{...K,gable:K.wood}),roofM=facade(S,F,{...K,tile:K.hall,tile2:K.hall2,gable:K.grey}).roof;
+    // walls of a counter-clockwise (u,v) ring, a white coping on top; slab adds the flat roof
+    const walls=(ring,h0,h1,col,cop=K.white)=>{for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length],L=Math.hypot(b[0]-a[0],b[1]-a[1]);
+      if(L<.01)continue;const w=WL(a,b,[(b[1]-a[1])/L,-(b[0]-a[0])/L],0);
+      S.face([w.q(0,h0),w.q(L,h0),w.q(L,h1-.5),w.q(0,h1-.5)],w.n,col);S.face([w.q(0,h1-.5),w.q(L,h1-.5),w.q(L,h1),w.q(0,h1)],w.n,cop);}};
+    // a building on its lowest corner: walls, flat roof, storeys of windows (st) drawn as glazed bands
+    const bld=(ring,h,wall,top,st=0,sh=3.5)=>{const q=Gs(ring);S.dy=groundMin(q);occMark(q);walls(ring,-2,h,wall);S.flat(q,h,top);
+      for(let i=0;i<ring.length&&st;i++){const a=ring[i],b=ring[(i+1)%ring.length],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<4)continue;
+        const w=WL(a,b,[(b[1]-a[1])/L,-(b[0]-a[0])/L]);for(let k=0;k<st;k++)rect(w,.9,L-.9,1.1+k*sh,2.5+k*sh,k%2?K.glass2:K.glass);}
+      return S.dy;};
+    // ground: the campus lawn between the blocks (0.10) and the streets (0.12 and up), so the campus roads still
+    // show; above them the lots, the track and its infield, the tennis courts. Draped on the terrain: no pads here, so
+    // E() is already the final terrain
+    {const Lg=new GB(1<<12),lay=(ring,o,c)=>Lg.flat(Gs(ring),o,c);
+      const CAMPUS=[[-78.5,-115.5],[59,-115.5],[59.5,-24],[93.5,-22],[166,-21.5],[236,-19],[252.5,-20],[244.5,-75],[241,-115],[395.5,-114.5],[397.5,240.5],[-77,233]];
+      lay(CAMPUS,.11,K.lawn);NOLOTS.push(Gs(CAMPUS));lay([[59,-115.5],[241,-115],[244.5,-75],[252.5,-20],[236,-19],[166,-21.5],[93.5,-22],[59.5,-24]],.11,K.lawn);
+      for(const r of [[[101.5,229],[99.5,217.5],[110.5,212.5],[135.5,213],[152.5,215.5],[222,213.5],[223,229]],[[23.5,215.5],[24,230],[-73.5,228],[-73.5,214.5]],
+        [[-71,129.5],[-63,129.5],[-65,151],[-65,187],[-68.5,188],[-68.5,204.5],[-67,214.5],[-73.5,214.5]],[[-11,194],[-11,207],[-55,206],[-54.5,193]],
+        [[371.5,224.5],[371.5,235],[246.5,234.5],[246.5,223.5]],[[-42,-70.5],[-9,-47],[-1.5,-43.5],[-2.5,-40.5],[-14,-34],[-43,-37]],
+        [[231.5,-110],[257,-110],[256.5,-58.5],[243.5,-59]],[[85,95.5],[92,105],[91,157],[86.5,157],[84.5,152.5]],
+        [[-78,94],[-78.5,-90],[-72,-90],[-71.5,1.5],[-63.5,2],[-63.5,56],[-61,58],[-61,82]]])lay(r,.155,K.asph);
+      lay([[287,7.5],[290,-6],[296.5,-18],[306.5,-27.5],[319,-34],[332.5,-36.5],[346,-35.5],[358.5,-30],[369,-22],[377,-10.5],[381.5,2],[383.5,98.5],[379.5,111],[372,122.5],[361.5,131],[349,137],[336,138.5],[323,137],[311,132],[300.5,124],[293,113],[290.5,107]],.17,K.track);
+      lay([[294.5,31],[294.5,9.5],[298,-2.5],[305,-13],[315,-21],[326.5,-25.5],[338.5,-26],[350.5,-23.5],[361,-17],[369,-8],[374,3],[376,97],[371.5,108.5],[363.5,118],[353.5,125],[341.5,128.5],[329.5,128.5],[318,125.5],[308,119],[300.5,110],[297.5,105]],.18,K.field);
+      lay([[248,77.5],[249,113.5],[211,114.5],[210.5,80]],.17,K.white);lay([[247,78.5],[248,112.5],[212,113.5],[211.5,81]],.18,K.court);
+      lay([[1.5,193],[2,158],[21.5,158.5],[21,193.5]],.17,K.track);
+      const d=drape(Lg);S.dy=0;
+      for(let t=0;t<d.ni;t+=3){const k=d.I[t]*3;S.face([0,1,2].map(j=>{const m=d.I[t+j]*3;return [d.P[m],d.P[m+1],d.P[m+2]];}),[0,1,0],[d.C[k],d.C[k+1],d.C[k+2]]);}}
+    // the cloister: one-storey ranges under tile gable roofs (eaves 3.6 m), traced from the outline as rectangles
+    // [u0, v0, u1, v1, ridge axis]; where two cross, the roofs simply intersect (ESTETICA §5)
+    {const cl=Gs([[-64,-19],[-53,-19],[-53,-14],[-18,-13],[-18,-34],[-14,-34],[-14,-14],[6,-14],[6,-39],[16,-39],[16,-55],[19,-55],[19,-76],[2,-76],[2,-85],[43,-85],[43,-91],[52,-91],[52,14],[41,14],[41,28],[47,28],[47,62],[24,61],[24,54],[33,54],[33,37],[7,37],[7,30],[27,30],[27,16],[-13,16],[-13,7],[0,7],[0,-7],[-14,-7],[-14,53],[19,53],[19,58],[-50,58],[-50,53],[-17,53],[-17,-2],[-51,-2],[-51,56],[-64,56]]);
+      S.dy=groundMin(cl);occMark(cl);
+      for(const [u0,v0,u1,v1,ax] of [[2,-85,52,-76,'u'],[37,-91,52,14,'v'],[13,-44,37,-32,'u'],[16,-76,23,-44,'v'],[6,-39,12,2,'v'],[0,2,41,16,'u'],
+        [-13,7,0,16,'u'],[-14,-14,6,-7,'u'],[27,16,41,28,'v'],[7,28,47,37,'u'],[33,37,47,62,'v'],[24,54,33,61,'u'],[-17,-2,-14,53,'v'],
+        [-50,53,19,58,'u'],[-64,-19,-51,56,'v'],[-53,-14,-17,-2,'u'],[-18,-34,-14,-13,'v']]){
+        const wd=ax==='u'?v1-v0:u1-u0,eave=wd<6?3:3.6;box(u0,v0,u1,v1,-2,eave,K.block,K.block,false);
+        for(const w of [WV(v0,-1),WV(v1,1)])rect(w,u0,u1,-.3,.6,K.plinth);for(const w of [WU(u0,-1),WU(u1,1)])rect(w,v0,v1,-.3,.6,K.plinth);
+        // small dark windows along the long sides, a door now and then
+        const long=ax==='u'?[[WV(v0,-1,.09),u0,u1],[WV(v1,1,.09),u0,u1]]:[[WU(u0,-1,.09),v0,v1],[WU(u1,1,.09),v0,v1]];
+        if(wd>=6)for(const [w,s0,s1] of long)for(let s=s0+2.5,k=0;s<s1-2;s+=4,k++)rect(w,s-.5,s+.5,k%5===2?.6:1.2,k%5===2?2.6:2.6,k%5===2?K.wood:K.glass2);
+        roof(ax,ax==='u'?u0:v0,ax==='u'?u1:v1,ax==='u'?v0:u0,ax==='u'?v1:u1,eave,wd*.29,4);}}
+    // north entrance: Ciencias Básicas (4 storeys) and Ciencias de la Salud, white blocks under big hipped roofs; the
+    // Salud rotunda (w581439272)
+    {bld([[27,170],[57,170],[56.5,181],[68,175.5],[67.5,220],[26.5,219.5]],14,K.light,K.roofW,4);pyramid(S,R(26,169.5,68.5,220.5),14,6,K.roofW);
+      bld([[200,182.5],[207,188],[214.5,182.5],[214.5,179],[221.5,179],[222,213.5],[182.5,215],[182,207],[177,207],[177.5,215],[152.5,215.5],[151.5,181],[157.5,181],[157.5,170.5],[169.5,170],[170,180.5]],10.5,K.light,K.roofW,3);
+      pyramid(S,R(181.5,178.5,222.5,215.5),10.5,6,K.roofW);
+      bld([[196,182],[193.5,184],[192,187.5],[195.5,197.5],[185.5,202.5],[177,203.5],[176.5,180.5]],12,K.cream,K.dome,2);}
+    // Aprendizaje Autónomo (dark roof), Edificio de Aulas (white and green roofs), library, the north-west halls
+    bld([[69.5,178.5],[85,178],[89.5,182],[94.5,194.5],[109.5,194.5],[110.5,212.5],[99.5,217.5],[68,219]],11,K.grey,K.roofD,3);
+    bld([[113.5,199],[114.5,173],[140.5,173.5],[140.5,183],[134.5,183],[135.5,213],[114.5,212.5]],11,K.light,K.roofW,3);S.quadXY(R(114.6,173.6,140.4,182.9),11.03,K.green);
+    bld([[126.5,147.5],[116.5,144.5],[115.5,101],[122.5,100.5],[122.5,97.5],[132.5,97.5],[134,145.5]],8,K.light,K.roofW,2);S.quadXY(R(122,105,128,140),8.03,K.grey);
+    bld([[-58.5,152.5],[-14,153],[-13.5,186],[-58.5,185]],7,K.grey,K.hall,0);roofM('u',-58.5,-14,152.5,186,7,2.2,6);
+    bld([[-61,82],[-61,58],[-16.5,58],[-16.5,74],[-47,74],[-47,82]],6.5,K.grey,K.hall2,1,3);
+    bld([[-37.5,82],[-37.5,125.5],[-67.5,125.5],[-67.5,94.5],[-61,94.5],[-61,82]],6.5,K.grey,K.hall,1,3);
+    // gym: ribbed metal roof in bays of two tones
+    {bld([[54.5,152],[54.5,133.5],[25.5,133],[26,95],[85,95.5],[84.5,152.5]],11,K.grey,K.metal,0);
+      for(let u=26,k=0;u<84.5;u+=4.5,k++)S.quadXY(R(u,95.5,Math.min(84.5,u+4.5),u<54.5?133:152),11.03,k%2?K.metal2:K.metal);}
+    // Educación: a long tile range; the smaller blocks around the cloister
+    {bld([[3.5,153.5],[3.5,121],[0.5,120.5],[1.5,88],[4,88],[3.5,61.5],[14,61],[14.5,86.5],[20,87],[19.5,90.5],[15,90],[15,92.5],[12.5,92.5],[12,116],[16.5,116.5],[16,135],[20.5,135.5],[20.5,138.5],[15.5,139],[14.5,153.5]],4.5,K.block,K.tile,1);
+      roof('v',61.5,153.5,2,14.5,4.5,2.6,4);}
+    bld([[48,93],[47.5,61.5],[64,62],[63,93.5]],6,K.grey,K.roof,1);bld([[43.5,95],[43.5,91],[24,91],[24.5,80.5],[33.5,80],[33,61.5],[44.5,61.5],[45,85.5],[47.5,85.5],[48,95]],5,K.block,K.roofB,1);
+    bld([[-14,30.5],[6,31],[7,29.5],[7.5,50.5],[-14,50.5]],6,K.light,K.roofW,1);bld([[79,77],[84.5,82],[85,90],[76.5,90],[71.5,86.5]],4,K.grey,K.roof,1);
+    // Facultad de Ciencias Sociales y Económicas (law): three storeys, the blue roof strip along its west side, the
+    // rotunda with a stepped silver dome at the west end
+    {bld([[93.5,50],[90.5,50],[90.5,2],[70,2.5],[69.5,-9.5],[103,-9.5],[103.5,57],[93.5,57]],10.5,K.cream,K.roofW,3);
+      S.quadXY(R(90.6,2.5,93.5,49.8),10.53,K.blue);S.quadXY(R(93.5,2.5,95.5,56.5),10.53,K.grey);
+      const c=G(70,-3.5);[[5,0,11,K.cream],[5.4,11,11.6,K.white],[4.6,11.6,13,K.dome],[3.6,13,14.2,K.dome2],[2.2,14.2,15.2,K.dome],[.8,15.2,16.2,K.white]]
+        .forEach(([r,h0,h1,col])=>S.prism(ngon(c[0],c[1],r,8,Math.PI/8),h0,h1,col,col));
+      for(const [u,v] of [[97,57],[97,-9.5]])rect(WV(v,v>0?1:-1,.12),u-1.5,u+1.5,.3,3,K.glass2);
+      const m=G(96,24);MODELS['ucm-derecho']={x:m[0],y:m[1],h:15};}
+    // Parque Tecnológico: red hipped roof with a dark skylight
+    bld([[115.5,54.5],[116,29.5],[159,30.5],[158.5,54],[143.5,53.5],[143.5,39.5],[128,39],[128,54.5]],11,K.light,K.red,3);
+    pyramid(S,R(115,29,159.5,55),11,3.2,K.red);S.quadXY(R(131,38,144,46),11.03,K.red2);
+    bld([[135,-16],[159.5,-16],[159.5,-7],[177,-7],[177,7],[135,6.5]],10.5,K.grey,K.roofD,3);
+    bld([[116.5,-11.5],[128.5,-11.5],[128.5,11],[157,11],[157,20],[116.5,20]],7,K.cream,K.roofB,2);
+    bld([[69.5,-21.5],[91,-21.5],[91,-16.5],[69.5,-16]],4,K.light,K.roofW,1);bld([[117.5,-56.5],[126,-56.5],[125.5,-31],[118,-31]],5,K.light,K.roof,1);
+    bld([[143.5,77.5],[147,69.5],[164,78],[163,81],[183,90.5],[179.5,97.5],[158.5,87.5],[160,85]],4,K.light,K.roof,1);
+    // the beige building by Av. San Miguel with its glazed atrium; Medicina and the finance offices in former houses
+    bld([[76,-86],[84.5,-86],[84,-93],[116,-93.5],[116,-78.5],[122.5,-79],[122.5,-72.5],[128,-72.5],[128,-67],[121.5,-67],[121.5,-64],[115,-64],[115.5,-45],[109,-45],[109,-36.5],[100,-36.5],[99.5,-63.5],[89,-63],[89.5,-35.5],[73,-35],[72.5,-67.5],[76,-67.5],[76,-73.5],[79,-73.5],[79,-75.5],[76,-75.5]],8,K.cream,K.beige,2);
+    pyramid(S,R(90,-80,106,-66),8,3,K.atrium);
+    bld([[210.5,-58.5],[206,-59.5],[206,-82],[202.5,-82],[202.5,-101],[231.5,-101],[231.5,-90.5],[234.5,-90.5],[234.5,-82.5],[229.5,-82.5],[229.5,-62.5],[222,-62.5],[222,-48],[210.5,-47.5]],6.5,K.cream,K.roofB,2,3);
+    bld([[134.5,-78.5],[136.5,-78.5],[136.5,-95.5],[148.5,-95.5],[148.5,-80],[154.5,-80],[154.5,-69.5],[146,-69.5],[146,-60],[134.5,-60]],4.5,K.cream,K.roofB,1);
+    bld([[167.5,-89.5],[167.5,-98.5],[175,-98],[174.5,-73],[155.5,-73.5],[156,-90]],4.5,K.cream,K.roofB,1);
+    // new east side: Ingeniería (4 storeys), Salas I, the architecture classrooms
+    bld([[242,210.5],[229,210],[229,200.5],[244,201],[244,193],[373,194.5],[371.5,201],[367.5,206],[361,210],[354,210.5],[353.5,214],[242,212.5]],14,K.light,K.roof,4);
+    bld([[272,-93.5],[364.5,-91.5],[364.5,-72.5],[369.5,-72.5],[369.5,-66.5],[365,-65.5],[364.5,-46.5],[271.5,-48]],4.5,K.light,K.roofW,1);
+    for(const r of [[[238.5,146.5],[257,156.5],[253,163.5],[234.5,154]],[[209.5,141.5],[220.5,146.5],[217.5,153.5],[206,148.5]],[[227.5,142.5],[233.5,145.5],[228,157.5],[221.5,154.5]]])bld(r,3.5,K.grey,K.roofD,0);
+    S.dy=0;}
   // ==== fin de los hitos ====
   B.dy=0;S.dy=0;
 }
@@ -993,15 +2298,90 @@ function alamedaPark(B){const TR=[],C=hex,stone=C('#D2CAB8'),iron=C('#3B4240'),w
   B.dy=0;return TR;
 }
 function buildCerro(B){ // Cerro La Virgen: the hill is real terrain now; the statue stands at the sanctuary
-  const p=BYID['cerro-la-virgen'];const cx=p.x,cy=p.y;const top=groundMin(rotRect(cx,cy,5,5));
-  B.prism(rotRect(cx,cy,5,5),top-3,top+3,hex('#D9D3C6'),hex('#D9D3C6'));B.prism(ngon(cx,cy,1.3,8),top+3,top+13,hex('#F6F4EE'),hex('#F6F4EE'));pyramid(B,ngon(cx,cy,1.5,8),top+13,2.2,hex('#F6F4EE'));
-  MODELS['cerro-la-virgen']={x:cx,y:cy,h:top+16};
+  // The sanctuary on the hill's eastern shoulder, ~165 m above the plaza, drawn on its own builder without the window
+  // shader (added to the scene here; S is not in scope). Plan from OpenStreetMap (statue node "Virgen Maria",
+  // monument node "Virgen del Carmen", the sanctuary's area w203379398, viewpoint) and the Esri imagery: a paved
+  // square with the statue on a stepped platform; north of it a gravel esplanade with rows of stone benches facing an
+  // open-air stone chapel on its west side, flanked by arched walls, with a bell gable and an iron cross; a walk comes
+  // up from the parking loop to the south. Frame localFrame(-3401, 118, 0): v east (toward the city, where the Virgin
+  // looks), u south. Heights and colours from photos on Wikimedia Commons (2024-10 and 2025-04, CC0), measured
+  // against the pedestal's shaft (~2.7 m wide): three steps of 0.25 m, a base of 1.3 m and a shaft of 3.4 m in dark
+  // stone covered with white votive plaques; the white Virgin with the Child, ~4.8 m, her right arm raised with a
+  // rosary; the chapel ~7 × 9.5 m, eaves 4.8 m, ridge 7 m, bell gable 9.4 m plus the cross. Approximate: the
+  // terraces' outline and the chapel's depth (trees hide them in the imagery), the number of benches. The terrain is
+  // built before buildCerro runs, so padAt can't level it: the terraces are platforms on the slope with stone
+  // retaining walls, as the real ones are. No night glow (no source that the statue is lit).
+  const S=new GB(1<<14),C=hex;
+  const F=localFrame(-3401,118,0),{G,Gs,R}=F;
+  const K={stone:C('#6E7068'),stone2:C('#5E605A'),plaque:C('#E2DED3'),plaque2:C('#C9C5BA'),white:C('#ECE7DC'),whiteSh:C('#D3CDC0'),
+    paving:C('#CFC9BB'),step:C('#D9D3C5'),step2:C('#C6BFAF'),gravel:C('#BDB3A0'),bench:C('#D3CDC0'),bench2:C('#B3AD9F'),
+    wall:C('#8A8373'),chapel:C('#7D8173'),chapel2:C('#6C7064'),tile:C('#5E5148'),tile2:C('#524640'),grille:C('#3F5049'),
+    bell:C('#2E2C2B'),iron:C('#3A3A3A'),pole:C('#8A8A86'),red:C('#C8352B'),blue:C('#2D4E9A'),flagW:C('#F0EDE6'),rosary:C('#4A3A30')};
+  // façade vocabulary; the roof's gable copings in the chapel's darker stone
+  const {box,WL,WV,rect,arch,roof}=facade(S,F,{tile:K.tile,tile2:K.tile2,white:K.chapel2,gable:K.chapel});
+  // a terrace: flat top just above the highest ground under it, retaining walls down into the slope
+  const terrace=(u0,v0,u1,v1,top)=>{let hi=-1e9,lo=1e9;
+    for(let a=0;a<=6;a++)for(let b=0;b<=6;b++){const g=G(u0+(u1-u0)*a/6,v0+(v1-v0)*b/6),e=E(g[0],g[1]);hi=Math.max(hi,e);lo=Math.min(lo,e);}
+    const q=R(u0,v0,u1,v1);S.dy=0;S.prism(q,lo-2,hi+.2,K.wall,top);occMark(q);return hi+.2;};
+  const faces=(u0,v0,u1,v1,o)=>[[[u0,v1],[u1,v1],[0,1]],[[u1,v1],[u1,v0],[1,0]],[[u1,v0],[u0,v0],[0,-1]],[[u0,v0],[u0,v1],[-1,0]]].map(([a,b,out])=>WL(a,b,out,o));
+  // the statue's square, and the esplanade with the chapel to the north of it (it stands higher: the ground rises)
+  const h1=terrace(-8,-8,15,15,K.paving),h2=terrace(-26.5,-12,-8,22,K.gravel);
+  // ---- the monument, on the square ----
+  S.dy=h1;
+  box(-5.5,-5.5,5.5,5.5,0,.25,K.step2,K.step);box(-4.8,-4.8,4.8,4.8,.25,.5,K.step2,K.step2);box(-4.1,-4.1,4.1,4.1,.5,.75,K.step2,K.step);
+  // pedestal: base, cap, shaft, cornice in dark stone; votive plaques in two tones over every face, the decree's
+  // inscription (a large white slab) on the front
+  box(-2.1,-2.1,2.1,2.1,.75,2.05,K.stone,K.stone);box(-2.25,-2.25,2.25,2.25,2.05,2.25,K.stone2,K.stone);
+  box(-1.35,-1.35,1.35,1.35,2.25,5.1,K.stone,K.stone);box(-1.55,-1.55,1.55,1.55,5.1,5.45,K.stone2,K.stone2);
+  for(const w of faces(-2.1,-2.1,2.1,2.1,.06))for(let r=0;r<2;r++)for(let c=0;c<6;c++){const s=.15+c*.65+(r%2)*.3;if(s+.55>w.L-.1)continue;rect(w,s,s+.55,.95+r*.5,1.35+r*.5,(r+c)%2?K.plaque2:K.plaque);}
+  for(const w of faces(-1.35,-1.35,1.35,1.35,.06))for(let r=0;r<4;r++)for(let c=0;c<4;c++){const s=.12+c*.64+(r%2)*.2;if(s+.52>w.L-.08)continue;rect(w,s,s+.52,2.5+r*.6,2.95+r*.6,(r+c)%2?K.plaque2:K.plaque);}
+  rect(WV(1.35,1,.12),-.6,.6,3,4.5,K.white);
+  // the Virgin, facing the city: a cloud, the robe in two stepped stages, torso, shoulders and veil, head; her right
+  // arm (+u) raised in three steps with the rosary hanging from the hand; the Child on her left arm, arms out
+  const H=5.45,ring=(r,h0,h1,col)=>S.prism(ngon(...G(0,0),r,8,Math.PI/8),H+h0,H+h1,col,col);
+  ring(.95,0,.35,K.whiteSh);ring(.8,.35,1.7,K.white);ring(.68,1.7,2.9,K.whiteSh);
+  box(-.55,-.35,.55,.35,H+2.9,H+3.55,K.white,K.white);box(-.65,-.42,.65,.36,H+3.5,H+3.9,K.whiteSh,K.whiteSh);
+  box(-.34,-.4,.34,.26,H+3.9,H+4.45,K.white,K.white);
+  box(.5,-.2,.95,.25,H+3.4,H+3.95,K.white,K.white);box(.75,-.2,1.2,.25,H+3.9,H+4.35,K.whiteSh,K.whiteSh);box(.95,-.2,1.42,.25,H+4.3,H+4.85,K.white,K.white);
+  box(1.12,.25,1.47,.6,H+2.9,H+4.75,K.rosary,K.rosary);
+  box(-1.05,-.1,-.35,.55,H+2.6,H+3.4,K.white,K.white);box(-.9,.02,-.5,.45,H+3.4,H+3.8,K.whiteSh,K.whiteSh);box(-1.65,.1,-.9,.5,H+3.15,H+3.55,K.white,K.white);
+  // two Chilean flags flanking the monument
+  for(const u of [-4.6,4.6]){box(u-.2,4.8,u+.2,5.2,0,8.2,K.pole,K.pole);const sg=Math.sign(u);
+    box(Math.min(u,u+sg*2.1),4.95,Math.max(u,u+sg*2.1),5.05,7.1,7.8,K.red,K.red);
+    box(Math.min(u,u+sg*.7),4.95,Math.max(u,u+sg*.7),5.05,7.8,8.5,K.blue,K.blue);
+    box(Math.min(u+sg*.7,u+sg*2.1),4.95,Math.max(u+sg*.7,u+sg*2.1),5.05,7.8,8.5,K.flagW,K.flagW);}
+  // ---- the open-air chapel and its esplanade ----
+  S.dy=h2;
+  // stone benches in four blocks of eleven rows, facing the chapel
+  for(const [u0,u1] of [[-22,-19.4],[-18.9,-16.3],[-14.7,-12.1],[-11.6,-9]])for(let k=0;k<11;k++){const v=1.5+k*1.75;box(u0,v,u1,v+.6,0,.55,K.bench2,K.bench);}
+  // the chapel: stone walls, a dark tiled gable roof running east-west, the front (east) with an arched iron grille
+  // in a darker stone frame
+  box(-20.5,-10.5,-13.5,-1,0,4.8,K.chapel,K.chapel,false);roof('v',-10.5,-1,-20.5,-13.5,4.8,2.2,3.2);
+  for(const w of [WV(-1,1),WV(-10.5,-1)])rect(w,-20.5,-13.5,0,.6,K.chapel2);
+  arch(WV(-1,1,.06),-17,3.8,0,4.2,K.chapel2);arch(WV(-1,1,.12),-17,3,0,3.8,K.grille);
+  // bell gable south of the front: two arched openings, a small pyramid roof and the cross
+  box(-13.5,-4.4,-10.3,-1.3,0,9.4,K.chapel2,K.chapel2);pyramid(S,R(-13.75,-4.65,-10.05,-1.05),9.4,1.1,K.tile);
+  for(const [v,sg] of [[-1.3,1],[-4.4,-1]])for(const s of [-12.55,-11.25])arch(WV(v,sg),s,.75,7,8.7,K.bell);
+  box(-12.1,-3.05,-11.7,-2.65,10.2,12.1,K.iron,K.iron);box(-12.6,-3.05,-11.2,-2.65,11.2,11.6,K.iron,K.iron);
+  // arched walls on both sides of the chapel: piers, a beam, and pixel arches stepped into the openings
+  const arcade=(piers,u0,u1)=>{box(u0,-2.6,u1,-2,3.4,4.4,K.chapel,K.chapel2);
+    for(let i=0;i<piers.length;i++){const [a,b]=piers[i];box(a,-2.6,b,-2,0,3.4,K.chapel,K.chapel);
+      if(i<piers.length-1){const c=piers[i+1][0];box(b,-2.6,b+.45,-2,2.7,3.4,K.chapel,K.chapel);box(c-.45,-2.6,c,-2,2.7,3.4,K.chapel,K.chapel);
+        box(b+.45,-2.6,b+.9,-2,3.05,3.4,K.chapel,K.chapel);box(c-.9,-2.6,c-.45,-2,3.05,3.4,K.chapel,K.chapel);}}};
+  arcade([[-10.3,-9.6],[-7.8,-7.1],[-5.3,-4.6]],-10.3,-4.6);arcade([[-21.5,-20.5],[-25.3,-24.3]].reverse(),-25.3,-20.5);
+  // ---- the walk up from the parking loop, in steps that follow the slope ----
+  {const a=[15,3],b=[47,-8],L=Math.hypot(b[0]-a[0],b[1]-a[1]),du=(b[0]-a[0])/L,dv=(b[1]-a[1])/L,n=6;S.dy=0;
+    for(let i=0;i<n;i++){const p0=[a[0]+du*L*i/n,a[1]+dv*L*i/n],p1=[a[0]+du*L*(i+1)/n,a[1]+dv*L*(i+1)/n];
+      const q=Gs([[p0[0]-dv*1.2,p0[1]+du*1.2],[p1[0]-dv*1.2,p1[1]+du*1.2],[p1[0]+dv*1.2,p1[1]-du*1.2],[p0[0]+dv*1.2,p0[1]-du*1.2]]);
+      const es=q.map(p=>E(p[0],p[1]));S.prism(q,Math.min(...es)-1.5,Math.max(...es)+.12,K.step2,i%2?K.step:K.paving);}}
+  S.dy=0;scene.add(new T.Mesh(S.geo(),matFlat));
+  const c=G(0,0);MODELS['cerro-la-virgen']={x:c[0],y:c[1],h:h1+12};
 }
 // scrub and wood on steep ground (wildAt), in clumps
 function wildTrees(){
   const r=rng(5),T0=[];const n=(x,y)=>0.5+0.5*Math.sin(x*0.011+y*0.017)*Math.cos(x*0.006-y*0.009+1.3);
   for(let x=XMIN;x<XMAX;x+=13)for(let y=YMIN;y<YMAX;y+=13){const w=wildAt(x,y);if(w<0.15)continue;
-    if(r()>w*0.55*(0.25+n(x,y)))continue;const tx=x+r()*12,ty=y+r()*12;if(blockAt(tx,ty)>=0||nearStreet(tx,ty,2))continue;T0.push([tx,ty,0.8+r()*.7,r()]);}
+    if(r()>w*0.55*(0.25+n(x,y)))continue;const tx=x+r()*12,ty=y+r()*12;if(blockAt(tx,ty)>=0||nearStreet(tx,ty,2)||occAt(tx,ty))continue;T0.push([tx,ty,0.8+r()*.7,r()]);}
   return T0;
 }
 

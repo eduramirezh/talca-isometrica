@@ -130,11 +130,15 @@ Para publicar: sube `dist/talca.html`, el fragmento, no `index.html`.
 - **El contorno de OSM puede incluir estacionamientos.** El del Mall Plaza Maule abarca un estacionamiento en superficie (por el subterráneo). Contraste con la imagen.
 - **`buildCerro()` corre después del terreno.** Ahí `padAt` ya no sirve y `S` no está al alcance: el santuario se apoya en `E()`/`groundMin`, con muros de contención, en su propio `GB`.
 - **El punto de un edificio junto a la Alameda.** `alamedaPlan()` centra la plaza de cada tramo de la Alameda en el `MODELS` cuya x cae en el tramo y cuya y está a menos de 20 m de su centro. El punto de un edificio vecino no debe caer ahí por accidente.
+- **Explanadas vecinas.** Los nodos del relieve están cada 40 m y `applyPads()` fija todos los que quedan a menos de 40 m de la caja: dos explanadas a menos de ~80 m comparten nodos y gana la última registrada. Con alturas distintas, una queda inclinada o enterrada. Los hitos vecinos registran la misma altura (`PADS.push([x0,y0,x1,y1,h])`): la plaza, la Catedral y el lado norte usan `MODELS['plaza-de-armas'].pad`.
+- **OSM no siempre trae los patios.** El contorno de la Casa de la Independencia (w214849869) no tiene sus patios interiores; salen de `satellite.py`.
 - **El SRTM es de superficie.** Mide techos y árboles. `elevation.py` los quita con una apertura morfológica; si se cambia la fuente, revisa `python pipeline/elevation.py stats`.
 
 ## Ideas pendientes
 
-- Subir a `facade()` los ayudantes que hoy se repiten dentro de los bloques: techo a cuatro aguas (`hip`, en la Ex Cárcel y el Liceo), muros de un contorno cóncavo con tapa (`walls`/`extrude`, en el Mall, los campus y el Hospital), muros de un polígono hacia afuera (`edges`, Mercado y Juzgado de Familia), filas de ventanas por piso (`windows`, Corte y Garantía) y relieve real en fachada (`rib`, Hospital).
+- Subir a `facade()` los ayudantes que hoy se repiten dentro de los bloques: techo a cuatro aguas (`hip`, en la Ex Cárcel y el Liceo), muros de un contorno cóncavo con tapa (`walls`/`extrude`, en el Mall, los campus y el Hospital), muros de un polígono hacia afuera (`edges`, Mercado y Juzgado de Familia), filas de ventanas por piso (`windows`, Corte y Garantía) y relieve real en fachada (`rib`, Hospital), palmera y bandera (`palmS`, `flagS`, Plaza de Armas) y contorno hacia adentro (`inset`, Plaza de Armas).
+- `applyPads()` que mezcle las explanadas vecinas en vez de sobrescribirlas (trampa «Explanadas vecinas»).
+- La antigua Intendencia (1 Norte con 1 Oriente, OSM w275506476, 1910–1916), en reconstrucción desde 2021: modelarla cuando se sepa cómo quedó.
 - El Río Claro con su trazado de OSM, el Parque Río Claro y la ribera (botes, Las Viejas Cochinas).
 - Polígonos reales de edificios desde OSM (`building=*`) para el centro, en vez de los generados.
 - Agregar la 7ª Notaría (30 Oriente 1528), la clínica jurídica de la U. de Talca, el SML y el INDH Maule cuando haya direcciones confirmadas.
