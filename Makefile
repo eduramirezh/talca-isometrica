@@ -1,5 +1,6 @@
 # Talca Isométrica — tareas del pipeline. Ver README.md.
 PY ?= python3
+PORT ?= 8765
 .PHONY: all fetch data pois build validate diagnostics shots serve clean
 
 all: data pois build          ## pipeline completo (requiere raw/: make fetch)
@@ -27,8 +28,9 @@ shots: build                  ## capturas de referencia en shots/ (requiere npm 
 	$(PY) tools/screenshot.py shots/corte.png --hash corte-apelaciones
 	$(PY) tools/screenshot.py shots/movil-oscuro.png --size 390x844 --dark
 
-serve: build                  ## sirve dist/ en http://localhost:8000
-	cd dist && $(PY) -m http.server 8000
+serve: build                  ## sirve dist/ en http://localhost:$(PORT) y lo abre en el navegador (otro puerto: make serve PORT=9000)
+	(sleep 1 && $(PY) -m webbrowser -t http://localhost:$(PORT)/ >/dev/null) & \
+	cd dist && $(PY) -m http.server $(PORT)
 
 clean:
 	rm -rf shots diagnostics pipeline/__pycache__

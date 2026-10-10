@@ -17,7 +17,7 @@ No hace falta descargar nada para ver o modificar la página: los datos procesad
 
 ```bash
 make build          # -> dist/index.html (página completa) y dist/talca.html (fragmento para Claude)
-make serve          # abre http://localhost:8000
+make serve          # sirve en http://localhost:8765 y lo abre en el navegador
 ```
 
 Para regenerar todo desde las fuentes originales:

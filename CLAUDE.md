@@ -6,7 +6,7 @@ Maqueta isométrica de Talca (Chile) con lugares jurídicos e icónicos. Lee pri
 
 ```bash
 make build                      # src/template.html + data/ + config/ -> dist/talca.html y dist/index.html
-make serve                      # http://localhost:8000
+make serve                      # http://localhost:8765
 make pois build                 # tras editar pipeline/pois.py
 make data build                 # tras editar config/trazados.json o process_geometry.py (requiere raw/)
 make fetch                      # descarga raw/ (solo la primera vez)
