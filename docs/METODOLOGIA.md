@@ -146,14 +146,14 @@ En 1 Norte los impares están al lado norte. La Alameda es la 4 Norte.
   3. Se descarta el lote si invade otra calle, si sale de la manzana o si choca con algo ya construido. Para esto último hay un raster de ocupación de 2,5 m.
 
   Todo usa números aleatorios con semilla, así que la ciudad sale idéntica en cada carga. El resultado: ~72.000 edificios y ~2,1 millones de vértices en un solo buffer.
-- **Hitos.** Hay 19 modelos hechos a mano. El Estadio Fiscal sigue su planta real y la estética de pixel art (sección 9); los demás todavía son simplificados: entre ellos la Catedral, la Corte con su pórtico, los tribunales penales, la Fiscalía, el Juzgado de Familia, la ex Cárcel con muros y torres de guardia, el Mercado, la Casa de la Independencia, el Estadio, la Estación, el Teatro, La Victoria, el Hospital y la estatua del Cerro La Virgen. Reservan su huella y nivelan el terreno antes de que se genere la ciudad.
+- **Hitos.** Hay 19 modelos hechos a mano. El Estadio Fiscal y la Catedral siguen su planta real y la estética de pixel art (sección 9 y [ESTETICA.md](ESTETICA.md)); los demás todavía son simplificados: entre ellos la Corte con su pórtico, los tribunales penales, la Fiscalía, el Juzgado de Familia, la ex Cárcel con muros y torres de guardia, el Mercado, la Casa de la Independencia, el Estadio, la Estación, el Teatro, La Victoria, el Hospital y la estatua del Cerro La Virgen. Reservan su huella y nivelan el terreno antes de que se genere la ciudad.
 - **Árboles.** Unos 76.000, en dos mallas instanciadas: árboles redondos en parques, patios y laderas, y álamos en riberas y en la Alameda.
 - **Noche.** Las ventanas se dibujan en el shader (patrón por piso y vano, y una semilla por fachada que decide cuáles se encienden). También hay faroles cada 35 m en las calles principales.
 - **Interfaz.** Los marcadores y etiquetas son elementos del DOM proyectados en cada cuadro, ordenados por prioridad para no superponerse. El lector de direcciones usa `config/grid_lines.json`.
 
 ## 9. Modelos de hitos
 
-Los hitos se están rehaciendo uno por uno: sobre su planta real y con estética de pixel art. El primero fue el Estadio Fiscal (octubre de 2026). Este es el procedimiento que se siguió y que conviene repetir.
+Los hitos se están rehaciendo uno por uno: sobre su planta real y con estética de pixel art. El primero fue el Estadio Fiscal y el segundo la Catedral (octubre de 2026). Este es el procedimiento que se siguió y que conviene repetir. Los criterios visuales (escala, lenguaje, paleta) están en [ESTETICA.md](ESTETICA.md).
 
 ### 9.1 Planta
 
@@ -173,9 +173,11 @@ G(u,v) = [X + u·sin A + v·cos A,  Y − u·cos A + v·sin A]
 
 En el estadio, la cancha (vía 815575960) da X = −780,8, Y = 684,8 y A = 64,8°. Las medidas salen de ahí: cancha de 105 × 67 m; pista con radio interior de 36,2 m, exterior de 46,4 m y rectas de 85,8 m; gradería de 20 m de fondo en la curva sur y el lado oriente, y de 8 m en la cabecera norte.
 
+En la Catedral, el edificio (vía 114237041) da X = −102,9, Y = 32,3 y A = 179,3°: v corre por la nave hacia el ábside, al poniente, y u hacia 1 Norte. La fachada queda en v = −29, la torre (vía 798980080) en la esquina de 1 Norte y la escalinata (vía 799225255) delante. En la plantilla, `localFrame(X, Y, A)` devuelve `G`, `V`, `N3` y `R` para cualquier hito.
+
 ### 9.3 Fotos y fuentes: el estado actual
 
-La planta no dice alturas, techos ni colores. `python pipeline/landmark.py photos <id> ["consulta"]` busca en Wikimedia Commons y guarda las miniaturas en `diagnostics/fotos/<id>/`, más recientes primero, con un `indice.txt` (fecha, licencia y enlace). Si la etiqueta `wikimedia_commons` de OSM nombra una categoría, úsela como consulta. Complemente con prensa o fichas técnicas sobre remodelaciones.
+La planta no dice alturas, techos ni colores. `python pipeline/landmark.py photos <id> ["consulta"]` busca en Wikimedia Commons y guarda las miniaturas en `diagnostics/fotos/<id>/`, más recientes primero, con un `indice.txt` (fecha, licencia y enlace). Si la etiqueta `wikimedia_commons` de OSM nombra una categoría, búsquela con `incategory:`: `landmark.py photos catedral 'incategory:"Catedral_de_San_Agustín,_Talca"'` (con el nombre solo, Commons hace una búsqueda de texto). Complemente con prensa o fichas técnicas sobre remodelaciones.
 
 **La imagen satelital puede tener años.** La de Esri (`satellite.py`) muestra el estadio antes de las obras de 2017: galería oriente descubierta y techo gris en la tribuna. Las fotos de 2021 a 2025 y la ficha de StadiumDB muestran el estado actual. Ahora una membrana de PVC cubre la galería oriente y ambas cabeceras, la tribuna está techada entera y hay escaleras amarillas, asientos rojos con filas negras y cuatro torres de iluminación. Use el satélite para plantas y las fotos fechadas para todo lo que está sobre el suelo.
 
@@ -183,13 +185,15 @@ Anote de dónde sale cada detalle. Los detalles sin fuente se marcan como aproxi
 
 ### 9.4 Modelo
 
-- **Estética de pixel art.**
-  - Formas escalonadas en vez de rampas: cada fila de una gradería es un peldaño.
-  - Dos tonos alternados donde la realidad tiene ritmo: filas, franjas de corte del pasto, paños de techo cada 12 m.
+- **Estética de pixel art.** Los criterios completos están en [ESTETICA.md](ESTETICA.md). En resumen:
+  - Formas escalonadas en vez de rampas y curvas lisas: cada fila de una gradería es un peldaño, cada arco un rectángulo con dos escalones.
+  - Dos tonos alternados donde la realidad tiene ritmo: filas, franjas de corte del pasto, paños de techo, bandas de un vitral.
+  - Molduras blancas (pilastras, bandas, cornisas) como contorno; vanos oscuros y fríos.
   - Líneas más anchas que las reales (0,5 m en vez de 0,12) para que se lean a ~1 m por píxel, el zoom de la ficha.
   - Detalles que ocupen 2 o 3 píxeles: paneles de focos, puertas, pilares.
-  - Paleta en un objeto local `K`, tomada de las fotos.
-- **Constructor.** `buildModels(B, S)` recibe dos. `B` pasa por el sombreador de ventanas procedurales, que pinta ventanas en toda cara vertical a más de 1 m del suelo. `S` no pasa por él. Use `S` para lo que tiene muchas caras verticales que no son fachadas, como las contrahuellas de una gradería.
+  - Paleta en un objeto local `K`, tomada de las fotos y de la tabla de ESTETICA.md §4.
+- **Constructor.** `buildModels(B, S)` recibe dos. `B` pasa por el sombreador de ventanas procedurales, que pinta ventanas en toda cara vertical a más de 1 m del suelo. `S` no pasa por él. Use `S` para lo que tiene muchas caras verticales que no son fachadas, como las contrahuellas de una gradería, y para los edificios cuyas ventanas se dibujan a mano, como la Catedral.
+- **Alturas.** Las etiquetas `height` y `building:levels` de OSM no sirven para hitos: la torre de la Catedral dice 17 m y mide ~39. Mida en una foto frontal con una medida conocida de la planta como escala (el ancho de la torre) y anote la estimación en el comentario.
 - **Huella y terreno.** `occMark(polígono)` con la huella real, no un rectángulo, para que la ciudad y los árboles no la invadan. `padAt(caja)` nivela el terreno y su altura va en `S.dy` (o `B.dy`). Las capas planas del modelo van a 0,30–0,43 m sobre la explanada, separadas al menos 0,03 m para evitar parpadeo.
 - **Recintos.** Si el hito está dentro de un recinto cercado (el polígono OSM del recinto deportivo, simplificado), agregue ese polígono a `NOLOTS`: la ciudad no genera casas ahí, pero sí árboles.
 - **Luces.** Los puntos que deben brillar de noche van a `GLOW` (x, altura absoluta, y). Póngalos delante de la cara que los lleva, o la prueba de profundidad los esconde.
@@ -230,7 +234,7 @@ Compare la vista girada con las fotos tomadas desde un ángulo parecido. Revise 
 
 ## 12. Limitaciones
 
-- Los edificios no son los reales: son una interpretación según las reglas descritas. Solo el Estadio Fiscal sigue su planta real (sección 9).
+- Los edificios no son los reales: son una interpretación según las reglas descritas. Solo el Estadio Fiscal y la Catedral siguen su planta real (sección 9).
 - Los ríos, el tramo norte del ferrocarril y la Ruta 5 son trazados aproximados (con un error de decenas de metros).
 - El relieve está exagerado (×3 en el plano, ×1,3 en los cerros) y suavizado a ~40 m: no se ven taludes ni desniveles de pocos metros. Los ríos son trazados aproximados que no siempre van por el fondo del valle del modelo.
 - Fuera del centro, la grilla se deforma y el lector de direcciones deja de funcionar. Muestra «Fuera del centro numerado».
