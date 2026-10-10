@@ -539,11 +539,18 @@ function buildModels(B){
   p=at('fiscalia-local');{const x=p.x,y=p.y+2;reserve(x,y,48,36);B.prism(rotRect(x,y,44,32),0.3,17,C('#CDD4D7'),C('#9CA3A6'));for(let k=0;k<4;k++)B.prism(rotRect(x,y-16.1,44,.4),2+k*3.8,4.2+k*3.8,C('#3F5566'),C('#3F5566'),false);MODELS['fiscalia-local']={x,y,h:18};}
   p=at('juzgado-familia');{const x=p.x,y=p.y;reserve(x,y,34,26);B.prism(rotRect(x,y,30,22),0.3,21,C('#D9D4C8'),C('#9D9A93'));MODELS['juzgado-familia']={x,y,h:22};}
   p=at('servicios-publicos');{const x=p.x+6,y=p.y;reserve(x,y,64,52);const w=C('#E5D8BC');B.prism(rotRect(x,y,60,48),0.3,19,w,C('#A39C8E'));B.prism(rotRect(x-26,y,8,14),19,26,shade(w,1.02),C('#A39C8E'));MODELS['servicios-publicos']={x:x-26,y,h:27};}
-  p=at('ex-carcel');{const x=p.x,y=p.y;reserve(x,y,112,104);const wc=C('#D8C49A');
-    for(const r of [rotRect(x,y+50,110,1.2),rotRect(x,y-50,110,1.2),rotRect(x+54.5,y,1.2,100),rotRect(x-54.5,y,1.2,100)])B.prism(r,0.3,6,wc,shade(wc,1.05));
-    for(const [dx,dy] of [[-53,-49],[53,-49],[-53,49],[53,49]]){B.prism(rotRect(x+dx,y+dy,4,4),0.3,10,shade(wc,.95),wc);pyramid(B,rotRect(x+dx,y+dy,5,5),10,2.5,C('#7E6F5C'));}
-    for(let k=0;k<3;k++)B.prism(rotRect(x,y-25+k*25,70,10),0.3,7,C('#CDBFA2'),C('#8C8A86'));
-    B.prism(rotRect(x+42,y+20,14,40),0.3,5,C('#CDBFA2'),C('#8C8A86'));
+  // Ex Cárcel: the walls follow its block (manzana 3–4 Norte, 2–3 Poniente), each side pulled in until it clears the
+  // streets around it; the point is a sourced coordinate west of the block's centre, so the model is not centred on it
+  p=at('ex-carcel');{const b=blocks[blockAt(p.x,p.y)];let [x0,y0,x1,y1]=b.bb;x0+=2;y0+=2;x1-=2;y1-=2;
+    const hit=(ax,ay,bx,by)=>{for(let t=0;t<=1;t+=.05)if(nearStreet(ax+(bx-ax)*t,ay+(by-ay)*t,2.5))return true;return false;};
+    for(let k=0;k<60;k++){let m=false;
+      if(hit(x0,y0,x0,y1)){x0+=.5;m=true;}if(hit(x1,y0,x1,y1)){x1-=.5;m=true;}
+      if(hit(x0,y0,x1,y0)){y0+=.5;m=true;}if(hit(x0,y1,x1,y1)){y1-=.5;m=true;}if(!m)break;}
+    const x=(x0+x1)/2,y=(y0+y1)/2,w=x1-x0,d=y1-y0;reserve(x,y,w+2,d+2);const wc=C('#D8C49A');
+    for(const r of [rotRect(x,y1-.6,w,1.2),rotRect(x,y0+.6,w,1.2),rotRect(x1-.6,y,1.2,d),rotRect(x0+.6,y,1.2,d)])B.prism(r,0.3,6,wc,shade(wc,1.05));
+    for(const [cx,cy] of [[x0+2,y0+2],[x1-2,y0+2],[x0+2,y1-2],[x1-2,y1-2]]){B.prism(rotRect(cx,cy,4,4),0.3,10,shade(wc,.95),wc);pyramid(B,rotRect(cx,cy,5,5),10,2.5,C('#7E6F5C'));}
+    for(let k=0;k<3;k++)B.prism(rotRect(x-w*.06,y-d*.25+k*d*.25,w*.62,10),0.3,7,C('#CDBFA2'),C('#8C8A86'));
+    B.prism(rotRect(x+w*.36,y+d*.18,14,d*.36),0.3,5,C('#CDBFA2'),C('#8C8A86'));
     MODELS['ex-carcel']={x,y,h:11};}
   p=at('mercado-central');{const x=p.x,y=p.y;reserve(x,y,100,62);const b=C('#A8543B');B.prism(rotRect(x,y,96,58),0.3,7,b,b,false);
     B.gable([[x-48,y-29],[x+48,y-29],[x+48,y+29],[x-48,y+29]],7,7.01,9,b,C('#8B8F92'));
