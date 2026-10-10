@@ -842,7 +842,39 @@ function buildModels(B,S){ // S: models drawn without the window shader
     S.quadXY(R(2,6,U1-1,V1-1),H+.05,K.deck);box(-10,-6,-4,0,H,H+1.4,K.plant,K.plant);box(-9,6,-4,12,H,H+1.1,K.plant,K.plant);
     const c=G(0,-2);MODELS['fiscalia-local']={x:c[0],y:c[1],h:18};S.dy=0;}
   // ==== hito: juzgado-familia ====
-  p=at('juzgado-familia');{const x=p.x,y=p.y;reserve(x,y,34,26);B.prism(rotRect(x,y,30,22),0.3,21,C('#D9D4C8'),C('#9D9A93'));MODELS['juzgado-familia']={x,y,h:22};}
+  // Juzgado de Familia de Talca: the court's own building on 5 Oriente at 3 Norte, opened in August 2012 after the
+  // 2010 earthquake ("de modernas y funcionales líneas", Supreme Court speech at the opening, pjud.cl). Drawn on S.
+  // Plan from OpenStreetMap (w392091760, 6 levels; the corner to 3 Norte cut on the diagonal); frame from
+  // landmark.py frame juzgado-familia 392091760: u east (5 Oriente), v north (3 Norte). Blue hipped metal roof from
+  // the Esri imagery (date unknown). No photos found of the façades: they are drawn as a plain modern block (light
+  // walls, a glazed ground floor, window bands between piers on the five upper floors, a low glazed entrance in
+  // the cut corner), so colours, rhythm and the entrance are approximate; the height is OSM's six levels at ~3 m.
+  {const F=localFrame(528.5,309.4,90.8*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={wall:C('#D9D2C2'),rim:C('#EEE8DA'),glass:C('#4D5D66'),glass2:C('#3B4653'),roof:C('#4A6496'),roof2:C('#3F5684'),
+      flat:C('#8F8A82'),door:C('#5A4636'),white:C('#EEE8DA'),tile:C('#4A6496'),tile2:C('#3F5684')};
+    const {box,WL,rect}=facade(S,F,K);
+    const P=[[-11.37,-17.52],[9.36,-17.45],[8.46,3.14],[2.66,7.46],[2.43,12.19],[-11.36,12.26]];
+    const fp=Gs(P);occMark(fp);
+    S.dy=padAt(Math.min(...fp.map(p=>p[0])),Math.min(...fp.map(p=>p[1])),Math.max(...fp.map(p=>p[0])),Math.max(...fp.map(p=>p[1])));
+    const TOP=19.2;S.prism(fp,0.3,TOP,K.wall,K.flat);
+    // each side: plinth, glazed ground floor between piers, five floors of window bands between white piers,
+    // white cornice. The diagonal corner is the entrance (below)
+    for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],du=b[0]-a[0],dv=b[1]-a[1],L=Math.hypot(du,dv),out=[dv/L,-du/L];
+      const w=WL(a,b,out),w2=WL(a,b,out,.09),w3=WL(a,b,out,.12);if(i===2)continue;
+      rect(w2,0,L,TOP-.6,TOP,K.rim);rect(w,0,L,0.3,0.8,K.flat);
+      const n=Math.max(1,Math.round(L/4)),d=L/n;
+      for(let k=0;k<n;k++)rect(w,k*d+.4,(k+1)*d-.4,0.8,3.6,K.glass2);
+      rect(w2,0,L,4,4.4,K.rim);
+      for(let f=0;f<5;f++){const h=4.4+f*2.96;rect(w,.5,L-.5,h+.7,h+2.1,K.glass);}
+      const m=Math.max(1,Math.round(L/1.8)),e=(L-1)/m;for(let k=0;k<=m;k++){const s=.5+k*e;rect(w3,s-.22,s+.22,4.4,TOP-.6,K.rim);}}
+    // cut corner on 5 Oriente and 3 Norte: a two-storey glass entrance with a canopy, the floors above set on it
+    {const a=P[2],b=P[3],du=b[0]-a[0],dv=b[1]-a[1],L=Math.hypot(du,dv),out=[dv/L,-du/L],w=WL(a,b,out),w2=WL(a,b,out,.09),w3=WL(a,b,out,.12);
+      rect(w,0,L,0.3,7.3,K.glass2);rect(w2,0,L,7.3,7.8,K.rim);for(let f=0;f<4;f++){const h=7.8+f*2.85;rect(w,.4,L-.4,h+.6,h+2,K.glass);}
+      rect(w2,0,L,TOP-.6,TOP,K.rim);rect(w3,L/2-1.2,L/2+1.2,0.3,3,K.door);
+      const o=2.2,q=[[a[0],a[1]],[b[0],b[1]],[b[0]+out[0]*o,b[1]+out[1]*o],[a[0]+out[0]*o,a[1]+out[1]*o]];S.prism(Gs(q),3.4,3.75,K.rim,K.rim);}
+    // blue hipped roof (satellite) behind a low rim
+    pyramid(S,fp,TOP,3,K.roof);
+    const c=G(-1.5,-3);MODELS['juzgado-familia']={x:c[0],y:c[1],h:24};S.dy=0;}
   // ==== hito: servicios-publicos ====
   p=at('servicios-publicos');{const x=p.x+6,y=p.y;reserve(x,y,64,52);const w=C('#E5D8BC');B.prism(rotRect(x,y,60,48),0.3,19,w,C('#A39C8E'));B.prism(rotRect(x-26,y,8,14),19,26,shade(w,1.02),C('#A39C8E'));MODELS['servicios-publicos']={x:x-26,y,h:27};}
   // ==== hito: ex-carcel ====
@@ -1081,10 +1113,208 @@ function buildModels(B,S){ // S: models drawn without the window shader
     B.gable([[x+18,y-7],[x+18,y+15],[x+10,y+15],[x+10,y-7]],0.3,4.6,2.6,w,t);
     B.quadXY(rotRect(x,y+4,20,20),0.34,C('#9FAE6A'));MODELS['casa-independencia']={x,y,h:8};}
   // ==== hito: teatro-regional ====
-  p=at('teatro-regional');{const x=p.x,y=p.y;reserve(x,y,52,42);B.prism(rotRect(x,y,48,38),0.3,14,C('#7E3B33'),C('#6A6560'));B.prism(rotRect(x+6,y+4,26,24),14,22,C('#8A4A40'),C('#6A6560'));B.prism(rotRect(x,y-19.2,40,.6),1,12,C('#3F5566'),C('#3F5566'),false);MODELS['teatro-regional']={x,y,h:23};}
+  // Teatro Regional del Maule (2005), on the corner of the Alameda and 1 Oriente, drawn on S. Plan from OpenStreetMap
+  // (w214851535; frame from landmark.py frame teatro-regional 214851535: v runs east along the Alameda, u south,
+  // the Alameda front is u=-20.5). Volumes from the Esri imagery (flat pale roofs, the fly tower in the east third
+  // with plant on top) and from photos on Wikimedia Commons (File:TalcaTeatro.jpg, 2005; File:Talca (37060017476).jpg,
+  // 2017): cream stucco hall ~11 m (OSM height 11.2), a banded cylinder, the fly tower ~18.5 m, a low wing with the
+  // marquee to the east and, at the 1 Oriente corner, the lobby under a cantilevered roof: a glass front leaning
+  // out behind vertical timber louvres. Approximate: the heights (±1.5 m, scaled from the photos), the west and
+  // south sides (no photos), the brown box by the cylinder (2017 photo). The timber soffits can't be seen from
+  // above, so the visor's roof edge carries a band of their colour (licence); the lobby's night glow is licence too.
+  {const F=localFrame(97.9,442.2,1.4*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={wall:C('#E2D2A6'),wall2:C('#CDBB8E'),tower:C('#ECE5D1'),roof:C('#C8C5BC'),roof2:C('#B5B2A9'),white:C('#F1EEE6'),
+      wood:C('#B0663A'),louvre:C('#C49A6C'),glass:C('#3B4653'),glass2:C('#2C3540'),brown:C('#6E4B3A'),step:C('#D9D3C5'),step2:C('#C6BFAF'),
+      plant:C('#B9B4A8'),tile:C('#D9D6CC'),tile2:C('#D9D6CC')};
+    const {box,WV,WU,rect}=facade(S,F,K);
+    const fp=Gs([[7,-33],[7,10],[13,10],[13,23],[-20.5,23],[-20.5,-33]]);occMark(fp);occMark(Gs([[-29,-34],[-20.5,-34],[-20.5,23],[-29,23]])); // the forecourt on the Alameda stays clear
+    S.dy=padAt(Math.min(...fp.map(p=>p[0])),Math.min(...fp.map(p=>p[1])),Math.max(...fp.map(p=>p[0])),Math.max(...fp.map(p=>p[1]))+3);
+    // a flat-roofed block with a white coping round its top
+    const blk=(u0,v0,u1,v1,h0,h1,wall,top=K.roof)=>{box(u0,v0,u1,v1,h0,h1,wall,top);
+      for(const [w,a,b] of [[WV(v0,-1,.09),u0,u1],[WV(v1,1,.09),u0,u1],[WU(u0,-1,.09),v0,v1],[WU(u1,1,.09),v0,v1]])rect(w,a,b,h1-.45,h1,K.white);};
+    // auditorium: plain cream walls with two reveal bands
+    blk(-20.5,-15.5,7,8,0.3,11.2,K.wall);
+    for(const [w,a,b] of [[WU(-20.5,-1),-15.5,8],[WU(7,1),-15.5,8]])for(const h of [4.4,8])rect(w,a,b,h,h+.3,K.wall2);
+    rect(WU(-20.5,-1,.12),-11,-9.6,0.3,8,K.glass);
+    // fly tower, paler, with plant on its roof (satellite)
+    blk(-16,5,10,20.5,0.3,18.5,K.tower);box(-12,8,1,17,18.5,19.8,K.plant,K.roof2);
+    for(const [w,a,b] of [[WV(20.5,1),-16,10],[WU(-16,-1),5,20.5],[WU(10,1),5,20.5]])rect(w,a,b,11.2,11.5,K.wall2);
+    // east: low wing on the Alameda with the marquee on two posts; back of house to the south
+    blk(-20.5,8,-16,23,0.3,4.6,K.wall);blk(7,10,13,23,0.3,8,K.wall);blk(-16,20.5,7,23,0.3,8,K.wall);
+    rect(WU(-20.5,-1),9.5,21.5,0.3,2.8,K.glass);
+    box(-23.2,9.5,-20.5,19.5,3,4.3,K.white,K.roof);rect(WU(-23.2,-1),9.5,19.5,3.35,3.95,K.wall2);
+    for(const v of [10.2,18.8])box(-22.9,v-.2,-22.5,v+.2,0.3,3,K.white,K.white);
+    // brown box by the cylinder (2017)
+    box(-21,-9,-16,-1.5,0.3,6.6,K.brown,K.roof2);rect(WU(-21,-1),-8,-2.5,0.3,2.8,K.glass);
+    // banded cylinder on the Alameda front
+    {const c=G(-20,-12.8);for(let h=0.3,k=0;h<11.8;k++){const h1=Math.min(11.8,h+(k%2?.5:2.4));S.prism(ngon(c[0],c[1],3.1,16,Math.PI/16),h,h1,k%2?K.wall2:K.wall,K.wall);h=h1;}
+      S.prism(ngon(c[0],c[1],3.25,16,Math.PI/16),11.8,12.2,K.white,K.roof);}
+    // lobby block at the 1 Oriente corner: walls, the glazed ground floor under a canopy, the leaning glass front
+    // with timber louvres, white cheeks and the cantilevered roof
+    blk(-18.5,-33,7,-15.5,0.3,12.6,K.wall);
+    rect(WU(-18.5,-1),-32.5,-16,0.3,4.5,K.glass);for(let v=-31;v<-16;v+=3)rect(WU(-18.5,-1,.12),v-.2,v+.2,0.3,4.5,K.white);
+    rect(WV(-33,-1),-18,4,0.3,4.5,K.glass);
+    box(-21.2,-33,-18.5,-15.5,4.5,5.2,K.wood,K.roof2);
+    {const lean=(u,h)=>u-(h-5.2)*1.8/7.7,P=(u,v,h)=>V(lean(u,h),v,h),n=N3(-7.7,0,-1.8);
+      S.face([P(-20.5,-33,5.2),P(-20.5,-15.5,5.2),P(-20.5,-15.5,12.9),P(-20.5,-33,12.9)],n,K.glass);
+      for(let v=-32.4,k=0;v<-15.6;v+=1,k++)S.face([P(-20.62,v,5.2),P(-20.62,v+.45,5.2),P(-20.62,v+.45,12.9),P(-20.62,v,12.9)],n,k%2?K.louvre:K.wood);
+      for(const [v,sg] of [[-33,-1],[-15.5,1]])S.face([V(-18.5,v,5.2),V(-20.5,v,5.2),V(-22.3,v,12.9),V(-18.5,v,12.9)],N3(0,sg),K.white);
+      box(-23.4,-33.6,-18.5,-15,12.9,14,K.white,K.roof);rect(WU(-23.4,-1),-33.6,-15,12.9,13.45,K.wood);rect(WV(-33.6,-1),-23.4,-18.5,12.9,13.45,K.wood);}
+    // entrance steps under the canopy
+    box(-22.6,-31,-20.5,-18,0.3,0.55,K.step2,K.step);box(-21.8,-31,-20.5,-18,0.55,0.8,K.step2,K.step2);
+    // the glazed lobby glows at night, in front of its leaning glass (licence)
+    for(const v of [-29,-24,-19]){const g=G(-21.9,v);GLOW.push(g[0],S.dy+8,g[1]);}
+    const c=G(-6,-5);MODELS['teatro-regional']={x:c[0],y:c[1],h:21};S.dy=0;}
   // ==== hito: la-victoria ====
-  p=at('la-victoria');{const x=p.x,y=p.y;B.dy=padAt(x-7,y-7,x+7,y+7);B.flat(ngon(x,y,7,12),0.36,C('#E3DCCB'));B.prism(rotRect(x,y,4.5,4.5),0.36,4,C('#D9D3C6'),C('#D9D3C6'));B.prism(ngon(x,y,.9,8),4,15,C('#E8E4DA'),C('#E8E4DA'));B.prism(rotRect(x,y,1.4,1.4),15,18,C('#C9A43A'),C('#C9A43A'));MODELS['la-victoria']={x,y,h:19};}
+  // Monumento La Victoria: the obelisk to the Batallón Cívico de Talca (1904) crowned by the bronze Victory (León
+  // Cugnot and Guillaume per the CMN, 1868, made for Lima's Dos de Mayo monument and taken in 1882), back on it since 2011.
+  // It stands on the paved island where 1 Oriente splits around the Alameda (OSM w214851537, statue node at the
+  // centre), drawn on S. Frame from landmark.py frame la-victoria 214851537: u east, v north. The map's carriageways
+  // are wider than the real ones (11 m), so the island is drawn narrower than OSM's 14 m, between them. Elevation
+  // from a 2026 photo (File:Monumento al 2 de Mayo.jpg, right half) scaled by a van, ~20 m in all, and the 1898 one
+  // (File:Victoriatalca1.jpg): stepped plinth, grey granite dado with white marble plaques on each face (CMN), a stage
+  // with arched niches and medallions, a coursed obelisk, a dark capital and the dark bronze winged Victory with arms
+  // raised (laurel crown and sword). Approximate: every measure (±1 m), the niches' carving, which way the Victory
+  // faces (drawn facing south), the island's paving pattern (satellite: pale paving, no lawn).
+  {const F=localFrame(57.4,509.6,90.3*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={pave:C('#DDD6C6'),pave2:C('#D0C8B6'),curb:C('#C9C3B6'),stone:C('#9E9B93'),stone2:C('#8F8C84'),stoneLt:C('#B3AFA6'),
+      marble:C('#F0ECE2'),niche:C('#5E5C57'),bronze:C('#3C4540'),bronze2:C('#2F3632'),iron:C('#3B4240'),lamp:C('#F1E6C4'),
+      white:C('#ECE7DC'),glass:C('#3B4653'),glass2:C('#2C3540'),tile:C('#8F8A82'),tile2:C('#8F8A82')};
+    const {WL,rect,arch}=facade(S,F,K);
+    // the island between the carriageways as the map draws them (west edge u=-3.6, east 4.9; the Alameda's lanes
+    // at v -23 and +25); its north end narrows where the two branches of 1 Oriente meet
+    const isl=[[-3.6,-20.6],[-2.1,-22.1],[3.4,-22.1],[4.9,-20.6],[4.9,12.5],[1.6,17.5],[-0.6,17.5],[-3.6,14]];
+    const fp=Gs(isl);occMark(fp);
+    S.dy=padAt(Math.min(...fp.map(p=>p[0])),Math.min(...fp.map(p=>p[1])),Math.max(...fp.map(p=>p[0])),Math.max(...fp.map(p=>p[1])));
+    // curb and paving in bands of two tones across the island
+    S.prism(fp,0.3,0.42,K.curb,K.curb);
+    S.flat(Gs([[-3.2,-20.4],[-1.9,-21.7],[3.2,-21.7],[4.5,-20.4],[4.5,12.4],[1.4,17.1],[-.4,17.1],[-3.2,13.9]]),0.45,K.pave);
+    for(let v=-19.5;v<8;v+=5)S.quadXY(R(-3.2,v,4.5,v+2.5),0.48,K.pave2);
+    // two lamps on the island (photos), like the Alameda's, lit at night
+    for(const v of [-15,11]){const g=G(.6,v);S.prism(rotRect(g[0],g[1],.3,.3),0.45,4.6,K.iron,K.iron);S.prism(rotRect(g[0],g[1],.9,.9),4.6,5,K.iron,K.lamp);GLOW.push(g[0],S.dy+4.8,g[1]);}
+    // the monument, centred on the OSM statue node
+    const mu=-0.2,mv=-0.8,sq=(a,h0,h1,wall,top)=>S.prism(R(mu-a,mv-a,mu+a,mv+a),h0,h1,wall,top);
+    const faces=(a,o)=>[[[mu-a,mv-a],[mu+a,mv-a],[0,-1]],[[mu+a,mv-a],[mu+a,mv+a],[1,0]],[[mu+a,mv+a],[mu-a,mv+a],[0,1]],[[mu-a,mv+a],[mu-a,mv-a],[-1,0]]].map(([a0,b0,out])=>WL(a0,b0,out,o));
+    // stepped plinth: three treads in two tones
+    sq(2.9,0.3,0.75,K.stoneLt,K.stoneLt);sq(2.55,0.75,1.05,K.stone,K.stone2);sq(2.2,1.05,1.35,K.stoneLt,K.stoneLt);
+    // dado with a white marble plaque on each face, a moulded cap
+    sq(1.9,1.35,3.6,K.stone,K.stone);for(const w of faces(1.9,.06)){rect(w,w.L/2-1,w.L/2+1,1.95,3.15,K.marble);rect(w,0,w.L,1.35,1.7,K.stone2);}
+    sq(2.1,3.6,3.95,K.stoneLt,K.stoneLt);sq(1.75,3.95,4.3,K.stone2,K.stone2);
+    // stage with an arched niche and a white medallion on each face, corner piers, cornice
+    sq(1.35,4.3,7,K.stone,K.stone);
+    for(const w of faces(1.35,.06))arch(w,w.L/2,1.3,4.6,6.7,K.niche);
+    for(const w of faces(1.35,.12))rect(w,w.L/2-.35,w.L/2+.35,5.3,6.1,K.marble);
+    sq(1.6,7,7.35,K.stoneLt,K.stoneLt);sq(1.25,7.35,7.7,K.stone2,K.stone2);
+    // coursed obelisk: stepped courses in two tones, narrowing upward
+    for(let k=0;k<7;k++){const h0=7.7+k*1.1,a=.95-k*.06;sq(a,h0,h0+1.1,k%2?K.stone2:K.stone,K.stone);}
+    // dark capital (flared), a round base and the Victory
+    sq(.75,15.4,15.75,K.bronze2,K.bronze2);sq(.6,15.75,16.2,K.bronze,K.bronze);sq(.95,16.2,16.6,K.bronze2,K.bronze);
+    S.prism(Gs(ngon(mu,mv,.45,8)),16.6,17.1,K.bronze,K.bronze);
+    // the Victory: robe in stepped tiers, torso, head; both arms raised (sword and laurel crown) and wings spread
+    // behind her, facing south (-v)
+    const fig=(u0,v0,u1,v1,h0,h1,c)=>S.prism(R(mu+u0,mv+v0,mu+u1,mv+v1),h0,h1,c,c);
+    fig(-.55,-.5,.55,.5,17.1,18.1,K.bronze);fig(-.45,-.4,.45,.4,18.1,19.2,K.bronze2);fig(-.35,-.3,.35,.3,19.2,20.1,K.bronze);
+    fig(-.2,-.25,.2,.15,20.1,20.6,K.bronze);
+    fig(-.6,-.2,-.35,.05,19.6,21.3,K.bronze2);fig(.35,-.2,.6,.05,19.6,21.1,K.bronze2);
+    fig(-.55,-.15,-.4,0,21.3,22.3,K.bronze); // sword
+    fig(.25,-.2,.95,.05,21.1,21.35,K.bronze);fig(.25,-.2,.95,.05,21.75,22,K.bronze);fig(.25,-.2,.45,.05,21.35,21.75,K.bronze);fig(.75,-.2,.95,.05,21.35,21.75,K.bronze); // crown
+    for(const sg of [-1,1]){const P=(u,h)=>V(mu+u*sg,mv+.35,h),Q=(u,h)=>V(mu+u*sg,mv+.2,h);
+      const w=[[.3,19.4],[1.6,20.6],[1.9,22.2],[.5,20.4]];
+      S.face(w.map(p=>P(...p)),N3(0,1),K.bronze2);S.face(w.map(p=>Q(...p)),N3(0,-1),K.bronze);}
+    const c=G(mu,mv);MODELS['la-victoria']={x:c[0],y:c[1],h:23};S.dy=0;}
   // ==== hito: liceo-abate-molina ====
+  // Liceo Abate Molina, on the Alameda between 5 and 6 Oriente, drawn on S. Plan from OpenStreetMap: the historic
+  // building r9394557 (a front range set back behind a forecourt, two wings to the street with light wells), the
+  // new range w798161251 ("Zona Nueva", rebuilt after the 2010 earthquake, which brought down part of the school;
+  // reconstruction 2012–2015, Cooperativa) and the school grounds w798996848. Frame from landmark.py frame
+  // liceo-abate-molina 798161253: u east, v north; the front range's face is v=-19 (the pavilion, -21). The historic
+  // front still stands (File:Monumento A Molina1.jpg, 2024; File:Talca liceo abate molina.jpg, 2005): white walls
+  // between cream piers, arched windows upstairs, a raised cream pavilion with the "Liceo de Hombres" panel and a
+  // flag, iron railings on a white wall, and the Abate Molina statue (1861) on its pedestal in front. Roofs (grey
+  // metal, hipped), the covered courts with pale green roofs and the pool hall to the north from the Esri imagery
+  // (date unknown). Approximate: heights (two storeys, ~10 m; scaled from the 2024 photo with the door), the side
+  // and inner façades (drawn like the front), the new range's look (no photos), the courts' roofs.
+  {const F=localFrame(597.6,583.4,90.7*Math.PI/180),{G,Gs,V,N3,R}=F;
+    const K={white:C('#ECE7DC'),whiteSh:C('#D9D3C6'),cream:C('#E0CDA4'),cream2:C('#D2BD90'),plinth:C('#C9C3B6'),
+      glass:C('#3B4653'),glass2:C('#2C3540'),door:C('#5A4636'),roof:C('#ADABA4'),roof2:C('#9D9B94'),flat:C('#8F8A82'),
+      newWall:C('#E4E0D6'),newBand:C('#B65A3C'),court:C('#B7C7A4'),court2:C('#A7B994'),hall:C('#E8E6E0'),
+      pave:C('#D8D1C1'),pave2:C('#CCC4B2'),pitch:C('#7D8E8C'),line:C('#F3F0E6'),iron:C('#3A3A3A'),mast:C('#707070'),
+      red:C('#C8312A'),blue:C('#2C4A8C'),stone:C('#7F8A80'),stone2:C('#6F7A71'),bronze:C('#3C4540'),bronze2:C('#2F3632'),
+      tile:C('#ADABA4'),tile2:C('#9D9B94')};
+    const {box,WL,WV,WU,rect,arch}=facade(S,F,K);
+    // the grounds: no procedural lots inside the school's fence; level pad under all of it
+    const site=Gs([[-40,-30],[-36,-33],[8,-33],[9,-31],[10,-29],[20,-29],[22,-31],[22,-33],[69,-34],[73,-30],[71,92],[68,95],[-41,94]]);
+    NOLOTS.push(site);
+    S.dy=padAt(Math.min(...site.map(p=>p[0])),Math.min(...site.map(p=>p[1]))-3,Math.max(...site.map(p=>p[0])),Math.max(...site.map(p=>p[1])));
+    const bld=(u0,v0,u1,v1)=>occMark(R(u0,v0,u1,v1));
+    // hipped roof over a rectangle, eaves at h (0.4 m overhang), ridge rh higher, along its longer side
+    const hip=(u0,v0,u1,v1,h,rh,o=.4)=>{u0-=o;v0-=o;u1+=o;v1+=o;const alU=u1-u0>=v1-v0,hw=(alU?v1-v0:u1-u0)/2;
+      if(alU){const vm=(v0+v1)/2,a=Math.min(u0+hw,(u0+u1)/2),b=Math.max(u1-hw,(u0+u1)/2);
+        S.face([V(u0,v0,h),V(u1,v0,h),V(b,vm,h+rh),V(a,vm,h+rh)],null,K.roof);S.face([V(u1,v1,h),V(u0,v1,h),V(a,vm,h+rh),V(b,vm,h+rh)],null,K.roof2);
+        S.face([V(u0,v1,h),V(u0,v0,h),V(a,vm,h+rh)],null,K.roof2);S.face([V(u1,v0,h),V(u1,v1,h),V(b,vm,h+rh)],null,K.roof);}
+      else{const um=(u0+u1)/2,a=Math.min(v0+hw,(v0+v1)/2),b=Math.max(v1-hw,(v0+v1)/2);
+        S.face([V(u0,v1,h),V(u0,v0,h),V(um,a,h+rh),V(um,b,h+rh)],null,K.roof2);S.face([V(u1,v0,h),V(u1,v1,h),V(um,b,h+rh),V(um,a,h+rh)],null,K.roof);
+        S.face([V(u0,v0,h),V(u1,v0,h),V(um,a,h+rh)],null,K.roof);S.face([V(u1,v1,h),V(u0,v1,h),V(um,b,h+rh)],null,K.roof2);}};
+    // the historic façade: white wall, cream piers between bays, plinth and cornice; a window below and an arched
+    // one above in each bay. mk(o) gives the wall at offset o; s0..s1 along it
+    const H=10;
+    const bays=(mk,s0,s1,piers=true)=>{const w=mk(.06),n=Math.max(1,Math.round((s1-s0)/4.4)),d=(s1-s0)/n;
+      rect(w,s0,s1,0.3,1.1,K.plinth);rect(mk(.09),s0,s1,H-.6,H,K.white);
+      if(piers)for(let k=0;k<=n;k++){const s=s0+k*d;rect(mk(.12),Math.max(s0,s-.45),Math.min(s1,s+.45),0.3,H-.6,K.cream);}
+      for(let k=0;k<n;k++){const c=s0+(k+.5)*d;rect(w,c-.7,c+.7,1.6,3.6,K.glass);arch(w,c,1.4,5.2,8.2,K.glass);rect(mk(.09),c-.85,c+.85,4.9,5.2,K.whiteSh);}};
+    const fU=(u,sg)=>o=>WU(u,sg,o),fV=(v,sg)=>o=>WV(v,sg,o);
+    const range=(u0,v0,u1,v1,sides,hipIt=true)=>{box(u0,v0,u1,v1,0.3,H,K.white,K.flat);bld(u0,v0,u1,v1);
+      for(const sd of sides){if(sd==='S')bays(fV(v0,-1),u0,u1);if(sd==='N')bays(fV(v1,1),u0,u1);if(sd==='W')bays(fU(u0,-1),v0,v1);if(sd==='E')bays(fU(u1,1),v0,v1);}
+      if(hipIt)hip(u0,v0,u1,v1,H,1.8);};
+    // front range, either side of the pavilion
+    range(-9,-19,9,-6,['S','N']);range(23,-19,42,-6,['S','N']);
+    // west wing (to 5 Oriente): south front, a west range, an inner range, and the bits between the two light wells
+    range(-40,-33,-9,-23,['S','W','E']);range(-40,-23,-28.5,22,['W']);range(-19.5,-23,-9,22,['E']);
+    range(-28.5,-16,-19.5,-9,[]);range(-28.5,9,-19.5,22,['N']);range(-16,22,-9,30,['N','E']);
+    // east wing (to 6 Oriente) round its light well
+    range(42,-34,73,-24,['S','E','W']);range(42,-24,52,10,['W']);range(62,-24,73,10,['E']);range(42,10,73,21,['W','E']);range(42,21,53,31,['N','W']);
+    // pavilion: cream mass with a white centre bay, the doorway, the panel and the flag, a little higher
+    {const u0=9,u1=23,v0=-21,v1=-6,PH=12.7;box(u0,v0,u1,v1,0.3,PH,K.cream,K.flat);bld(u0,v0,u1,v1);
+      const w=WV(v0,-1),w2=WV(v0,-1,.09),w3=WV(v0,-1,.12);
+      rect(w,u0,u1,0.3,1.1,K.plinth);rect(w2,u0,u1,PH-.5,PH,K.white);rect(w2,u0,u1,10,10.4,K.cream2);
+      rect(w,12.4,19.6,1.1,10,K.white);rect(w,9.7,11.7,1.1,10,K.white);rect(w,20.3,22.3,1.1,10,K.white);
+      for(const c of [14.6,17.4])arch(w3,c,1.9,5.3,8.9,K.glass);for(const c of [10.7,21.3])arch(w3,c,1.1,5.3,8.6,K.glass);
+      for(const c of [10.7,21.3])rect(w3,c-.55,c+.55,1.7,3.7,K.glass);
+      rect(w3,14.8,17.2,1.1,3.8,K.door);rect(w2,13.6,18.4,11.05,11.95,K.white);
+      for(const [u,sg] of [[u0,-1],[u1,1]]){const s=WU(u,sg);rect(s,v0,v1,0.3,1.1,K.plinth);rect(WU(u,sg,.09),v0,v1,PH-.5,PH,K.white);}
+      // steps to the door
+      box(14.2,-23.4,17.8,-21,0.3,0.55,K.plinth,K.pave);box(14.2,-22.6,17.8,-21,0.55,0.8,K.plinth,K.pave);
+      // flag on the parapet (Chile: white over red, blue canton)
+      box(15.85,-13.6,16.15,-13.3,PH,20,K.mast,K.mast);
+      const fw=WV(-13.45,-1,.2),fq=(s,h)=>fw.q(s,h);
+      S.face([fq(16.15,19.2),fq(18.45,19.2),fq(18.45,19.8),fq(16.15,19.8)],fw.n,K.white);S.face([fq(16.15,18.6),fq(18.45,18.6),fq(18.45,19.2),fq(16.15,19.2)],fw.n,K.red);
+      const fb=WV(-13.45,-1,.23);S.face([fb.q(16.15,19.2),fb.q(16.85,19.2),fb.q(16.85,19.8),fb.q(16.15,19.8)],fb.n,K.blue);}
+    // new range (2 storeys, plain, a terracotta band; look approximate): north bar and two legs
+    {const nb=(u0,v0,u1,v1)=>{box(u0,v0,u1,v1,0.3,7.6,K.newWall,K.flat);bld(u0,v0,u1,v1);hip(u0,v0,u1,v1,7.6,1.4);};
+      nb(-40,43,72,57);nb(-40,22,-28.5,43);nb(61,21,72,43);
+      for(const [w,a,b] of [[WV(43,-1),-28.5,61],[WV(57,1),-40,72],[WU(-40,-1),22,57],[WU(72,1),21,57],[WU(-28.5,1),22,43],[WU(61,-1),21,43]]){
+        rect(w,a,b,3.6,4,K.newBand);for(let s=a+2;s<b-1.5;s+=3.5){rect(w,s-.8,s+.8,1.2,3,K.glass);rect(w,s-.8,s+.8,4.8,6.6,K.glass);}}}
+    // covered courts (pale green, ribbed) and the pool hall to the north (satellite)
+    {const hall=(u0,v0,u1,v1,h,wall,c1,c2)=>{box(u0,v0,u1,v1,0.3,h,wall,K.flat,false);bld(u0,v0,u1,v1);
+        for(let u=u0,k=0;u<u1-.01;u+=3,k++){const e=Math.min(u+3,u1),c=k%2?c2:c1;const vm=(v0+v1)/2;
+          S.face([V(u,v0-.4,h),V(e,v0-.4,h),V(e,vm,h+2.2),V(u,vm,h+2.2)],null,c);S.face([V(e,v1+.4,h),V(u,v1+.4,h),V(u,vm,h+2.2),V(e,vm,h+2.2)],null,c);}
+        for(const [u,sg] of [[u0,-1],[u1,1]])S.face([V(u,v0,h),V(u,v1,h),V(u,(v0+v1)/2,h+2.2)],N3(sg,0),wall);};
+      hall(-24,70,1,93,7,K.hall,K.court,K.court2);hall(1,70,29.5,93,7,K.hall,K.court,K.court2);
+      box(32,70,56,89,0.3,6.5,K.hall,K.hall);bld(32,70,56,89);for(const [w,a,b] of [[WV(70,-1),32,56],[WU(56,1),70,89]])for(let s=a+2;s<b-1;s+=3)rect(w,s-.9,s+.9,3.5,5.6,K.glass);}
+    // main patio: paving and the basketball court (OSM w646462667)
+    S.quadXY(R(-8.8,-5.8,41.8,20.8),0.32,K.pave);S.quadXY(R(2,4,31,19),0.36,K.pitch);
+    for(const q of [R(2,4,31,4.5),R(2,18.5,31,19),R(2,4,2.5,19),R(30.5,4,31,19),R(16.25,4,16.75,19)])S.quadXY(q,0.39,K.line);
+    // forecourt: paving, the white wall with iron railings and piers along the Alameda, the gate
+    S.quadXY(R(-9,-33,42,-19),0.32,K.pave2);occMark(R(-9,-37,42,-19));
+    {const fw=(a,b)=>{box(a,-33.3,b,-32.9,0.3,0.9,K.white,K.white);box(a,-33.15,b,-33.05,0.9,2.1,K.iron,K.iron);
+        for(let u=a;u<=b+.01;u+=(b-a)/Math.max(1,Math.round((b-a)/4.5)))box(u-.3,-33.4,u+.3,-32.8,0.3,2.4,K.white,K.white);};
+      fw(-9,13.6);fw(18.4,42);for(const u of [13.6,18.4])box(u-.4,-33.5,u+.4,-32.7,0.3,3,K.white,K.white);}
+    // the Abate Molina statue on its pedestal, on the pavement in front of the gate (2024 photo)
+    {const su=16,sv=-35;box(su-.9,sv-.9,su+.9,sv+.9,0.3,0.8,K.stone2,K.stone2);box(su-.7,sv-.7,su+.7,sv+.7,0.8,3,K.stone,K.stone);
+      box(su-.85,sv-.85,su+.85,sv+.85,3,3.35,K.stone2,K.stone);
+      box(su-.45,sv-.35,su+.45,sv+.35,3.35,4.6,K.bronze,K.bronze2);box(su-.35,sv-.3,su+.35,sv+.3,4.6,5.4,K.bronze2,K.bronze);
+      box(su-.2,sv-.2,su+.2,sv+.2,5.4,5.85,K.bronze,K.bronze);box(su-.85,sv-.3,su-.45,sv+.3,3.35,4.1,K.bronze2,K.bronze2);}
+    const c=G(16,-12);MODELS['liceo-abate-molina']={x:c[0],y:c[1],h:21};S.dy=0;}
   // ==== hito: estadio ====
   // Estadio Fiscal, built on S (no window shader: terrace risers are vertical faces). The layout is OpenStreetMap's
   // (pitch w815575960, track r11198725, bowl w1073859992, site w1417437668, the four lighting masts, the entrances), in
