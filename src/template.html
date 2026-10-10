@@ -515,6 +515,33 @@ function localFrame(X,Y,A){const sa=Math.sin(A),ca=Math.cos(A),G=(u,v)=>[X+u*sa+
   return {G,Gs,V:(u,v,h)=>{const g=G(u,v);return [g[0],h,-g[1]];},
     N3:(nu,nv,ny=0)=>{const L=Math.hypot(nu,nv,ny)||1;return [(nu*sa+nv*ca)/L,ny/L,(nu*ca-nv*sa)/L];},
     R:(u0,v0,u1,v1)=>Gs([[u0,v0],[u1,v0],[u1,v1],[u0,v1]])};}
+// façade vocabulary for a landmark drawn on S in frame F (localFrame) with palette K (docs/ESTETICA.md §7). K needs
+// tile/tile2 (roof bays), white (copings), glass/glass2 (stained glass) and brick, or gable, for the gable ends
+function facade(S,F,K){const {V,N3,R}=F;
+  const box=(u0,v0,u1,v1,h0,h1,wall,top,lid=true)=>S.prism(R(u0,v0,u1,v1),h0,h1,wall,top,lid);
+  // a wall from (u,v) a to b with outward direction `out`; details are drawn `o` metres in front of it, s runs
+  // along the wall from a (so on a wall parallel to u, s is u itself)
+  const WL=(a,b,out,o=.06)=>{const L=Math.hypot(b[0]-a[0],b[1]-a[1]),du=(b[0]-a[0])/L,dv=(b[1]-a[1])/L;
+    return {L,q:(s,h)=>V(a[0]+du*s+out[0]*o,a[1]+dv*s+out[1]*o,h),n:N3(out[0],out[1])};};
+  const WV=(v,sg,o)=>WL([0,v],[1,v],[0,sg],o),WU=(u,sg,o)=>WL([u,0],[u,1],[sg,0],o);
+  const rect=(w,s0,s1,h0,h1,col)=>S.face([w.q(s0,h0),w.q(s1,h0),w.q(s1,h1),w.q(s0,h1)],w.n,col);
+  // pixel arch: a rectangle under two narrower steps
+  const arch=(w,sc,wd,h0,h1,col)=>{const r=wd*.45;rect(w,sc-wd/2,sc+wd/2,h0,h1-r,col);rect(w,sc-wd*.36,sc+wd*.36,h1-r,h1-r*.4,col);rect(w,sc-wd*.18,sc+wd*.18,h1-r*.4,h1,col);};
+  // stained glass: leaded bands in two tones
+  const glass=(w,sc,wd,h0,h1)=>{const r=wd*.45;for(let h=h0,k=0;h<h1-r-.01;h+=1.5,k++)rect(w,sc-wd/2,sc+wd/2,h,Math.min(h+1.5,h1-r),k%2?K.glass2:K.glass);
+    rect(w,sc-wd*.36,sc+wd*.36,h1-r,h1-r*.4,K.glass);rect(w,sc-wd*.18,sc+wd*.18,h1-r*.4,h1,K.glass);};
+  // gable roof over s0..s1 (along its ridge) and t0..t1, eaves at h, ridge rh higher; ax 'v': the ridge runs along
+  // v. Tiles in bays of two tones; gable ends with a white coping; eaves overhang by half a metre
+  const roof=(ax,s0,s1,t0,t1,h,rh,bay,ends=[1,1])=>{const P=(s,t,y)=>ax==='v'?V(t,s,y):V(s,t,y),D=(ds,dt,y)=>ax==='v'?N3(dt,ds,y):N3(ds,dt,y);
+    const tm=(t0+t1)/2,hw=(t1-t0)/2,o=.5,dr=o*rh/hw;
+    for(let s=s0,k=0;s<s1-1e-6;s+=bay,k++){const e=Math.min(s+bay,s1),c=k%2?K.tile2:K.tile;
+      S.face([P(s,t0-o,h-dr),P(e,t0-o,h-dr),P(e,tm,h+rh),P(s,tm,h+rh)],D(0,-rh,hw),c);
+      S.face([P(s,t1+o,h-dr),P(e,t1+o,h-dr),P(e,tm,h+rh),P(s,tm,h+rh)],D(0,rh,hw),c);}
+    [s0,s1].forEach((s,i)=>{if(!ends[i])return;const sg=i?1:-1,n=D(sg,0,0),f=s+sg*.08;
+      S.face([P(s,t0,h),P(s,t1,h),P(s,tm,h+rh)],n,K.gable||K.brick);
+      S.face([P(f,t0-o,h-dr-.45),P(f,tm,h+rh-.45),P(f,tm,h+rh+.05),P(f,t0-o,h-dr+.05)],n,K.white);
+      S.face([P(f,t1+o,h-dr-.45),P(f,tm,h+rh-.45),P(f,tm,h+rh+.05),P(f,t1+o,h-dr+.05)],n,K.white);});};
+  return {box,WL,WV,WU,rect,arch,glass,roof};}
 function buildModels(B,S){ // S: models drawn without the window shader
   const C=hex;
   const at=id=>BYID[id];
@@ -540,33 +567,11 @@ function buildModels(B,S){ // S: models drawn without the window shader
   // with clerestory windows between white pilasters, tiled roofs. Approximate: the nave's and aisles' exact widths,
   // the transept ends, apse and sacristy (no photos of the west side), the roofs' pitch. Night glow in the façade
   // windows is licence. Method: docs/METODOLOGIA.md §9; style: docs/ESTETICA.md.
-  {const {G,Gs,V,N3,R}=localFrame(-102.9,32.3,179.3*Math.PI/180);
+  {const F=localFrame(-102.9,32.3,179.3*Math.PI/180),{G,Gs,V,N3,R}=F;
     const K={brick:C('#A04B34'),brick2:C('#8F4330'),white:C('#ECE7DC'),whiteSh:C('#D3CDC0'),plinth:C('#C9C3B6'),
       tile:C('#A35C42'),tile2:C('#8E4F3A'),flat:C('#8F8A82'),glass:C('#3B4653'),glass2:C('#2C3540'),door:C('#5A4636'),
       bell:C('#2E2C2B'),spire:C('#3F5C4E'),iron:C('#3A3A3A'),step:C('#D9D3C5'),step2:C('#C6BFAF')};
-    const box=(u0,v0,u1,v1,h0,h1,wall,top,lid=true)=>S.prism(R(u0,v0,u1,v1),h0,h1,wall,top,lid);
-    // a wall from (u,v) a to b with outward direction `out`; details are drawn `o` metres in front of it, s runs
-    // along the wall from a (so on a wall parallel to u, s is u itself)
-    const WL=(a,b,out,o=.06)=>{const L=Math.hypot(b[0]-a[0],b[1]-a[1]),du=(b[0]-a[0])/L,dv=(b[1]-a[1])/L;
-      return {L,q:(s,h)=>V(a[0]+du*s+out[0]*o,a[1]+dv*s+out[1]*o,h),n:N3(out[0],out[1])};};
-    const WV=(v,sg,o)=>WL([0,v],[1,v],[0,sg],o),WU=(u,sg,o)=>WL([u,0],[u,1],[sg,0],o);
-    const rect=(w,s0,s1,h0,h1,col)=>S.face([w.q(s0,h0),w.q(s1,h0),w.q(s1,h1),w.q(s0,h1)],w.n,col);
-    // pixel arch: a rectangle under two narrower steps
-    const arch=(w,sc,wd,h0,h1,col)=>{const r=wd*.45;rect(w,sc-wd/2,sc+wd/2,h0,h1-r,col);rect(w,sc-wd*.36,sc+wd*.36,h1-r,h1-r*.4,col);rect(w,sc-wd*.18,sc+wd*.18,h1-r*.4,h1,col);};
-    // stained glass: leaded bands in two tones
-    const glass=(w,sc,wd,h0,h1)=>{const r=wd*.45;for(let h=h0,k=0;h<h1-r-.01;h+=1.5,k++)rect(w,sc-wd/2,sc+wd/2,h,Math.min(h+1.5,h1-r),k%2?K.glass2:K.glass);
-      rect(w,sc-wd*.36,sc+wd*.36,h1-r,h1-r*.4,K.glass);rect(w,sc-wd*.18,sc+wd*.18,h1-r*.4,h1,K.glass);};
-    // gable roof over s0..s1 (along its ridge) and t0..t1, eaves at h, ridge rh higher; ax 'v': the ridge runs along
-    // v. Tiles in bays of two tones; brick gable ends with a white coping; eaves overhang by half a metre
-    const roof=(ax,s0,s1,t0,t1,h,rh,bay,ends=[1,1])=>{const P=(s,t,y)=>ax==='v'?V(t,s,y):V(s,t,y),D=(ds,dt,y)=>ax==='v'?N3(dt,ds,y):N3(ds,dt,y);
-      const tm=(t0+t1)/2,hw=(t1-t0)/2,o=.5,dr=o*rh/hw;
-      for(let s=s0,k=0;s<s1-1e-6;s+=bay,k++){const e=Math.min(s+bay,s1),c=k%2?K.tile2:K.tile;
-        S.face([P(s,t0-o,h-dr),P(e,t0-o,h-dr),P(e,tm,h+rh),P(s,tm,h+rh)],D(0,-rh,hw),c);
-        S.face([P(s,t1+o,h-dr),P(e,t1+o,h-dr),P(e,tm,h+rh),P(s,tm,h+rh)],D(0,rh,hw),c);}
-      [s0,s1].forEach((s,i)=>{if(!ends[i])return;const sg=i?1:-1,n=D(sg,0,0),f=s+sg*.08;
-        S.face([P(s,t0,h),P(s,t1,h),P(s,tm,h+rh)],n,K.brick);
-        S.face([P(f,t0-o,h-dr-.45),P(f,tm,h+rh-.45),P(f,tm,h+rh+.05),P(f,t0-o,h-dr+.05)],n,K.white);
-        S.face([P(f,t1+o,h-dr-.45),P(f,tm,h+rh-.45),P(f,tm,h+rh+.05),P(f,t1+o,h-dr+.05)],n,K.white);});};
+    const {box,WL,WV,WU,rect,arch,glass,roof}=facade(S,F,K);
     // footprint (OSM church + tower + steps); it levels the ground and keeps the city off it
     const fp=Gs([[-10,-35],[16,-35],[16,-32.4],[21.7,-32.4],[21.7,-25.8],[16,-25.8],[16,6],[24,6],[24,25],[13,25],[13,24],
       [7,27],[3,28.5],[-2,27],[-6,22.5],[-9,22.5],[-9,17],[-18,17],[-18,6],[-10,6],[-10,-23],[-13.3,-26],[-10,-29]]);

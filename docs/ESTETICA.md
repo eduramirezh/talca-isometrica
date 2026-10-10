@@ -68,7 +68,7 @@ Los modelos dibujados en `S` no tienen ventanas de sombreador: de noche se oscur
 
 ## 7. Herramientas
 
-En la plantilla, `localFrame(X, Y, A)` da el marco del hito (`G`, `V`, `N3`, `R`; METODOLOGIA §9.2). El bloque de la Catedral define además el vocabulario de fachada, que se puede copiar o, cuando lo use un segundo hito, subir a una función compartida:
+En la plantilla, `localFrame(X, Y, A)` da el marco del hito (`G`, `V`, `N3`, `R`; METODOLOGIA §9.2). `facade(S, F, K)` da el vocabulario de fachada en ese marco (`F`, lo que devuelve `localFrame`), con la paleta `K` del modelo (usa `tile`/`tile2`, `white`, `glass`/`glass2` y `gable` o `brick`):
 
 | Función | Qué dibuja |
 |---|---|
