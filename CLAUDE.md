@@ -16,6 +16,9 @@ python tools/screenshot.py shots/x.png --hash corte-apelaciones [--size 390x844]
 python pipeline/satellite.py plaza-de-armas [500]   # manzanas sobre imagen satelital, en diagnostics/
 python pipeline/geocode.py address "2 Norte 781"
 python pipeline/diagnostics.py centro          # panel PNG en diagnostics/
+uv run --with pillow python pipeline/landmark.py osm estadio [250]   # planta OSM + plano en diagnostics/
+python pipeline/landmark.py frame estadio 815575960 [más vías]       # vías en el marco local del modelo
+python pipeline/landmark.py photos estadio ["consulta"]              # fotos de Commons, más recientes primero
 ```
 
 Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.py`. Imprime las estadísticas de generación y los errores de consola. Una vista de escritorio y una de móvil suelen bastar. Si el Python del sistema no tiene Playwright (o Pillow para `satellite.py`), `uv run --with playwright python tools/screenshot.py …` funciona sin instalar nada; los navegadores ya están en la caché de Playwright.
@@ -48,7 +51,7 @@ Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.
 | `GB` | constructor de geometría indexada (posición Float32, normal Int8, color Uint8). `face()` orienta cada cara según la normal; `prism()` para cajas (los muros que parten del suelo bajan 4 m), `gable()` para techos a dos aguas, `flat()` para polígonos. `B.dy` sube todo lo que se emite; `drape()` corta capas planas por las aristas del terreno y las apoya en él |
 | palettes | colores de la escena |
 | three setup | cámara ortográfica, luces, `winMat()`: Lambert con ventanas procedurales en el shader (`uNight`, `uWin`) |
-| landmark models | `buildModels()`: modelos a mano de los 19 hitos, que reservan su huella en `occ` y registran una explanada (`padAt`) antes de generar la ciudad |
+| landmark models | `buildModels(B, S)`: modelos a mano de los 19 hitos, que reservan su huella en `occ` y registran una explanada (`padAt`) antes de generar la ciudad. `S` se dibuja sin ventanas procedurales (el Estadio). `NOLOTS` excluye recintos enteros de la ciudad generada; `GLOW` agrega luces nocturnas a `lamps()` |
 | procedural city | `styleFor()` clasifica cada manzana (core, core2, ind, apt, house); `cityGen()` recorre cada tramo de calle por ambos lados y coloca lotes |
 | base layers | parcelas agrícolas, manzanas, ríos (con suavizado Chaikin), Ruta 5, calles, vía férrea; todo pasa por `drape()` |
 | `buildCerro`, `wildTrees` | estatua del Cerro La Virgen sobre el terreno real; árboles en manchones en las laderas |
@@ -61,6 +64,21 @@ Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.
 | boot | orden: hitos (registran explanadas) → `applyPads()` → terreno y capas base → ciudad; genera todo dentro de `setTimeout` (para mostrar la pantalla de carga) y deja `window.__stats` |
 
 El render se hace solo cuando hace falta: `loop()` dibuja únicamente si `dirty` está activo.
+
+## Modelar un hito
+
+Los hitos se rehacen uno por uno sobre su planta real y con estética de pixel art. El Estadio Fiscal es el ejemplo terminado. El procedimiento completo está en docs/METODOLOGIA.md §9. En resumen:
+
+1. `landmark.py osm <id>`: la planta y el plano. Compruebe si el punto del lugar cae en el hito (suele ser la dirección, en un borde), si la caja cubre todo el hito y si la huella choca con calles del mapa.
+2. `landmark.py frame <id> <vía de referencia>`: origen y giro. Escriba el modelo en (u, v) con `G(u,v)`, como el estadio.
+3. `landmark.py photos <id>` y prensa sobre remodelaciones. Las fotos fechadas mandan sobre el satélite para techos, alturas y colores.
+4. El modelo:
+   - pixel art: peldaños, dos tonos alternados, líneas de 0,5 m, paleta local `K`;
+   - `S` para lo que no lleva ventanas;
+   - `occMark` con la huella real, `padAt`, `NOLOTS` si hay recinto cercado y `GLOW` para luces;
+   - un comentario con los ids de OSM, las fuentes y lo aproximado.
+5. Capturas: ficha, de cerca, girada, noche, pixel y móvil (las líneas `--js` están en §9.5). Compárelas con las fotos.
+6. Registre en CHANGELOG, docs/FUENTES.md (fotos y licencias) y aquí, si aparece una trampa nueva.
 
 ## Convenciones
 
@@ -97,6 +115,10 @@ Para publicar: sube `dist/talca.html`, el fragmento, no `index.html`.
 - **Navegadores sin GPU.** En Chromium sin GPU (las capturas) hay que usar SwiftShader; ver los argumentos en `tools/screenshot.py`.
 - **Árboles.** `IcosahedronGeometry` ya viene sin índice en r128; `treeGeo()` lo detecta para no llamar a `toNonIndexed()`.
 - **Relieve.** Todo lo nuevo que vaya en el suelo necesita la altura del terreno: capas planas en `buildBase()` (pasan por `drape()`), objetos con `B.dy = groundMin(huella)`, puntos sueltos con `E(x, y)`. `MODELS[id].h` es absoluta (se le suma el suelo al terminar `buildModels`). Para centrar la cámara en un lugar, usa `lift(x, y)`, no `(x, y)`. Si cambias la triangulación de `terrainMesh()`, cambia `sampleTri()` igual: `drape()` depende de que coincidan.
+- **La imagen satelital puede ser vieja.** Las teselas de Esri que usa `satellite.py` sirven para plantas y manzanas, pero pueden tener años: en el Estadio Fiscal son anteriores a las cubiertas de 2017. Para alturas, techos y colores de un hito, contrasta con fotos recientes (Wikimedia Commons; la etiqueta `wikimedia_commons` de OSM lleva a la categoría).
+- **El punto del lugar no es el centro del hito.** Las coordenadas de `pois.py` son direcciones. En recintos grandes caen en el borde: el Estadio quedó 100 m corrido y montado sobre 5 Norte por centrarlo ahí. Ubique el modelo con la planta de OSM y apunte `MODELS[id]` a su centro.
+- **La caja de descarga de OSM.** Si no cubre todo el hito, faltan piezas sin aviso: la primera descarga del estadio dejó fuera dos de sus cuatro torres. Use `landmark.py osm <id> <media caja>` con margen.
+- **Ventanas en caras que no son fachadas.** `winMat()` pinta ventanas en toda cara vertical a más de 1 m de altura. Graderías, escalinatas y muros van en `S`.
 - **El SRTM es de superficie.** Mide techos y árboles. `elevation.py` los quita con una apertura morfológica; si se cambia la fuente, revisa `python pipeline/elevation.py stats`.
 
 ## Ideas pendientes

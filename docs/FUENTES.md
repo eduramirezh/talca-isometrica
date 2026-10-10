@@ -9,7 +9,8 @@
 | Puntos de lugares y anclas de trazados | OpenStreetMap, consultado a través de [Mapcarta](https://mapcarta.com) | ODbL (OSM) | Coordenadas de la mayoría de los lugares, pasos bajo nivel, puentes, estación |
 | Elevación (SRTM 1", tesela S36W072) | NASA / USGS, Shuttle Radar Topography Mission, vía los [Terrain Tiles de AWS](https://registry.opendata.aws/terrain-tiles/) | Dominio público (SRTM) | Relieve de la maqueta y altura del lector |
 | Monumentos | [Consejo de Monumentos Nacionales](https://www.monumentos.gob.cl) | Información pública | Coordenadas UTM y fechas de Catedral, Mercado, Escuelas Concentradas, Edificio de los Servicios Públicos, La Victoria, ramal Talca–Constitución |
-| Imagen satelital | [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9) (Esri, Maxar, Earthstar Geographics) | Solo consulta; las teselas no se incluyen en la maqueta | Revisión de las manzanas «sin información» que están construidas (`config/manzanas.json`, `pipeline/satellite.py`) |
+| Plantas de hitos | API de [OpenStreetMap](https://www.openstreetmap.org/copyright) (`pipeline/landmark.py`) | **ODbL 1.0** (ver arriba) | Planta, orientación y medidas de los modelos rehechos (Estadio Fiscal: cancha, pista, graderías, recinto, torres, entradas) |
+| Imagen satelital | [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9) (Esri, Maxar, Earthstar Geographics) | Solo consulta; las teselas no se incluyen en la maqueta | Revisión de las manzanas «sin información» que están construidas (`config/manzanas.json`, `pipeline/satellite.py`). En algunos lugares la imagen tiene años (el Estadio, antes de 2017) |
 
 La atribución de OpenStreetMap y del INE está en la pestaña «Acerca» del mapa. Manténgala en cualquier versión publicada.
 
@@ -24,6 +25,17 @@ Cada lugar lista sus fuentes en `data/pois.csv` (columna `fuentes`) y en su fich
 - [Municipalidad de Talca: historia de la Cárcel Pública (PDF)](https://www.talca.cl/espacio-civico-talca/anexos/Origen-y-evolucion-de-la-Carcel-Publica-en-Talca.pdf)
 - [Museo de Talca: Casa de la Independencia](https://www.museodetalca.gob.cl/casa-de-la-independencia)
 - Directorios de notarías: [notariasdeturno.cl](https://www.notariasdeturno.cl/talca/), [infonotarias.cl](https://infonotarias.cl/talca/)
+
+## Modelos de hitos
+
+Las fotos y fichas solo se consultaron para el modelo (alturas, techos, colores). No se incluyen en la maqueta.
+
+- **Estadio Fiscal de Talca.** Fotos de Wikimedia Commons:
+  - [2021](https://commons.wikimedia.org/wiki/File:Estadio_Fiscal_Talca.jpg) (CC BY-SA 4.0);
+  - de 2024: [noviembre](https://commons.wikimedia.org/wiki/File:Estadio_Fiscal_de_Talca_2024.jpg), [diciembre (1)](https://commons.wikimedia.org/wiki/File:Estadio_Fiscal_de_Talca_20241.jpg) y [diciembre (2)](https://commons.wikimedia.org/wiki/File:Estadio_Fiscal_de_Talca_20242.jpg) (CC BY 4.0);
+  - [reinauguración de 2025](https://commons.wikimedia.org/wiki/File:Inauguraci%C3%B3n_Fiscal_de_Talca_2025.jpg) (CC BY 3.0 CL).
+
+  Obras de 2010–2017: [StadiumDB](https://stadiumdb.com/news/2020/02/new_stadium_yet_one_more_interesting_case_from_chile). Obras de 2025 para el Mundial Sub-20: [Gobierno de Chile](https://interior.gob.cl/noticias/2025/09/24/gobierno-reinaugura-estadio-fiscal-de-talca-tras-obras-de-remodelacion-con-miras-a-la-copa-mundial-de-la-fifa-sub-20/) y [CNN Chile](https://www.cnnchile.com/deportes/mundial-sub-20-asi-quedo-renovado-estadio-fiscal-de-talca_20250925/).
 
 ## Contexto histórico y trazados
 

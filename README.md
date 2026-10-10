@@ -51,6 +51,7 @@ pipeline/
   build.py               plantilla + datos -> dist/
   diagnostics.py         paneles PNG para revisar trazados contra las manzanas
   satellite.py           imagen satelital con las manzanas encima (qué hay de verdad en cada una)
+  landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos de Commons
 src/template.html        toda la aplicación: CSS, UI y motor three.js (r128)
 data/                    datos procesados (versionados)
 dist/                    resultado: talca.html (fragmento) e index.html (página completa)

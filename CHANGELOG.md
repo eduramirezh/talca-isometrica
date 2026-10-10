@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **Estadio Fiscal, nuevo modelo.** El modelo anterior estaba centrado en el punto de la dirección (Alameda 251), que cae en el borde oriente del recinto: quedaba unos 100 m al oriente del estadio real y montado sobre 5 Norte. El nuevo sigue la planta de OpenStreetMap: cancha de 105 × 67 m girada como la real, pista atlética de 8 carriles, graderías escalonadas en curva (sur, oriente y una norte más baja) bajo la cubierta de membrana que desde las obras de 2017 techa la galería oriente y ambas cabeceras, tribuna poniente techada, las cuatro torres de iluminación (encendidas de noche), las tres entradas del sector sur y la cancha de hockey junto a la Alameda. Los detalles (cubiertas, asientos rojos con filas negras en las curvas, escaleras amarillas, torres) se contrastaron con fotos de 2021 a 2025 en Wikimedia Commons y con la descripción de las obras en StadiumDB; la imagen satelital de Esri es anterior a 2017 y no muestra las cubiertas. Es el primer modelo con estética de pixel art: filas en dos tonos, pasillos, franjas de corte en el pasto y líneas más anchas que las reales para que se lean a 1 m por píxel.
+- Los modelos que no deben llevar ventanas procedurales (las contrahuellas de una gradería son caras verticales) se construyen en un segundo constructor sin ese sombreador.
+- Dentro del recinto deportivo cercado (estadio, piscina, canchas) ya no se generan casas.
+- **`pipeline/landmark.py`**: insumos para rehacer un hito. `osm` baja la planta de OpenStreetMap y dibuja un plano contra las calles del mapa; `frame` pasa las vías al marco local del modelo; `photos` baja fotos de Wikimedia Commons ordenadas por fecha. El procedimiento está en docs/METODOLOGIA.md §9.
+
 - **Manzanas construidas que aparecían como parque.** El Censo marca «sin información» las manzanas sin viviendas, y la maqueta las pintaba todas como parque. Se revisaron contra la imagen satelital las del centro: ocho están construidas y ahora tienen edificios. Entre ellas, la manzana frente a la Plaza de Armas (1 Sur, entre 1 Poniente y 1 Oriente), el Mercado Central, las Escuelas Concentradas y el Liceo Abate Molina. La lista, con su nota, está en `config/manzanas.json`.
 
 ## 1.2 — 2026-10-10 · Relieve

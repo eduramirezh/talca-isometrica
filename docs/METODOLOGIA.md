@@ -146,26 +146,91 @@ En 1 Norte los impares están al lado norte. La Alameda es la 4 Norte.
   3. Se descarta el lote si invade otra calle, si sale de la manzana o si choca con algo ya construido. Para esto último hay un raster de ocupación de 2,5 m.
 
   Todo usa números aleatorios con semilla, así que la ciudad sale idéntica en cada carga. El resultado: ~72.000 edificios y ~2,1 millones de vértices en un solo buffer.
-- **Hitos.** Hay 19 modelos simplificados hechos a mano, entre ellos la Catedral, la Corte con su pórtico, los tribunales penales, la Fiscalía, el Juzgado de Familia, la ex Cárcel con muros y torres de guardia, el Mercado, la Casa de la Independencia, el Estadio, la Estación, el Teatro, La Victoria, el Hospital y la estatua del Cerro La Virgen. Reservan su huella y nivelan el terreno antes de que se genere la ciudad.
+- **Hitos.** Hay 19 modelos hechos a mano. El Estadio Fiscal sigue su planta real y la estética de pixel art (sección 9); los demás todavía son simplificados: entre ellos la Catedral, la Corte con su pórtico, los tribunales penales, la Fiscalía, el Juzgado de Familia, la ex Cárcel con muros y torres de guardia, el Mercado, la Casa de la Independencia, el Estadio, la Estación, el Teatro, La Victoria, el Hospital y la estatua del Cerro La Virgen. Reservan su huella y nivelan el terreno antes de que se genere la ciudad.
 - **Árboles.** Unos 76.000, en dos mallas instanciadas: árboles redondos en parques, patios y laderas, y álamos en riberas y en la Alameda.
 - **Noche.** Las ventanas se dibujan en el shader (patrón por piso y vano, y una semilla por fachada que decide cuáles se encienden). También hay faroles cada 35 m en las calles principales.
 - **Interfaz.** Los marcadores y etiquetas son elementos del DOM proyectados en cada cuadro, ordenados por prioridad para no superponerse. El lector de direcciones usa `config/grid_lines.json`.
 
-## 9. Diseño de la interfaz
+## 9. Modelos de hitos
+
+Los hitos se están rehaciendo uno por uno: sobre su planta real y con estética de pixel art. El primero fue el Estadio Fiscal (octubre de 2026). Este es el procedimiento que se siguió y que conviene repetir.
+
+### 9.1 Planta
+
+`python pipeline/landmark.py osm <id> [media caja]` (con Pillow: `uv run --with pillow python …`) baja de la API de OpenStreetMap una caja alrededor del lugar. Luego lista las vías, relaciones y nodos etiquetados, y dibuja `diagnostics/plan-<id>.png`: calles del mapa con su ancho de render, manzanas, polígonos de OSM con su id y el punto del lugar. Antes de modelar, hay que contestar tres preguntas con el plano:
+
+- **¿El punto del lugar cae en el hito?** Los puntos de `pois.py` son direcciones y suelen quedar en un borde o en la entrada. El del estadio (Alameda 251) está en el borde oriente del recinto. El modelo anterior estaba centrado ahí: quedaba 100 m al oriente del estadio real y montado sobre 5 Norte. El modelo se ubica sobre la planta real y `MODELS[id]` apunta a su centro, para que el marcador y la cámara vayan ahí. El punto de `pois.py` no se toca: es la dirección.
+- **¿La caja cubre todo el hito?** La primera descarga del estadio, en una caja centrada en el punto, dejó fuera dos de las cuatro torres de iluminación. Agrande la media caja si la huella llega al borde del plano.
+- **¿La huella real choca con calles del mapa?** Las calles vienen del grafo de cicloconecta, no del OSM actual, y pueden pasar por dentro de un recinto. En el estadio, solo el camino de servicio desde 5 Norte entra, por el portón del lado norponiente, y ahí el modelo deja un hueco.
+
+### 9.2 Marco local
+
+`python pipeline/landmark.py frame <id> <vía de referencia> [otras vías]` toma como origen el centroide de la vía de referencia (la cancha, el edificio principal) y como eje v la dirección de su lado más largo. Imprime los lados de la referencia y cada vía en coordenadas (u, v), además de los nodos etiquetados cercanos (torres, entradas). El modelo se escribe en ese marco y una función `G(u,v)` lo pasa a metros de grilla:
+
+```
+G(u,v) = [X + u·sin A + v·cos A,  Y − u·cos A + v·sin A]
+```
+
+En el estadio, la cancha (vía 815575960) da X = −780,8, Y = 684,8 y A = 64,8°. Las medidas salen de ahí: cancha de 105 × 67 m; pista con radio interior de 36,2 m, exterior de 46,4 m y rectas de 85,8 m; gradería de 20 m de fondo en la curva sur y el lado oriente, y de 8 m en la cabecera norte.
+
+### 9.3 Fotos y fuentes: el estado actual
+
+La planta no dice alturas, techos ni colores. `python pipeline/landmark.py photos <id> ["consulta"]` busca en Wikimedia Commons y guarda las miniaturas en `diagnostics/fotos/<id>/`, más recientes primero, con un `indice.txt` (fecha, licencia y enlace). Si la etiqueta `wikimedia_commons` de OSM nombra una categoría, úsela como consulta. Complemente con prensa o fichas técnicas sobre remodelaciones.
+
+**La imagen satelital puede tener años.** La de Esri (`satellite.py`) muestra el estadio antes de las obras de 2017: galería oriente descubierta y techo gris en la tribuna. Las fotos de 2021 a 2025 y la ficha de StadiumDB muestran el estado actual. Ahora una membrana de PVC cubre la galería oriente y ambas cabeceras, la tribuna está techada entera y hay escaleras amarillas, asientos rojos con filas negras y cuatro torres de iluminación. Use el satélite para plantas y las fotos fechadas para todo lo que está sobre el suelo.
+
+Anote de dónde sale cada detalle. Los detalles sin fuente se marcan como aproximados en el comentario del modelo (en el estadio: la altura de la cabecera norte y el dibujo exacto de los asientos negros).
+
+### 9.4 Modelo
+
+- **Estética de pixel art.**
+  - Formas escalonadas en vez de rampas: cada fila de una gradería es un peldaño.
+  - Dos tonos alternados donde la realidad tiene ritmo: filas, franjas de corte del pasto, paños de techo cada 12 m.
+  - Líneas más anchas que las reales (0,5 m en vez de 0,12) para que se lean a ~1 m por píxel, el zoom de la ficha.
+  - Detalles que ocupen 2 o 3 píxeles: paneles de focos, puertas, pilares.
+  - Paleta en un objeto local `K`, tomada de las fotos.
+- **Constructor.** `buildModels(B, S)` recibe dos. `B` pasa por el sombreador de ventanas procedurales, que pinta ventanas en toda cara vertical a más de 1 m del suelo. `S` no pasa por él. Use `S` para lo que tiene muchas caras verticales que no son fachadas, como las contrahuellas de una gradería.
+- **Huella y terreno.** `occMark(polígono)` con la huella real, no un rectángulo, para que la ciudad y los árboles no la invadan. `padAt(caja)` nivela el terreno y su altura va en `S.dy` (o `B.dy`). Las capas planas del modelo van a 0,30–0,43 m sobre la explanada, separadas al menos 0,03 m para evitar parpadeo.
+- **Recintos.** Si el hito está dentro de un recinto cercado (el polígono OSM del recinto deportivo, simplificado), agregue ese polígono a `NOLOTS`: la ciudad no genera casas ahí, pero sí árboles.
+- **Luces.** Los puntos que deben brillar de noche van a `GLOW` (x, altura absoluta, y). Póngalos delante de la cara que los lleva, o la prueba de profundidad los esconde.
+- **Comentario.** Arriba del modelo, en la plantilla, cite los ids de OSM y las fuentes de lo que está sobre el suelo, y diga qué es aproximado.
+
+### 9.5 Verificación
+
+Con `tools/screenshot.py --hash <id>` y `--js`:
+
+| Vista | `--js` |
+|---|---|
+| ficha | (nada) |
+| de cerca | `document.querySelector('#cx').click();for(let i=0;i<3;i++)document.querySelector('#zin').click()` |
+| girada | lo anterior + `;document.querySelector('#rr').click()` |
+| noche | lo anterior + `;document.querySelector('#night').click()` |
+| pixel | lo anterior + `;document.querySelector('#pixel').click()` |
+| móvil | `--size 390x844`, sin `--js` |
+
+Compare la vista girada con las fotos tomadas desde un ángulo parecido. Revise también la vista inicial (`shots/centro.png`) y que las estadísticas solo cambien donde se espera: con `NOLOTS`, el número de edificios baja un poco.
+
+### 9.6 Registro
+
+- `CHANGELOG.md`: qué cambió y con qué fuentes.
+- `docs/FUENTES.md`: las fotos y fichas usadas, con su licencia.
+- `CLAUDE.md`: las trampas nuevas.
+
+## 10. Diseño de la interfaz
 
 - **Paleta.** La escena usa los tonos del Maule en verano: campo seco, teja, ripio de río. La interfaz evoca un expediente: tinta azul marino sobre papel, con un acento vino (el Maule es zona vitivinícola) para la capa jurídica y verde para los hitos.
 - **Tipografía.** Alegreya SC, Alegreya Sans e IBM Plex Mono (esta última para las direcciones de la grilla).
 - **Temas.** Claro y oscuro con tokens CSS. En móvil el panel se convierte en hoja inferior.
 
-## 10. Verificación
+## 11. Verificación
 
 - **Validación de lugares.** `make validate` compara cada lugar con su dirección. En la revisión de la exportación (10-10-2026) detectó un error: la U. Autónoma estaba ~420 m al poniente de su dirección, y se corrigió (CHANGELOG).
 - **Reproducibilidad.** `process_geometry.py` reproduce exactamente la geometría publicada en la v1.
-- **Capturas.** `tools/screenshot.py` permite revisar escritorio, móvil, tema oscuro, modo noche, recorridos y búsqueda.
+- **Capturas.** `tools/screenshot.py` permite revisar escritorio, móvil, tema oscuro, modo noche, recorridos y búsqueda. Las vistas para revisar un hito están en la sección 9.5.
 
-## 11. Limitaciones
+## 12. Limitaciones
 
-- Los edificios no son los reales: son una interpretación según las reglas descritas.
+- Los edificios no son los reales: son una interpretación según las reglas descritas. Solo el Estadio Fiscal sigue su planta real (sección 9).
 - Los ríos, el tramo norte del ferrocarril y la Ruta 5 son trazados aproximados (con un error de decenas de metros).
 - El relieve está exagerado (×3 en el plano, ×1,3 en los cerros) y suavizado a ~40 m: no se ven taludes ni desniveles de pocos metros. Los ríos son trazados aproximados que no siempre van por el fondo del valle del modelo.
 - Fuera del centro, la grilla se deforma y el lector de direcciones deja de funcionar. Muestra «Fuera del centro numerado».
