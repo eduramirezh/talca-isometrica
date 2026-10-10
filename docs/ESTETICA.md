@@ -1,6 +1,6 @@
 # Estética de los hitos
 
-Criterios visuales para los modelos hechos a mano, para que los hitos rehechos se vean como una sola familia. El procedimiento (planta, marco local, fotos, verificación) está en [METODOLOGIA.md §9](METODOLOGIA.md#9-modelos-de-hitos); este documento dice cómo debe verse el resultado. Los ejemplos terminados son el Estadio Fiscal y la Catedral.
+Criterios visuales para los modelos hechos a mano, para que los hitos rehechos se vean como una sola familia. El procedimiento (planta, marco local, fotos, verificación) está en [METODOLOGIA.md §9](METODOLOGIA.md#9-modelos-de-hitos); este documento dice cómo debe verse el resultado. Los ejemplos de referencia son el Estadio Fiscal y la Catedral; todos los hitos de `buildModels` siguen ya estos criterios.
 
 ## 1. La idea
 

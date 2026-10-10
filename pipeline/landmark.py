@@ -19,13 +19,14 @@ dirección de su lado más largo, que pasa a ser el eje v), salvo que se den --o
   G(u,v) = [X + u·sin(A) + v·cos(A), Y − u·cos(A) + v·sin(A)]
 Imprime los lados de la primera vía y, para cada vía, su extensión en u y v y sus vértices.
 
-photos: sin consulta, busca en Commons el nombre del lugar (solo archivos). Guarda miniaturas de 1200 px y un
-indice.txt con título, fecha, descripción, licencia y enlace, para citar las que se usen. Las fotos con fecha
-importan: la imagen satelital puede ser de antes de una remodelación.
+photos: sin consulta, busca en Commons el nombre del lugar (solo archivos). Guarda miniaturas de 960 px (un
+ancho estándar: con otros, Commons responde 429) y un indice.txt con título, fecha, descripción, licencia, autor
+y enlace, para citar las que se usen. Las fotos con fecha importan: la imagen satelital puede ser de antes de
+una remodelación.
 
 Requiere internet y Pillow para el plano (uv run --with pillow python landmark.py osm …).
 """
-import json, math, re, sys, urllib.parse, urllib.request
+import json, math, re, sys, time, urllib.error, urllib.parse, urllib.request
 from common import ROOT, DATA, RAW, loc, require
 
 UA = {'User-Agent': 'talca-isometrica/1.0 (maqueta isometrica de Talca)'}
@@ -33,8 +34,13 @@ OSM = 'https://api.openstreetmap.org/api/0.6/map.json?bbox={},{},{},{}'
 COMMONS = 'https://commons.wikimedia.org/w/api.php?'
 SW = [16, 13, 11, 9.5, 7, 5, 3.5, 3.5]   # ancho de calle por clase, como en la plantilla
 
-def get(url):
-    return urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60).read()
+def get(url, tries=6):
+    # Commons answers 429 when several sessions download at once: wait and retry
+    for k in range(tries):
+        try: return urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60).read()
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or k == tries - 1: raise
+            time.sleep(10 * (k + 1))
 
 def poi(pid):
     pois = {p['id']: p for p in json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois')))['pois']}
@@ -173,19 +179,19 @@ def cmd_photos(pid, query=None):
     rows = []
     for k in range(0, len(titles), 20):
         info = json.loads(get(COMMONS + urllib.parse.urlencode({'action': 'query', 'titles': '|'.join(titles[k:k+20]),
-              'prop': 'imageinfo', 'iiprop': 'url|extmetadata', 'iiurlwidth': 1200, 'format': 'json'})))
+              'prop': 'imageinfo', 'iiprop': 'url|extmetadata', 'iiurlwidth': 960, 'format': 'json'})))
         for pg in info['query']['pages'].values():
             if 'imageinfo' not in pg: continue
             ii = pg['imageinfo'][0]; m = ii.get('extmetadata', {})
             val = lambda k: ' '.join(str(m.get(k, {}).get('value', '')).split())
             date = re.search(r'\d{4}(-\d\d-\d\d)?', val('DateTimeOriginal'))
             rows.append((date.group(0) if date else '?', pg['title'], val('ImageDescription')[:160],
-                         val('LicenseShortName'), ii['descriptionurl'], ii['thumburl']))
+                         val('LicenseShortName'), re.sub('<[^>]+>', '', val('Artist'))[:60], ii['descriptionurl'], ii['thumburl']))
     rows.sort(key=lambda r: r[0] if r[0] != '?' else '0', reverse=True)   # sin fecha al final
     with open(out / 'indice.txt', 'w') as f:
-        for i, (date, title, desc, lic, page, thumb) in enumerate(rows):
-            name = f'{i:02d}.jpg'; (out / name).write_bytes(get(thumb))
-            line = f'{name}  {date}  {title}  [{lic}]\n    {desc}\n    {page}\n'
+        for i, (date, title, desc, lic, author, page, thumb) in enumerate(rows):
+            name = f'{i:02d}.jpg'; (out / name).write_bytes(get(thumb)); time.sleep(1)
+            line = f'{name}  {date}  {title}  [{lic}] {author}\n    {desc}\n    {page}\n'
             f.write(line); print(line, end='')
     print(f'-> {out.relative_to(ROOT)}/ (más recientes primero)')
 

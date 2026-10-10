@@ -153,7 +153,7 @@ En 1 Norte los impares están al lado norte. La Alameda es la 4 Norte.
 
 ## 9. Modelos de hitos
 
-Los hitos se están rehaciendo uno por uno: sobre su planta real y con estética de pixel art. El primero fue el Estadio Fiscal y el segundo la Catedral (octubre de 2026). Este es el procedimiento que se siguió y que conviene repetir. Los criterios visuales (escala, lenguaje, paleta) están en [ESTETICA.md](ESTETICA.md).
+Los hitos se rehicieron sobre su planta real y con estética de pixel art. El primero fue el Estadio Fiscal y el segundo la Catedral; los demás se rehicieron después, varios a la vez (§9.7), en octubre de 2026. Este es el procedimiento que se siguió y que conviene repetir. Los criterios visuales (escala, lenguaje, paleta) están en [ESTETICA.md](ESTETICA.md).
 
 ### 9.1 Planta
 
@@ -220,6 +220,18 @@ Compare la vista girada con las fotos tomadas desde un ángulo parecido. Revise 
 - `docs/FUENTES.md`: las fotos y fichas usadas, con su licencia.
 - `CLAUDE.md`: las trampas nuevas.
 
+Si un hito no tiene fotos con licencia libre (el Juzgado de Garantía, la Fiscalía Local), Google Street View y su imagen satelital pueden servir para mirar, nunca para copiar: nada de esas imágenes entra en la maqueta ni en el repositorio, y FUENTES.md lo dice. Si no hay ninguna vista de una fachada (el Juzgado de Familia), el modelo se queda en un bloque sencillo con la planta, la altura y el techo correctos, y el comentario lo declara.
+
+### 9.7 Varios hitos a la vez
+
+Los hitos restantes se rehicieron en cinco sesiones paralelas, una por zona (Plaza de Armas; barrio judicial de la Alameda; Alameda centro y oriente; oriente del centro; afueras), cada una en su propio `git worktree`. Para que las ramas se mezclen sin conflictos:
+
+- En `buildModels`, cada hito ocupa el bloque bajo su línea de marca `// ==== hito: <id> ====`, y un hito nuevo tiene la suya. Una sesión solo edita entre su marca y la siguiente. Git no mezcla cambios de dos ramas en líneas contiguas: las marcas, que no cambian, los separan.
+- Lo compartido (`localFrame`, `facade`, el terreno, la ciudad) no se toca en paralelo. Antes de repartir el trabajo se subió a `facade()` el vocabulario de la Catedral, para que nadie lo copiara por su cuenta; los ayudantes nuevos quedan dentro de cada bloque y se suben después (CLAUDE.md, «Ideas pendientes»).
+- Las sesiones no editan la documentación: entregan sus entradas de CHANGELOG, FUENTES y trampas, y se integran todas al final, en un solo cambio.
+- `raw/` y `node_modules/` no están en git: en cada worktree van como enlaces simbólicos a los del checkout principal.
+- Commons limita las descargas cuando varias sesiones bajan fotos a la vez; `landmark.py photos` espera y reintenta. Las capturas, en cambio, conviene sacarlas de a una: con la máquina cargada, Playwright agota su tiempo.
+
 ## 10. Diseño de la interfaz
 
 - **Paleta.** La escena usa los tonos del Maule en verano: campo seco, teja, ripio de río. La interfaz evoca un expediente: tinta azul marino sobre papel, con un acento vino (el Maule es zona vitivinícola) para la capa jurídica y verde para los hitos.
@@ -234,7 +246,7 @@ Compare la vista girada con las fotos tomadas desde un ángulo parecido. Revise 
 
 ## 12. Limitaciones
 
-- Los edificios no son los reales: son una interpretación según las reglas descritas. Solo el Estadio Fiscal y la Catedral siguen su planta real (sección 9).
+- Los edificios generados no son los reales: son una interpretación según las reglas descritas. Solo los hitos siguen su planta real (sección 9), y en ellos lo que está sobre el suelo es una interpretación de fotos: cada modelo dice en su comentario qué es aproximado.
 - Los ríos, el tramo norte del ferrocarril y la Ruta 5 son trazados aproximados (con un error de decenas de metros).
 - El relieve está exagerado (×3 en el plano, ×1,3 en los cerros) y suavizado a ~40 m: no se ven taludes ni desniveles de pocos metros. Los ríos son trazados aproximados que no siempre van por el fondo del valle del modelo.
 - Fuera del centro, la grilla se deforma y el lector de direcciones deja de funcionar. Muestra «Fuera del centro numerado».

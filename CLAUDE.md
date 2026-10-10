@@ -51,7 +51,7 @@ Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.
 | `GB` | constructor de geometría indexada (posición Float32, normal Int8, color Uint8). `face()` orienta cada cara según la normal; `prism()` para cajas (los muros que parten del suelo bajan 4 m), `gable()` para techos a dos aguas, `flat()` para polígonos. `B.dy` sube todo lo que se emite; `drape()` corta capas planas por las aristas del terreno y las apoya en él |
 | palettes | colores de la escena |
 | three setup | cámara ortográfica, luces, `winMat()`: Lambert con ventanas procedurales en el shader (`uNight`, `uWin`) |
-| landmark models | `buildModels(B, S)`: modelos a mano de los 19 hitos, que reservan su huella en `occ` y registran una explanada (`padAt`) antes de generar la ciudad. `S` se dibuja sin ventanas procedurales (el Estadio, la Catedral). `localFrame(X,Y,A)` da el marco local de un hito (`G`, `V`, `N3`, `R`). `NOLOTS` excluye recintos enteros de la ciudad generada; `GLOW` agrega luces nocturnas a `lamps()` |
+| landmark models | `buildModels(B, S)`: modelos a mano de los hitos, cada uno en su bloque bajo una línea `// ==== hito: <id> ====` (no las borre: permiten rehacer hitos en paralelo sin conflictos). Reservan su huella en `occ` y registran una explanada (`padAt`) antes de generar la ciudad. `S` se dibuja sin ventanas procedurales (el Estadio, la Catedral). `localFrame(X,Y,A)` da el marco local de un hito (`G`, `V`, `N3`, `R`) y `facade(S,F,K)` el vocabulario de fachada (muros, paños, arcos, vitrales, techos; ESTETICA §7). `NOLOTS` excluye recintos enteros de la ciudad generada; `GLOW` agrega luces nocturnas a `lamps()` |
 | procedural city | `styleFor()` clasifica cada manzana (core, core2, ind, apt, house); `cityGen()` recorre cada tramo de calle por ambos lados y coloca lotes |
 | base layers | parcelas agrícolas, manzanas, ríos (con suavizado Chaikin), Ruta 5, calles, vía férrea; todo pasa por `drape()` |
 | `buildCerro`, `wildTrees` | estatua del Cerro La Virgen sobre el terreno real; árboles en manchones en las laderas |
@@ -67,7 +67,7 @@ El render se hace solo cuando hace falta: `loop()` dibuja únicamente si `dirty`
 
 ## Modelar un hito
 
-Los hitos se rehacen uno por uno sobre su planta real y con estética de pixel art. El Estadio Fiscal y la Catedral son los ejemplos terminados. El procedimiento completo está en docs/METODOLOGIA.md §9 y los criterios visuales (escala, lenguaje, paleta, lista de revisión) en docs/ESTETICA.md. En resumen:
+Los hitos se rehacen uno por uno sobre su planta real y con estética de pixel art. El Estadio Fiscal y la Catedral son los ejemplos de referencia. Para casos particulares, copie del hito que se parezca: en ladera y fuera de toda explanada, el Cerro La Virgen (`buildCerro`); un campus de decenas de edificios de OSM sin explanada y con pasto apoyado en el terreno, la U. de Talca y la UCM; vías que siguen el suelo junto a una explanada, la Estación; una isla entre calzadas, La Victoria; plantas cóncavas y relieve real en la fachada, el Hospital; techos a cuatro aguas, la Ex Cárcel y el Liceo Abate Molina. El procedimiento completo está en docs/METODOLOGIA.md §9 y los criterios visuales (escala, lenguaje, paleta, lista de revisión) en docs/ESTETICA.md. En resumen:
 
 1. `landmark.py osm <id>`: la planta y el plano. Compruebe si el punto del lugar cae en el hito (suele ser la dirección, en un borde), si la caja cubre todo el hito y si la huella choca con calles del mapa.
 2. `landmark.py frame <id> <vía de referencia>`: origen y giro. Escriba el modelo en (u, v) con `G(u,v)`, como el estadio.
@@ -77,7 +77,7 @@ Los hitos se rehacen uno por uno sobre su planta real y con estética de pixel a
    - `S` para lo que no lleva ventanas;
    - `occMark` con la huella real, `padAt`, `NOLOTS` si hay recinto cercado y `GLOW` para luces;
    - un comentario con los ids de OSM, las fuentes y lo aproximado.
-5. Capturas: ficha, de cerca, girada, noche, pixel y móvil (las líneas `--js` están en §9.5). Compárelas con las fotos.
+5. Capturas: ficha, de cerca, girada, noche, pixel y móvil (las líneas `--js` están en §9.5). Compárelas con las fotos. Una a la vez: varias en paralelo agotan el tiempo de Playwright.
 6. Registre en CHANGELOG, docs/FUENTES.md (fotos y licencias) y aquí, si aparece una trampa nueva.
 
 ## Convenciones
@@ -121,10 +121,21 @@ Para publicar: sube `dist/talca.html`, el fragmento, no `index.html`.
 - **El punto del lugar no es el centro del hito.** Las coordenadas de `pois.py` son direcciones. En recintos grandes caen en el borde: el Estadio quedó 100 m corrido y montado sobre 5 Norte por centrarlo ahí. Ubique el modelo con la planta de OSM y apunte `MODELS[id]` a su centro.
 - **La caja de descarga de OSM.** Si no cubre todo el hito, faltan piezas sin aviso: la primera descarga del estadio dejó fuera dos de sus cuatro torres. Use `landmark.py osm <id> <media caja>` con margen.
 - **Ventanas en caras que no son fachadas.** `winMat()` pinta ventanas en toda cara vertical a más de 1 m de altura. Graderías, escalinatas y muros van en `S`.
+- **Rotar en `--js`.** El giro es animado: dos clics seguidos en `#rr` giran una sola vez, y una rueda del mouse cancela el giro en curso. Espere ~2 s entre clics (`--js` acepta una expresión async, que se espera). La cámara inicial mira desde el sureste: una fachada al poniente necesita dos o tres giros.
+- **`E()` dentro de `buildModels` es el terreno sin explanadas.** `applyPads()` corre después y además aplana una celda de 40 m alrededor de cada explanada. Lo que va justo afuera de una (andenes, vías) toma `max(explanada, E)`.
+- **Capas planas sin explanada.** `drape()` se puede llamar desde `buildModels` donde no hay `padAt`; copie los triángulos a `S` con normal `[0,1,0]` (`EN()` todavía vale cero). Alturas: manzanas 0,10, pasto bajo las calles 0,11, calles desde 0,12, capas sobre las calles desde 0,155. Una separación de 0,5 cm parpadea.
+- **Techos a la misma altura en `S`.** Si varias cajas llegan a la misma altura, sus tapas coplanares y los muros interiores que terminan en el techo se ven como líneas cortadas. Use `lid=false`, termine los muros 3 cm abajo y ponga un solo `S.flat` sobre todo el contorno.
+- **Las caras inferiores no se ven.** Aleros y voladizos miran hacia abajo; un color que solo vive ahí (la madera del Teatro Regional) va en un borde visible.
+- **Calzadas del mapa y plantas de OSM.** Las calzadas del mapa (calles del grafo, con ancho por clase) son más anchas que las reales, y las plantas de OSM pueden quedar ~5 m corridas respecto de las manzanas del censo: una isla o un muro dibujado desde OSM puede pisar el asfalto. Ajústelo al hueco entre las calles del mapa (La Victoria, la Ex Cárcel).
+- **El contorno de OSM puede incluir estacionamientos.** El del Mall Plaza Maule abarca un estacionamiento en superficie (por el subterráneo). Contraste con la imagen.
+- **`buildCerro()` corre después del terreno.** Ahí `padAt` ya no sirve y `S` no está al alcance: el santuario se apoya en `E()`/`groundMin`, con muros de contención, en su propio `GB`.
+- **El punto de un edificio junto a la Alameda.** `alamedaPlan()` centra la plaza de cada tramo de la Alameda en el `MODELS` cuya x cae en el tramo y cuya y está a menos de 20 m de su centro. El punto de un edificio vecino no debe caer ahí por accidente.
 - **El SRTM es de superficie.** Mide techos y árboles. `elevation.py` los quita con una apertura morfológica; si se cambia la fuente, revisa `python pipeline/elevation.py stats`.
 
 ## Ideas pendientes
 
+- Subir a `facade()` los ayudantes que hoy se repiten dentro de los bloques: techo a cuatro aguas (`hip`, en la Ex Cárcel y el Liceo), muros de un contorno cóncavo con tapa (`walls`/`extrude`, en el Mall, los campus y el Hospital), muros de un polígono hacia afuera (`edges`, Mercado y Juzgado de Familia), filas de ventanas por piso (`windows`, Corte y Garantía) y relieve real en fachada (`rib`, Hospital).
+- El Río Claro con su trazado de OSM, el Parque Río Claro y la ribera (botes, Las Viejas Cochinas).
 - Polígonos reales de edificios desde OSM (`building=*`) para el centro, en vez de los generados.
 - Agregar la 7ª Notaría (30 Oriente 1528), la clínica jurídica de la U. de Talca, el SML y el INDH Maule cuando haya direcciones confirmadas.
 - Ríos trazados con geometría OSM (`waterway=river`) si se puede ejecutar Overpass. La consulta está en docs/METODOLOGIA.md.
