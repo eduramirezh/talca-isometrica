@@ -5,6 +5,7 @@
   python tools/screenshot.py shots/movil.png --size 390x844 --dark
   python tools/screenshot.py shots/noche.png --js "document.querySelector('#night').click()"
   python tools/screenshot.py shots/ruta.png --hash justicia          # inicia un recorrido
+  python tools/screenshot.py shots/puente.png --js "__look(-1640,533,6,Math.PI/4+Math.PI)"  # cámara en (x, y) de grilla, zoom, giro
 
 Usa dist/index.html (make build) y sirve three.js r128 desde node_modules (npm install), así funciona
 sin internet. Imprime las estadísticas de generación (edificios, vértices, árboles, ms) y los

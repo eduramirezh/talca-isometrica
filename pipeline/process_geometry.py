@@ -4,6 +4,7 @@ Entradas:
   raw/chile_geojson/manzanas/R07_MANZANA_{IND,SIN_INF,ALDEA}_C17.shp.geojson  (Censo 2017, INE)
   raw/cicloconecta/data/cities/talca/nav_graph.json                         (OSM, vía cicloconecta)
   config/trazados.json                                                      (ríos, vía férrea, Ruta 5)
+  raw/osm/rio-claro.json      (eje y agua del Río Claro, de la API de OSM; se baja solo la primera vez)
 
 Salida (todas las coordenadas en metros de grilla enteros, codificadas en delta:
 [x0, y0, dx1, dy1, ...]):
@@ -12,10 +13,12 @@ Salida (todas las coordenadas en metros de grilla enteros, codificadas en delta:
                                                   (build.py marca 3=construida según config/manzanas.json)
   streets  [[clase, idx_nombre, polilínea]]       clase 0 troncal ... 7 servicio
   names    nombres de calle
-  water    {claro, lircay, piduco}  + rail, ruta5 + widths
+  water    {claro, lircay, piduco}  ejes de los ríos (el Claro, de OSM; los otros, a mano)
+  area     {claro: [contorno, isla, ...]}  agua del Claro según OSM (anillos codificados)
+  rail, ruta5, widths
 """
 import json, math, collections
-from common import loc, MANZANAS_DIR, NAV_GRAPH, CONFIG, DATA, require
+from common import loc, MANZANAS_DIR, NAV_GRAPH, CONFIG, DATA, RAW, require
 
 XMIN, XMAX, YMIN, YMAX = -4000, 5600, -4200, 4700     # ≈ lon -71.712..-71.598, lat -35.468..-35.380
 EPS_BLOCK, EPS_STREET = 1.2, 0.8                      # tolerancia Douglas-Peucker (m)
@@ -117,12 +120,53 @@ def load_streets():
     print('calles:', len(streets), 'polilíneas,', sum(len(s[2])//2 for s in streets), 'vértices')
     return streets, names
 
+def osm_river(name, r):
+    """Centreline and water area of a river from OpenStreetMap: the way r['osm']['via'] (waterway=river) and the
+    multipolygon r['osm']['agua'] (natural=water, outer ring and islands as inner rings). The download is cached
+    in raw/osm/rio-<name>.json; delete it to fetch it again. Returns (centreline, [outer, island, ...]) in grid
+    metres, cut to the model with a 300 m margin (centreline) or exactly (area)."""
+    from landmark import get
+    f = RAW / 'osm' / f'rio-{name}.json'
+    if not f.exists():
+        api = 'https://api.openstreetmap.org/api/0.6/'
+        d = {'via': json.loads(get(f"{api}way/{r['osm']['via']}/full.json")),
+             'agua': json.loads(get(f"{api}relation/{r['osm']['agua']}/full.json"))}
+        f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps(d))
+    d = json.load(open(f))
+    def parts(k):
+        el = d[k]['elements']; N = {e['id']: e for e in el if e['type'] == 'node'}
+        ways = {e['id']: [loc(N[n]['lon'], N[n]['lat']) for n in e['nodes']] for e in el if e['type'] == 'way'}
+        return el, ways
+    _, ways = parts('via')
+    cl = ways[r['osm']['via']]
+    inside = [XMIN-300 < x < XMAX+300 and YMIN-300 < y < YMAX+300 for x, y in cl]
+    i0, i1 = inside.index(True), len(inside) - inside[::-1].index(True)
+    cl = rdp(cl[max(0, i0-1):i1+1], 3)
+    el, ways = parts('agua')
+    rel = [e for e in el if e['type'] == 'relation'][0]
+    rings = []
+    for m in sorted(rel['members'], key=lambda m: m['role'] != 'outer'):   # outer first
+        ring = ways[m['ref']]
+        assert ring[0] == ring[-1], f"anillo abierto en la vía {m['ref']}"  # each ring is one closed way here
+        ring = clip_poly(rdp_ring(ring[:-1], 1.5))
+        if len(ring) < 3: continue
+        A = 0.5*sum(ring[i-1][0]*ring[i][1] - ring[i][0]*ring[i-1][1] for i in range(len(ring)))
+        if abs(A) < 30: continue
+        rings.append(ring)
+    print(f'río {name} (OSM): eje de {len(cl)} puntos, agua en {len(rings)} anillos ({len(rings)-1} islas)')
+    return cl, rings
+
 def main():
     tz = json.load(open(CONFIG / 'trazados.json'))
     L = lambda pts: enc([loc(lo, la) for la, lo in pts])
     blocks = load_blocks(); streets, names = load_streets()
+    water, area = {}, {}
+    for k, v in tz['rios'].items():
+        if 'osm' in v:
+            cl, rings = osm_river(k, v); water[k] = enc(cl); area[k] = [enc(r) for r in rings]
+        else: water[k] = L(v['puntos'])
     data = {'ext': [XMIN, XMAX, YMIN, YMAX], 'blocks': blocks, 'streets': streets, 'names': names,
-            'water': {k: L(v['puntos']) for k, v in tz['rios'].items()},
+            'water': water, 'area': area,
             'widths': {k: [v['ancho_m'], v['ribera_m']] for k, v in tz['rios'].items()},
             'rail': L(tz['ferrocarril']['puntos']), 'ruta5': L(tz['ruta5']['puntos'])}
     DATA.mkdir(exist_ok=True)

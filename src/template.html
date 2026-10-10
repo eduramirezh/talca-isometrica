@@ -292,6 +292,8 @@ const blocks=DATA.blocks.map(b=>{const r=dec(b[3]);let A=0,cx=0,cy=0,x0=1e9,y0=1
   A/=2;return {t:b[0],built:b[0]===0||b[0]===3,pers:b[1],viv:b[2],r,A:Math.abs(A),cx:cx/(6*A),cy:cy/(6*A),bb:[x0,y0,x1,y1]};});
 const SW=[16,13,11,9.5,7,5,3.5,3.5]; // street widths per class
 const streets=DATA.streets.map(s=>({c:s[0],name:DATA.names[s[1]],pts:dec(s[2])}));
+// the Río Claro's water from OpenStreetMap: [outer ring, island, ...] (pipeline/process_geometry.py)
+const CLARO=((DATA.area||{}).claro||[]).map(dec);
 const W2L=(x,y)=>[x,-y];
 
 /* =============== utils =============== */
@@ -498,6 +500,9 @@ function winMat(){const m=new T.MeshLambertMaterial({vertexColors:true});
       #include <tonemapping_fragment>`);};
   return m;}
 const matFlat=new T.MeshLambertMaterial({vertexColors:true});
+// the Río Claro's water lies at the height of its shore strips and over the blocks: a depth offset of two steps keeps it
+// on top wherever they meet (the bridge, 3 cm above, stays over it)
+const matWater=new T.MeshLambertMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:0,polygonOffsetUnits:-2});
 const matBld=winMat();
 
 /* =============== landmark models =============== */
@@ -2222,6 +2227,56 @@ function ribbon(B,pts,w,y,col,joins=true){
     B.quadXY([[a[0]+nx,a[1]+ny],[b[0]+nx,b[1]+ny],[b[0]-nx,b[1]-ny],[a[0]-nx,a[1]-ny]],y,col);}
   if(joins)for(let i=1;i<pts.length-1;i++){B.flat(ngon(pts[i][0],pts[i][1],w/2,8),y,col);}
 }
+// The Río Claro: OpenStreetMap's water area with its islands (CLARO) where it exists, a ribbon of the configured
+// width on the river's axis south of it (claroRuns: the stretches of the axis outside the area, each starting one
+// point inside it). The water lies over the census blocks, which reach into the riverbed (their edges follow the
+// channel's axis or a side arm), and under the streets, so the K-60-J bridge crosses it. Water and the gravel strip
+// on every shore share 0.11 (blocks 0.10, streets from 0.12) and never overlap: the strip runs just outside the
+// water. A 7 mm step under the water flickers (the depth buffer spans ±30 km).
+const inClaro=(x,y)=>CLARO.length>0&&pip([x,y],CLARO[0])&&!CLARO.slice(1).some(r=>pip([x,y],r));
+let _claroRuns=null;
+function claroRuns(){if(_claroRuns)return _claroRuns;const pts=chaikin(dec(DATA.water.claro),3),runs=[];let run=null;
+  for(let i=0;i<pts.length;i++){const out=!CLARO.length||!pip(pts[i],CLARO[0]);
+    if(out){if(!run){run=i?[pts[i-1]]:[];runs.push(run);}run.push(pts[i]);}else if(run){run.push(pts[i]);run=null;}}
+  return _claroRuns=runs.filter(r=>r.length>1);}
+// a strip w wide beside a polyline, from `off` to off+w on its left (side 1) or right (side -1), with fans at the bends
+function sideRibbon(B,pts,side,off,w,y,col){
+  const nrm=(a,b)=>{const L=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return [-(b[1]-a[1])/L*side,(b[0]-a[0])/L*side];},at=(p,n,d)=>[p[0]+n[0]*d,p[1]+n[1]*d];
+  for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];if(Math.hypot(b[0]-a[0],b[1]-a[1])<0.01)continue;const n=nrm(a,b);
+    B.quadXY([at(a,n,off),at(b,n,off),at(b,n,off+w),at(a,n,off+w)],y,col);
+    if(i>0){const m=nrm(pts[i-1],a);B.quadXY([at(a,m,off),at(a,m,off+w),at(a,n,off+w),at(a,n,off)],y,col);}}}
+let claroWater=null; // the Claro's water, draped: its own mesh (matWater), drawn over coplanar layers
+function claroBase(B,[w,rb]){const BW=new GB(1<<14);
+  const [outer,...isl]=CLARO,V=r=>r.map(p=>new T.Vector2(p[0],p[1])),all=outer.concat(...isl);
+  for(const t of T.ShapeUtils.triangulateShape(V(outer),isl.map(V)))BW.face(t.map(i=>[all[i][0],0.11,-all[i][1]]),[0,1,0],PAL.water);
+  // shore strips, outside the water: right of a counter-clockwise outer ring, left of a counter-clockwise island.
+  // None on ring edges the clip laid along the model's border, nor on the edge where the area ends across the river.
+  const axis=chaikin(dec(DATA.water.claro),3),o=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
+  const cross=(a,b)=>axis.some((c,i)=>i<axis.length-1&&o(a,b,c)*o(a,b,axis[i+1])<0&&o(c,axis[i+1],a)*o(c,axis[i+1],b)<0);
+  const skip=(a,b)=>[XMIN,XMAX].some(v=>Math.abs(a[0]-v)<1&&Math.abs(b[0]-v)<1)||[YMIN,YMAX].some(v=>Math.abs(a[1]-v)<1&&Math.abs(b[1]-v)<1)||cross(a,b);
+  CLARO.forEach((r,k)=>{let A=0;for(let i=0;i<r.length;i++){const p=r[i],q=r[(i+1)%r.length];A+=p[0]*q[1]-q[0]*p[1];}
+    const side=(A>0?1:-1)*(k?1:-1);let run=[];
+    for(let i=0;i<=r.length;i++){const a=r[i%r.length],b=r[(i+1)%r.length];
+      if(i<r.length&&!skip(a,b)){if(!run.length)run.push(a);run.push(b);}else{if(run.length>1)sideRibbon(B,run,side,0,rb,0.11,PAL.bank);run=[];}}});
+  for(const run of claroRuns()){ribbon(BW,run,w,0.11,PAL.water);for(const sd of [1,-1])sideRibbon(B,run,sd,w/2,rb,0.11,PAL.bank);}
+  claroWater=drape(BW);
+}
+// no lots, trees or lamps in the Claro or on its gravel: the area (a scanline fill, even-odd for the islands), a band
+// of the strip's width along every shore and the ribbon south of the area are occupied
+function claroOcc(){if(!CLARO.length)return;
+  const ed=[];for(const r of CLARO)for(let i=0;i<r.length;i++)ed.push([r[i],r[(i+1)%r.length]]);
+  let y0=1e9,y1=-1e9;for(const p of CLARO[0]){y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
+  for(let gy=Math.max(0,Math.floor((y0-YMIN)/OC));gy<=Math.min(ocH-1,Math.floor((y1-YMIN)/OC));gy++){const cy=YMIN+(gy+.5)*OC,xs=[];
+    for(const [a,b] of ed)if((a[1]>cy)!==(b[1]>cy))xs.push(a[0]+(cy-a[1])*(b[0]-a[0])/(b[1]-a[1]));
+    xs.sort((p,q)=>p-q);
+    for(let i=0;i+1<xs.length;i+=2)for(let gx=Math.max(0,Math.ceil((xs[i]-XMIN)/OC-.5));gx<=Math.min(ocW-1,Math.floor((xs[i+1]-XMIN)/OC-.5));gx++)occ[gy*ocW+gx]=1;}
+  const [w,rb]=DATA.widths?DATA.widths.claro:[60,6],hw=w/2+rb;
+  const band=(a,b,r)=>{for(let gx=Math.floor((Math.min(a[0],b[0])-r-XMIN)/OC);gx<=Math.floor((Math.max(a[0],b[0])+r-XMIN)/OC);gx++)
+      for(let gy=Math.floor((Math.min(a[1],b[1])-r-YMIN)/OC);gy<=Math.floor((Math.max(a[1],b[1])+r-YMIN)/OC);gy++){
+        if(gx<0||gy<0||gx>=ocW||gy>=ocH)continue;if(segDist2(XMIN+(gx+.5)*OC,YMIN+(gy+.5)*OC,a[0],a[1],b[0],b[1])<r*r)occ[gy*ocW+gx]=1;}};
+  for(const [a,b] of ed)band(a,b,rb);                                    // the gravel strip along every shore
+  for(const run of claroRuns())for(let i=0;i<run.length-1;i++)band(run[i],run[i+1],hw);
+}
 const MAPC=(XMIN+XMAX)/2,MAPZ=(YMIN+YMAX)/2;
 function buildBase(){
   const B=new GB(1<<17);
@@ -2244,9 +2299,12 @@ function buildBase(){
     B.flat(b.r,0.1,col);});
   alamedaGround(B);
   // plaza de armas block recolor handled by trees
-  // rivers
+  // rivers: a green riparian margin, then gravel bank and water. The Lircay and the Piduco are hand-traced ribbons
+  // under the blocks; the Claro is OpenStreetMap's water, over them (claroBase)
   const W=DATA.widths||{claro:[70,22],lircay:[60,40],piduco:[12,5]};
-  for(const k of ['lircay','claro','piduco']){const pts=chaikin(dec(DATA.water[k]),3);ribbon(B,pts,W[k][0]+W[k][1]*2+(k==='piduco'?40:150),0.03,hex('#A7B472'));ribbon(B,pts,W[k][0]+W[k][1]*2,0.05,PAL.bank);ribbon(B,pts,W[k][0],0.07,PAL.water);}
+  for(const k of ['lircay','claro','piduco']){const pts=chaikin(dec(DATA.water[k]),3);ribbon(B,pts,W[k][0]+W[k][1]*2+(k==='piduco'?40:150),0.03,hex('#A7B472'));
+    if(k==='claro'&&CLARO.length){claroBase(B,W[k]);continue;}
+    ribbon(B,pts,W[k][0]+W[k][1]*2,0.05,PAL.bank);ribbon(B,pts,W[k][0],0.07,PAL.water);}
   // ruta 5
   const r5=chaikin(dec(DATA.ruta5),2);ribbon(B,r5,30,0.16,PAL.asphalt2);ribbon(B,r5,1.4,0.2,hex('#B9B6AE'),false);
   // streets
@@ -2553,7 +2611,7 @@ const SL=[];
   want.forEach((list,nm)=>{let acc=0;const every=nm==='Alameda'?900:650;
     list.forEach(s=>{for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<30){acc+=L;continue;}
       if(acc<=0||acc>every){const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];if(Math.abs(m[0])<3200&&Math.abs(m[1])<3400){SL.push({t:nm,x:m[0],y:m[1],dx:b[0]-a[0],dy:b[1]-a[1],w:false});acc=1;}}else acc+=L;}});});
-  [['Río Claro','claro',6],['Río Claro','claro',17],['Río Lircay','lircay',6],['Estero Piduco','piduco',13],['Estero Piduco','piduco',5]].forEach(([t,k,i])=>{const pts=dec(DATA.water[k]);const a=pts[i],b=pts[i+1];SL.push({t,x:(a[0]+b[0])/2,y:(a[1]+b[1])/2,dx:b[0]-a[0],dy:b[1]-a[1],w:true});});
+  [['Río Claro','claro',25],['Río Claro','claro',42],['Río Lircay','lircay',6],['Estero Piduco','piduco',13],['Estero Piduco','piduco',5]].forEach(([t,k,i])=>{const pts=dec(DATA.water[k]);const a=pts[i],b=pts[i+1];SL.push({t,x:(a[0]+b[0])/2,y:(a[1]+b[1])/2,dx:b[0]-a[0],dy:b[1]-a[1],w:true});});
   SL.forEach(l=>{const e=document.createElement('div');e.className='street'+(l.w?' water':'');e.textContent=l.t;overlay.appendChild(e);l.el=e;});
 })();
 let showStreets=true;
@@ -2678,23 +2736,34 @@ function boot(){
   loadMsg('Levantando hitos y edificios…');
   setTimeout(()=>{
     const B=new GB(1<<19),S=new GB(1<<16);
+    claroOcc();                             // the Río Claro's water takes no lots or trees
     buildModels(B,S);                       // records the landmark pads...
     applyPads();terrainNormals();         // ...which level the terrain before anything is laid on it
     for(const k in MODELS)MODELS[k].h+=E(MODELS[k].x,MODELS[k].y);
     for(let k=0;k<EN_;k++){EHI=Math.max(EHI,EH[k]);ELO=Math.min(ELO,EH[k]);}
     scene.add(terrainMesh());
-    const base=buildBase();scene.add(new T.Mesh(base.geo(),matFlat));
+    const base=buildBase();scene.add(new T.Mesh(base.geo(),matFlat));if(claroWater)scene.add(new T.Mesh(claroWater.geo(),matWater));
     buildCerro(B);const hillTrees=wildTrees();
     const {TR,PO,nb}=cityGen(B);TR.push(...alamedaPark(B));
     // riparian poplars/willows
     const rip=[];const r=rng(77);
-    for(const [k,w] of [['claro',70],['lircay',60],['piduco',12]]){const pts=chaikin(dec(DATA.water[k]),3);for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const nx=-(b[1]-a[1])/L,ny=(b[0]-a[0])/L;
+    // the Claro: along its real shores (the water side is occupied and skipped), on its islands, and along its axis
+    // south of the area
+    for(const ring of CLARO)for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<1)continue;const nx=-(b[1]-a[1])/L,ny=(b[0]-a[0])/L;
+      for(let u=0;u<L;u+=11)for(const sd of [1,-1]){if(r()<.35)continue;const off=6.5+r()*12;const x=a[0]+(b[0]-a[0])*u/L+nx*off*sd,y=a[1]+(b[1]-a[1])*u/L+ny*off*sd;if(occAt(x,y)||nearStreet(x,y,1))continue;(r()<.5?PO:TR).push([x,y,0.8+r()*.6,r()]);}}
+    for(const ring of CLARO.slice(1)){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of ring){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
+      for(let n=(x1-x0)*(y1-y0)/90;n>0;n--){const x=x0+r()*(x1-x0),y=y0+r()*(y1-y0);if(!pip([x,y],ring)||occAt(x,y))continue;(r()<.3?PO:TR).push([x,y,0.8+r()*.6,r()]);}}
+    const axes=[['lircay',60,[chaikin(dec(DATA.water.lircay),3)]],['piduco',12,[chaikin(dec(DATA.water.piduco),3)]]];
+    axes.unshift(CLARO.length?['claro',(DATA.widths||{claro:[60]}).claro[0],claroRuns()]:['claro',70,[chaikin(dec(DATA.water.claro),3)]]);
+    for(const [k,w,runs] of axes)for(const pts of runs){for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const nx=-(b[1]-a[1])/L,ny=(b[0]-a[0])/L;
       for(let u=0;u<L;u+=11){for(const sd of [1,-1]){if(r()<.35)continue;const off=w/2+(k==='piduco'?5:18)+r()*14;const x=a[0]+(b[0]-a[0])*u/L+nx*off*sd,y=a[1]+(b[1]-a[1])*u/L+ny*off*sd;if(occAt(x,y)||nearStreet(x,y,1))continue;(r()<.5?PO:TR).push([x,y,0.8+r()*.6,r()]);}}}}
     const bgeo=B.geo();scene.add(new T.Mesh(bgeo,matBld));scene.add(new T.Mesh(S.geo(),matFlat));
     scene.add(instTrees(TR.concat(hillTrees),'round'));
     scene.add(instTrees(PO.concat(PO_FIELD),'poplar'));
     lampPts=lamps();scene.add(lampPts);
-    window.__stats={buildings:nb,verts:bgeo.attributes.position.count,ground:base.nv,trees:TR.length+hillTrees.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0)};
+    window.__stats={buildings:nb,verts:bgeo.attributes.position.count,ground:base.nv+(claroWater?claroWater.nv:0),trees:TR.length+hillTrees.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0)};
+    // for tools/screenshot.py --js: centre the camera on a ground point (grid metres), at a zoom (4 = the card's) and azimuth
+    window.__look=(x,y,zoom=4,az=view.az)=>{view.az=az;view.zoom=zoom;[view.tx,view.ty]=lift(x,y,az);placeCam();};
     buildPanel();resize();
     const h=decodeURIComponent(location.hash.slice(1));
     if(h&&BYID[h]){const m=MODELS[h]||BYID[h];select(h,false);view.zoom=4;const f=framed(...lift(m.x,m.y),4);view.tx=f[0];view.ty=f[1];placeCam();} // card first: framed() measures it
