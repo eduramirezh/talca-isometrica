@@ -54,14 +54,22 @@ Como ninguna fuente traía estos elementos, se dibujaron a mano. `diagnostics.py
 
 - **Estero Piduco.** Una franja sin manzanas cruza la ciudad en diagonal, desde el sureste hasta la Alameda poniente. Coincide con Wikipedia («cruza por enmedio de Talca en dirección nor-poniente») y con que la Plaza de Armas queda «apenas a cuatro cuadras». La calle Costanera lo acompaña.
   - Se descartó el punto de confluencia de GeoNames (−35,4325; −71,6935): la franja llega claramente al Río Claro cerca del extremo poniente de la Alameda (≈ −35,4232; −71,6850).
-- **Río Claro.** Sigue el borde poniente de las manzanas.
-  - Junto al Parque Río Claro se movió unos 100 m hacia el oriente después de revisar el render, porque el parque está en la ribera oriente.
-  - Al sur bordea el sector surponiente y gira al poniente hacia el Maule.
+- **Río Claro.** Primero se trazó a mano siguiendo el borde poniente de las manzanas. Desde octubre de 2026 sale de OpenStreetMap (abajo): el trazado a mano quedaba 115–180 m al poniente del río frente al Parque Río Claro y hasta ~750 m fuera en el norte, donde cortaba potreros.
 - **Río Lircay.** Sigue el borde norte, por la llanura de inundación (manzanas sin información), y se ancla en el puente Lircay de la Ruta 5.
 - **Vía férrea.** El tramo central es exacto: se ancló en la estación y en los pasos bajo nivel de 2 Norte, 1 Norte, 1 Sur y 8 Sur, más el puente sobre el Piduco, todos puntos OSM consultados en Mapcarta. El trazado resultante es paralelo a la grilla, a la altura de 11–12 Oriente. El tramo norte, hasta el puente ferroviario del Lircay junto a la Ruta 5, es aproximado.
 - **Ruta 5.** Un corredor recto sin manzanas ni calles: es la autopista, ausente del grafo ciclista.
 
-Si se puede ejecutar Overpass, esta consulta trae los trazados reales para reemplazarlos:
+**El Río Claro desde OpenStreetMap.** En octubre de 2026 la API de OSM respondía, pero Overpass no (los tres servidores probados dieron error por carga). En vez de una consulta por área se bajan dos objetos completos, que no tienen límite de caja: `way/203907278/full` (el eje, `waterway=river`) y `relation/15397714/full` (el agua, `natural=water`, con las islas como anillos interiores). `process_geometry.py` los guarda en `raw/osm/rio-claro.json` cuando `config/trazados.json` trae la clave `osm` en el río, recorta el agua a la maqueta y deja el eje en `water` y los anillos en `area`. El multipolígono llega hasta y ≈ −630; al sur la plantilla dibuja una cinta de `ancho_m` sobre el eje.
+
+Antes de reemplazar el trazado se comparó OSM con el mapa sobre la imagen satelital (paneles con el eje, el agua, las manzanas y las calles con su ancho de render):
+
+- El eje y el agua de OSM calzan con la imagen en todo el tramo.
+- Solo una calle del mapa cruza el río, la Ruta K-60-J, a ~5 m del puente de OSM.
+- Cinco manzanas del censo entran más de 15 m en el agua (hasta 85 m en el norte): sus bordes siguen el eje del cauce o cortan un brazo lateral, y ninguna tiene edificios en esa parte. Por eso el agua del Claro se dibuja sobre las manzanas (y bajo las calles) y no al revés, como los otros ríos.
+
+El relieve tampoco sigue al río en todas partes: el SRTM suavizado pone el fondo del valle a decenas de metros del cauce real, y el agua apoyada en el terreno quedaba inclinada (10 m a lo largo de un muelle de 45 m). La plantilla nivela los nodos del relieve que caen dentro del agua al promedio del cauce en 80 m a la redonda (`claroLevel`) y repone esos niveles después de las explanadas (`claroRelevel`).
+
+El Lircay y el Piduco siguen dibujados a mano (salvo los últimos cinco puntos del Piduco, nodos de OSM). Para reemplazarlos se puede repetir lo del Claro con sus objetos de OSM, o, si Overpass responde, esta consulta trae todos los trazados:
 
 ```
 [out:json];
@@ -135,7 +143,7 @@ En 1 Norte los impares están al lado norte. La Alameda es la 4 Norte.
 - **Base.**
   - Una malla de terreno (sección 6) con bordes de tierra que siguen su perfil.
   - Parcelas agrícolas generadas donde no hay manzanas, con algunas hileras de álamos.
-  - Manzanas como polígonos planos, calles como cintas encima, ríos con ribera de ripio y una franja verde de parque ribereño.
+  - Manzanas como polígonos planos, calles como cintas encima, ríos con ribera de ripio y una franja verde de parque ribereño. El Río Claro es el agua de OSM con sus islas, sobre las manzanas, con una franja de ripio en cada orilla, nivelada a lo ancho del cauce.
 - **Edificios procedurales** (`cityGen`). Se generan **a lo largo de cada tramo de calle**, por ambos lados, y no siguiendo el borde de la manzana. Las manzanas del censo pueden contener pasajes interiores, y así los edificios dan siempre a una calle real. Para cada lote:
   1. Se identifica la manzana que hay detrás de la calle.
   2. Según la manzana se elige un estilo:
@@ -212,7 +220,7 @@ Con `tools/screenshot.py --hash <id>` y `--js`:
 | pixel | lo anterior + `;document.querySelector('#pixel').click()` |
 | móvil | `--size 390x844`, sin `--js` |
 
-Compare la vista girada con las fotos tomadas desde un ángulo parecido. Revise también la vista inicial (`shots/centro.png`) y que las estadísticas solo cambien donde se espera: con `NOLOTS`, el número de edificios baja un poco.
+Compare la vista girada con las fotos tomadas desde un ángulo parecido. Revise también la vista inicial (`shots/centro.png`) y que las estadísticas solo cambien donde se espera: con `NOLOTS`, el número de edificios baja un poco. Para encuadrar un punto que no es un lugar (un muelle, un puente), `--js "__look(x, y, zoom, giro)"` centra la cámara en ese punto de la grilla; `zoom` 4 es el de la ficha y `giro` es el azimut en radianes (`Math.PI/4` es la vista inicial; sumando `Math.PI` se mira desde el noroeste).
 
 ### 9.6 Registro
 
@@ -247,7 +255,7 @@ Los hitos restantes se rehicieron en cinco sesiones paralelas, una por zona (Pla
 ## 12. Limitaciones
 
 - Los edificios generados no son los reales: son una interpretación según las reglas descritas. Solo los hitos siguen su planta real (sección 9), y en ellos lo que está sobre el suelo es una interpretación de fotos: cada modelo dice en su comentario qué es aproximado.
-- Los ríos, el tramo norte del ferrocarril y la Ruta 5 son trazados aproximados (con un error de decenas de metros).
-- El relieve está exagerado (×3 en el plano, ×1,3 en los cerros) y suavizado a ~40 m: no se ven taludes ni desniveles de pocos metros. Los ríos son trazados aproximados que no siempre van por el fondo del valle del modelo.
+- El Lircay, el Piduco, el tramo norte del ferrocarril y la Ruta 5 son trazados aproximados (con un error de decenas de metros). El Río Claro es el de OpenStreetMap; al sur de y ≈ −630 su ancho es una constante (60 m).
+- El relieve está exagerado (×3 en el plano, ×1,3 en los cerros) y suavizado a ~40 m: no se ven taludes ni desniveles de pocos metros. Los ríos no siempre van por el fondo del valle del modelo; el Claro se nivela a lo ancho del cauce, y en las celdas de la orilla el agua sube un poco hacia la ribera.
 - Fuera del centro, la grilla se deforma y el lector de direcciones deja de funcionar. Muestra «Fuera del centro numerado».
 - La información institucional (direcciones, notarios) es de septiembre de 2026 y puede cambiar.
