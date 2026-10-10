@@ -170,7 +170,7 @@ def cmd_frame(pid, *args):
         for t, q in near: print(f'  ({q[0]:.1f}, {q[1]:.1f}) {t}')
 
 def cmd_photos(pid, query=None):
-    p = poi(pid); q = query or p['name']
+    p = poi(pid); q = query or p['n']
     r = json.loads(get(COMMONS + urllib.parse.urlencode({'action': 'query', 'list': 'search', 'srsearch': q,
                                                          'srnamespace': 6, 'srlimit': 30, 'format': 'json'})))
     titles = [s['title'] for s in r['query']['search'] if s['title'].lower().endswith(('.jpg', '.jpeg', '.png'))]

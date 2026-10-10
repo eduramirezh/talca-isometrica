@@ -197,8 +197,10 @@ add('estadio', 'Estadio Fiscal de Talca', 'ciudad', -35.41991, -71.67281, 'Alame
     'alta', [['OpenStreetMap vía Mapcarta', MC + 'W89069046'], ['IND', 'https://ind.cl/noticias/ind-rinde-homenaje-a-un-idolo-fiscal-de-talca-ahora-se-llama-estadio-bicentenario-ivan-azocar-bernales/']],
     model='estadio', pri=1)
 add('parque-rio-claro', 'Parque Río Claro', 'ciudad', -35.41810, -71.68045, 'Extremo poniente de la Alameda',
-    'Parque de 11 hectáreas inaugurado en 2023 junto al tradicional balneario de botes y mote con huesillo.',
-    'alta', [['Talca Sostenible', 'https://www.talcasostenible.cl/parque-rio-claro/']], pri=2)
+    'Parque de 11 hectáreas sobre el antiguo balneario Río Claro, renovado en dos etapas (2020 y 2023): paseos, juegos, juegos de agua y muelles flotantes junto a los botes.',
+    'alta', [['Talca Sostenible', 'https://www.talcasostenible.cl/parque-rio-claro/'],
+             ['Minvu', 'https://www.minvu.gob.cl/noticia/noticias/ministro-montes-inaugura-segunda-etapa-de-parque-urbano-rio-claro-de-talca']],
+    model='parque', pri=2)
 add('cerro-la-virgen', 'Cerro La Virgen', 'ciudad', -35.42270, -71.70318, 'Ribera poniente del Río Claro',
     'Su punto más alto, el Peñón (372 m), es el techo de la comuna y queda unos 2 km al norte del santuario. La Virgen del Carmen del santuario se inauguró en 1910, para el Centenario.',
     'alta', [['Wikipedia', 'https://es.wikipedia.org/wiki/Cerro_La_Virgen_(Talca)']],
