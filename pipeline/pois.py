@@ -201,6 +201,11 @@ add('parque-rio-claro', 'Parque Río Claro', 'ciudad', -35.41810, -71.68045, 'Ex
     'alta', [['Talca Sostenible', 'https://www.talcasostenible.cl/parque-rio-claro/'],
              ['Minvu', 'https://www.minvu.gob.cl/noticia/noticias/ministro-montes-inaugura-segunda-etapa-de-parque-urbano-rio-claro-de-talca']],
     model='parque', pri=2)
+add('viejas-cochinas', 'Las Viejas Cochinas', 'ciudad', -35.41803, -71.68383, 'Rivera Poniente Río Claro s/n',
+    'Restaurante de cocina chilena en la ribera poniente del Río Claro, frente al parque. Empezó en 1975 como una ramada de coligüe a la orilla del río que vendía sandías y pan amasado.',
+    'alta', [['OpenStreetMap vía Mapcarta', MC + 'N3331425921'], ['De Buena Mesa (reseña de La Tercera, 2011)', 'https://debuenamesa.wordpress.com/2011/08/09/se-recomienda-las-viejas-cochinas-talca/']],
+    fact='El nombre, oficial desde 1988, nació como burla de un vecino y la familia lo adoptó. Tras una crecida a fines de los años 90 se trasladó más lejos del río y a mayor altura.',
+    model='cochinas', pri=3)
 add('cerro-la-virgen', 'Cerro La Virgen', 'ciudad', -35.42270, -71.70318, 'Ribera poniente del Río Claro',
     'Su punto más alto, el Peñón (372 m), es el techo de la comuna y queda unos 2 km al norte del santuario. La Virgen del Carmen del santuario se inauguró en 1910, para el Centenario.',
     'alta', [['Wikipedia', 'https://es.wikipedia.org/wiki/Cerro_La_Virgen_(Talca)']],
