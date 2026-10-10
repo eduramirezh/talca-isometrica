@@ -1,0 +1,21 @@
+{
+  "_comentario": "Manzanas que el Censo 2017 marca «sin información» (tipo 1, sin viviendas) pero que están construidas. La maqueta pinta como parque toda manzana tipo 1, así que build.py reclasifica como tipo 3 («sin información, construida») la manzana que contiene cada punto [lat, lon]; la plantilla la trata como una manzana con datos. Revisadas contra la imagen satelital de Esri World Imagery (octubre de 2026). Las demás manzanas tipo 1 del centro son parques, plazas o bandejones y quedan como están.",
+  "construidas": [
+    {"nombre": "1 Sur–2 Sur, 1 Poniente–1 Oriente", "punto": [-35.42768, -71.66594],
+     "nota": "Frente a la Plaza de Armas, al oriente del CDE: comercio y galerías."},
+    {"nombre": "1 Sur–2 Sur, 2 Oriente–3 Oriente", "punto": [-35.42794, -71.66328],
+     "nota": "Edificios comerciales y estacionamientos."},
+    {"nombre": "2 Sur–3 Sur, 1 Oriente–2 Oriente", "punto": [-35.42892, -71.66481],
+     "nota": "La mitad poniente está construida; la oriente es un sitio eriazo."},
+    {"nombre": "Escuelas Concentradas", "punto": [-35.42688, -71.66185],
+     "nota": "Edificio perimetral con patio central."},
+    {"nombre": "Mercado Central", "punto": [-35.42699, -71.66050],
+     "nota": "Ocupa la manzana completa."},
+    {"nombre": "Liceo Abate Molina", "punto": [-35.42168, -71.65864],
+     "nota": "Edificio con patios, frente a la Alameda."},
+    {"nombre": "3 Norte–Alameda, 8 Oriente–9 Oriente", "punto": [-35.42363, -71.65481],
+     "nota": "Supermercado: un solo edificio comercial con su estacionamiento."},
+    {"nombre": "1 Sur–2 Sur, 9 Oriente–10 Oriente", "punto": [-35.42878, -71.65303],
+     "nota": "Bodegas y comercio."}
+  ]
+}

@@ -1,5 +1,9 @@
 # Cambios
 
+## Sin publicar
+
+- **Manzanas construidas que aparecían como parque.** El Censo marca «sin información» las manzanas sin viviendas, y la maqueta las pintaba todas como parque. Se revisaron contra la imagen satelital las del centro: ocho están construidas y ahora tienen edificios. Entre ellas, la manzana frente a la Plaza de Armas (1 Sur, entre 1 Poniente y 1 Oriente), el Mercado Central, las Escuelas Concentradas y el Liceo Abate Molina. La lista, con su nota, está en `config/manzanas.json`.
+
 ## 1.2 — 2026-10-10 · Relieve
 
 - **Relieve real.** La maqueta deja de ser plana: usa el modelo de elevación SRTM (`pipeline/elevation.py` → `data/elevation.json`). Aparecen los cerros del poniente, al otro lado del Río Claro (hasta ~370 m), y las terrazas de la ciudad hacia el Claro, el Lircay y el Piduco.

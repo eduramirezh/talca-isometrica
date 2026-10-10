@@ -9,6 +9,7 @@ Salida (todas las coordenadas en metros de grilla enteros, codificadas en delta:
 [x0, y0, dx1, dy1, ...]):
   ext      [xmin, xmax, ymin, ymax] recorte de la maqueta
   blocks   [[tipo, personas, viviendas, anillo]]  tipo 0=con datos, 1=sin información, 2=aldea
+                                                  (build.py marca 3=construida según config/manzanas.json)
   streets  [[clase, idx_nombre, polilínea]]       clase 0 troncal ... 7 servicio
   names    nombres de calle
   water    {claro, lircay, piduco}  + rail, ruta5 + widths

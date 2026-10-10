@@ -283,12 +283,13 @@ const POIS=PD.pois; const BYID={}; POIS.forEach(p=>BYID[p.id]=p);
 const enabled=new Set(Object.keys(CATS));
 
 /* =============== decode data =============== */
+// block t: 0 census data, 1 no data, 2 village, 3 no data but built (config/manzanas.json). Only built blocks get lots.
 function dec(a){const o=new Array(a.length/2);let x=0,y=0;for(let i=0,j=0;i<a.length;i+=2,j++){x+=a[i];y+=a[i+1];o[j]=[x,y];}return o;}
 const [XMIN,XMAX,YMIN,YMAX]=DATA.ext;
 const blocks=DATA.blocks.map(b=>{const r=dec(b[3]);let A=0,cx=0,cy=0,x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   for(let i=0;i<r.length;i++){const p=r[i],q=r[(i+1)%r.length];const c=p[0]*q[1]-q[0]*p[1];A+=c;cx+=(p[0]+q[0])*c;cy+=(p[1]+q[1])*c;
     if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<y0)y0=p[1];if(p[1]>y1)y1=p[1];}
-  A/=2;return {t:b[0],pers:b[1],viv:b[2],r,A:Math.abs(A),cx:cx/(6*A),cy:cy/(6*A),bb:[x0,y0,x1,y1]};});
+  A/=2;return {t:b[0],built:b[0]===0||b[0]===3,pers:b[1],viv:b[2],r,A:Math.abs(A),cx:cx/(6*A),cy:cy/(6*A),bb:[x0,y0,x1,y1]};});
 const SW=[16,13,11,9.5,7,5,3.5,3.5]; // street widths per class
 const streets=DATA.streets.map(s=>({c:s[0],name:DATA.names[s[1]],pts:dec(s[2])}));
 const W2L=(x,y)=>[x,-y];
@@ -613,7 +614,7 @@ function cityGen(B,Btree){
         while(u<L-5){
           const pr=[a[0]+tx*(u+3)+nx*(hw+7),a[1]+ty*(u+3)+ny*(hw+7)];
           const bi=blockAt(pr[0],pr[1]);
-          if(bi<0||blocks[bi].t!==0){u+=5;continue;}
+          if(bi<0||!blocks[bi].built){u+=5;continue;}
           const st=styleFor(bi);
           let w,d,sb,gap,fl,kind;
           const dc=Math.hypot(pr[0],pr[1]);
@@ -653,7 +654,7 @@ function cityGen(B,Btree){
   // trees: parks first, then backyards thinned to what is left of the budget (in block order the backyards used it
   // all up and the last blocks, the Alameda among them, got none). The Alameda's rows come from alamedaPark().
   let ntree=0;const MAXT=36000;
-  const isPark=bi=>blocks[bi].t!==0||bi===PLAZA_BI;
+  const isPark=bi=>!blocks[bi].built||bi===PLAZA_BI;
   const yards=blocks.reduce((s,b,bi)=>isPark(bi)?s:s+b.A/1100,0);let kYard=1;
   const scatter=bi=>{const b=blocks[bi];
     const r=rng(bi*31+5);let n;
@@ -696,7 +697,7 @@ function buildBase(){
   }}
   // blocks
   blocks.forEach((b,bi)=>{let col;
-    if(bi===PLAZA_BI)col=PAL.park; else if(b.t===0){col=PAL.lot;}
+    if(bi===PLAZA_BI)col=PAL.park; else if(b.built){col=PAL.lot;}
     else if(ALAM.has(bi))col=PAL.lawn;
     else col=b.A<40000?PAL.park:PAL.open;
     B.flat(b.r,0.1,col);});
@@ -719,7 +720,7 @@ const PLAZA_BI=blockAt(BYID['plaza-de-armas'].x,BYID['plaza-de-armas'].y);
 // La Alameda: the park strips down the middle of the avenue (no census data, under 80 m deep, centroid on the avenue).
 // Blocks with census data inside the strip keep their buildings.
 const ALAM=(()=>{const g=[];streets.forEach(s=>{if(/Alameda/.test(s.name||''))for(let i=0;i<s.pts.length-1;i++)g.push([...s.pts[i],...s.pts[i+1]]);});
-  const o=new Set();blocks.forEach((b,bi)=>{if(b.t!==0&&b.bb[3]-b.bb[1]<80&&g.some(s=>segDist2(b.cx,b.cy,...s)<38*38))o.add(bi);});return o;})();
+  const o=new Set();blocks.forEach((b,bi)=>{if(!b.built&&b.bb[3]-b.bb[1]<80&&g.some(s=>segDist2(b.cx,b.cy,...s)<38*38))o.add(bi);});return o;})();
 // Each strip is a linear park: a gravel paseo down the middle with lawn edging, a cross walk and a round plaza at
 // mid-block (around the landmark when one stands in the strip, else a fountain or a plinth), benches and lamps along
 // the paseo, and four staggered rows of big trees. alamedaGround() lays the flat parts (draped by buildBase),
