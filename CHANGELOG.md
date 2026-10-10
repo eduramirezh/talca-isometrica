@@ -1,5 +1,16 @@
 # Cambios
 
+## 1.2 — 2026-10-10 · Relieve
+
+- **Relieve real.** La maqueta deja de ser plana: usa el modelo de elevación SRTM (`pipeline/elevation.py` → `data/elevation.json`). Aparecen los cerros del poniente, al otro lado del Río Claro (hasta ~370 m), y las terrazas de la ciudad hacia el Claro, el Lircay y el Piduco.
+  - La exageración es logarítmica: ×3 en el plano y ×1,3 en los cerros.
+  - Calles, manzanas, ríos, edificios, árboles y faroles se apoyan en el terreno. Los hitos grandes nivelan una explanada.
+  - Las laderas empinadas son matorral y bosque en vez de parcelas.
+- **Cerro La Virgen.** Se elimina el cerro inventado y achatado. La estatua queda sobre el terreno real, en la ubicación del santuario. La ficha distingue el santuario (~270 m) del Peñón (372 m), que es el punto más alto de la comuna.
+- **Lector.** Muestra la altura real sobre el nivel del mar del punto bajo el cursor.
+- **Cámara.** El giro de la vista y el vuelo a un lugar toman en cuenta la altura del terreno.
+- `make fetch` baja además la tesela SRTM (~12 MB); `make elevation` regenera el relieve sin necesitar las otras fuentes.
+
 ## 1.1 — 2026-10-10 · Exportación a proyecto
 
 - **Proyecto reproducible.**

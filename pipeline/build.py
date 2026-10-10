@@ -1,4 +1,5 @@
-"""Ensambla dist/talca.html: src/template.html + data/geometry.json + config/grid_lines.json + data/pois.json.
+"""Ensambla dist/talca.html: src/template.html + data/geometry.json + data/elevation.json + config/grid_lines.json
++ data/pois.json.
 
 La plantilla tiene dos marcadores, /*DATA*/ y /*POIS*/, que se reemplazan por JSON literal.
 El resultado es un único HTML autocontenido (~670 KB) que solo carga three.js r128 desde cdnjs y
@@ -13,6 +14,7 @@ from common import ROOT, DATA, CONFIG, require
 
 def main():
     geo = json.load(open(require(DATA / 'geometry.json', 'Ejecute: make data')))
+    geo['elev'] = json.load(open(require(DATA / 'elevation.json', 'Ejecute: make elevation')))
     geo['lines'] = {k: v for k, v in json.load(open(CONFIG / 'grid_lines.json')).items() if not k.startswith('_')}
     pois = json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois')))
     t = (ROOT / 'src' / 'template.html').read_text()

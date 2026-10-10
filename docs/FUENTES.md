@@ -7,6 +7,7 @@
 | Manzanas censales 2017 (polígonos, personas, viviendas) | Instituto Nacional de Estadísticas, Censo de Población y Vivienda 2017. Conversión a GeoJSON: [jiboncom/chile_geojson](https://github.com/jiboncom/chile_geojson) | Datos públicos del INE; citar la fuente | Trama urbana, densidad → alturas |
 | Red vial de Talca | © colaboradores de [OpenStreetMap](https://www.openstreetmap.org/copyright). Grafo extraído por [Shiroku36/cicloconecta](https://github.com/Shiroku36/cicloconecta) | **ODbL 1.0**: toda obra derivada publicada debe atribuir a OpenStreetMap y compartir la base de datos derivada con la misma licencia | Calles, nombres, jerarquía, posición de la grilla |
 | Puntos de lugares y anclas de trazados | OpenStreetMap, consultado a través de [Mapcarta](https://mapcarta.com) | ODbL (OSM) | Coordenadas de la mayoría de los lugares, pasos bajo nivel, puentes, estación |
+| Elevación (SRTM 1", tesela S36W072) | NASA / USGS, Shuttle Radar Topography Mission, vía los [Terrain Tiles de AWS](https://registry.opendata.aws/terrain-tiles/) | Dominio público (SRTM) | Relieve de la maqueta y altura del lector |
 | Monumentos | [Consejo de Monumentos Nacionales](https://www.monumentos.gob.cl) | Información pública | Coordenadas UTM y fechas de Catedral, Mercado, Escuelas Concentradas, Edificio de los Servicios Públicos, La Victoria, ramal Talca–Constitución |
 
 La atribución de OpenStreetMap y del INE está en la pestaña «Acerca» del mapa. Manténgala en cualquier versión publicada.

@@ -209,6 +209,7 @@ button{font:inherit;color:inherit}
       <ul>
         <li><b>Manzanas:</b> Censo 2017, INE (3.134 manzanas con datos y 322 sin información), vía el repositorio <a href="https://github.com/jiboncom/chile_geojson" target="_blank" rel="noopener">jiboncom/chile_geojson</a>.</li>
         <li><b>Calles:</b> © colaboradores de <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL), tomadas del grafo vial de Talca del proyecto <a href="https://github.com/Shiroku36/cicloconecta" target="_blank" rel="noopener">cicloconecta</a>.</li>
+        <li><b>Relieve:</b> modelo de elevación SRTM de la NASA (~30 m), vía los <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles de AWS</a>, filtrado para quitar techos y copas de árboles.</li>
         <li><b>Ubicaciones:</b> puntos de OpenStreetMap consultados en Mapcarta, fichas del Consejo de Monumentos Nacionales y sitios de cada institución. Cada ficha indica su fuente y el nivel de confianza.</li>
         <li><b>Direcciones sin coordenadas:</b> se ubicaron con la numeración de la grilla (100 números por cuadra; la cuadra de la plaza es la 700 en calles Norte y Sur y la 1100 en calles Oriente y Poniente).</li>
       </ul>
@@ -216,7 +217,8 @@ button{font:inherit;color:inherit}
       <ul>
         <li>Los edificios se generan por algoritmo frente a cada calle real, con alturas según la densidad de viviendas del censo. Solo los hitos (Catedral, Corte, Mercado, Estadio y otros) tienen un modelo propio, simplificado.</li>
         <li>Los ríos Claro y Lircay, el estero Piduco, la vía férrea y la Ruta 5 se trazaron a partir de los bordes de las manzanas y de puntos conocidos (puentes, pasos bajo nivel).</li>
-        <li>El Cerro La Virgen está achatado para no tapar la ciudad.</li>
+        <li>El relieve está exagerado para que se note: unas 3 veces en el plano de la ciudad, donde el desnivel es de pocas decenas de metros, y menos en los cerros del poniente. El lector de la esquina inferior muestra la altura real.</li>
+        <li>Bajo los hitos grandes (Estadio, Mall, Plaza de Armas) el terreno se nivela, como en una obra real.</li>
       </ul>
       <h3>Inspiración</h3>
       <p><a href="https://sf.isopolis.city/" target="_blank" rel="noopener">Isopolis San Francisco</a> de Vivek Aithal y <a href="https://isometric.nyc" target="_blank" rel="noopener">Isometric NYC</a> de Andy Coenen: vista fija de simulador, capas de lugares y recorridos guiados. Aquí se dibuja con geometría real en vez de imágenes generadas, para que calles y manzanas estén donde corresponden.</p>
@@ -321,9 +323,49 @@ function occMark(q){ // q: 4 corners [[x,y]..]
     if(gx<0||gy<0||gx>=ocW||gy>=ocH)continue;const cx=XMIN+(gx+.5)*OC,cy=YMIN+(gy+.5)*OC;if(pip([cx,cy],q))occ[gy*ocW+gx]=1;}}
 function rectOcc(cx,cy,w,d){const q=[[cx-w/2,cy-d/2],[cx+w/2,cy-d/2],[cx+w/2,cy+d/2],[cx-w/2,cy+d/2]];occMark(q);}
 
+/* =============== terrain =============== */
+// DATA.elev: nodes every ES m, real heights in dm relative to the plaza (pipeline/elevation.py).
+// ER keeps the real relief (altitude readout). EH is the model's relief: ~3× on the plain, less on the hills
+// (relief()), with flat pads under the landmarks. The whole scene stands on EH through E(x,y).
+const EV=DATA.elev,[EX0,EY0]=EV.o,ES=EV.s,[ENX,ENY]=EV.n,EN_=ENX*ENY;
+const ER=new Float32Array(EN_),EH=new Float32Array(EN_);
+const RELIEF_A=3,RELIEF_K=50; // slope gain near the plaza's level, and the height (m) where it has halved
+const relief=d=>Math.sign(d)*RELIEF_A*RELIEF_K*Math.log1p(Math.abs(d)/RELIEF_K);
+{let v=0;for(let i=0;i<EN_;i++){v+=EV.h[i];ER[i]=v/10;EH[i]=relief(v/10);}}
+// value inside the terrain triangle holding (x,y); each cell is split along its (i+1,j)-(i,j+1) diagonal,
+// the same way terrainMesh() triangulates it, so E() is exactly the rendered surface
+function sampleTri(A,x,y){let u=(x-EX0)/ES,v=(y-EY0)/ES;u=u<0?0:u>ENX-1.0001?ENX-1.0001:u;v=v<0?0:v>ENY-1.0001?ENY-1.0001:v;
+  const i=Math.floor(u),j=Math.floor(v);u-=i;v-=j;const k=j*ENX+i;
+  return u+v<=1?A[k]+u*(A[k+1]-A[k])+v*(A[k+ENX]-A[k]):A[k+ENX+1]+(1-u)*(A[k+ENX]-A[k+ENX+1])+(1-v)*(A[k+1]-A[k+ENX+1]);}
+const E=(x,y)=>sampleTri(EH,x,y);
+const node=(i,j)=>Math.min(ENY-1,Math.max(0,j))*ENX+Math.min(ENX-1,Math.max(0,i));
+const ENRM=new Float32Array(EN_*3);
+function terrainNormals(){for(let j=0;j<ENY;j++)for(let i=0;i<ENX;i++){
+  const hx=(EH[node(i+1,j)]-EH[node(i-1,j)])/(2*ES),hy=(EH[node(i,j+1)]-EH[node(i,j-1)])/(2*ES);const L=Math.hypot(hx,1,hy),k=(j*ENX+i)*3;
+  ENRM[k]=-hx/L;ENRM[k+1]=1/L;ENRM[k+2]=hy/L;}} // surface Y=h(x,-Z): normal (-hx, 1, hy)
+const _n=[0,0,0];
+function EN(x,y){let u=(x-EX0)/ES,v=(y-EY0)/ES;u=u<0?0:u>ENX-1.0001?ENX-1.0001:u;v=v<0?0:v>ENY-1.0001?ENY-1.0001:v;
+  const i=Math.floor(u),j=Math.floor(v);u-=i;v-=j;const k=(j*ENX+i)*3,w=[(1-u)*(1-v),u*(1-v),(1-u)*v,u*v],o=[0,3,ENX*3,ENX*3+3];
+  let a=0,b=0,c=0;for(let q=0;q<4;q++){a+=ENRM[k+o[q]]*w[q];b+=ENRM[k+o[q]+1]*w[q];c+=ENRM[k+o[q]+2]*w[q];}
+  const L=Math.hypot(a,b,c);_n[0]=a/L;_n[1]=b/L;_n[2]=c/L;return _n;}
+// land cover: real slope above ~6 % is scrub and wood, not farmland (the hills west of the Río Claro, the river scarps)
+const EW=new Float32Array(EN_);
+{const s=new Float32Array(EN_);for(let j=0;j<ENY;j++)for(let i=0;i<ENX;i++)s[j*ENX+i]=Math.hypot(ER[node(i+1,j)]-ER[node(i-1,j)],ER[node(i,j+1)]-ER[node(i,j-1)])/(2*ES);
+  for(let j=0;j<ENY;j++)for(let i=0;i<ENX;i++){let m=0;for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++)m+=s[node(i+di,j+dj)];m/=9;
+    const t=Math.max(0,Math.min(1,(m-0.04)/0.07));EW[j*ENX+i]=t*t*(3-2*t);}}
+const wildAt=(x,y)=>sampleTri(EW,x,y);
+// landmark pads: the ground under a landmark is levelled to its mean height (applied by applyPads() before anything
+// is laid on the terrain). Every node of a cell the footprint touches is set, so the footprint is exactly flat.
+const PADS=[];
+function padAt(x0,y0,x1,y1){let h=0,n=0;for(let a=0;a<=4;a++)for(let b=0;b<=4;b++){h+=E(x0+(x1-x0)*a/4,y0+(y1-y0)*b/4);n++;}h/=n;PADS.push([x0,y0,x1,y1,h]);return h;}
+function applyPads(){for(const [x0,y0,x1,y1,h] of PADS)
+  for(let j=Math.max(0,Math.ceil((y0-ES-EY0)/ES));j<=Math.min(ENY-1,Math.floor((y1+ES-EY0)/ES));j++)
+    for(let i=Math.max(0,Math.ceil((x0-ES-EX0)/ES));i<=Math.min(ENX-1,Math.floor((x1+ES-EX0)/ES));i++)EH[j*ENX+i]=h;}
+const groundMin=q=>Math.min(...q.map(p=>E(p[0],p[1])));
+
 /* =============== geometry builder =============== */
 class GB{
-  constructor(cap=1<<15){this.cap=cap;this.P=new Float32Array(cap*3);this.N=new Int8Array(cap*3);this.C=new Uint8Array(cap*3);this.icap=cap*2;this.I=new Uint32Array(this.icap);this.nv=0;this.ni=0;}
+  constructor(cap=1<<15){this.cap=cap;this.P=new Float32Array(cap*3);this.N=new Int8Array(cap*3);this.C=new Uint8Array(cap*3);this.icap=cap*2;this.I=new Uint32Array(this.icap);this.nv=0;this.ni=0;this.dy=0;}
   grow(v,i){if(this.nv+v>this.cap){let c=this.cap;while(this.nv+v>c)c*=2;const P=new Float32Array(c*3);P.set(this.P);this.P=P;const N=new Int8Array(c*3);N.set(this.N);this.N=N;const C=new Uint8Array(c*3);C.set(this.C);this.C=C;this.cap=c;}
     if(this.ni+i>this.icap){let c=this.icap;while(this.ni+i>c)c*=2;const I=new Uint32Array(c);I.set(this.I);this.I=I;this.icap=c;}}
   face(pts,n,col){
@@ -331,13 +373,13 @@ class GB{
     if(!n){n=[uy*vz-uz*vy,uz*vx-ux*vz,ux*vy-uy*vx];const L=Math.hypot(n[0],n[1],n[2])||1;n=[n[0]/L,n[1]/L,n[2]/L];}
     else if((uy*vz-uz*vy)*n[0]+(uz*vx-ux*vz)*n[1]+(ux*vy-uy*vx)*n[2]<0)pts=pts.slice().reverse();
     this.grow(pts.length,(pts.length-2)*3);const base=this.nv;
-    for(const p of pts){const k=this.nv*3;this.P[k]=p[0];this.P[k+1]=p[1];this.P[k+2]=p[2];this.N[k]=n[0]*127;this.N[k+1]=n[1]*127;this.N[k+2]=n[2]*127;this.C[k]=col[0];this.C[k+1]=col[1];this.C[k+2]=col[2];this.nv++;}
+    for(const p of pts){const k=this.nv*3;this.P[k]=p[0];this.P[k+1]=p[1]+this.dy;this.P[k+2]=p[2];this.N[k]=n[0]*127;this.N[k+1]=n[1]*127;this.N[k+2]=n[2]*127;this.C[k]=col[0];this.C[k+1]=col[1];this.C[k+2]=col[2];this.nv++;}
     for(let j=1;j<pts.length-1;j++){this.I[this.ni++]=base;this.I[this.ni++]=base+j;this.I[this.ni++]=base+j+1;}
   }
   flat(ring,y,col){ // ring local [x,y]
     let tris;try{tris=T.ShapeUtils.triangulateShape(ring.map(p=>new T.Vector2(p[0],p[1])),[]);}catch(e){return;}
     this.grow(ring.length,tris.length*3);const base=this.nv;
-    for(const p of ring){const k=this.nv*3;this.P[k]=p[0];this.P[k+1]=y;this.P[k+2]=-p[1];this.N[k]=0;this.N[k+1]=127;this.N[k+2]=0;this.C[k]=col[0];this.C[k+1]=col[1];this.C[k+2]=col[2];this.nv++;}
+    for(const p of ring){const k=this.nv*3;this.P[k]=p[0];this.P[k+1]=y+this.dy;this.P[k+2]=-p[1];this.N[k]=0;this.N[k+1]=127;this.N[k+2]=0;this.C[k]=col[0];this.C[k+1]=col[1];this.C[k+2]=col[2];this.nv++;}
     for(const t of tris){const a=ring[t[0]],b=ring[t[1]],c=ring[t[2]];
       // want +Y facing: cross((b-a),(c-a)).y in XZ with Z=-y  => uz*vx-ux*vz
       const ux=b[0]-a[0],uz=-(b[1]-a[1]),vx=c[0]-a[0],vz=-(c[1]-a[1]);
@@ -345,12 +387,13 @@ class GB{
       else{this.I[this.ni++]=base+t[0];this.I[this.ni++]=base+t[2];this.I[this.ni++]=base+t[1];}}
   }
   quadXY(q,y,col){this.face(q.map(p=>[p[0],y,-p[1]]),[0,1,0],col);}
-  // prism from base polygon q (local, any order convex), heights y0..y1, walls + top
+  // prism from base polygon q (local, any order convex), heights y0..y1, walls + top.
+  // Walls that start at ground level (y0<=0.31) go 4 m deeper, so a building on a slope never floats.
   prism(q,y0,y1,wall,roof,top=true){
-    let cx=0,cy=0;q.forEach(p=>{cx+=p[0];cy+=p[1];});cx/=q.length;cy/=q.length;
+    const yw=y0<=0.31?y0-4:y0;let cx=0,cy=0;q.forEach(p=>{cx+=p[0];cy+=p[1];});cx/=q.length;cy/=q.length;
     for(let i=0;i<q.length;i++){const a=q[i],b=q[(i+1)%q.length];let nx=b[1]-a[1],ny=-(b[0]-a[0]);const L=Math.hypot(nx,ny)||1;nx/=L;ny/=L;
       if(nx*((a[0]+b[0])/2-cx)+ny*((a[1]+b[1])/2-cy)<0){nx=-nx;ny=-ny;}
-      this.face([[a[0],y0,-a[1]],[b[0],y0,-b[1]],[b[0],y1,-b[1]],[a[0],y1,-a[1]]],[nx,0,-ny],wall);}
+      this.face([[a[0],yw,-a[1]],[b[0],yw,-b[1]],[b[0],y1,-b[1]],[a[0],y1,-a[1]]],[nx,0,-ny],wall);}
     if(top)this.face(q.map(p=>[p[0],y1,-p[1]]),[0,1,0],roof);
   }
   // gable: q = [front-left, front-right, back-right, back-left]; ridge parallel to front edge
@@ -380,6 +423,32 @@ GB.prototype.face=function(pts,n,col){
   return _face.call(this,pts,n,col);};
 const _gable=GB.prototype.gable;
 GB.prototype.gable=function(q,y0,y1,rh,wall,roof){let cx=0,cy=0;q.forEach(p=>{cx+=p[0];cy+=p[1];});this._c=[cx/4,-cy/4];_gable.call(this,q,y0,y1,rh,wall,roof);this._c=null;};
+// convex polygon q ([x,y] grid metres) laid on the terrain, `off` metres above it, with the terrain's normals
+GB.prototype.onGround=function(q,off,col){
+  this.grow(q.length,(q.length-2)*3);const base=this.nv;
+  for(const p of q){const k=this.nv*3,n=EN(p[0],p[1]);this.P[k]=p[0];this.P[k+1]=E(p[0],p[1])+off;this.P[k+2]=-p[1];
+    this.N[k]=n[0]*127;this.N[k+1]=n[1]*127;this.N[k+2]=n[2]*127;this.C[k]=col[0];this.C[k+1]=col[1];this.C[k+2]=col[2];this.nv++;}
+  for(let j=1;j<q.length-1;j++){this.I[this.ni++]=base;this.I[this.ni++]=base+j;this.I[this.ni++]=base+j+1;}};
+// drape(src): src holds flat ground layers (y = small layer offset). Each triangle is cut along the terrain mesh's
+// edges (x and y grid lines and the cell diagonals), so every piece lies inside one terrain triangle and, raised by
+// E(), stays coplanar with it: the layer offsets of a few centimetres keep working on any slope.
+const CUTS=[p=>(p[0]-EX0)/ES,p=>(p[1]-EY0)/ES,p=>(p[0]-EX0+p[1]-EY0)/ES];
+function cutAt(q,f,k){const A=[],B=[];for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length],fp=f(p),fr=f(r);
+    if(fp<=k)A.push(p);if(fp>=k)B.push(p);
+    if((fp<k&&fr>k)||(fp>k&&fr<k)){const t=(k-fp)/(fr-fp),m=[p[0]+(r[0]-p[0])*t,p[1]+(r[1]-p[1])*t];A.push(m);B.push(m);}}
+  return [A,B];}
+function drape(src){
+  const out=new GB(src.nv*2);const P=src.P,C=src.C,I=src.I;
+  for(let t=0;t<src.ni;t+=3){const a=I[t]*3,b=I[t+1]*3,c=I[t+2]*3;
+    let polys=[[[P[a],-P[a+2]],[P[b],-P[b+2]],[P[c],-P[c+2]]]];
+    for(const f of CUTS){const nxt=[];
+      for(let q of polys){let lo=1e9,hi=-1e9;for(const p of q){const v=f(p);if(v<lo)lo=v;if(v>hi)hi=v;}
+        for(let k=Math.floor(lo)+1;k<hi;k++){const [A,B]=cutAt(q,f,k);if(A.length>2)nxt.push(A);q=B;}
+        if(q.length>2)nxt.push(q);}
+      polys=nxt;}
+    const col=[C[a],C[a+1],C[a+2]];for(const q of polys)out.onGround(q,P[a+1],col);}
+  return out;
+}
 
 /* =============== palettes =============== */
 const PAL={
@@ -432,7 +501,9 @@ function pyramid(B,q,y,h,col){let cx=0,cy=0;q.forEach(p=>{cx+=p[0];cy+=p[1];});c
 function buildModels(B){
   const C=hex;
   const at=id=>BYID[id];
-  const reserve=(x,y,w,d)=>rectOcc(x,y,w,d);
+  // reserve the footprint and stand the model on the ground: landmarks get a levelled pad (pad=true),
+  // campus buildings just sit on their lowest corner
+  const reserve=(x,y,w,d,pad=true)=>{rectOcc(x,y,w,d);B.dy=pad?padAt(x-w/2,y-d/2,x+w/2,y+d/2):groundMin(rotRect(x,y,w,d));};
   let p;
   // Plaza de Armas: kiosk + paths
   p=at('plaza-de-armas');{const x=p.x,y=p.y;reserve(x,y,118,118);
@@ -476,7 +547,7 @@ function buildModels(B){
     B.gable([[x+18,y-7],[x+18,y+15],[x+10,y+15],[x+10,y-7]],0.3,4.6,2.6,w,t);
     B.quadXY(rotRect(x,y+4,20,20),0.34,C('#9FAE6A'));MODELS['casa-independencia']={x,y,h:8};}
   p=at('teatro-regional');{const x=p.x,y=p.y;reserve(x,y,52,42);B.prism(rotRect(x,y,48,38),0.3,14,C('#7E3B33'),C('#6A6560'));B.prism(rotRect(x+6,y+4,26,24),14,22,C('#8A4A40'),C('#6A6560'));B.prism(rotRect(x,y-19.2,40,.6),1,12,C('#3F5566'),C('#3F5566'),false);MODELS['teatro-regional']={x,y,h:23};}
-  p=at('la-victoria');{const x=p.x,y=p.y;B.flat(ngon(x,y,7,12),0.36,C('#E3DCCB'));B.prism(rotRect(x,y,4.5,4.5),0.36,4,C('#D9D3C6'),C('#D9D3C6'));B.prism(ngon(x,y,.9,8),4,15,C('#E8E4DA'),C('#E8E4DA'));B.prism(rotRect(x,y,1.4,1.4),15,18,C('#C9A43A'),C('#C9A43A'));MODELS['la-victoria']={x,y,h:19};}
+  p=at('la-victoria');{const x=p.x,y=p.y;B.dy=padAt(x-7,y-7,x+7,y+7);B.flat(ngon(x,y,7,12),0.36,C('#E3DCCB'));B.prism(rotRect(x,y,4.5,4.5),0.36,4,C('#D9D3C6'),C('#D9D3C6'));B.prism(ngon(x,y,.9,8),4,15,C('#E8E4DA'),C('#E8E4DA'));B.prism(rotRect(x,y,1.4,1.4),15,18,C('#C9A43A'),C('#C9A43A'));MODELS['la-victoria']={x,y,h:19};}
   p=at('estadio');{const x=p.x,y=p.y+10;reserve(x,y,150,190);
     B.flat(rotRect(x,y,92,130),0.3,C('#B85C43'));B.flat(rotRect(x,y,70,108),0.36,C('#6E9E4A'));
     for(let k=0;k<6;k++)B.quadXY(rotRect(x,y-45+k*18,70,9),0.38,C('#77A652'));
@@ -496,9 +567,10 @@ function buildModels(B){
   p=at('mall-plaza-maule');{const x=p.x,y=p.y;reserve(x,y,230,160);B.prism(rotRect(x,y+20,200,100),0.3,13,C('#DDD3C0'),C('#B9B3A6'));B.quadXY(rotRect(x,y-55,210,50),0.33,C('#7E7B77'));
     for(let k=0;k<10;k++)B.quadXY(rotRect(x-90+k*20,y-55,.5,40),0.36,C('#E8E4DA'));MODELS['mall-plaza-maule']={x,y:y+20,h:14};}
   p=at('utalca-derecho');{const x=p.x,y=p.y;const r=rng(99);
-    for(let k=0;k<11;k++){const bx=x-220+r()*440,by=y-170+r()*340;if(occAt(bx,by))continue;const w=26+r()*24,d=12+r()*10;reserve(bx,by,w+6,d+6);B.prism(rotRect(bx,by,w,d),0.3,8+r()*9,pick(r,[C('#E7E1D3'),C('#C9B79A'),C('#D6D8D2'),C('#B6613F')]),C('#9D9A93'));}
+    for(let k=0;k<11;k++){const bx=x-220+r()*440,by=y-170+r()*340;if(occAt(bx,by))continue;const w=26+r()*24,d=12+r()*10;reserve(bx,by,w+6,d+6,false);B.prism(rotRect(bx,by,w,d),0.3,8+r()*9,pick(r,[C('#E7E1D3'),C('#C9B79A'),C('#D6D8D2'),C('#B6613F')]),C('#9D9A93'));}
     MODELS['utalca-derecho']={x,y,h:18};}
-  p=at('ucm-derecho');{const x=p.x,y=p.y;const r=rng(7);for(let k=0;k<6;k++){const bx=x-120+r()*240,by=y-90+r()*180;if(occAt(bx,by))continue;const w=24+r()*20,d=12+r()*8;reserve(bx,by,w+6,d+6);B.prism(rotRect(bx,by,w,d),0.3,7+r()*7,pick(r,[C('#E7E1D3'),C('#D8CBB5'),C('#EFEDE6')]),C('#9D9A93'));}MODELS['ucm-derecho']={x,y,h:14};}
+  p=at('ucm-derecho');{const x=p.x,y=p.y;const r=rng(7);for(let k=0;k<6;k++){const bx=x-120+r()*240,by=y-90+r()*180;if(occAt(bx,by))continue;const w=24+r()*20,d=12+r()*8;reserve(bx,by,w+6,d+6,false);B.prism(rotRect(bx,by,w,d),0.3,7+r()*7,pick(r,[C('#E7E1D3'),C('#D8CBB5'),C('#EFEDE6')]),C('#9D9A93'));}MODELS['ucm-derecho']={x,y,h:14};}
+  B.dy=0;
 }
 
 /* =============== procedural city =============== */
@@ -550,7 +622,7 @@ function cityGen(B,Btree){
             if(bad)continue;
             for(const p of pts){if(nearStreet(p[0],p[1],0.6)){bad=true;break;}}
             if(bad)continue;
-            occMark(q);ok=true;nb++;
+            occMark(q);ok=true;nb++;B.dy=groundMin(q);
             // emit
             const wall=st.startsWith('core')?pick(r,PAL.wallsCore):pick(r,PAL.walls);
             if(kind==='gable'){const h=fl*3.0+0.3;B.gable(q,0.3,h,Math.min(w,dd)*0.22,wall,r()<.72?pick(r,PAL.tile):pick(r,PAL.zinc));}
@@ -563,6 +635,7 @@ function cityGen(B,Btree){
       }
     }
   });
+  B.dy=0;
   // trees: parks and backyards
   let ntree=0;const MAXT=36000;
   blocks.forEach((b,bi)=>{
@@ -597,7 +670,7 @@ function buildBase(){
   for(let x=XMIN;x<XMAX;x+=160){for(let y=YMIN;y<YMAX;y+=130){
     let px=x,w=160;
     while(px<x+160){const pw=Math.min(40+r()*120,x+160-px);const cx=px+pw/2,cy=y+65;
-      if(blockAt(cx,cy)<0&&blockAt(px+3,y+3)<0&&blockAt(px+pw-3,y+127)<0){
+      if(blockAt(cx,cy)<0&&blockAt(px+3,y+3)<0&&blockAt(px+pw-3,y+127)<0&&Math.max(wildAt(cx,cy),wildAt(px,y),wildAt(px+pw,y+130))<0.35){
         B.quadXY([[px+1.5,y+1.5],[px+pw-1.5,y+1.5],[px+pw-1.5,y+128.5],[px+1.5,y+128.5]],0.02,pick(r,PAL.fields));
         if(r()<.07){for(let yy=y+4;yy<y+126;yy+=6)PO_FIELD.push([px+2,yy,0.9+r()*0.4,r()]);}
       }
@@ -619,27 +692,20 @@ function buildBase(){
   for(const c of order)streets.forEach(s=>{if(s.c===c)ribbon(B,s.pts,SW[c],0.12+(7-c)*0.004,c<=2?PAL.asphalt2:PAL.asphalt,c<=5);});
   // rail
   const rl=chaikin(dec(DATA.rail),2);ribbon(B,rl,6,0.2,PAL.ballast);ribbon(B,rl.map(p=>p),0.35,0.26,PAL.rail,false);
-  return B;
+  return drape(B);
 }
 const PO_FIELD=[];
 const PLAZA_BI=blockAt(BYID['plaza-de-armas'].x,BYID['plaza-de-armas'].y);
-function buildHill(B){ // Cerro La Virgen, smooth grid mesh
-  const p=BYID['cerro-la-virgen'];const cx=p.x+20,cy=p.y-60;const R=720,H=95;
-  const hf=(x,y)=>{const dx=x-cx,dy=(y-cy)/0.85;const a=Math.atan2(dy,dx);const d=Math.hypot(dx,dy)/(R*(1+0.12*Math.sin(a*2)));if(d>=1)return -1;
-    return H*Math.pow(1-d*d,1.7)*(1+0.10*Math.sin(a*3+1)+0.05*Math.sin(a*7)+0.04*Math.sin(d*9+a*2));};
-  const S=22,nx=Math.ceil(2*R*1.2/S),ny=Math.ceil(2*R/S);const x0=cx-R*1.2,y0=cy-R;
-  const pos=[],col=[],idx=[];const g0=hex('#8FA05E'),g1=hex('#A9A26C'),g2=hex('#7E9153');
-  for(let j=0;j<=ny;j++)for(let i=0;i<=nx;i++){const x=x0+i*S,y=y0+j*S;const h=hf(x,y);pos.push(x,h<0?-1.5:h+0.05,-y);
-    const t=Math.max(0,h)/H;const n=0.5+0.5*Math.sin(x*0.013+y*0.021)*Math.cos(x*0.007-y*0.011);const c=t>.55?g1:(n>.5?g0:g2);const f=0.94+0.12*n;col.push(c[0]/255*f,c[1]/255*f,c[2]/255*f);}
-  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const a=j*(nx+1)+i,b=a+1,c=a+nx+1,d=c+1;idx.push(a,c,b,b,c,d);}
-  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('color',new T.Float32BufferAttribute(col,3));g.setIndex(idx);g.computeVertexNormals();
-  // make sure normals point up
-  const nrm=g.attributes.normal;let up=0;for(let k=0;k<nrm.count;k++)up+=nrm.getY(k);if(up<0){idx.reverse&&g.setIndex(idx.slice().reverse());g.computeVertexNormals();}
-  scene.add(new T.Mesh(g,new T.MeshLambertMaterial({vertexColors:true})));
-  const top=hf(cx,cy);
+function buildCerro(B){ // Cerro La Virgen: the hill is real terrain now; the statue stands at the sanctuary
+  const p=BYID['cerro-la-virgen'];const cx=p.x,cy=p.y;const top=groundMin(rotRect(cx,cy,5,5));
   B.prism(rotRect(cx,cy,5,5),top-3,top+3,hex('#D9D3C6'),hex('#D9D3C6'));B.prism(ngon(cx,cy,1.3,8),top+3,top+13,hex('#F6F4EE'),hex('#F6F4EE'));pyramid(B,ngon(cx,cy,1.5,8),top+13,2.2,hex('#F6F4EE'));
   MODELS['cerro-la-virgen']={x:cx,y:cy,h:top+16};
-  const r=rng(5);const T0=[];for(let k=0;k<900;k++){const x=cx-R*1.1+r()*R*2.2,y=cy-R+r()*R*2;const h=hf(x,y);if(h<1||blockAt(x,y)>=0)continue;if(r()<h/H*0.6)continue;T0.push([x,y,0.8+r()*.6,r(),h]);}
+}
+// scrub and wood on steep ground (wildAt), in clumps
+function wildTrees(){
+  const r=rng(5),T0=[];const n=(x,y)=>0.5+0.5*Math.sin(x*0.011+y*0.017)*Math.cos(x*0.006-y*0.009+1.3);
+  for(let x=XMIN;x<XMAX;x+=13)for(let y=YMIN;y<YMAX;y+=13){const w=wildAt(x,y);if(w<0.15)continue;
+    if(r()>w*0.55*(0.25+n(x,y)))continue;const tx=x+r()*12,ty=y+r()*12;if(blockAt(tx,ty)>=0||nearStreet(tx,ty,2))continue;T0.push([tx,ty,0.8+r()*.7,r()]);}
   return T0;
 }
 
@@ -661,25 +727,39 @@ function treeGeo(kind){
 function instTrees(list,kind,yfn){
   const mesh=new T.InstancedMesh(treeGeo(kind),new T.MeshLambertMaterial({vertexColors:true}),list.length);
   const m=new T.Matrix4(),q=new T.Quaternion(),s=new T.Vector3(),p=new T.Vector3(),col=new T.Color();
-  list.forEach((t,i)=>{const sc=t[2];s.set(sc,sc*(0.9+t[3]*0.3),sc);p.set(t[0],t[4]||0.1,-t[1]);q.setFromAxisAngle(new T.Vector3(0,1,0),t[3]*6);m.compose(p,q,s);mesh.setMatrixAt(i,m);
+  list.forEach((t,i)=>{const sc=t[2];s.set(sc,sc*(0.9+t[3]*0.3),sc);p.set(t[0],E(t[0],t[1])+0.1,-t[1]);q.setFromAxisAngle(new T.Vector3(0,1,0),t[3]*6);m.compose(p,q,s);mesh.setMatrixAt(i,m);
     const v=0.82+t[3]*0.36;col.setRGB(v*(0.96+0.08*Math.sin(t[3]*40)),v,v*(0.9+0.1*Math.cos(t[3]*23)));mesh.setColorAt(i,col);});
   mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
   return mesh;
 }
 
-/* =============== diorama slab =============== */
-function slab(){
-  const w=XMAX-XMIN,d=YMAX-YMIN;const g=new T.BoxGeometry(w,50,d);
-  const side=new T.MeshLambertMaterial({color:0x8A6A4C}),top=new T.MeshLambertMaterial({color:new T.Color(...PAL.field.map(v=>v/255))});
-  const m=new T.Mesh(g,[side,side,top,side,side,side]);m.position.set(MAPC,-25.01,-MAPZ);
-  // strata line
-  const g2=new T.BoxGeometry(w+0.2,6,d+0.2);const m2=new T.Mesh(g2,new T.MeshLambertMaterial({color:0x6F5238}));m2.position.set(MAPC,-40,-MAPZ);
-  const grp=new T.Group();grp.add(m,m2);return grp;
+/* =============== terrain mesh + diorama cut =============== */
+function terrainMesh(){
+  const P=new Float32Array(EN_*3),C=new Float32Array(EN_*3),idx=[];
+  const f0=PAL.field,sc=[hex('#8FA05E'),hex('#7E9153')],dry=hex('#A9A26C');
+  for(let j=0;j<ENY;j++)for(let i=0;i<ENX;i++){const k=j*ENX+i,x=EX0+i*ES,y=EY0+j*ES;P[k*3]=x;P[k*3+1]=EH[k];P[k*3+2]=-y;
+    const n=0.5+0.5*Math.sin(x*0.013+y*0.021)*Math.cos(x*0.007-y*0.011);const g=n>.5?sc[0]:sc[1];
+    const hi=Math.max(0,Math.min(1,(ER[k]-120)/90))*0.6; // dry grass on the high ground
+    const w=EW[k],f=0.94+0.12*n;for(let c=0;c<3;c++)C[k*3+c]=(f0[c]*(1-w)+(g[c]*(1-hi)+dry[c]*hi)*w)/255*f;}
+  for(let j=0;j<ENY-1;j++)for(let i=0;i<ENX-1;i++){const a=j*ENX+i,b=a+1,c=a+ENX,d=c+1;idx.push(a,b,c,b,d,c);} // diagonal b-c, as in sampleTri()
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(P,3));g.setAttribute('normal',new T.BufferAttribute(ENRM,3));
+  g.setAttribute('color',new T.BufferAttribute(C,3));g.setIndex(idx);
+  const grp=new T.Group();grp.add(new T.Mesh(g,new T.MeshLambertMaterial({vertexColors:true})));
+  // the cut sides of the diorama follow the terrain's profile: topsoil, soil, and a darker stratum near the base
+  let lo=1e9;for(let k=0;k<EN_;k++)lo=Math.min(lo,EH[k]);const BOT=lo-45;
+  const S=new GB(1<<12),soil=hex('#8A6A4C'),top=hex('#5E4630'),strat=hex('#6F5238');
+  const edge=(pts,n)=>{for(let k=0;k<pts.length-1;k++){const [a,b]=[pts[k],pts[k+1]];const ha=E(a[0],a[1]),hb=E(b[0],b[1]);
+      const q=(y0a,y0b,y1a,y1b,c)=>S.face([[a[0],y0a,-a[1]],[b[0],y0b,-b[1]],[b[0],y1b,-b[1]],[a[0],y1a,-a[1]]],n,c);
+      q(ha-3,hb-3,ha,hb,top);q(BOT+16,BOT+16,ha-3,hb-3,soil);q(BOT+9,BOT+9,BOT+16,BOT+16,strat);q(BOT,BOT,BOT+9,BOT+9,soil);}};
+  const X1=EX0+(ENX-1)*ES,Y1=EY0+(ENY-1)*ES,xs=[],ys=[];for(let i=0;i<ENX;i++)xs.push(EX0+i*ES);for(let j=0;j<ENY;j++)ys.push(EY0+j*ES);
+  edge(xs.map(x=>[x,EY0]),[0,0,1]);edge(xs.map(x=>[x,Y1]),[0,0,-1]);edge(ys.map(y=>[EX0,y]),[-1,0,0]);edge(ys.map(y=>[X1,y]),[1,0,0]);
+  grp.add(new T.Mesh(S.geo(),new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
+  return grp;
 }
 
 /* =============== street lights (night) =============== */
 function lamps(){
-  const pts=[];streets.forEach(s=>{if(s.c>3)return;let acc=0;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);let u=(35-acc%35);while(u<L){const t=u/L;pts.push(a[0]+(b[0]-a[0])*t,6,-(a[1]+(b[1]-a[1])*t));u+=35;}acc+=L;}});
+  const pts=[];streets.forEach(s=>{if(s.c>3)return;let acc=0;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);let u=(35-acc%35);while(u<L){const t=u/L;const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t;pts.push(x,E(x,y)+6,-y);u+=35;}acc+=L;}});
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pts,3));
   const c=document.createElement('canvas');c.width=c.height=32;const x=c.getContext('2d');const gr=x.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,225,150,1)');gr.addColorStop(.35,'rgba(255,200,110,.5)');gr.addColorStop(1,'rgba(255,190,90,0)');x.fillStyle=gr;x.fillRect(0,0,32,32);
   const m=new T.PointsMaterial({size:9,sizeAttenuation:false,map:new T.CanvasTexture(c),transparent:true,depthWrite:false,blending:T.AdditiveBlending});
@@ -710,8 +790,18 @@ function pan(dx,dy){const R=new T.Vector3().setFromMatrixColumn(cam.matrixWorld,
   const mx=-R.x*dx*k+U.x*dy*k/Math.sin(EL),mz=-R.z*dx*k+U.z*dy*k/Math.sin(EL);view.tx+=mx;view.ty-=mz;clampView();placeCam();}
 function clampView(){view.tx=Math.max(XMIN,Math.min(XMAX,view.tx));view.ty=Math.max(YMIN,Math.min(YMAX,view.ty));view.zoom=Math.max(0.35,Math.min(26,view.zoom));}
 const ray=new T.Raycaster(),plane=new T.Plane(new T.Vector3(0,1,0),0);
-function ground(px,py){const v=new T.Vector2(px/W*2-1,-(py/H)*2+1);ray.setFromCamera(v,cam);const o=new T.Vector3();return ray.ray.intersectPlane(plane,o)?[o.x,-o.z]:null;}
-function zoomAt(f,px,py){const g0=px!=null?ground(px,py):null;view.zoom*=f;clampView();placeCam();if(g0){const g1=ground(px,py);if(g1){view.tx+=g0[0]-g1[0];view.ty+=g0[1]-g1[1];clampView();placeCam();}}}
+// the camera aims at the y=0 plane; planeAt() is where a screen point meets it (zoom anchoring, which only needs
+// a stable reference), ground() is where it meets the terrain (readout, rotation centre)
+function planeAt(px,py){const v=new T.Vector2(px/W*2-1,-(py/H)*2+1);ray.setFromCamera(v,cam);const o=new T.Vector3();return ray.ray.intersectPlane(plane,o)?[o.x,-o.z]:null;}
+let EHI=0,ELO=0;
+function ground(px,py){const v=new T.Vector2(px/W*2-1,-(py/H)*2+1);ray.setFromCamera(v,cam);const o=ray.ray.origin,d=ray.ray.direction;if(d.y>=0)return null;
+  const at=t=>[o.x+d.x*t,-(o.z+d.z*t)],above=t=>{const p=at(t);return o.y+d.y*t-E(p[0],p[1]);};
+  let t0=(EHI+1-o.y)/d.y;const t1=(ELO-1-o.y)/d.y,st=ES/2/Math.max(0.2,Math.hypot(d.x,d.z));
+  for(let t=t0+st;t<=t1+st;t+=st){if(above(t)<=0){let a=t-st,b=t;for(let k=0;k<20;k++){const m=(a+b)/2;if(above(m)>0)a=m;else b=m;}return at(b);}}
+  return at(t1);}
+// screen-equivalent point on the y=0 plane of the terrain point (x,y): aim the camera there to centre it
+function lift(x,y,az=view.az){const h=E(x,y)/Math.tan(EL);return [x-Math.sin(az)*h,y+Math.cos(az)*h];}
+function zoomAt(f,px,py){const g0=px!=null?planeAt(px,py):null;view.zoom*=f;clampView();placeCam();if(g0){const g1=planeAt(px,py);if(g1){view.tx+=g0[0]-g1[0];view.ty+=g0[1]-g1[1];clampView();placeCam();}}}
 let anim=null;
 function ease(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
 function framed(x,y,z){ // shift target so (x,y) lands in the free area between panel and card
@@ -746,10 +836,11 @@ window.addEventListener('keydown',e=>{if(e.target.closest('input'))return;const 
   if(k==='ArrowLeft')pan(120,0);else if(k==='ArrowRight')pan(-120,0);else if(k==='ArrowUp')pan(0,120);else if(k==='ArrowDown')pan(0,-120);
   else if(k==='+'||k==='=')zoomAt(1.4,W/2,H/2);else if(k==='-'||k==='_')zoomAt(1/1.4,W/2,H/2);
   else if(k==='q'||k==='Q')rotate(-1);else if(k==='e'||k==='E')rotate(1);else if(k==='Escape'){closeCard();}else h=false;if(h)e.preventDefault();});
-function rotate(dir){const az=Math.round((view.az-Math.PI/4)/(Math.PI/2))*(Math.PI/2)+Math.PI/4+dir*Math.PI/2;flyTo(view.tx,view.ty,view.zoom,az);}
+function turnTo(az){const g=ground(W/2,H/2);const t=g?lift(g[0],g[1],az):[view.tx,view.ty];flyTo(t[0],t[1],view.zoom,az);} // turn around the terrain point in the centre
+function rotate(dir){turnTo(Math.round((view.az-Math.PI/4)/(Math.PI/2))*(Math.PI/2)+Math.PI/4+dir*Math.PI/2);}
 $('#zin').onclick=()=>zoomAt(1.5,W/2,H/2);$('#zout').onclick=()=>zoomAt(1/1.5,W/2,H/2);
 $('#rl').onclick=()=>rotate(-1);$('#rr').onclick=()=>rotate(1);
-$('#compass').onclick=()=>flyTo(view.tx,view.ty,view.zoom,Math.PI/4);
+$('#compass').onclick=()=>turnTo(Math.PI/4);
 
 /* =============== readout (grid address) =============== */
 const NS=DATA.lines.ns.slice().sort((a,b)=>a[1]-b[1]), OP=DATA.lines.op.slice().sort((a,b)=>a[1]-b[1]);
@@ -770,8 +861,8 @@ function gridAddr(x,y){
   return {a:`Manzana ${shortN(OP[j][0])}–${shortN(OP[j+1][0])} / ${shortN(NS[i][0])}–${shortN(NS[i+1][0])}`,b:between};
 }
 let hoverPt=null,readoutDirty=true;
-function updateReadout(){if(!readoutDirty)return;readoutDirty=false;const p=hoverPt?ground(hoverPt[0],hoverPt[1]):[view.tx,view.ty];if(!p)return;
-  const ll=toLL(p[0],p[1]);const g=gridAddr(p[0],p[1]);const cc=`${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}`;
+function updateReadout(){if(!readoutDirty)return;readoutDirty=false;const p=hoverPt?ground(hoverPt[0],hoverPt[1]):ground(W/2,H/2);if(!p)return;
+  const ll=toLL(p[0],p[1]);const g=gridAddr(p[0],p[1]);const cc=`${ll[0].toFixed(5)}, ${ll[1].toFixed(5)} · ${Math.round(EV.z0+sampleTri(ER,p[0],p[1]))} m s. n. m.`;
   $('#ro-a').textContent=g?g.a:'Fuera del centro numerado';$('#ro-b').textContent=g?`${g.b} · ${cc}`:cc;}
 
 /* =============== overlay: pins + labels =============== */
@@ -799,7 +890,7 @@ function layout(){
   const rects=[];const hit=(r)=>{for(const q of rects)if(r[0]<q[2]&&r[2]>q[0]&&r[1]<q[3]&&r[3]>q[1])return true;return false;};
   const z=view.zoom;
   const list=POIS.slice().sort((a,b)=>(b.id===selId)-(a.id===selId)||a.p-b.p);
-  for(const p of list){const el=pinEls.get(p.id);const m=MODELS[p.id];const h=m?m.h:6;
+  for(const p of list){const el=pinEls.get(p.id);const m=MODELS[p.id];const h=m?m.h:E(p.x,p.y)+6;
     const vis=visibleP(p)||p.id===selId;
     const minZ=[0,0.9,1.9,3.2][p.p];
     if(!vis||(z<minZ&&p.id!==selId)){el.hidden=true;continue;}
@@ -818,8 +909,8 @@ function layout(){
   }
   const sz=z>=2.6&&showStreets;
   for(const l of SL){if((!sz&&!l.w)||(l.w&&z<0.5)){l.el.hidden=true;continue;}
-    const s=proj(l.x,l.y,0.3);if(s[0]<0||s[1]<0||s[0]>W||s[1]>H){l.el.hidden=true;continue;}
-    const s2=proj(l.x+l.dx,l.y+l.dy,0.3);let ang=Math.atan2(s2[1]-s[1],s2[0]-s[0]);if(ang>Math.PI/2)ang-=Math.PI;if(ang<-Math.PI/2)ang+=Math.PI;
+    if(l.h==null)l.h=E(l.x,l.y)+0.3;const s=proj(l.x,l.y,l.h);if(s[0]<0||s[1]<0||s[0]>W||s[1]>H){l.el.hidden=true;continue;}
+    const s2=proj(l.x+l.dx,l.y+l.dy,l.h);let ang=Math.atan2(s2[1]-s[1],s2[0]-s[0]);if(ang>Math.PI/2)ang-=Math.PI;if(ang<-Math.PI/2)ang+=Math.PI;
     const w=l.t.length*(l.w?7:6.6),hgt=14;const c=Math.abs(Math.cos(ang)),sn=Math.abs(Math.sin(ang));const bw=w*c+hgt*sn,bh=w*sn+hgt*c;
     const r=[s[0]-bw/2,s[1]-bh/2,s[0]+bw/2,s[1]+bh/2];if(hit(r)){l.el.hidden=true;continue;}rects.push(r);
     l.el.hidden=false;l.el.style.transform=`translate(${(s[0]-w/2).toFixed(1)}px,${(s[1]-7).toFixed(1)}px) rotate(${ang.toFixed(3)}rad)`;}
@@ -835,9 +926,9 @@ const card=$('#card');
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function select(id,fly){const p=BYID[id];if(!p)return;selId=id;
   if(tour&&PD.tours[tour.k].s[tour.i]!==id){const idx=PD.tours[tour.k].s.indexOf(id);if(idx<0)tour=null;else tour.i=idx;}
-  const m=MODELS[id];ring.visible=true;ring.position.set(m?m.x:p.x,0.5,-(m?m.y:p.y));ring.userData.t0=performance.now();ring.material.color.set(cssVar('--c-'+p.c)||'#7A1F3D');
+  const m=MODELS[id];ring.visible=true;ring.position.set(m?m.x:p.x,E(m?m.x:p.x,m?m.y:p.y)+1,-(m?m.y:p.y));ring.userData.t0=performance.now();ring.material.color.set(cssVar('--c-'+p.c)||'#7A1F3D');
   renderCard(p);
-  if(fly){const z=p.id==='cerro-la-virgen'?2.2:p.id.startsWith('utalca')?2.4:Math.max(view.zoom,4.2);const f=framed(m?m.x:p.x,m?m.y:p.y,z);flyTo(f[0],f[1],z);}
+  if(fly){const z=p.id==='cerro-la-virgen'?2.2:p.id.startsWith('utalca')?2.4:Math.max(view.zoom,4.2);const f=framed(...lift(m?m.x:p.x,m?m.y:p.y),z);flyTo(f[0],f[1],z);}
   try{history.replaceState(null,'','#'+id);}catch(e){}
   document.querySelectorAll('#list li button').forEach(b=>b.classList.toggle('sel',b.dataset.id===id));
   dirty=true;}
@@ -858,7 +949,7 @@ function renderCard(p){
     <div class="actions"><button class="btn ghost" id="cz">Acercar</button><a class="btn ghost" href="${osm}" target="_blank" rel="noopener">Ver en OpenStreetMap</a></div>
     ${tn}</div>`;
   card.hidden=false;
-  $('#cx').onclick=closeCard;$('#cz').onclick=()=>{const m=MODELS[p.id];flyTo(m?m.x:p.x,m?m.y:p.y,Math.max(view.zoom*1.6,6));};
+  $('#cx').onclick=closeCard;$('#cz').onclick=()=>{const m=MODELS[p.id];const t=lift(m?m.x:p.x,m?m.y:p.y);flyTo(t[0],t[1],Math.max(view.zoom*1.6,6));};
   if(tour){$('#tprev').onclick=()=>stepTour(-1);$('#tnext').onclick=()=>stepTour(1);}
 }
 function startTour(k){tour={k,i:0};select(PD.tours[k].s[0],true);}
@@ -910,13 +1001,16 @@ function loop(now){
 }
 function boot(){
   const t0=performance.now();
-  scene.add(slab());
-  const base=buildBase();scene.add(new T.Mesh(base.geo(),matFlat));
   loadMsg('Levantando hitos y edificios…');
   setTimeout(()=>{
     const B=new GB(1<<19);
-    buildModels(B);
-    const hillTrees=buildHill(B);
+    buildModels(B);                       // records the landmark pads...
+    applyPads();terrainNormals();         // ...which level the terrain before anything is laid on it
+    for(const k in MODELS)MODELS[k].h+=E(MODELS[k].x,MODELS[k].y);
+    for(let k=0;k<EN_;k++){EHI=Math.max(EHI,EH[k]);ELO=Math.min(ELO,EH[k]);}
+    scene.add(terrainMesh());
+    const base=buildBase();scene.add(new T.Mesh(base.geo(),matFlat));
+    buildCerro(B);const hillTrees=wildTrees();
     const {TR,PO,nb}=cityGen(B);
     // riparian poplars/willows
     const rip=[];const r=rng(77);
@@ -926,10 +1020,10 @@ function boot(){
     scene.add(instTrees(TR.concat(hillTrees),'round'));
     scene.add(instTrees(PO.concat(PO_FIELD),'poplar'));
     lampPts=lamps();scene.add(lampPts);
-    window.__stats={buildings:nb,verts:bgeo.attributes.position.count,trees:TR.length+hillTrees.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0)};
+    window.__stats={buildings:nb,verts:bgeo.attributes.position.count,ground:base.nv,trees:TR.length+hillTrees.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0)};
     buildPanel();resize();
     const h=decodeURIComponent(location.hash.slice(1));
-    if(h&&BYID[h]){const m=MODELS[h]||BYID[h];view.zoom=4;const f=framed(m.x,m.y,4);view.tx=f[0];view.ty=f[1];placeCam();select(h,false);}
+    if(h&&BYID[h]){const m=MODELS[h]||BYID[h];view.zoom=4;const f=framed(...lift(m.x,m.y),4);view.tx=f[0];view.ty=f[1];placeCam();select(h,false);}
     else if(h==='justicia'||h==='iconica'){startTour(h);}
     $('#loading').style.opacity=0;setTimeout(()=>$('#loading').hidden=true,500);
     requestAnimationFrame(loop);

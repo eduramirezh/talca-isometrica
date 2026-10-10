@@ -9,6 +9,7 @@ make build                      # src/template.html + data/ + config/ -> dist/ta
 make serve                      # http://localhost:8765
 make pois build                 # tras editar pipeline/pois.py
 make data build                 # tras editar config/trazados.json o process_geometry.py (requiere raw/)
+make elevation build            # tras editar elevation.py (requiere raw/dem/; no necesita las otras fuentes)
 make fetch                      # descarga raw/ (solo la primera vez)
 make validate                   # distancia entre cada lugar y su dirección en la grilla (requiere raw/)
 python tools/screenshot.py shots/x.png --hash corte-apelaciones [--size 390x844] [--dark] [--js "..."]
@@ -23,17 +24,18 @@ Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.
 **Pipeline (Python, solo biblioteca estándar).** Ejecuta los scripts desde `pipeline/`, porque se importan entre sí por nombre:
 
 `raw/` + `config/trazados.json` → `process_geometry.py` → `data/geometry.json`
+`raw/dem/S36W072.hgt.gz` (SRTM) → `elevation.py` → `data/elevation.json`
 `pois.py` → `data/pois.json`, `data/pois.csv`
-`build.py` inyecta geometry + `config/grid_lines.json` (como `DATA.lines`) + pois en `src/template.html`, reemplazando los marcadores `/*DATA*/` y `/*POIS*/`.
+`build.py` inyecta geometry + elevation (como `DATA.elev`) + `config/grid_lines.json` (como `DATA.lines`) + pois en `src/template.html`, reemplazando los marcadores `/*DATA*/` y `/*POIS*/`.
 
 **Coordenadas.** Todo usa «metros de grilla» (`common.loc` / `common.unloc`):
 - El origen es la Plaza de Armas.
 - La grilla está girada +5° para que las calles numeradas queden paralelas a los ejes.
 - x crece hacia el oriente e y hacia el norte.
-- En three.js: `X = x`, `Z = -y` (`Y` es la altura).
+- En three.js: `X = x`, `Z = -y` (`Y` es la altura). El suelo no está en `Y = 0`: está en `E(x, y)`, el relieve exagerado, con 0 en la plaza.
 - En `geometry.json` las geometrías están codificadas en delta con enteros `[x0,y0,dx1,dy1,…]`; las decodifica `dec()` en la plantilla.
 
-**Plantilla (`src/template.html`, ~940 líneas).** Es un fragmento HTML, no un documento completo: la plataforma de artifacts de Claude agrega `<!doctype>`, `<head>` y `<body>` (`build.py --standalone` hace lo mismo para uso local). Secciones del script, en orden:
+**Plantilla (`src/template.html`, ~1040 líneas).** Es un fragmento HTML, no un documento completo: la plataforma de artifacts de Claude agrega `<!doctype>`, `<head>` y `<body>` (`build.py --standalone` hace lo mismo para uso local). Secciones del script, en orden:
 
 | Sección | Qué hace |
 |---|---|
@@ -41,19 +43,21 @@ Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.
 | decode data | manzanas (`blocks`: área, centroide, bbox) y calles (`streets`) |
 | utils | `rng` con semilla (mulberry32), `pip`, `segDist2` |
 | grillas espaciales | `blockAt` (celdas de 100 m), `nearStreet` (40 m), raster de ocupación `occ` (2,5 m) para que los edificios no se superpongan |
-| `GB` | constructor de geometría indexada (posición Float32, normal Int8, color Uint8). `face()` orienta cada cara según la normal; `prism()` para cajas, `gable()` para techos a dos aguas, `flat()` para polígonos |
+| terrain | decodifica `DATA.elev`: `ER` (relieve real) y `EH` (exagerado con `relief()`, más explanadas). `E(x,y)` es la altura del suelo, interpolada dentro del mismo triángulo que dibuja la malla; `EN` la normal; `wildAt` la cobertura de matorral (pendiente real) |
+| `GB` | constructor de geometría indexada (posición Float32, normal Int8, color Uint8). `face()` orienta cada cara según la normal; `prism()` para cajas (los muros que parten del suelo bajan 4 m), `gable()` para techos a dos aguas, `flat()` para polígonos. `B.dy` sube todo lo que se emite; `drape()` corta capas planas por las aristas del terreno y las apoya en él |
 | palettes | colores de la escena |
 | three setup | cámara ortográfica, luces, `winMat()`: Lambert con ventanas procedurales en el shader (`uNight`, `uWin`) |
-| landmark models | `buildModels()`: modelos a mano de los 19 hitos, que reservan su huella en `occ` antes de generar la ciudad |
+| landmark models | `buildModels()`: modelos a mano de los 19 hitos, que reservan su huella en `occ` y registran una explanada (`padAt`) antes de generar la ciudad |
 | procedural city | `styleFor()` clasifica cada manzana (core, core2, ind, apt, house); `cityGen()` recorre cada tramo de calle por ambos lados y coloca lotes |
-| base layers | parcelas agrícolas, manzanas, ríos (con suavizado Chaikin), Ruta 5, calles, vía férrea |
-| `buildHill` | Cerro La Virgen: malla de alturas con normales suaves |
+| base layers | parcelas agrícolas, manzanas, ríos (con suavizado Chaikin), Ruta 5, calles, vía férrea; todo pasa por `drape()` |
+| `buildCerro`, `wildTrees` | estatua del Cerro La Virgen sobre el terreno real; árboles en manchones en las laderas |
 | trees | dos `InstancedMesh`: árboles redondos y álamos |
-| camera / input | `view {tx, ty, zoom, az}`; `placeCam()`, `pan()`, `zoomAt()`, `flyTo()`; `framed()` corrige el objetivo para que el lugar quede en el área libre entre el panel y la ficha |
+| `terrainMesh` | malla del terreno (colores por cobertura) y bordes del diorama que siguen su perfil |
+| camera / input | `view {tx, ty, zoom, az}`, que apunta al plano `Y = 0`; `placeCam()`, `pan()`, `zoomAt()`, `flyTo()`; `ground()` busca el terreno bajo un punto de la pantalla y `lift()` da el punto del plano que centra un punto del terreno; `framed()` corrige el objetivo para que el lugar quede en el área libre entre el panel y la ficha |
 | readout | `gridAddr()` convierte un punto en dirección aproximada usando `DATA.lines` |
 | overlay | marcadores y etiquetas de calles en el DOM, proyectados en cada cuadro; `layout()` evita superposiciones por prioridad |
 | selection / panel | ficha, recorridos, filtros, búsqueda y enlaces `#id` |
-| boot | genera todo dentro de `setTimeout` (para mostrar la pantalla de carga) y deja `window.__stats` |
+| boot | orden: hitos (registran explanadas) → `applyPads()` → terreno y capas base → ciudad; genera todo dentro de `setTimeout` (para mostrar la pantalla de carga) y deja `window.__stats` |
 
 El render se hace solo cuando hace falta: `loop()` dibuja únicamente si `dirty` está activo.
 
@@ -90,6 +94,8 @@ Para publicar: sube `dist/talca.html`, el fragmento, no `index.html`.
 - **Datos fuera del grafo.** El grafo de cicloconecta excluye autopistas (la Ruta 5 no está) y ferrocarriles. Por eso esos trazados están en `config/trazados.json`.
 - **Navegadores sin GPU.** En Chromium sin GPU (las capturas) hay que usar SwiftShader; ver los argumentos en `tools/screenshot.py`.
 - **Árboles.** `IcosahedronGeometry` ya viene sin índice en r128; `treeGeo()` lo detecta para no llamar a `toNonIndexed()`.
+- **Relieve.** Todo lo nuevo que vaya en el suelo necesita la altura del terreno: capas planas en `buildBase()` (pasan por `drape()`), objetos con `B.dy = groundMin(huella)`, puntos sueltos con `E(x, y)`. `MODELS[id].h` es absoluta (se le suma el suelo al terminar `buildModels`). Para centrar la cámara en un lugar, usa `lift(x, y)`, no `(x, y)`. Si cambias la triangulación de `terrainMesh()`, cambia `sampleTri()` igual: `drape()` depende de que coincidan.
+- **El SRTM es de superficie.** Mide techos y árboles. `elevation.py` los quita con una apertura morfológica; si se cambia la fuente, revisa `python pipeline/elevation.py stats`.
 
 ## Ideas pendientes
 

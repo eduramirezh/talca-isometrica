@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Descarga las dos fuentes de datos públicas a raw/ (≈ 60 MB tras el sparse checkout).
+# Descarga las tres fuentes de datos públicas a raw/ (≈ 72 MB tras el sparse checkout).
 #   1. Manzanas del Censo 2017 (INE) en GeoJSON  — github.com/jiboncom/chile_geojson
 #   2. Grafo vial de Talca extraído de OpenStreetMap — github.com/Shiroku36/cicloconecta
+#   3. Elevación SRTM 1" (tesela S36W072) de los Terrain Tiles de AWS — registry.opendata.aws/terrain-tiles
 # Solo se baja lo necesario para la Región del Maule / Talca.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -22,5 +23,9 @@ clone_sparse jiboncom/chile_geojson "$RAW/chile_geojson" \
 
 clone_sparse Shiroku36/cicloconecta "$RAW/cicloconecta" \
   '/data/cities/talca/*' '/README*' '/pipeline/*'
+
+mkdir -p "$RAW/dem"
+if [ -f "$RAW/dem/S36W072.hgt.gz" ]; then echo "· $RAW/dem/S36W072.hgt.gz ya existe, se omite"
+else curl -fL --retry 3 -o "$RAW/dem/S36W072.hgt.gz" https://s3.amazonaws.com/elevation-tiles-prod/skadi/S36/S36W072.hgt.gz; fi
 
 echo "Listo. Fuentes en $RAW/"

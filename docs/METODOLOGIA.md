@@ -26,6 +26,8 @@ El entorno de trabajo no tenía salida a OpenStreetMap: Overpass, Nominatim y lo
    Dentro de la maqueta quedan 3.134 manzanas con datos y 322 sin información. Cada manzana trae `TOTAL_PERS` y `TOTAL_VIVI`, que se usan para la densidad. El sistema de referencia es EPSG:4674 (SIRGAS 2000), que a esta escala equivale a WGS84.
 2. **Grafo vial de Talca extraído de OpenStreetMap**, del proyecto [Shiroku36/cicloconecta](https://github.com/Shiroku36/cicloconecta) (`data/cities/talca/nav_graph.json`). Tiene 31.529 nodos y 65.278 aristas con nombre de calle, tipo `highway` e id del way de OSM. Es un grafo pensado para bicicletas, así que **no incluye autopistas** (la Ruta 5) ni ferrocarriles.
 
+3. **Elevación SRTM de 1 segundo de arco** (~30 m), tesela `S36W072`, de los [Terrain Tiles de AWS](https://registry.opendata.aws/terrain-tiles/) (formato `.hgt`, sin autenticación). Una sola tesela cubre toda la maqueta.
+
 `pipeline/fetch_sources.sh` descarga solo los archivos necesarios mediante sparse checkout.
 
 ## 3. Sistema de coordenadas y giro de la grilla
@@ -70,7 +72,27 @@ Si se puede ejecutar Overpass, esta consulta trae los trazados reales para reemp
 out geom;
 ```
 
-## 6. Lugares (`pois.py`, `geocode.py`)
+## 6. Relieve (`elevation.py`)
+
+Hasta la versión 1.1 la maqueta era plana, con un cerro inventado. El modelo de elevación mostró que el relieve de Talca tiene dos escalas muy distintas:
+
+- **Los cerros del poniente.** Al otro lado del Río Claro, la cordillera de la Costa sube hasta ~370 m. El Cerro La Virgen está en su borde oriental, y el santuario queda a ~270 m.
+- **El plano de la ciudad.** Baja suavemente de ~130 m en la UCM, al oriente, a ~105 m en la plaza y ~80 m en el Río Claro. Lo que se nota son los escarpes de las terrazas hacia el Claro, el Lircay y el Piduco, de 10 a 25 m.
+
+El procesamiento:
+
+1. **De superficie a terreno.** El SRTM mide techos y copas de árboles. Se muestrea a 20 m en metros de grilla y se aplica una apertura morfológica (mínimo y luego máximo en una ventana de 100 m), que borra los objetos más angostos que eso sin tocar los valles. Después se suaviza con un filtro gaussiano de 30 m. En Talca el filtro quita poco (≈ 1 m de desviación, 9 m como máximo en el centro), así que el SRTM es limpio aquí.
+2. **Salida.** Una grilla de 241 × 224 nodos cada 40 m, en decímetros relativos a la plaza (103,7 m), codificada en delta (`data/elevation.json`, ~144 KB). Para revisarla, un sombreado con los ríos encima: el Claro y el Lircay calzan con sus valles.
+3. **Exageración en el navegador.** Con una exageración lineal, o los cerros tapan la ciudad o el plano sigue viéndose plano. Se usa una curva logarítmica: `h' = 3 · 50 · ln(1 + |h| / 50)`, con signo. Cerca de la plaza la pendiente se multiplica por 3, y a +170 m (el santuario) la altura queda en ×1,3. Las constantes son `RELIEF_A` y `RELIEF_K` en la plantilla.
+4. **Todo sobre el terreno.**
+   - Las capas planas (parcelas, manzanas, calles, ríos, vía férrea) se cortan por las aristas de la malla de terreno (`drape()`). Así cada pedazo queda dentro de un solo triángulo del terreno y es coplanar con él, y los desfases de pocos centímetros entre capas siguen funcionando en pendiente.
+   - Los edificios se apoyan en la esquina más baja de su huella. Los muros bajan 4 m más, así que en pendiente nunca quedan flotando.
+   - Bajo cada hito se nivela una explanada a la altura media de su huella.
+   - Donde la pendiente real supera ~6 % no hay parcelas agrícolas: el terreno se pinta de matorral y se siembran árboles en manchones.
+   - Los bordes del diorama siguen el perfil del terreno.
+5. **Lectura.** El lector de direcciones busca el punto del terreno bajo el cursor y muestra la altura real sobre el nivel del mar, sin exagerar.
+
+## 7. Lugares (`pois.py`, `geocode.py`)
 
 **Investigación.** Se buscaron por separado las instituciones jurídicas y los hitos de la ciudad. Como Overpass y Nominatim estaban bloqueados, las coordenadas se tomaron de:
 
@@ -108,10 +130,10 @@ En 1 Norte los impares están al lado norte. La Alameda es la 4 Norte.
 - **Ruta de la Justicia:** 13 paradas, de la jura de la Independencia (1818) al barrio cívico de la Alameda, y termina en la Facultad de Derecho de la U. de Talca.
 - **Talca icónica:** 13 paradas.
 
-## 7. Render (`src/template.html`)
+## 8. Render (`src/template.html`)
 
 - **Base.**
-  - Una losa de diorama con bordes de tierra.
+  - Una malla de terreno (sección 6) con bordes de tierra que siguen su perfil.
   - Parcelas agrícolas generadas donde no hay manzanas, con algunas hileras de álamos.
   - Manzanas como polígonos planos, calles como cintas encima, ríos con ribera de ripio y una franja verde de parque ribereño.
 - **Edificios procedurales** (`cityGen`). Se generan **a lo largo de cada tramo de calle**, por ambos lados, y no siguiendo el borde de la manzana. Las manzanas del censo pueden contener pasajes interiores, y así los edificios dan siempre a una calle real. Para cada lote:
@@ -124,27 +146,27 @@ En 1 Norte los impares están al lado norte. La Alameda es la 4 Norte.
   3. Se descarta el lote si invade otra calle, si sale de la manzana o si choca con algo ya construido. Para esto último hay un raster de ocupación de 2,5 m.
 
   Todo usa números aleatorios con semilla, así que la ciudad sale idéntica en cada carga. El resultado: ~72.000 edificios y ~2,1 millones de vértices en un solo buffer.
-- **Hitos.** Hay 19 modelos simplificados hechos a mano, entre ellos la Catedral, la Corte con su pórtico, los tribunales penales, la Fiscalía, el Juzgado de Familia, la ex Cárcel con muros y torres de guardia, el Mercado, la Casa de la Independencia, el Estadio, la Estación, el Teatro, La Victoria, el Hospital y el Cerro La Virgen con su estatua. Reservan su huella antes de que se genere la ciudad.
-- **Árboles.** Unos 44.000, en dos mallas instanciadas: árboles redondos en parques, patios y el cerro, y álamos en riberas y en la Alameda.
+- **Hitos.** Hay 19 modelos simplificados hechos a mano, entre ellos la Catedral, la Corte con su pórtico, los tribunales penales, la Fiscalía, el Juzgado de Familia, la ex Cárcel con muros y torres de guardia, el Mercado, la Casa de la Independencia, el Estadio, la Estación, el Teatro, La Victoria, el Hospital y la estatua del Cerro La Virgen. Reservan su huella y nivelan el terreno antes de que se genere la ciudad.
+- **Árboles.** Unos 76.000, en dos mallas instanciadas: árboles redondos en parques, patios y laderas, y álamos en riberas y en la Alameda.
 - **Noche.** Las ventanas se dibujan en el shader (patrón por piso y vano, y una semilla por fachada que decide cuáles se encienden). También hay faroles cada 35 m en las calles principales.
 - **Interfaz.** Los marcadores y etiquetas son elementos del DOM proyectados en cada cuadro, ordenados por prioridad para no superponerse. El lector de direcciones usa `config/grid_lines.json`.
 
-## 8. Diseño de la interfaz
+## 9. Diseño de la interfaz
 
 - **Paleta.** La escena usa los tonos del Maule en verano: campo seco, teja, ripio de río. La interfaz evoca un expediente: tinta azul marino sobre papel, con un acento vino (el Maule es zona vitivinícola) para la capa jurídica y verde para los hitos.
 - **Tipografía.** Alegreya SC, Alegreya Sans e IBM Plex Mono (esta última para las direcciones de la grilla).
 - **Temas.** Claro y oscuro con tokens CSS. En móvil el panel se convierte en hoja inferior.
 
-## 9. Verificación
+## 10. Verificación
 
 - **Validación de lugares.** `make validate` compara cada lugar con su dirección. En la revisión de la exportación (10-10-2026) detectó un error: la U. Autónoma estaba ~420 m al poniente de su dirección, y se corrigió (CHANGELOG).
 - **Reproducibilidad.** `process_geometry.py` reproduce exactamente la geometría publicada en la v1.
 - **Capturas.** `tools/screenshot.py` permite revisar escritorio, móvil, tema oscuro, modo noche, recorridos y búsqueda.
 
-## 10. Limitaciones
+## 11. Limitaciones
 
 - Los edificios no son los reales: son una interpretación según las reglas descritas.
 - Los ríos, el tramo norte del ferrocarril y la Ruta 5 son trazados aproximados (con un error de decenas de metros).
-- El Cerro La Virgen está achatado (≈ 95 m en vez de ~270 m de desnivel real) para no tapar la ciudad.
+- El relieve está exagerado (×3 en el plano, ×1,3 en los cerros) y suavizado a ~40 m: no se ven taludes ni desniveles de pocos metros. Los ríos son trazados aproximados que no siempre van por el fondo del valle del modelo.
 - Fuera del centro, la grilla se deforma y el lector de direcciones deja de funcionar. Muestra «Fuera del centro numerado».
 - La información institucional (direcciones, notarios) es de septiembre de 2026 y puede cambiar.

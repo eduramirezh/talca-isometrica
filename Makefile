@@ -1,15 +1,18 @@
 # Talca Isométrica — tareas del pipeline. Ver README.md.
 PY ?= python3
 PORT ?= 8765
-.PHONY: all fetch data pois build validate diagnostics shots serve clean
+.PHONY: all fetch data elevation pois build validate diagnostics shots serve clean
 
-all: data pois build          ## pipeline completo (requiere raw/: make fetch)
+all: data elevation pois build          ## pipeline completo (requiere raw/: make fetch)
 
-fetch:                        ## descarga las fuentes a raw/ (~60 MB)
+fetch:                        ## descarga las fuentes a raw/ (~72 MB)
 	./pipeline/fetch_sources.sh
 
 data:                         ## raw/ + config/trazados.json -> data/geometry.json
 	cd pipeline && $(PY) process_geometry.py
+
+elevation:                    ## raw/dem/ (SRTM) -> data/elevation.json
+	cd pipeline && $(PY) elevation.py
 
 pois:                         ## pipeline/pois.py -> data/pois.json + data/pois.csv
 	cd pipeline && $(PY) pois.py

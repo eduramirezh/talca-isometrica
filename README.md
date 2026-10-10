@@ -7,9 +7,10 @@ Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca 
 - **52 lugares** en 8 categorías, cada uno con dirección, coordenadas, fuente y nivel de confianza.
 - **Dos recorridos guiados:** la Ruta de la Justicia y Talca icónica.
 - **~72.000 edificios** generados en el navegador frente a cada calle real, con alturas según la densidad del censo y 19 hitos con modelo propio.
+- **Relieve real** del modelo de elevación SRTM: los cerros del poniente y las terrazas de la ciudad hacia sus ríos, con exageración logarítmica. El lector muestra la altura sobre el nivel del mar.
 - **Lector de direcciones:** al pasar el cursor muestra la dirección aproximada según la grilla numerada («1 Norte ≈ 850, entre 1 y 2 Oriente»).
 - **Vistas:** modo noche, giro de la vista en 90°, modo pixel, tema claro y oscuro, y diseño para móvil.
-- **Un solo archivo HTML** autocontenido (~670 KB). Solo carga three.js desde cdnjs y las fuentes de Google Fonts.
+- **Un solo archivo HTML** autocontenido (~820 KB). Solo carga three.js desde cdnjs y las fuentes de Google Fonts.
 
 ## Inicio rápido
 
@@ -23,7 +24,7 @@ make serve          # sirve en http://localhost:8765 y lo abre en el navegador
 Para regenerar todo desde las fuentes originales:
 
 ```bash
-make fetch          # descarga manzanas del Censo y grafo vial OSM a raw/ (~60 MB, requiere git)
+make fetch          # descarga manzanas del Censo, grafo vial OSM y elevación SRTM a raw/ (~72 MB, requiere git y curl)
 make all            # geometría -> lugares -> HTML
 make validate       # compara cada lugar con su dirección en la grilla
 ```
@@ -43,6 +44,7 @@ pipeline/
   common.py              rutas y proyección (origen en la Plaza de Armas, grilla girada 5°)
   fetch_sources.sh       descarga las fuentes a raw/
   process_geometry.py    manzanas + calles + trazados -> data/geometry.json
+  elevation.py           elevación SRTM -> data/elevation.json
   pois.py                catálogo de lugares y recorridos -> data/pois.json + pois.csv
   geocode.py             geocodificador de la numeración de Talca y validador
   build.py               plantilla + datos -> dist/
