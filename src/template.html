@@ -2288,6 +2288,54 @@ function buildModels(B,S){ // S: models drawn without the window shader
     // four chimneys for the wood fireplaces on the road-side slope
     for(const v of [-14,-5,5,14]){box(-3.1,v-.5,-1.9,v+.5,3.6,6.4,K.brick,K.brick);box(-3.25,v-.65,-1.75,v+.65,6.4,6.6,K.white,K.white);}
     const m=G(2,0);MODELS['viejas-cochinas']={x:m[0],y:m[1],h:7};S.dy=0;}
+  // ==== hito: puentes-rio-claro ====
+  // The two bridges over the Río Claro at the Alameda's west end, on S in grid metres. The Ruta K-60-J bridge (OSM
+  // w111133067, from 4 Norte's end to the west bank; the map's street of that name between the same points stays off
+  // the ground, s.bridge) and, 20 m south of it, the old bridge, closed (w203105753, w733122936 and w255707859,
+  // bridge=abandoned; OSM leaves out 17 m over the west channel and so does the model, the cause is not documented).
+  // From photos on Wikimedia Commons (2005, public domain; 2013, CC BY 2.0): the new one, a concrete deck with
+  // sidewalks, parapets with red reflector posts and lamps with curved arms, on paired columns under a cap; the old one,
+  // narrower, a balustrade on deep beams over wall piers. Approximate: the decks' heights (straight between the banks,
+  // never under the terrain plus 0.3 m; the relief is exaggerated), the piers' spacing (25 and 20 m), the lamps' (35 m).
+  // The new bridge's lamps glow (it is a lit road); the old one has none.
+  {const K={asph:C('#57534F'),walk:C('#C9C3B6'),beam:C('#B3AEA4'),par:C('#D9D3C5'),red:C('#C8503A'),metal:C('#707070'),lamp:C('#F1E6C4'),
+      old:C('#BDB8AD'),old2:C('#8F8A82'),oldBeam:C('#9C978E')};
+    const Q=a=>{const o=[];for(let i=0;i<a.length;i+=2)o.push([a[i],a[i+1]]);return o;};
+    // a deck along polyline pts, hw half its width; hAt(p): the straight line between the banks; o: the bridge's parts
+    const bridge=(pts,hw,hAt,o)=>{const sm=[];
+      for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.max(1,Math.ceil(L/2.5));
+        for(let k=i?1:0;k<=n;k++)sm.push({x:a[0]+(b[0]-a[0])*k/n,y:a[1]+(b[1]-a[1])*k/n,dx:(b[0]-a[0])/L,dy:(b[1]-a[1])/L});}
+      let D=0;sm.forEach((p,i)=>{if(i)D+=Math.hypot(p.x-sm[i-1].x,p.y-sm[i-1].y);p.d=D;p.h=Math.max(hAt(p),E(p.x,p.y)+.3);p.nx=-p.dy;p.ny=p.dx;});
+      const P=(p,off,dh)=>[p.x+p.nx*off,p.h+dh,-(p.y+p.ny*off)],N=(p,s)=>[p.nx*s,0,-p.ny*s];S.dy=0;
+      for(let i=0;i<sm.length-1;i++){const a=sm[i],b=sm[i+1],top=(o0,o1,dh,col)=>S.face([P(a,o0,dh),P(b,o0,dh),P(b,o1,dh),P(a,o1,dh)],[0,1,0],col);
+        const side=(off,s,d0,d1,col)=>S.face([P(a,off,d0),P(b,off,d0),P(b,off,d1),P(a,off,d1)],N(a,s),col);
+        if(o.walk){top(-o.walk,o.walk,0,K.asph);for(const s of [1,-1]){top(s*o.walk,s*(hw-.25),.15,K.walk);side(s*o.walk,-s,0,.15,K.walk);}}
+        else top(-hw+.25,hw-.25,0,o.deck);
+        for(const s of [1,-1]){const rail=o.balus?(i%2?K.old2:K.old):K.par;
+          side(s*hw,s,-o.beamD,o.walk?.15:0,o.beamCol);side(s*hw,s,o.walk?.15:0,o.walk?1.05:.9,rail);       // beam and the parapet's outer face
+          side(s*(hw-.25),-s,o.walk?.15:0,o.walk?1.05:.9,rail);top(s*(hw-.25),s*hw,o.walk?1.05:.9,o.walk?K.par:K.old);}}
+      for(const [p,sg] of [[sm[0],-1],[sm[sm.length-1],1]])S.face([P(p,-hw,-o.beamD),P(p,hw,-o.beamD),P(p,hw,1),P(p,-hw,1)],[p.dx*sg,0,-p.dy*sg],o.beamCol);
+      let nextPier=o.pier/2,nextLamp=10,ls=1,nextRed=0;
+      for(const p of sm){const g=E(p.x,p.y),a=Math.atan2(p.dy,p.dx);occMark(rotRect(p.x,p.y,3,2*hw+4,a));
+        if(p.d>=nextPier){nextPier+=o.pier;if(p.h-g>2.5){
+          if(o.walk){for(const s of [1,-1])S.prism(ngon(p.x+p.nx*s*4,p.y+p.ny*s*4,.75,6),g-.5,p.h-o.beamD-.8,o.beamCol,o.beamCol);
+            S.prism(rotRect(p.x,p.y,1.4,2*hw-1,a),p.h-o.beamD-.8,p.h-o.beamD,o.beamCol,o.beamCol);}
+          else S.prism(rotRect(p.x,p.y,1.2,2*hw-1.5,a),g-.5,p.h-o.beamD,o.beamCol,o.beamCol);}}
+        if(o.walk&&p.d>=nextRed){nextRed+=4;for(const s of [1,-1])S.prism(rotRect(p.x+p.nx*s*(hw-.12),p.y+p.ny*s*(hw-.12),.35,.35,a),1.05+p.h,1.35+p.h,K.red,K.red);}
+        if(o.lamps&&p.d>=nextLamp){nextLamp+=35;ls=-ls;const ox=p.x+p.nx*ls*(hw-.6),oy=p.y+p.ny*ls*(hw-.6);
+          S.prism(rotRect(ox,oy,.3,.3,a),p.h+1.05,p.h+8,K.metal,K.metal);S.prism(rotRect(ox-p.nx*ls*1,oy-p.ny*ls*1,.25,2.2,a),p.h+7.8,p.h+8.05,K.metal,K.metal);
+          const hx=ox-p.nx*ls*2,hy=oy-p.ny*ls*2;S.prism(rotRect(hx,hy,.6,.8,a),p.h+7.55,p.h+7.85,K.metal,K.lamp);GLOW.push(hx,p.h+7.4,hy);}}
+      // no tree of the park's wood under or through the deck
+      for(let i=TREES.length-1;i>=0;i--){const t=TREES[i];if(sm.some(p=>Math.hypot(t[0]-p.x,t[1]-p.y)<hw+5))TREES.splice(i,1);}};
+    // the Ruta K-60-J bridge, 13 m (the map's carriageway): 9 m of road, sidewalks, parapets
+    {const a=[-1806.5,529],b=[-1349,540.5],ha=E(...a)+.144,hb=E(...b)+.144,L=Math.hypot(b[0]-a[0],b[1]-a[1]);
+      streets.forEach(s=>{if(s.name==='Ruta K-60-J'&&s.pts.length===2&&Math.hypot(s.pts[0][0]-a[0],s.pts[0][1]-a[1])<4&&Math.hypot(s.pts[1][0]-b[0],s.pts[1][1]-b[1])<4)s.bridge=true;});
+      bridge([a,b],6.5,p=>ha+(hb-ha)*Math.hypot(p.x-a[0],p.y-a[1])/L,{walk:4.5,beamD:1.4,beamCol:K.beam,pier:25,lamps:true});}
+    // the old bridge, 8 m, in two parts on either side of the gap
+    {const a=[-1809,516],b=[-1471.5,509],ha=E(...a)+.14,hb=E(...b)+.14,hAt=p=>ha+(hb-ha)*(p.x-a[0])/(b[0]-a[0]);
+      bridge(Q([-1809,516,-1775.5,512.5,-1689.5,511]),4,hAt,{deck:K.old,balus:true,beamD:1.8,beamCol:K.oldBeam,pier:20});
+      bridge(Q([-1672.5,510.5,-1631,510.5,-1471.5,509]),4,hAt,{deck:K.old,balus:true,beamD:1.8,beamCol:K.oldBeam,pier:20});}
+    S.dy=0;}
   // ==== fin de los hitos ====
   B.dy=0;S.dy=0;
 }
@@ -2484,7 +2532,8 @@ function buildBase(){
   const r5=chaikin(dec(DATA.ruta5),2);ribbon(B,r5,30,0.16,PAL.asphalt2);ribbon(B,r5,1.4,0.2,hex('#B9B6AE'),false);
   // streets
   const order=[7,6,5,4,3,2,1,0];
-  for(const c of order)streets.forEach(s=>{if(s.c===c)ribbon(B,s.pts,SW[c],0.12+(7-c)*0.004,c<=2?PAL.asphalt2:PAL.asphalt,c<=5);});
+  // (a street a landmark draws as a bridge, s.bridge, stays off the ground: the Ruta K-60-J over the Río Claro)
+  for(const c of order)streets.forEach(s=>{if(s.c===c&&!s.bridge)ribbon(B,s.pts,SW[c],0.12+(7-c)*0.004,c<=2?PAL.asphalt2:PAL.asphalt,c<=5);});
   // rail
   const rl=chaikin(dec(DATA.rail),2);ribbon(B,rl,6,0.2,PAL.ballast);ribbon(B,rl.map(p=>p),0.35,0.26,PAL.rail,false);
   return drape(B);
