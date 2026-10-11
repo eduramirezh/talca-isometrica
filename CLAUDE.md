@@ -103,7 +103,7 @@ Los hitos se rehacen uno por uno sobre su planta real y con estética de pixel a
 - `location.hash` solo acepta un identificador simple (`#corte-apelaciones`), no pares `clave=valor`.
 - Máximo 16 MB.
 
-Para publicar: sube `dist/talca.html`, el fragmento, no `index.html`.
+Para publicar: `make build` y sube `dist/talca.html`, el fragmento, no `index.html`. `dist/` no está en git: es un resultado de la plantilla y los datos.
 
 ## Trampas conocidas
 

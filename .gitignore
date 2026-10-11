@@ -1,8 +1,9 @@
-raw/
-node_modules/
+/raw
+/node_modules
 shots/
 diagnostics/
 __pycache__/
 *.pyc
 .DS_Store
 .claude/worktrees/
+dist/

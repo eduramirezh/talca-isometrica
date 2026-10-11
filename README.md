@@ -54,7 +54,7 @@ pipeline/
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos de Commons
 src/template.html        toda la aplicación: CSS, UI y motor three.js (r128)
 data/                    datos procesados (versionados)
-dist/                    resultado: talca.html (fragmento) e index.html (página completa)
+dist/                    resultado (no versionado: `make build`): talca.html (fragmento) e index.html (página completa)
 tools/screenshot.py      capturas con Chromium sin interfaz
 docs/                    metodología, fuentes, investigación de proyectos similares
 ```
