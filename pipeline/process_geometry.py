@@ -15,6 +15,7 @@ Salida (todas las coordenadas en metros de grilla enteros, codificadas en delta:
   names    nombres de calle
   water    {claro, lircay, piduco}  ejes de los ríos (de OSM los que tienen clave `osm`; los otros, a mano)
   area     {río: [[contorno, isla, ...], ...]}  agua de cada río de OSM: polígonos de anillos codificados
+  branch   {río: [rama, ...]}  ramas laterales de un río de OSM (el Piduco Norte)
   rail, ruta5, widths
 """
 import json, math, collections
@@ -130,20 +131,24 @@ def osm_objs(v, kind):
 
 def osm_river(name, r):
     """Centreline and water area of a river from OpenStreetMap. r['osm']['via']: the waterway way, or a list of
-    them in downstream order, chained into one line. r['osm']['agua']: the natural=water multipolygon (a number),
+    them in downstream order, chained into one line. r['osm']['ramas'] (optional): ways of side branches, each a
+    line of its own (the Piduco Norte, an arm of the Piduco into the Claro). r['osm']['agua']: the natural=water multipolygon (a number),
     or a list of multipolygons and closed ways ('w<id>'). Outer rings that share an edge (OSM splits long water
     areas into pieces) are merged into one; inner rings are the islands. The download is cached in
-    raw/osm/rio-<name>.json; delete it to fetch it again. Returns (centreline, [[outer, island, ...], ...]) in
-    grid metres, cut to the model with a 300 m margin (centreline) or exactly (area)."""
+    raw/osm/rio-<name>.json (fetched again when an object is missing); delete it to fetch it again. Returns
+    (centreline, [[outer, island, ...], ...], [branch, ...]) in grid metres, cut to the model with a 300 m margin
+    (lines) or exactly (area)."""
     from landmark import get
     f = RAW / 'osm' / f'rio-{name}.json'
     via, agua = osm_objs(r['osm']['via'], 'way'), osm_objs(r['osm']['agua'], 'relation')
-    if not f.exists():
+    ramas = osm_objs(r['osm'].get('ramas', []), 'way')
+    have = lambda d, k, objs: {(e['type'], e['id']) for e in d[k]['elements']} >= set(objs)
+    d = json.load(open(f)) if f.exists() else None
+    if not d or not have(d, 'via', via + ramas) or not have(d, 'agua', agua):
         api = 'https://api.openstreetmap.org/api/0.6/'
         fetch = lambda objs: {'elements': [e for t, i in objs for e in json.loads(get(f'{api}{t}/{i}/full.json'))['elements']]}
-        d = {'via': fetch(via), 'agua': fetch(agua)}
+        d = {'via': fetch(via + ramas), 'agua': fetch(agua)}
         f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps(d))
-    d = json.load(open(f))
     def parts(k):
         el = d[k]['elements']; N = {e['id']: e for e in el if e['type'] == 'node'}
         P = {i: loc(e['lon'], e['lat']) for i, e in N.items()}
@@ -156,10 +161,12 @@ def osm_river(name, r):
         if w[-1] == ch[-1]: w = w[::-1]
         assert w[0] == ch[-1], f'la vía {i} no sigue a la anterior'
         ch += w[1:]
-    cl = [P[n] for n in ch]
-    inside = [XMIN-300 < x < XMAX+300 and YMIN-300 < y < YMAX+300 for x, y in cl]
-    i0, i1 = inside.index(True), len(inside) - inside[::-1].index(True)
-    cl = rdp(cl[max(0, i0-1):i1+1], 3)
+    def crop(cl):
+        inside = [XMIN-300 < x < XMAX+300 and YMIN-300 < y < YMAX+300 for x, y in cl]
+        i0, i1 = inside.index(True), len(inside) - inside[::-1].index(True)
+        return rdp(cl[max(0, i0-1):i1+1], 3)
+    cl = crop([P[n] for n in ch])
+    br = [crop([P[n] for n in ways[i]]) for _, i in ramas]
     el, ways, P = parts('agua')
     area2 = lambda ring: sum(P[ring[i-1]][0]*P[ring[i]][1] - P[ring[i]][0]*P[ring[i-1]][1] for i in range(len(ring)))
     outers, inners = [], []
@@ -196,8 +203,8 @@ def osm_river(name, r):
         holes = [h for h in inners if pip_xy(P[h[0]], po)]
         polys.append([oc] + [hc for hc in map(clean, holes) if hc])
     n = sum(len(p) for p in polys)
-    print(f'río {name} (OSM): eje de {len(cl)} puntos, agua en {len(polys)} polígonos y {n} anillos ({n-len(polys)} islas)')
-    return cl, polys
+    print(f'río {name} (OSM): eje de {len(cl)} puntos, {len(br)} ramas, agua en {len(polys)} polígonos y {n} anillos ({n-len(polys)} islas)')
+    return cl, polys, br
 
 def pip_xy(p, ring):
     c = False; x, y = p
@@ -210,13 +217,14 @@ def main():
     tz = json.load(open(CONFIG / 'trazados.json'))
     L = lambda pts: enc([loc(lo, la) for la, lo in pts])
     blocks = load_blocks(); streets, names = load_streets()
-    water, area = {}, {}
+    water, area, branch = {}, {}, {}
     for k, v in tz['rios'].items():
         if 'osm' in v:
-            cl, polys = osm_river(k, v); water[k] = enc(cl); area[k] = [[enc(r) for r in p] for p in polys]
+            cl, polys, br = osm_river(k, v); water[k] = enc(cl); area[k] = [[enc(r) for r in p] for p in polys]
+            if br: branch[k] = [enc(b) for b in br]
         else: water[k] = L(v['puntos'])
     data = {'ext': [XMIN, XMAX, YMIN, YMAX], 'blocks': blocks, 'streets': streets, 'names': names,
-            'water': water, 'area': area,
+            'water': water, 'area': area, 'branch': branch,
             'widths': {k: [v['ancho_m'], v['ribera_m']] for k, v in tz['rios'].items()},
             'rail': L(tz['ferrocarril']['puntos']), 'ruta5': L(tz['ruta5']['puntos'])}
     DATA.mkdir(exist_ok=True)

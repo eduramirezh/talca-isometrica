@@ -13,8 +13,8 @@
     },
     "piduco": {
       "ancho_m": 12, "ribera_m": 5,
-      "fuente": "Franja sin manzanas que cruza la ciudad en diagonal hacia el noroeste; anclas: puente ferroviario (-35.44022,-71.65053) y Costanera. Los últimos cinco puntos, hasta la desembocadura en el Claro, son nodos de la vía OSM 115278408.",
-      "puntos": [[-35.4640,-71.5900],[-35.4600,-71.6080],[-35.4585,-71.6150],[-35.4560,-71.6240],[-35.4535,-71.6290],[-35.4505,-71.6340],[-35.4490,-71.6385],[-35.4465,-71.6405],[-35.4430,-71.6415],[-35.4405,-71.6430],[-35.4395,-71.6475],[-35.4400,-71.6510],[-35.4395,-71.6545],[-35.4385,-71.6580],[-35.4370,-71.6605],[-35.4360,-71.6640],[-35.4340,-71.6665],[-35.4310,-71.6685],[-35.4285,-71.6695],[-35.4268,-71.6710],[-35.4262,-71.6735],[-35.4252,-71.6752],[-35.4240,-71.6770],[-35.42323,-71.67906],[-35.42375,-71.68014],[-35.42472,-71.68143],[-35.42482,-71.68309],[-35.42437,-71.68479]]
+      "osm": {"via": [818896454, 115278012, 115278408], "ramas": [115765863], "agua": [15792513]},
+      "fuente": "OpenStreetMap: eje del estero (vías 818896454, 115278012 y 115278408, waterway=river, de la relación 12030965), el brazo del Piduco Norte hacia el Claro (vía 115765863) y el agua del tramo bajo, desde la desembocadura hasta 6 Oriente, con su isla (multipolígono 15792513, natural=water), que calzan con la imagen satelital. Aguas arriba de 6 Oriente, una cinta de ancho_m sobre el eje. Reemplazó en octubre de 2026 al trazado a mano, que quedaba hasta 140 m fuera en la ciudad y 320 m al oriente."
     }
   },
   "ferrocarril": {

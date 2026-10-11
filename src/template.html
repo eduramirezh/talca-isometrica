@@ -2445,9 +2445,12 @@ function ribbon(B,pts,w,y,col,joins=true){
 const inRiver=(k,x,y)=>!!RIV[k]&&RIV[k].some(p=>pip([x,y],p[0])&&!p.slice(1).some(r=>pip([x,y],r)));
 const inClaro=(x,y)=>inRiver('claro',x,y);
 const _runs={};
-function riverRuns(k){if(_runs[k])return _runs[k];const P=RIV[k]||[],pts=chaikin(dec(DATA.water[k]),3),runs=[];let run=null;
-  for(let i=0;i<pts.length;i++){const out=!P.some(p=>pip(pts[i],p[0]));
-    if(out){if(!run){run=i?[pts[i-1]]:[];runs.push(run);}run.push(pts[i]);}else if(run){run.push(pts[i]);run=null;}}
+// the river's lines, smoothed: its axis and its side branches (DATA.branch: the Piduco Norte)
+const riverLines=k=>[DATA.water[k],...((DATA.branch||{})[k]||[])].map(l=>chaikin(dec(l),3));
+function riverRuns(k){if(_runs[k])return _runs[k];const P=RIV[k]||[],runs=[];
+  for(const pts of riverLines(k)){let run=null;
+    for(let i=0;i<pts.length;i++){const out=!P.some(p=>pip(pts[i],p[0]));
+      if(out){if(!run){run=i?[pts[i-1]]:[];runs.push(run);}run.push(pts[i]);}else if(run){run.push(pts[i]);run=null;}}}
   return _runs[k]=runs.filter(r=>r.length>1);}
 // a strip w wide beside a polyline, from `off` to off+w on its left (side 1) or right (side -1), with fans at the bends
 function sideRibbon(B,pts,side,off,w,y,col){
@@ -2462,8 +2465,8 @@ function riverBase(B,BW,k,[w,rb]){
     for(const t of T.ShapeUtils.triangulateShape(V(outer),isl.map(V)))BW.face(t.map(i=>[all[i][0],0.11,-all[i][1]]),[0,1,0],PAL.water);}
   // shore strips, outside the water: right of a counter-clockwise outer ring, left of a counter-clockwise island.
   // None on ring edges the clip laid along the model's border, nor on the edge where the area ends across the river.
-  const axis=chaikin(dec(DATA.water[k]),3),o=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
-  const cross=(a,b)=>axis.some((c,i)=>i<axis.length-1&&o(a,b,c)*o(a,b,axis[i+1])<0&&o(c,axis[i+1],a)*o(c,axis[i+1],b)<0);
+  const lines=riverLines(k),o=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
+  const cross=(a,b)=>lines.some(axis=>axis.some((c,i)=>i<axis.length-1&&o(a,b,c)*o(a,b,axis[i+1])<0&&o(c,axis[i+1],a)*o(c,axis[i+1],b)<0));
   const skip=(a,b)=>[XMIN,XMAX].some(v=>Math.abs(a[0]-v)<1&&Math.abs(b[0]-v)<1)||[YMIN,YMAX].some(v=>Math.abs(a[1]-v)<1&&Math.abs(b[1]-v)<1)||cross(a,b);
   for(const P of RIV[k])P.forEach((r,j)=>{let A=0;for(let i=0;i<r.length;i++){const p=r[i],q=r[(i+1)%r.length];A+=p[0]*q[1]-q[0]*p[1];}
     const side=(A>0?1:-1)*(j?1:-1);let run=[];
@@ -2844,7 +2847,7 @@ const SL=[];
   want.forEach((list,nm)=>{let acc=0;const every=nm==='Alameda'?900:650;
     list.forEach(s=>{for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<30){acc+=L;continue;}
       if(acc<=0||acc>every){const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];if(Math.abs(m[0])<3200&&Math.abs(m[1])<3400){SL.push({t:nm,x:m[0],y:m[1],dx:b[0]-a[0],dy:b[1]-a[1],w:false});acc=1;}}else acc+=L;}});});
-  [['Río Claro','claro',25],['Río Claro','claro',42],['Río Lircay','lircay',6],['Estero Piduco','piduco',13],['Estero Piduco','piduco',5]].forEach(([t,k,i])=>{const pts=dec(DATA.water[k]);const a=pts[i],b=pts[i+1];SL.push({t,x:(a[0]+b[0])/2,y:(a[1]+b[1])/2,dx:b[0]-a[0],dy:b[1]-a[1],w:true});});
+  [['Río Claro','claro',25],['Río Claro','claro',42],['Río Lircay','lircay',6],['Estero Piduco','piduco',83],['Estero Piduco','piduco',42]].forEach(([t,k,i])=>{const pts=dec(DATA.water[k]);const a=pts[i],b=pts[i+1];SL.push({t,x:(a[0]+b[0])/2,y:(a[1]+b[1])/2,dx:b[0]-a[0],dy:b[1]-a[1],w:true});});
   SL.forEach(l=>{const e=document.createElement('div');e.className='street'+(l.w?' water':'');e.textContent=l.t;overlay.appendChild(e);l.el=e;});
 })();
 let showStreets=true;
