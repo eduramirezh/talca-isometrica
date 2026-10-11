@@ -12,8 +12,9 @@ make data build                 # tras editar config/trazados.json o process_geo
 make elevation build            # tras editar elevation.py (requiere raw/dem/; no necesita las otras fuentes)
 make fetch                      # descarga raw/ (solo la primera vez)
 make validate                   # distancia entre cada lugar y su dirección en la grilla (requiere raw/)
-python tools/screenshot.py shots/x.png --hash corte-apelaciones [--size 390x844] [--dark] [--js "..."]
+python tools/screenshot.py shots/x.png --hash corte-apelaciones [--size 390x844] [--dpr 2] [--dark] [--js "..."]
 python tools/screenshot.py shots/x.png --js "__look(-1640,533,10,Math.PI/4+Math.PI)"   # cámara en (x, y) de grilla, zoom, giro
+uv run --with playwright --with pillow python tools/variants.py shots/hoja.png --view "Plaza:__look(-60,30,14.2)" --variant "Sin pixel art:__pixelArt(null)" --variant "0,75 m:__pixelArt({m:0.75})" --reset "__pixelArt({m:0.5})" --scale 1   # vistas x variantes en una hoja
 python pipeline/satellite.py plaza-de-armas [500]   # manzanas sobre imagen satelital, en diagnostics/
 python pipeline/geocode.py address "2 Norte 781"
 python pipeline/diagnostics.py centro          # panel PNG en diagnostics/
@@ -66,6 +67,7 @@ Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.
 | readout | `gridAddr()` convierte un punto en dirección aproximada usando `DATA.lines` |
 | overlay | marcadores y etiquetas de calles en el DOM, proyectados en cada cuadro; `layout()` evita superposiciones por prioridad |
 | selection / panel | ficha, recorridos, filtros, búsqueda y enlaces `#id` |
+| pixel art | `paRender()`: la escena siempre se dibuja como pixel art. Se renderiza a 1/k de la pantalla, con píxeles de arte de ~0,5 m (`k` sigue al zoom y a la densidad de la pantalla), más una pasada de normales; una pasada de pantalla agranda cada píxel a k × k y oscurece la silueta y los pliegues. La imagen está anclada al origen de la grilla para que los píxeles no titilen al desplazar. `window.__pixelArt(opciones)` lo cambia y `__pixelArt(null)` lo apaga (para comparar con `tools/variants.py`) |
 | boot | orden: `riversLevel()` y `riversOcc()` → hitos (registran explanadas) → `applyPads()` → `riversRelevel()` → terreno y capas base → ciudad (los árboles de `TREES`, plantados por los hitos, van con los demás) → sombras (todas las mallas las reciben; las proyectan `B`, `S`, el Cerro y los árboles); genera todo dentro de `setTimeout` (para mostrar la pantalla de carga) y deja `window.__stats` |
 
 El render se hace solo cuando hace falta: `loop()` dibuja únicamente si `dirty` está activo.
@@ -82,7 +84,7 @@ Los hitos se rehacen uno por uno sobre su planta real y con estética de pixel a
    - `S` para lo que no lleva ventanas;
    - `occMark` con la huella real, `padAt`, `NOLOTS` si hay recinto cercado y `GLOW` para luces;
    - un comentario con los ids de OSM, las fuentes y lo aproximado.
-5. Capturas: ficha, de cerca, girada, noche, pixel y móvil (las líneas `--js` están en §9.5). Compárelas con las fotos. Una a la vez: varias en paralelo agotan el tiempo de Playwright.
+5. Capturas: ficha, de cerca, girada, noche y móvil (las líneas `--js` están en §9.5). Compárelas con las fotos. Una a la vez: varias en paralelo agotan el tiempo de Playwright.
 6. Registre en CHANGELOG, docs/FUENTES.md (fotos y licencias) y aquí, si aparece una trampa nueva.
 
 ## Convenciones
@@ -130,6 +132,7 @@ Para publicar: `make build` y sube `dist/talca.html`, el fragmento, no `index.ht
 - **Lo que proyecta sombra se dibuja por su cara trasera.** El mapa de sombras guarda las caras que no miran al sol (la regla de three.js para evitar manchas). Un prisma sin base, como los de `GB`, queda hueco en el mapa, pero su sombra sobre el suelo sale bien porque la tapan los muros del lado de la sombra. Una malla nueva no proyecta sombra hasta que se le pone `castShadow` (en `boot`, junto a `B` y `S`).
 - **Lotes y `occ`.** `cityGen()` marca sus lotes con 2 y sus pruebas solo ven el 1: lo que había antes. Lo que se genere después (árboles, el parque de la Alameda) ve ocupado todo lo que no es 0. Un hito nuevo marca con `occMark(q)` (valor 1) antes de la ciudad, como siempre.
 - **Ventanas en caras que no son fachadas.** `winMat()` pinta ventanas en toda cara vertical a más de 1 m de altura. Graderías, escalinatas y muros van en `S`.
+- **Todo pasa por el pixel art.** La escena se dibuja en un objetivo a baja resolución sin antialiasing: lo que mide menos de 0,5 m desaparece de cerca (ESTETICA §2), y lo que se dibuje en la pasada de normales (`scene.overrideMaterial`) no lleva los cambios de vértice de un material propio: si un material mueve vértices en su shader, los contornos no lo siguen. Los faroles (`Points`) se ocultan en esa pasada y su tamaño se divide por k. Los marcadores del DOM usan la cámara sin anclar: pueden quedar a menos de un píxel de arte de su lugar.
 - **Rotar en `--js`.** El giro es animado: dos clics seguidos en `#rr` giran una sola vez, y una rueda del mouse cancela el giro en curso. Espere ~2 s entre clics (`--js` acepta una expresión async, que se espera). La cámara inicial mira desde el sureste: una fachada al poniente necesita dos o tres giros.
 - **`E()` dentro de `buildModels` es el terreno sin explanadas.** `applyPads()` corre después y además aplana una celda de 40 m alrededor de cada explanada. Lo que va justo afuera de una (andenes, vías) toma `max(explanada, E)`.
 - **Overpass puede no responder.** En octubre de 2026 los tres servidores daban error por carga. La API de OSM entrega un objeto entero sin límite de caja: `api/0.6/way/<id>/full.json` o `relation/<id>/full.json` (así se bajan los ríos). Para un área, cajas de la API `map` de menos de 0,25 grados² y 50 mil nodos.
@@ -159,5 +162,5 @@ Para publicar: `make build` y sube `dist/talca.html`, el fragmento, no `index.ht
 - Puentes modelados sobre el Piduco y el Lircay (hoy la calle, la vía o la Ruta 5 pasan sobre el agua como una cinta): el ferroviario del Piduco (ramal y Línea Central), el Puente Lircay N° 1 de la Ruta 5 y el ferroviario junto a él; la Costanera del Piduco.
 - El tramo sur de la vía férrea desde OSM, como el norte (~500 m fuera en el borde sur).
 - Los otros restaurantes de la ribera poniente (Los Olivares, OSM n1024052077) y el mirador del bosque; el parque de noche, si se confirma que está iluminado.
-- Lo que falta para parecerse a Isopolis e Isometric NYC (docs/PROYECTOS-SIMILARES.md, puntos 3 a 6): modo pixel de verdad (píxel de tamaño fijo, contorno y paleta; choca con ESTETICA §1), veredas, autos, árboles de vereda y objetos de techo, textura del agua, un poco más de color.
+- Lo que falta para parecerse a Isopolis e Isometric NYC (docs/PROYECTOS-SIMILARES.md, puntos 4 a 6): veredas, autos, árboles de vereda y objetos de techo, textura del agua, un poco más de color.
 - Exportar una postal PNG de la vista actual. Dentro de un artifact se necesita la capacidad de descargas.

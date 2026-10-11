@@ -9,12 +9,12 @@ Criterios visuales para los modelos hechos a mano, para que los hitos rehechos s
 Tres reglas ordenan las demás:
 
 1. **La planta es la real; la elevación se interpreta.** La huella sale de OpenStreetMap, y las alturas y los colores, de fotos fechadas. Todo lo que está sobre el suelo se simplifica hasta lo que se lee a la escala de trabajo (§2).
-2. **Se dibuja con forma y color, no con textura.** No hay imágenes, degradados, transparencias ni bordes de posproceso. La luz de la escena sombrea cada cara y el sol proyecta sombras (desde el nor-nororiente, a 45°: techo claro, muro oriente al sol, muro sur a la sombra); el resto lo ponen los colores de la paleta.
+2. **Se dibuja con forma y color, no con textura.** No hay imágenes, degradados ni transparencias; el único posproceso es el del pixel art (píxel de 0,5 m y contorno de un píxel en un tono más oscuro de cada superficie, METODOLOGIA §8). La luz de la escena sombrea cada cara y el sol proyecta sombras (desde el nor-nororiente, a 45°: techo claro, muro oriente al sol, muro sur a la sombra); el resto lo ponen los colores de la paleta.
 3. **El hito destaca por su silueta y su detalle, no por su color.** Los colores se quedan dentro de la paleta de la escena (§4). La ciudad generada es más simple (cajas con ventanas de sombreador), así que basta el detalle dibujado para que el hito se distinga.
 
 ## 2. La escala de trabajo
 
-El zoom de la ficha muestra ~0,9 m por píxel en escritorio; «Acercar» llega a ~0,6 m. El modo pixel divide la resolución por tres. Por eso:
+El zoom de la ficha muestra ~0,9 m por píxel en escritorio (~0,45 m en una pantalla Retina); «Acercar» llega a ~0,6 m. De cerca, la escena se dibuja en píxeles de arte de 0,5 m, con contorno. Por eso:
 
 | Elemento | Medida mínima | Ejemplos |
 |---|---|---|
@@ -23,7 +23,7 @@ El zoom de la ficha muestra ~0,9 m por píxel en escritorio; «Acercar» llega a
 | Detalle que debe reconocerse | 2–3 píxeles a la escala de la ficha (1,5–3 m) | paneles de focos, puertas, vitrales, emblemas |
 | Lo que no se dibuja | menos de 0,4 m | barandas finas, parteluces, cruces de cumbrera, letreros |
 
-Si un detalle desaparece en la captura con modo pixel, se agranda o se quita.
+Si un detalle desaparece en la captura de cerca (`__look(x, y, 14.2)`, píxeles de 0,5 m) o el contorno lo ensucia, se agranda o se quita.
 
 ## 3. El lenguaje
 
@@ -86,7 +86,7 @@ Además de las capturas de METODOLOGIA §9.5, antes de dar por terminado un mode
 
 - [ ] La silueta se reconoce en la vista inicial, sin acercar.
 - [ ] Al zoom de la ficha se distinguen los elementos que identifican el edificio en las fotos (en la Catedral: el frontis blanco de tres arcos y la torre de ladrillo con aguja verde).
-- [ ] En modo pixel, ningún detalle queda como ruido de un píxel.
+- [ ] De cerca (píxeles de 0,5 m), ningún detalle queda como ruido de un píxel ni lo tapa el contorno.
 - [ ] Ninguna cara parpadea al girar la vista (capas a la misma distancia, techos coplanares).
 - [ ] Los colores están en la paleta o tienen una foto que los justifique.
 - [ ] Las cuatro orientaciones se ven completas: no hay caras faltantes en los lados sin fotos.

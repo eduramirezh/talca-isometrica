@@ -9,7 +9,7 @@ Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca 
 - **~72.000 edificios** generados en el navegador frente a cada calle real, con alturas según la densidad del censo y 24 hitos con modelo propio, sobre su planta real.
 - **Relieve real** del modelo de elevación SRTM: los cerros del poniente y las terrazas de la ciudad hacia sus ríos, con exageración logarítmica. El lector muestra la altura sobre el nivel del mar.
 - **Lector de direcciones:** al pasar el cursor muestra la dirección aproximada según la grilla numerada («1 Norte ≈ 850, entre 1 y 2 Oriente»).
-- **Vistas:** modo noche, giro de la vista en 90°, modo pixel, tema claro y oscuro, y diseño para móvil.
+- **Vistas:** pixel art (píxeles de 0,5 m con contorno), modo noche, giro de la vista en 90°, tema claro y oscuro, y diseño para móvil.
 - **Un solo archivo HTML** autocontenido (~820 KB). Solo carga three.js desde cdnjs y las fuentes de Google Fonts.
 
 ## Inicio rápido
@@ -57,6 +57,7 @@ src/template.html        toda la aplicación: CSS, UI y motor three.js (r128)
 data/                    datos procesados (versionados)
 dist/                    resultado (no versionado: `make build`): talca.html (fragmento) e index.html (página completa)
 tools/screenshot.py      capturas con Chromium sin interfaz
+tools/variants.py        hoja de comparación: varias vistas por varias variantes de render
 docs/                    metodología, fuentes, investigación de proyectos similares
 ```
 

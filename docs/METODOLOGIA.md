@@ -180,6 +180,7 @@ En 1 Norte los impares están al lado norte. La Alameda es la 4 Norte.
   Todo usa números aleatorios con semilla, así que la ciudad sale idéntica en cada carga. El resultado: ~57.000 edificios sobre otros tantos lotes y ~2 millones de vértices en un solo buffer, más ~1 millón en la malla de los lotes.
 - **Hitos.** Hay 19 modelos hechos a mano. El Estadio Fiscal y la Catedral siguen su planta real y la estética de pixel art (sección 9 y [ESTETICA.md](ESTETICA.md)); los demás todavía son simplificados: entre ellos la Corte con su pórtico, los tribunales penales, la Fiscalía, el Juzgado de Familia, la ex Cárcel con muros y torres de guardia, el Mercado, la Casa de la Independencia, el Estadio, la Estación, el Teatro, La Victoria, el Hospital y la estatua del Cerro La Virgen. Reservan su huella y nivelan el terreno antes de que se genere la ciudad.
 - **Luz y sombras.** Un cielo tenue (0,5) y un sol más fuerte (0,82) desde el nor-nororiente a 45°, para que techo, muro al sol y muro a la sombra tengan tres tonos claros. El sol proyecta sombras: un mapa de 4096² (2048² en móvil) que `fitShadow()` ajusta a lo que muestra la vista y mueve en texeles enteros. Proyectan sombra los edificios, los hitos y los árboles; de noche no hay sombras. Desde la vista inicial las sombras caen delante de los muros sur, donde se ven.
+- **Pixel art.** La escena siempre se dibuja como pixel art: a baja resolución, con píxeles de arte de ~0,5 m que se agrandan sin suavizar, y un contorno de un píxel en un tono más oscuro de cada superficie donde cambia la profundidad (la silueta) o la normal (cumbreras, esquinas). Al alejar, el píxel de arte crece y el contorno se aligera: pliegues hasta 1 m, silueta hasta 2 m, nada más allá. La imagen está anclada a la grilla para que los píxeles no titilen al desplazar la vista. Sin paleta reducida: probada, convertía el ladrillo en oliva ([PROYECTOS-SIMILARES.md](PROYECTOS-SIMILARES.md), punto 3).
 - **Árboles.** Unos 78.000, en dos mallas instanciadas: árboles redondos en parques, patios y laderas, y álamos en riberas y en la Alameda.
 - **Noche.** Las ventanas se dibujan en el shader (patrón por piso y vano, y una semilla por fachada que decide cuáles se encienden). También hay faroles cada 35 m en las calles principales.
 - **Interfaz.** Los marcadores y etiquetas son elementos del DOM proyectados en cada cuadro, ordenados por prioridad para no superponerse. El lector de direcciones usa `config/grid_lines.json`.
@@ -242,8 +243,7 @@ Con `tools/screenshot.py --hash <id>` y `--js`:
 | de cerca | `document.querySelector('#cx').click();for(let i=0;i<3;i++)document.querySelector('#zin').click()` |
 | girada | lo anterior + `;document.querySelector('#rr').click()` |
 | noche | lo anterior + `;document.querySelector('#night').click()` |
-| pixel | lo anterior + `;document.querySelector('#pixel').click()` |
-| móvil | `--size 390x844`, sin `--js` |
+| móvil | `--size 390x844 --dpr 3`, sin `--js` |
 
 Compare la vista girada con las fotos tomadas desde un ángulo parecido. Revise también la vista inicial (`shots/centro.png`) y que las estadísticas solo cambien donde se espera: con `NOLOTS`, el número de edificios baja un poco. Para encuadrar un punto que no es un lugar (un muelle, un puente), `--js "__look(x, y, zoom, giro)"` centra la cámara en ese punto de la grilla; `zoom` 4 es el de la ficha y `giro` es el azimut en radianes (`Math.PI/4` es la vista inicial; sumando `Math.PI` se mira desde el noroeste).
 
@@ -275,7 +275,7 @@ Los hitos restantes se rehicieron en cinco sesiones paralelas, una por zona (Pla
 
 - **Validación de lugares.** `make validate` compara cada lugar con su dirección. En la revisión de la exportación (10-10-2026) detectó un error: la U. Autónoma estaba ~420 m al poniente de su dirección, y se corrigió (CHANGELOG).
 - **Reproducibilidad.** `process_geometry.py` reproduce exactamente la geometría publicada en la v1.
-- **Capturas.** `tools/screenshot.py` permite revisar escritorio, móvil, tema oscuro, modo noche, recorridos y búsqueda. Las vistas para revisar un hito están en la sección 9.5.
+- **Capturas.** `tools/screenshot.py` permite revisar escritorio, móvil, tema oscuro, modo noche, recorridos y búsqueda. Para comparar alternativas de render, `tools/variants.py` arma en una sola carga una hoja de vistas por variantes (así se evaluó el pixel art, PROYECTOS-SIMILARES.md punto 3). Las vistas para revisar un hito están en la sección 9.5.
 
 ## 12. Limitaciones
 
