@@ -2498,12 +2498,16 @@ function riversOcc(){for(const k in RIV){
       xs.sort((p,q)=>p-q);
       for(let i=0;i+1<xs.length;i+=2)for(let gx=Math.max(0,Math.ceil((xs[i]-XMIN)/OC-.5));gx<=Math.min(ocW-1,Math.floor((xs[i+1]-XMIN)/OC-.5));gx++)occ[gy*ocW+gx]=1;}}
   const [w,rb]=DATA.widths[k],hw=w/2+rb;
-  const band=(a,b,r)=>{for(let gx=Math.floor((Math.min(a[0],b[0])-r-XMIN)/OC);gx<=Math.floor((Math.max(a[0],b[0])+r-XMIN)/OC);gx++)
-      for(let gy=Math.floor((Math.min(a[1],b[1])-r-YMIN)/OC);gy<=Math.floor((Math.max(a[1],b[1])+r-YMIN)/OC);gy++){
-        if(gx<0||gy<0||gx>=ocW||gy>=ocH)continue;if(segDist2(XMIN+(gx+.5)*OC,YMIN+(gy+.5)*OC,a[0],a[1],b[0],b[1])<r*r)occ[gy*ocW+gx]=1;}};
-  for(const P of RIV[k])for(const r of P)for(let i=0;i<r.length;i++)band(r[i],r[(i+1)%r.length],rb); // the gravel strip along every shore
-  for(const run of riverRuns(k))for(let i=0;i<run.length-1;i++)band(run[i],run[i+1],hw);
+  for(const P of RIV[k])for(const r of P)for(let i=0;i<r.length;i++)occBand(r[i],r[(i+1)%r.length],rb); // the gravel strip along every shore
+  for(const run of riverRuns(k))for(let i=0;i<run.length-1;i++)occBand(run[i],run[i+1],hw);
 }}
+// occupies the cells within r of the segment a-b
+function occBand(a,b,r){for(let gx=Math.floor((Math.min(a[0],b[0])-r-XMIN)/OC);gx<=Math.floor((Math.max(a[0],b[0])+r-XMIN)/OC);gx++)
+  for(let gy=Math.floor((Math.min(a[1],b[1])-r-YMIN)/OC);gy<=Math.floor((Math.max(a[1],b[1])+r-YMIN)/OC);gy++){
+    if(gx<0||gy<0||gx>=ocW||gy>=ocH)continue;if(segDist2(XMIN+(gx+.5)*OC,YMIN+(gy+.5)*OC,a[0],a[1],b[0],b[1])<r*r)occ[gy*ocW+gx]=1;}}
+// no lots or trees on the Ruta 5 (26 m) or the railway (6 m of ballast), plus a margin: both are OpenStreetMap's
+// lines now (only the rail's central stretch is hand-traced), and the lots along their frontage streets reached them
+function linesOcc(){for(const [d,hw] of [[DATA.ruta5,15],[DATA.rail,5]]){const p=chaikin(dec(d),2);for(let i=0;i<p.length-1;i++)occBand(p[i],p[i+1],hw);}}
 const MAPC=(XMIN+XMAX)/2,MAPZ=(YMIN+YMAX)/2;
 function buildBase(){
   const B=new GB(1<<17);
@@ -2534,7 +2538,7 @@ function buildBase(){
     ribbon(B,pts,W[k][0]+W[k][1]*2,0.05,PAL.bank);ribbon(B,pts,W[k][0],0.07,PAL.water);}
   riverWater=drape(BW);
   // ruta 5
-  const r5=chaikin(dec(DATA.ruta5),2);ribbon(B,r5,30,0.16,PAL.asphalt2);ribbon(B,r5,1.4,0.2,hex('#B9B6AE'),false);
+  const r5=chaikin(dec(DATA.ruta5),2);ribbon(B,r5,26,0.16,PAL.asphalt2);ribbon(B,r5,1.4,0.2,hex('#B9B6AE'),false);
   // streets
   const order=[7,6,5,4,3,2,1,0];
   // (a street a landmark draws as a bridge, s.bridge, stays off the ground: the Ruta K-60-J over the Río Claro)
@@ -2965,7 +2969,7 @@ function boot(){
   loadMsg('Levantando hitos y edificios…');
   setTimeout(()=>{
     const B=new GB(1<<19),S=new GB(1<<16);
-    riversLevel();riversOcc();              // the rivers from OSM: level water, no lots or trees in them
+    riversLevel();riversOcc();linesOcc();   // level water; no lots or trees in the rivers, the Ruta 5 or the rail
     buildModels(B,S);                       // records the landmark pads...
     applyPads();riversRelevel();terrainNormals(); // ...which level the terrain before anything is laid on it
     for(const k in MODELS)MODELS[k].h+=E(MODELS[k].x,MODELS[k].y);

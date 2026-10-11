@@ -18,11 +18,11 @@
     }
   },
   "ferrocarril": {
-    "fuente": "Tramo central exacto (pasos inferiores 2 Norte, 1 Norte, 1 Sur y 8 Sur, estación y puente Piduco, OSM vía Mapcarta). Tramo norte hacia el puente del Lircay: aproximado.",
-    "puntos": [[-35.3900,-71.6130],[-35.3945,-71.6172],[-35.4000,-71.6222],[-35.4080,-71.6288],[-35.4160,-71.6343],[-35.4210,-71.6400],[-35.4245,-71.6458],[-35.4265,-71.6486],[-35.42743,-71.64899],[-35.428514,-71.649108],[-35.42978,-71.64925],[-35.43639,-71.65001],[-35.44022,-71.65053],[-35.4480,-71.6512],[-35.4700,-71.6535]]
+    "fuente": "Tramo central exacto (pasos inferiores 1 Norte, 1 Sur y 8 Sur, estación y puente Piduco, OSM vía Mapcarta). Tramo norte, desde 2 Norte hasta el borde de la maqueta y el puente sobre el Lircay: la línea principal de OSM (vías railway=rail «Línea Central Sur», usage=main), simplificada a 1,5 m; reemplazó en octubre de 2026 al trazado a mano, que quedaba hasta ~600 m al oriente y cruzaba el Lircay 170 m al poniente de su puente. Tramo sur: aproximado (hasta ~500 m fuera en el borde sur).",
+    "puntos": [[-35.38749,-71.60775],[-35.39223,-71.61240],[-35.39534,-71.61553],[-35.39786,-71.61802],[-35.40143,-71.62169],[-35.40219,-71.62251],[-35.40284,-71.62328],[-35.40368,-71.62442],[-35.41663,-71.64421],[-35.41699,-71.64472],[-35.41716,-71.64496],[-35.41771,-71.64562],[-35.41837,-71.64628],[-35.41922,-71.64694],[-35.41980,-71.64732],[-35.42025,-71.64758],[-35.42092,-71.64787],[-35.42146,-71.64807],[-35.42207,-71.64823],[-35.42302,-71.64839],[-35.42655,-71.64883],[-35.42691,-71.64891],[-35.42743,-71.64899],[-35.428514,-71.649108],[-35.42978,-71.64925],[-35.43639,-71.65001],[-35.44022,-71.65053],[-35.4480,-71.6512],[-35.4700,-71.6535]]
   },
   "ruta5": {
-    "fuente": "Corredor sin manzanas ni calles (las autopistas no están en el grafo ciclista); ancla: puente Lircay N° 1.",
-    "puntos": [[-35.3850,-71.6080],[-35.3935,-71.6148],[-35.39637,-71.61654],[-35.3990,-71.6195],[-35.4020,-71.6225],[-35.4100,-71.6265],[-35.4200,-71.6315],[-35.4270,-71.6355],[-35.4325,-71.6380],[-35.4400,-71.6410],[-35.4465,-71.6435],[-35.4520,-71.6455],[-35.4600,-71.6472],[-35.4700,-71.6490]]
+    "fuente": "OpenStreetMap: eje medio de las dos calzadas de la autopista (vías highway=motorway «Ruta 5 Sur», de la relación de ruta 6582622), simplificado a 2 m. Reemplazó en octubre de 2026 al corredor dibujado a mano, que quedaba 26–157 m fuera y cruzaba el Lircay y el Piduco lejos de sus puentes.",
+    "puntos": [[-35.38554,-71.60660],[-35.38784,-71.60863],[-35.39461,-71.61521],[-35.39544,-71.61607],[-35.3995,-71.62042],[-35.39988,-71.62089],[-35.40032,-71.62151],[-35.40195,-71.62415],[-35.40230,-71.62466],[-35.40260,-71.6250],[-35.40282,-71.62521],[-35.40317,-71.62547],[-35.40354,-71.62570],[-35.40469,-71.62621],[-35.40713,-71.62718],[-35.44404,-71.64183],[-35.44737,-71.64318],[-35.46820,-71.65147]]
   }
 }

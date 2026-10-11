@@ -40,7 +40,7 @@ def main(views):
         seg = [N[e['u']], N[e['v']]]
         (trunk if e['highway'].startswith('trunk') else major if e['highway'] in ('primary', 'secondary') else thin).append(seg)
     tz = json.load(open(CONFIG / 'trazados.json'))
-    traces = [v['puntos'] for v in tz['rios'].values()] + [tz['ferrocarril']['puntos'], tz['ruta5']['puntos']]
+    traces = [v['puntos'] for v in tz['rios'].values() if 'puntos' in v] + [tz['ferrocarril']['puntos'], tz['ruta5']['puntos']]
     out = ROOT / 'diagnostics'; out.mkdir(exist_ok=True)
     for name, (x0, x1, y0, y1) in views.items():
         fig, ax = plt.subplots(figsize=(16, 16*(y1-y0)/((x1-x0)*0.815)), dpi=90)
