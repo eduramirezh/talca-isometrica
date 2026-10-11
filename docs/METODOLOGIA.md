@@ -67,7 +67,7 @@ Antes de reemplazar el trazado se comparó OSM con el mapa sobre la imagen satel
 - Solo una calle del mapa cruza el río, la Ruta K-60-J, a ~5 m del puente de OSM.
 - Cinco manzanas del censo entran más de 15 m en el agua (hasta 85 m en el norte): sus bordes siguen el eje del cauce o cortan un brazo lateral, y ninguna tiene edificios en esa parte. Por eso el agua del Claro se dibuja sobre las manzanas (y bajo las calles) y no al revés, como los otros ríos.
 
-El relieve tampoco sigue al río en todas partes: el SRTM suavizado pone el fondo del valle a decenas de metros del cauce real, y el agua apoyada en el terreno quedaba inclinada (10 m a lo largo de un muelle de 45 m). La plantilla nivela los nodos del relieve que caen dentro del agua al promedio del cauce en 80 m a la redonda (`claroLevel`) y repone esos niveles después de las explanadas (`claroRelevel`).
+El relieve tampoco sigue al río en todas partes: el SRTM suavizado pone el fondo del valle a decenas de metros del cauce real, y el agua apoyada en el terreno quedaba inclinada (10 m a lo largo de un muelle de 45 m). La plantilla nivela los nodos del relieve que caen dentro del agua al promedio del cauce en 80 m a la redonda (`riversLevel`) y repone esos niveles después de las explanadas (`riversRelevel`).
 
 El Lircay y el Piduco siguen dibujados a mano (salvo los últimos cinco puntos del Piduco, nodos de OSM). Para reemplazarlos se puede repetir lo del Claro con sus objetos de OSM, o, si Overpass responde, esta consulta trae todos los trazados:
 
