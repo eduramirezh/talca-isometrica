@@ -67,6 +67,7 @@ docs/                    metodología, fuentes, investigación de proyectos simi
 - [docs/ESTETICA.md](docs/ESTETICA.md): criterios visuales de los hitos hechos a mano (pixel art, paleta, revisión).
 - [docs/FUENTES.md](docs/FUENTES.md): fuentes de datos, licencias y atribuciones.
 - [docs/PROYECTOS-SIMILARES.md](docs/PROYECTOS-SIMILARES.md): Isopolis, Isometric NYC y las ideas que se tomaron de ellos.
+- [docs/PLAN-TREN.md](docs/PLAN-TREN.md): plan para la vía férrea completa, sus puentes y un tren en movimiento.
 - [CLAUDE.md](CLAUDE.md): guía para seguir trabajando con Claude Code (arquitectura, convenciones, trampas conocidas).
 - [CHANGELOG.md](CHANGELOG.md): cambios.
 

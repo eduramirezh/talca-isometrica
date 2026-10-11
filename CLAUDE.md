@@ -159,8 +159,8 @@ Para publicar: `make build` y sube `dist/talca.html`, el fragmento, no `index.ht
 - La antigua Intendencia (1 Norte con 1 Oriente, OSM w275506476, 1910–1916), en reconstrucción desde 2021: modelarla cuando se sepa cómo quedó.
 - Polígonos reales de edificios desde OSM (`building=*`) para el centro, en vez de los generados.
 - Agregar la 7ª Notaría (30 Oriente 1528), la clínica jurídica de la U. de Talca, el SML y el INDH Maule cuando haya direcciones confirmadas.
-- Puentes modelados sobre el Piduco y el Lircay (hoy la calle, la vía o la Ruta 5 pasan sobre el agua como una cinta): el ferroviario del Piduco (ramal y Línea Central), el Puente Lircay N° 1 de la Ruta 5 y el ferroviario junto a él; la Costanera del Piduco.
-- El tramo sur de la vía férrea desde OSM, como el norte (~500 m fuera en el borde sur).
+- Puentes modelados sobre el Piduco y el Lircay (hoy la calle o la Ruta 5 pasan sobre el agua como una cinta): el Puente Lircay N° 1 de la Ruta 5 y la Costanera del Piduco. Los ferroviarios están en el plan del tren.
+- La vía férrea completa y un tren en movimiento: docs/PLAN-TREN.md (incluye el tramo sur desde OSM, el ramal a Constitución, los puentes ferroviarios del Piduco y el Lircay, y el render con algo en movimiento).
 - Los otros restaurantes de la ribera poniente (Los Olivares, OSM n1024052077) y el mirador del bosque; el parque de noche, si se confirma que está iluminado.
 - Lo que falta para parecerse a Isopolis e Isometric NYC (docs/PROYECTOS-SIMILARES.md, puntos 4 a 6): veredas, autos, árboles de vereda y objetos de techo, textura del agua, un poco más de color.
 - Exportar una postal PNG de la vista actual. Dentro de un artifact se necesita la capacidad de descargas.
