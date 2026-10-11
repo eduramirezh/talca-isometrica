@@ -3009,6 +3009,7 @@ function boot(){
     window.__stats={buildings:nb,verts:bgeo.attributes.position.count,ground:base.nv+riverWater.nv,trees:TR.length+hillTrees.length+TREES.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0)};
     // for tools/screenshot.py --js: centre the camera on a ground point (grid metres), at a zoom (4 = the card's) and azimuth
     window.__look=(x,y,zoom=4,az=view.az)=>{view.az=az;view.zoom=zoom;[view.tx,view.ty]=lift(x,y,az);placeCam();};
+    window.__pads=PADS; // the landmark pads [x0,y0,x1,y1,h], for pipeline/traces.py check --pads
     buildPanel();resize();
     const h=decodeURIComponent(location.hash.slice(1));
     if(h&&BYID[h]){const m=MODELS[h]||BYID[h];select(h,false);view.zoom=4;const f=framed(...lift(m.x,m.y),4);view.tx=f[0];view.ty=f[1];placeCam();} // card first: framed() measures it

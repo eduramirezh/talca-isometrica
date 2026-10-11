@@ -71,7 +71,7 @@ Donde no hay área, la plantilla dibuja una cinta de `ancho_m` sobre el eje (`ri
 | Piduco | vías 818896454, 115278012, 115278408 (relación 12030965); rama: Piduco Norte, vía 115765863 | multipolígono 15792513, de la desembocadura a 6 Oriente (1 isla) | aguas arriba de 6 Oriente (cinta de 12 m) y los últimos ~50 m de cada boca |
 | Lircay | vías 52047309 y 101557414 (relación 8894881) | multipolígono 2636992 y vía 972937377, unidos (2 islas en la maqueta) | ninguno: la confluencia con el Claro queda al norte del borde |
 
-Antes de reemplazar cada trazado se comparó OSM con el mapa sobre la imagen satelital (paneles con el eje, el agua, las manzanas, las calles con su ancho de render, los puentes de OSM, la vía y la Ruta 5), con esta regla: toda calle del mapa que cruce el eje debe ser un puente en OSM, y si OSM y el mapa difieren en más de ~15 m, se mira la imagen antes de decidir. Lo que salió y lo que se decidió:
+Antes de reemplazar cada trazado se comparó OSM con el mapa (`python pipeline/traces.py check <río>`) y sobre la imagen satelital (`traces.py panel <río> x0 x1 y0 y1`: el eje, el agua, las manzanas, las calles con su ancho de render, los puentes de OSM, la vía y la Ruta 5), con esta regla: toda calle del mapa que cruce el eje debe ser un puente en OSM, y si OSM y el mapa difieren en más de ~15 m, se mira la imagen antes de decidir. Lo que salió y lo que se decidió:
 
 - **El eje y el agua de OSM calzan con la imagen** en los tres ríos.
 - **Calles.** Sobre el Claro, solo la Ruta K-60-J, a ~5 m de su puente. Sobre el Piduco, 11 calles (Circunvalación, 2 Sur, Barcelona, 1 Oriente, 6 Oriente, Salvador Allende, 14 Oriente, 30 Oriente, Ruta K-353), todas puentes en OSM a 0–1 m. Ninguna sobre el Lircay. Ninguna calle corre dentro del agua nueva.
@@ -81,7 +81,14 @@ Antes de reemplazar cada trazado se comparó OSM con el mapa sobre la imagen sat
 - **Ribera.** La franja de ripio del Lircay baja de 40 m a 6, como en el Claro: el agua de OSM ya es todo el lecho. El Piduco conserva 5 m.
 - **El Piduco Norte.** El multipolígono del Piduco incluye el brazo norte pero se detiene ~50 m antes del Claro. Se agregó la vía del brazo como rama, para que el agua llegue al Claro.
 
-La vía férrea y la Ruta 5 de OSM no se bajan en el pipeline: solo están en relaciones de ruta de más de mil miembros. Se tomaron una vez de la API `map` (cajas de 0,01°) encadenando las vías `highway=motorway` «Ruta 5 Sur» (las dos calzadas, a 9–15 m entre sí; el eje es su promedio, simplificado a 2 m) y `railway=rail` «Línea Central Sur» con `usage=main` (simplificada a 1,5 m), y quedaron como `puntos` en `config/trazados.json`, con las vías de origen en `fuente`. Sin lotes ni árboles sobre ellas (`linesOcc`): 15 m a cada lado del eje de la Ruta 5 y 5 m de la vía.
+La vía férrea y la Ruta 5 de OSM no se bajan en el pipeline: solo están en relaciones de ruta de más de mil miembros. Se tomaron una vez de la API `map` (cajas de 0,01°, `traces.py tiles`) encadenando (`traces.py line`) las vías `highway=motorway` «Ruta 5 Sur» (las dos calzadas, a 9–15 m entre sí; el eje es su promedio, simplificado a 2 m) y `railway=rail` «Línea Central Sur» con `usage=main` (simplificada a 1,5 m), y quedaron como `puntos` en `config/trazados.json`, con las vías de origen en `fuente`. Se repiten con:
+
+```
+python pipeline/traces.py tiles 1300 5200 -4400 4900 este
+python pipeline/traces.py line este highway=^motorway$ "name=^Ruta 5 Sur$" --mid            # Ruta 5
+python pipeline/traces.py line este railway=^rail$ usage=^main$ --eps 1.5                     # vía (tomar desde y > 60)
+```
+ Sin lotes ni árboles sobre ellas (`linesOcc`): 15 m a cada lado del eje de la Ruta 5 y 5 m de la vía.
 
 El relieve tampoco sigue a los ríos en todas partes: el SRTM suavizado pone el fondo del valle a decenas de metros del cauce real, y el agua apoyada en el terreno quedaba inclinada (10 m a lo largo de un muelle de 45 m en el Claro). La plantilla nivela, en una sola pasada para los tres ríos, los nodos del relieve que caen dentro del agua al promedio del cauce en 80 m a la redonda (`riversLevel`) y repone esos niveles después de las explanadas (`riversRelevel`). El Piduco, de 12 m, casi no tiene nodos dentro: su agua sigue el terreno. Donde el cauce nivelado sube hacia la orilla, el agua (1 cm sobre las manzanas) necesita un desplazamiento de profundidad proporcional a la pendiente (`polygonOffsetFactor` −1), o las manzanas asoman en astillas. En las bocas del Piduco, su agua de OSM y la del Claro dejan una grieta de pocos metros: las franjas de orilla que caerían en el agua de otro río se dibujan con el agua.
 

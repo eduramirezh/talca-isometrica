@@ -20,6 +20,10 @@ python pipeline/diagnostics.py centro          # panel PNG en diagnostics/
 uv run --with pillow python pipeline/landmark.py osm estadio [250]   # planta OSM + plano en diagnostics/
 python pipeline/landmark.py frame estadio 815575960 [más vías]       # vías en el marco local del modelo
 python pipeline/landmark.py photos estadio ["consulta"]              # fotos de Commons, más recientes primero
+python pipeline/traces.py check piduco [--osm '{...}'] [--pads pads.txt]    # un río de OSM contra el mapa: cruces, puentes, manzanas en el agua
+uv run --with pillow python pipeline/traces.py panel lircay x0 x1 y0 y1 [18]  # eje, agua y puentes de OSM sobre la imagen satelital
+python pipeline/traces.py tiles x0 x1 y0 y1 <nombre>                # API map de OSM por cajas (sin Overpass) -> raw/osm/map-<nombre>.json
+python pipeline/traces.py line <nombre> clave=regex [...] [--mid]   # encadena vías de OSM en `puntos` para config/trazados.json
 ```
 
 Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.py`. Imprime las estadísticas de generación y los errores de consola. Una vista de escritorio y una de móvil suelen bastar. Si el Python del sistema no tiene Playwright (o Pillow para `satellite.py`), `uv run --with playwright python tools/screenshot.py …` funciona sin instalar nada; los navegadores ya están en la caché de Playwright.
@@ -93,6 +97,7 @@ Los hitos se rehacen uno por uno sobre su planta real y con estética de pixel a
 - **Textos.** Español claro y directo, sin muletillas. Las fichas son resúmenes propios; no copies párrafos de las fuentes.
 - **Tema.** Los colores de la interfaz son tokens CSS en `:root`, redefinidos para el modo oscuro en `@media (prefers-color-scheme: dark)` y en `[data-theme="dark"]`. Cualquier color nuevo debe definirse en los tres lugares.
 - **Tipografía.** Alegreya SC (títulos), Alegreya Sans (texto) e IBM Plex Mono (direcciones y datos).
+- **Herramientas.** Toda herramienta que se escriba durante una tarea y pueda volver a servir (un panel de diagnóstico, una revisión contra OSM, un script que deriva datos) se agrega al repo, no se deja en el scratchpad ni en un directorio temporal: en `pipeline/` (Python, solo biblioteca estándar; Pillow solo para dibujar, importado dentro de la función) o en `tools/`, con un docstring de uso al comienzo, una línea en «Comandos» de este archivo, otra en la estructura del README y una mención en docs/METODOLOGIA.md donde se use. Si la herramienta necesita algo de la página, se expone en `window.__*` (como `__look` y `__pads`). Así `pipeline/traces.py` salió de la revisión del Lircay y el Piduco.
 - **Dependencias.** three.js está fijado en r128 (build UMD de cdnjs). Si se actualiza, revisa `onBeforeCompile` en `winMat()`, que reemplaza `#include <tonemapping_fragment>` y `#include <project_vertex>`.
 
 ## Restricciones si se publica como artifact de Claude
