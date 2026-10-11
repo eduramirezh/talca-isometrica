@@ -9,7 +9,7 @@ Criterios visuales para los modelos hechos a mano, para que los hitos rehechos s
 Tres reglas ordenan las demás:
 
 1. **La planta es la real; la elevación se interpreta.** La huella sale de OpenStreetMap, y las alturas y los colores, de fotos fechadas. Todo lo que está sobre el suelo se simplifica hasta lo que se lee a la escala de trabajo (§2).
-2. **Se dibuja con forma y color, no con textura.** No hay imágenes, degradados, transparencias ni bordes de posproceso. La luz de la escena sombrea cada cara; el resto lo ponen los colores de la paleta.
+2. **Se dibuja con forma y color, no con textura.** No hay imágenes, degradados, transparencias ni bordes de posproceso. La luz de la escena sombrea cada cara y el sol proyecta sombras (desde el nor-nororiente, a 45°: techo claro, muro oriente al sol, muro sur a la sombra); el resto lo ponen los colores de la paleta.
 3. **El hito destaca por su silueta y su detalle, no por su color.** Los colores se quedan dentro de la paleta de la escena (§4). La ciudad generada es más simple (cajas con ventanas de sombreador), así que basta el detalle dibujado para que el hito se distinga.
 
 ## 2. La escala de trabajo
@@ -90,4 +90,5 @@ Además de las capturas de METODOLOGIA §9.5, antes de dar por terminado un mode
 - [ ] Ninguna cara parpadea al girar la vista (capas a la misma distancia, techos coplanares).
 - [ ] Los colores están en la paleta o tienen una foto que los justifique.
 - [ ] Las cuatro orientaciones se ven completas: no hay caras faltantes en los lados sin fotos.
+- [ ] Los frentes a la sombra (el sur y el poniente) se leen igual: sus detalles no dependen del sol para distinguirse. La sombra del hito no deja manchas en sus propios techos.
 - [ ] El comentario del modelo dice qué es aproximado y qué es licencia.
