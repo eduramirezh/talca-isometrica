@@ -504,7 +504,7 @@ function winMat(){const m=new T.MeshLambertMaterial({vertexColors:true});
 const matFlat=new T.MeshLambertMaterial({vertexColors:true});
 // the Río Claro's water lies at the height of its shore strips and over the blocks: a depth offset of two steps keeps it
 // on top wherever they meet (the bridge, 3 cm above, stays over it)
-const matWater=new T.MeshLambertMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:0,polygonOffsetUnits:-2});
+const matWater=new T.MeshLambertMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-2});
 const matBld=winMat();
 
 /* =============== landmark models =============== */
@@ -2464,15 +2464,25 @@ function riverBase(B,BW,k,[w,rb]){
   for(const [outer,...isl] of RIV[k]){const all=outer.concat(...isl);
     for(const t of T.ShapeUtils.triangulateShape(V(outer),isl.map(V)))BW.face(t.map(i=>[all[i][0],0.11,-all[i][1]]),[0,1,0],PAL.water);}
   // shore strips, outside the water: right of a counter-clockwise outer ring, left of a counter-clockwise island.
-  // None on ring edges the clip laid along the model's border, nor on the edge where the area ends across the river.
+  // None on ring edges the clip laid along the model's border, nor on the edge where the area ends across the river,
+  // and in water colour where it would lie in another river's water: the Piduco's mouths in the Claro, where the two
+  // OSM areas leave a crack of a few metres between them
+  const wet=p=>Object.keys(RIV).some(j=>j!==k&&inRiver(j,p[0],p[1]));
   const lines=riverLines(k),o=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
   const cross=(a,b)=>lines.some(axis=>axis.some((c,i)=>i<axis.length-1&&o(a,b,c)*o(a,b,axis[i+1])<0&&o(c,axis[i+1],a)*o(c,axis[i+1],b)<0));
   const skip=(a,b)=>[XMIN,XMAX].some(v=>Math.abs(a[0]-v)<1&&Math.abs(b[0]-v)<1)||[YMIN,YMAX].some(v=>Math.abs(a[1]-v)<1&&Math.abs(b[1]-v)<1)||cross(a,b);
   for(const P of RIV[k])P.forEach((r,j)=>{let A=0;for(let i=0;i<r.length;i++){const p=r[i],q=r[(i+1)%r.length];A+=p[0]*q[1]-q[0]*p[1];}
-    const side=(A>0?1:-1)*(j?1:-1);let run=[];
+    const side=(A>0?1:-1)*(j?1:-1);let run=[],cls=0;
+    const inOther=(a,b)=>{const L=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return [[.5,.3],[.5,.9],[.15,.6],[.85,.6]].some(([t,f])=>{const d=rb*f/L*side;
+      return wet([a[0]+(b[0]-a[0])*t-(b[1]-a[1])*d,a[1]+(b[1]-a[1])*t+(b[0]-a[0])*d]);});};
+    const flush=()=>{if(run.length>1){if(cls===1)sideRibbon(B,run,side,0,rb,0.11,PAL.bank);else if(cls===2)sideRibbon(BW,run,side,0,rb,0.11,PAL.water);}run=[];};
     for(let i=0;i<=r.length;i++){const a=r[i%r.length],b=r[(i+1)%r.length];
-      if(i<r.length&&!skip(a,b)){if(!run.length)run.push(a);run.push(b);}else{if(run.length>1)sideRibbon(B,run,side,0,rb,0.11,PAL.bank);run=[];}}});
-  for(const run of riverRuns(k)){ribbon(BW,run,w,0.11,PAL.water);for(const sd of [1,-1])sideRibbon(B,run,sd,w/2,rb,0.11,PAL.bank);}
+      const c=i<r.length&&!skip(a,b)?(inOther(a,b)?2:1):0;if(c!==cls){flush();cls=c;}
+      if(c){if(!run.length)run.push(a);run.push(b);}}flush();});
+  // the ribbon's strips stop where it enters another river's water
+  for(const run of riverRuns(k)){ribbon(BW,run,w,0.11,PAL.water);
+    let dry=[];for(const p of run.concat([null])){if(p&&!wet(p)){dry.push(p);continue;}
+      if(dry.length>1)for(const sd of [1,-1])sideRibbon(B,dry,sd,w/2,rb,0.11,PAL.bank);dry=[];}}
 }
 // The water lies level across its channel. The relief does not follow the real rivers everywhere (at the Parque Río
 // Claro the terrain fell 10 m across the jetty), so the draped water tilted. The terrain nodes in a channel (inside
