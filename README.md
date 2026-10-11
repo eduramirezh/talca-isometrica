@@ -40,7 +40,7 @@ Requisitos: Python 3.9+ (el pipeline usa solo la biblioteca estándar). Opcional
 config/
   grid_lines.json        posición de cada calle numerada (lector de direcciones)
   manzanas.json          manzanas «sin información» del Censo que están construidas (revisadas en imagen satelital)
-  trazados.json          ríos (el Claro, desde OpenStreetMap), vía férrea y Ruta 5 dibujados a mano, con su procedencia
+  trazados.json          ríos (de OpenStreetMap), vía férrea y Ruta 5, con su procedencia
 pipeline/
   common.py              rutas y proyección (origen en la Plaza de Armas, grilla girada 5°)
   fetch_sources.sh       descarga las fuentes a raw/

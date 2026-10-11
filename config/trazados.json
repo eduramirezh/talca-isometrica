@@ -1,5 +1,5 @@
 {
-  "_comentario": "Trazados dibujados a mano como listas [lat, lon] (no vienen de un dataset). Se obtuvieron mirando los huecos entre manzanas del Censo en los paneles de diagnóstico (python pipeline/diagnostics.py) y anclando en puntos conocidos. Editar aquí y correr `make data`.",
+  "_comentario": "Trazados que no están en el grafo vial. Un río con clave `osm` se baja de la API de OpenStreetMap en `make data` (via: vías del eje aguas abajo; ramas: brazos laterales; agua: multipolígonos o 'w<id>' para vías cerradas). Los `puntos` son listas [lat, lon]: tomados de OSM una vez (Ruta 5, tramo norte de la vía) o dibujados a mano mirando los huecos entre manzanas del Censo en los paneles de diagnóstico (python pipeline/diagnostics.py) y anclando en puntos conocidos (resto de la vía). Cada trazado dice su procedencia en `fuente`. Editar aquí y correr `make data`.",
   "rios": {
     "claro": {
       "ancho_m": 60, "ribera_m": 6,
