@@ -2857,7 +2857,7 @@ const SL=[];
   want.forEach((list,nm)=>{let acc=0;const every=nm==='Alameda'?900:650;
     list.forEach(s=>{for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<30){acc+=L;continue;}
       if(acc<=0||acc>every){const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];if(Math.abs(m[0])<3200&&Math.abs(m[1])<3400){SL.push({t:nm,x:m[0],y:m[1],dx:b[0]-a[0],dy:b[1]-a[1],w:false});acc=1;}}else acc+=L;}});});
-  [['Río Claro','claro',25],['Río Claro','claro',42],['Río Lircay','lircay',6],['Estero Piduco','piduco',83],['Estero Piduco','piduco',42]].forEach(([t,k,i])=>{const pts=dec(DATA.water[k]);const a=pts[i],b=pts[i+1];SL.push({t,x:(a[0]+b[0])/2,y:(a[1]+b[1])/2,dx:b[0]-a[0],dy:b[1]-a[1],w:true});});
+  [['Río Claro','claro',25],['Río Claro','claro',42],['Río Lircay','lircay',32],['Estero Piduco','piduco',83],['Estero Piduco','piduco',42]].forEach(([t,k,i])=>{const pts=dec(DATA.water[k]);const a=pts[i],b=pts[i+1];SL.push({t,x:(a[0]+b[0])/2,y:(a[1]+b[1])/2,dx:b[0]-a[0],dy:b[1]-a[1],w:true});});
   SL.forEach(l=>{const e=document.createElement('div');e.className='street'+(l.w?' water':'');e.textContent=l.t;overlay.appendChild(e);l.el=e;});
 })();
 let showStreets=true;

@@ -7,9 +7,9 @@
       "fuente": "OpenStreetMap: eje del río (vía 203907278, waterway=river) y agua con sus islas (multipolígono 15397714, natural=water), que calzan con la imagen satelital. El multipolígono llega hasta y ≈ −630 m de grilla; al sur, una cinta de ancho_m sobre el eje. Reemplazó en octubre de 2026 al trazado a mano, que quedaba 115–180 m al poniente del río frente al Parque Río Claro y hasta ~750 m fuera en el norte."
     },
     "lircay": {
-      "ancho_m": 60, "ribera_m": 40,
-      "fuente": "Borde norte de las manzanas y llanura de inundación (manzanas sin información); ancla: puente Lircay de la Ruta 5 (-35.39637,-71.61654, OSM vía Mapcarta).",
-      "puntos": [[-35.4060,-71.5850],[-35.4025,-71.5960],[-35.3995,-71.6080],[-35.3975,-71.6150],[-35.39637,-71.61654],[-35.3935,-71.6205],[-35.3905,-71.6250],[-35.3882,-71.6310],[-35.3865,-71.6370],[-35.3840,-71.6430],[-35.3818,-71.6490],[-35.3805,-71.6545],[-35.3805,-71.6572]]
+      "ancho_m": 60, "ribera_m": 6,
+      "osm": {"via": [52047309, 101557414], "agua": [2636992, "w972937377"]},
+      "fuente": "OpenStreetMap: eje del río (vías 52047309 y 101557414, waterway=river, de la relación 8894881) y agua con sus islas (multipolígono 2636992 y vía 972937377, natural=water, unidos por el borde que comparten), que calzan con la imagen satelital; dentro de la maqueta el agua cubre todo el eje. La confluencia con el Claro queda al norte del borde. Reemplazó en octubre de 2026 al trazado a mano, que quedaba hasta 125 m fuera."
     },
     "piduco": {
       "ancho_m": 12, "ribera_m": 5,
