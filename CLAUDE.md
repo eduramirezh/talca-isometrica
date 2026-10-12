@@ -21,6 +21,7 @@ python pipeline/diagnostics.py centro          # panel PNG en diagnostics/
 uv run --with pillow python pipeline/landmark.py osm estadio [250]   # planta OSM + plano en diagnostics/
 python pipeline/landmark.py frame estadio 815575960 [más vías]       # vías en el marco local del modelo
 python pipeline/landmark.py photos estadio ["consulta"]              # fotos de Commons, más recientes primero
+python pipeline/landmark.py photos diagonal "Isidoro del Solar"     # con consulta, el nombre puede no ser un lugar (una calle)
 python pipeline/traces.py check piduco [--osm '{...}'] [--pads pads.txt]    # un río de OSM contra el mapa: cruces, puentes, manzanas en el agua
 uv run --with pillow python pipeline/traces.py panel lircay x0 x1 y0 y1 [18]  # eje, agua y puentes de OSM sobre la imagen satelital
 python pipeline/traces.py tiles x0 x1 y0 y1 <nombre>                # API map de OSM por cajas (sin Overpass) -> raw/osm/map-<nombre>.json

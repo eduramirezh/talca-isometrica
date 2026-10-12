@@ -5,6 +5,7 @@
   python landmark.py frame estadio 815575960 1073859992 [--origin X Y --angle A]
                                                 # coordenadas de esas vías en el marco local del modelo
   python landmark.py photos estadio ["consulta"]  # fotos de Commons en diagnostics/fotos/estadio/
+  python landmark.py photos diagonal "Isidoro del Solar Talca"   # algo que no es un lugar: el nombre es la carpeta
 
 osm: el plano muestra, en metros de grilla, las calles del mapa con su ancho de render (gris), las manzanas
 con su índice (rosado: con datos; celeste: sin información; verde: construida según config/manzanas.json),
@@ -170,7 +171,7 @@ def cmd_frame(pid, *args):
         for t, q in near: print(f'  ({q[0]:.1f}, {q[1]:.1f}) {t}')
 
 def cmd_photos(pid, query=None):
-    p = poi(pid); q = query or p['n']
+    q = query or poi(pid)['n']   # con consulta, pid puede ser cualquier nombre (una calle): solo nombra la carpeta
     r = json.loads(get(COMMONS + urllib.parse.urlencode({'action': 'query', 'list': 'search', 'srsearch': q,
                                                          'srnamespace': 6, 'srlimit': 30, 'format': 'json'})))
     titles = [s['title'] for s in r['query']['search'] if s['title'].lower().endswith(('.jpg', '.jpeg', '.png'))]
