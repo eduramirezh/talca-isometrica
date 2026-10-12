@@ -2664,7 +2664,7 @@ function crossings(B){const seen=new Set(),zeb=hex('#E4E0D6');let n=0;
         // distance along S from the crossing to O's sidewalk, measured on S (O may cross at an angle)
         const sin=Math.abs(d)/LA/LB,s0=(hwO-walkOf(streets[O[5]])+0.4)/sin;
         for(const dir of [1,-1]){const tx=sx*dir,ty=sy*dir;if(!arm(x+tx*(hwO+4),y+ty*(hwO+4),sx,sy))continue;
-          const cx=x+tx*(s0+1.5),cy=y+ty*(s0+1.5);if(occAt(cx,cy)===1)continue;
+          const cx=x+tx*(s0+1.5),cy=y+ty*(s0+1.5);if(occAt(cx,cy)===1)continue;ZEB.push([cx,cy,tx,ty,cw]);
           for(let v=-cw+0.3;v<=cw-0.3+1e-6;v+=1.2){const P=(uu,vv)=>[x+tx*uu+nx*vv,y+ty*uu+ny*vv];
             B.quadXY([P(s0,v-0.3),P(s0+3,v-0.3),P(s0+3,v+0.3),P(s0,v+0.3)],CURB_Y,zeb);}
           n++;}}}}
@@ -2690,6 +2690,62 @@ function streetTrees(){const out=[];
       if(occAt(x,y)===1||occAt(x+nx*2.5,y+ny*2.5)===1||occAt(x-nx*2,y-ny*2)===1||inMedian(x,y))continue;
       out.push([x,y,size*(0.9+r()*.2),(kind+r()*.12)%1]);}}
   STREET.trees=out.length;return out;}
+// Parked cars along the curbs, as the satellite shows them (pipeline/satellite.py at zoom 19 on the plaza, 3 Sur with
+// 3 Oriente, a neighbourhood at (1300,-700) and the Diagonal): nearly unbroken rows on both sides of the streets around
+// the plaza and along the Diagonal's outer curbs, long rows on one side or both in the rest of the centre, a car here
+// and there in the neighbourhoods, fewer by the industrial blocks and the parks. Each run of sidewalk gets its own rate
+// (by the block's style and the distance from the plaza, then varied per run, so one side can be full and the other
+// empty); along it, slots of 5.6-6.2 m are filled by a two-state chain, so cars come in rows of 2-4 (longer in the
+// centre) with gaps. On the carriageway, 0.05 m off the curb, facing the traffic's way (right-hand), pitched with the
+// ground. None within 8 m of a run's ends (corners), on a zebra, on what occupied the raster before the city (rivers,
+// the rail's crossings, landmarks), on the Alameda's park or the Diagonal's median; on carriageways narrower than 7 m,
+// on one side only. Their own rng, so the city stays as it was. One InstancedMesh (carGeo), coloured per instance.
+const ZEB=[]; // the crosswalks (crossings()): [x, y of the centre, tx, ty along the street, cw half the carriageway]
+const CAR_COLS=[[.93,.93,.91,30],[.72,.74,.76,22],[.45,.47,.49,18],[.13,.13,.14,14],[.68,.13,.11,8],[.16,.23,.43,8]]; // white, silver, grey, black, red, dark blue; % of cars
+function parkedCars(){const t0=performance.now(),out=[],zg=new Map(),ZC=50;
+  for(const z of ZEB){const k=Math.floor(z[0]/ZC)+','+Math.floor(z[1]/ZC);(zg.get(k)||zg.set(k,[]).get(k)).push(z);}
+  const onZebra=(x,y)=>{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)for(const [zx,zy,tx,ty,cw] of zg.get((Math.floor(x/ZC)+i)+','+(Math.floor(y/ZC)+j))||[]){
+      const dx=x-zx,dy=y-zy;if(Math.abs(dx*tx+dy*ty)<4.2&&Math.abs(-dx*ty+dy*tx)<cw+1)return true;}return false;};
+  const colW=CAR_COLS.reduce((a,c)=>a+c[3],0);
+  for(const w of WALKS){const bi=w.bi;if(bi<0||ALAM.has(bi))continue;const s=streets[w.si],cw=w.hw-w.iw;
+    if(cw*2<4.5)continue;
+    const r=rng(w.si*6271+(w.side>0?1:2)*92821+Math.round(w.pts[0][0]*5+w.pts[0][1]*11)+31337);
+    if(cw*2<7&&!s.rows&&(w.si%2?1:-1)!==w.side)continue; // narrow: one side
+    const m=w.pts[w.pts.length>>1],dc=Math.hypot(m[0],m[1]),st=blocks[bi].built?styleFor(bi):'park',ave=s.c<=2||/^Avenida/.test(s.name||'');
+    let p=s.rows||bi===PLAZA_BI?.7:st==='core'?(dc<450?.7:.5):st==='core2'?.25:ave?.15:st==='apt'?.2:st==='house'?.12:st==='ind'?.05:.08;
+    p=Math.min(.9,p*(.4+1.2*r()));
+    const a=p>.35?.85:.55,b=p*(1-a)/(1-p),g=st==='core'||s.rows?5.6:6.2,P=w.pts;let L=0;
+    for(let i=0;i+1<P.length;i++)L+=Math.hypot(P[i+1][0]-P[i][0],P[i+1][1]-P[i][1]);
+    if(L<16+g)continue;
+    const n=Math.floor((L-16)/g),u0=8+(L-16-n*g)/2+g/2;let on=r()<p;
+    for(let k=0,i=0,acc=0;k<n;k++){on=r()<(on?a:b);if(!on)continue;
+      const u=u0+k*g+(r()-.5)*.5;
+      while(i+2<P.length&&acc+Math.hypot(P[i+1][0]-P[i][0],P[i+1][1]-P[i][1])<u){acc+=Math.hypot(P[i+1][0]-P[i][0],P[i+1][1]-P[i][1]);i++;}
+      const A=P[i],B=P[i+1],l=Math.hypot(B[0]-A[0],B[1]-A[1])||1,tx=(B[0]-A[0])/l,ty=(B[1]-A[1])/l,nx=-ty*w.side,ny=tx*w.side,v=u-acc,off=cw-.95;
+      const x=A[0]+tx*v+nx*off,y=A[1]+ty*v+ny*off,van=r()<.07,len=(van?4.9:4.1+r()*.6)/4.5;
+      const q=rotRect(x,y,4.5*len,1.8,Math.atan2(ty,tx));
+      if(q.some(c=>occAt(c[0],c[1])===1||inMedian(c[0],c[1]))||onZebra(x,y))continue;
+      let c=r()*colW,col=CAR_COLS[0];for(const cc of CAR_COLS){if((c-=cc[3])<0){col=cc;break;}}
+      out.push([x,y,-tx*w.side,-ty*w.side,len,van?1.3:1,col,r()]);}}
+  Object.assign(STREET,{cars:out.length,carMs:Math.round(performance.now()-t0)});return out;}
+// a car, 4.5 x 1.8 m, in local x (forward), y (up), z: a body 0.8 m tall, and over it the cabin, its windows a band of
+// one art pixel (0.5 m) in a dark tone and its roof in the body's colour (instanceColor multiplies the vertex colour)
+function carGeo(){const P=[],N=[],C=[],I=[],W=[1,1,1],G=[.2,.23,.28];
+  const quad=(a,b,c,d,n,col)=>{const o=P.length/3;for(const v of [a,b,c,d]){P.push(...v);N.push(...n);C.push(...col);}I.push(o,o+1,o+2,o,o+2,o+3);};
+  const box=(x0,x1,y0,y1,z0,z1,side,top)=>{quad([x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[0,0,1],side);quad([x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[0,0,-1],side);
+    quad([x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[1,0,0],side);quad([x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[-1,0,0],side);
+    quad([x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0],[0,1,0],top);};
+  box(-2.25,2.25,0,.8,-.9,.9,W,W);box(-1.35,.85,.8,1.3,-.74,.74,G,W);
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(P,3));g.setAttribute('normal',new T.Float32BufferAttribute(N,3));
+  g.setAttribute('color',new T.Float32BufferAttribute(C,3));g.setIndex(I);return g;}
+function instCars(list){
+  const mesh=new T.InstancedMesh(carGeo(),new T.MeshLambertMaterial({vertexColors:true}),list.length);
+  const m=new T.Matrix4(),q=new T.Quaternion(),e=new T.Euler(0,0,0,'YZX'),s=new T.Vector3(),p=new T.Vector3(),col=new T.Color();
+  list.forEach(([x,y,dx,dy,len,hs,c,k],i)=>{const h=2.25*len,f=E(x+dx*h,y+dy*h),b=E(x-dx*h,y-dy*h);
+    e.set(0,Math.atan2(dy,dx),Math.atan2(f-b,2*h));q.setFromEuler(e);s.set(len,hs,1);p.set(x,(f+b)/2+.13,-y);m.compose(p,q,s);mesh.setMatrixAt(i,m);
+    const v=.96+k*.08;col.setRGB(c[0]*v,c[1]*v,c[2]*v);mesh.setColorAt(i,col);});
+  mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
+  return mesh;}
 // ==== the Diagonal ====
 // The Diagonal (Avenida Isidoro del Solar), from the Plaza de Armas' north-west corner to 3 Poniente by the Alameda,
 // modelled like a landmark (METODOLOGIA §9) on its median, "Alameda Isidoro del Solar" in OpenStreetMap (park
@@ -3306,7 +3362,7 @@ function boot(){
     scene.add(terrainMesh());
     const base=buildBase(),D=new GB(1<<14);walkBase(base,D);scene.add(new T.Mesh(base.geo(),matFlat));if(riverWater.nv)scene.add(new T.Mesh(riverWater.geo(),matWater));
     buildCerro(B);const hillTrees=wildTrees();
-    const Y=new GB(1<<18);const {TR,PO,nb}=cityGen(B,Y);TR.push(...alamedaPark(B),...streetTrees());
+    const Y=new GB(1<<18);const {TR,PO,nb}=cityGen(B,Y);TR.push(...alamedaPark(B),...streetTrees());const cars=instCars(parkedCars());
     // riparian poplars/willows
     const rip=[];const r=rng(77);
     // the rivers from OSM: along their real shores (the water side is occupied and skipped), on their islands, and
@@ -3318,7 +3374,7 @@ function boot(){
     for(const k of ['claro','lircay','piduco']){const w=DATA.widths[k][0],runs=RIV[k]?riverRuns(k):[chaikin(dec(DATA.water[k]),3)];
       for(const pts of runs)for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const nx=-(b[1]-a[1])/L,ny=(b[0]-a[0])/L;
         for(let u=0;u<L;u+=11){for(const sd of [1,-1]){if(r()<.35)continue;const off=w/2+(w<30?5:18)+r()*14;const x=a[0]+(b[0]-a[0])*u/L+nx*off*sd,y=a[1]+(b[1]-a[1])*u/L+ny*off*sd;if(occAt(x,y)||nearStreet(x,y,1))continue;(r()<.5?PO:TR).push([x,y,0.8+r()*.6,r()]);}}}}
-    const bgeo=B.geo(),cast=[new T.Mesh(bgeo,matBld),new T.Mesh(S.geo(),matFlat),instTrees(TR.concat(hillTrees,TREES),'round'),instTrees(PO.concat(PO_FIELD),'poplar'),new T.Mesh(D.geo(),matFlat)];
+    const bgeo=B.geo(),cast=[new T.Mesh(bgeo,matBld),new T.Mesh(S.geo(),matFlat),instTrees(TR.concat(hillTrees,TREES),'round'),instTrees(PO.concat(PO_FIELD),'poplar'),new T.Mesh(D.geo(),matFlat),cars];
     scene.add(new T.Mesh(Y.geo(),matFlat));
     // shadows: everything receives them; the buildings, the landmarks (and the Cerro's sanctuary) and the trees cast them
     scene.traverse(o=>{if(o.isMesh&&o!==ring)o.receiveShadow=true;});
@@ -3328,7 +3384,8 @@ function boot(){
     window.__stats={buildings:nb,lots:LOTS.length,verts:bgeo.attributes.position.count,yards:Y.nv,ground:base.nv+riverWater.nv,street:STREET,trees:TR.length+hillTrees.length+TREES.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0)};
     // for tools/screenshot.py --js: centre the camera on a ground point (grid metres), at a zoom (4 = the card's) and azimuth
     window.__look=(x,y,zoom=4,az=view.az)=>{view.az=az;view.zoom=zoom;[view.tx,view.ty]=lift(x,y,az);placeCam();};
-    window.__trees=on=>{for(const m of cast)if(m.isInstancedMesh)m.visible=on;dirty=true;}; // hide the trees to see the ground under them (tools/variants.py)
+    window.__trees=on=>{for(const m of cast)if(m.isInstancedMesh&&m!==cars)m.visible=on;dirty=true;}; // hide the trees to see the ground under them (tools/variants.py)
+    window.__cars=on=>{cars.visible=on;dirty=true;}; // the parked cars, likewise
     window.__pads=PADS; // the landmark pads [x0,y0,x1,y1,h], for pipeline/traces.py check --pads
     buildPanel();resize();
     const h=decodeURIComponent(location.hash.slice(1));
