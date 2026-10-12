@@ -310,8 +310,8 @@ blocks.forEach((b,i)=>{for(let gx=Math.max(0,Math.floor((b.bb[0]-XMIN)/BG));gx<=
 function blockAt(x,y){const gx=Math.floor((x-XMIN)/BG),gy=Math.floor((y-YMIN)/BG);if(gx<0||gy<0||gx>=bgW||gy>=bgH)return -1;for(const i of bgrid[gy*bgW+gx]){const b=blocks[i];if(x<b.bb[0]||x>b.bb[2]||y<b.bb[1]||y>b.bb[3])continue;if(pip([x,y],b.r))return i;}return -1;}
 const SG=40, sgW=Math.ceil((XMAX-XMIN)/SG), sgH=Math.ceil((YMAX-YMIN)/SG);
 const sgrid=Array.from({length:sgW*sgH},()=>[]);
-const segs=[]; // [ax,ay,bx,by,hw]
-streets.forEach(s=>{const hw=SW[s.c]/2;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const id=segs.length;segs.push([a[0],a[1],b[0],b[1],hw]);
+const segs=[]; // [ax,ay,bx,by,hw,street index,point index]
+streets.forEach((s,si)=>{const hw=SW[s.c]/2;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const id=segs.length;segs.push([a[0],a[1],b[0],b[1],hw,si,i]);
   const x0=Math.min(a[0],b[0])-hw,x1=Math.max(a[0],b[0])+hw,y0=Math.min(a[1],b[1])-hw,y1=Math.max(a[1],b[1])+hw;
   for(let gx=Math.max(0,Math.floor((x0-XMIN)/SG));gx<=Math.min(sgW-1,Math.floor((x1-XMIN)/SG));gx++)for(let gy=Math.max(0,Math.floor((y0-YMIN)/SG));gy<=Math.min(sgH-1,Math.floor((y1-YMIN)/SG));gy++)sgrid[gy*sgW+gx].push(id);}});
 function nearStreet(x,y,pad){const gx=Math.floor((x-XMIN)/SG),gy=Math.floor((y-YMIN)/SG);if(gx<0||gy<0||gx>=sgW||gy>=sgH)return false;for(const id of sgrid[gy*sgW+gx]){const s=segs[id];const r=s[4]+pad;if(segDist2(x,y,s[0],s[1],s[2],s[3])<r*r)return true;}return false;}
@@ -445,19 +445,23 @@ function cutAt(q,f,k){const A=[],B=[];for(let i=0;i<q.length;i++){const p=q[i],r
     if(fp<=k)A.push(p);if(fp>=k)B.push(p);
     if((fp<k&&fr>k)||(fp>k&&fr<k)){const t=(k-fp)/(fr-fp),m=[p[0]+(r[0]-p[0])*t,p[1]+(r[1]-p[1])*t];A.push(m);B.push(m);}}
   return [A,B];}
+// drapeQ(G, q, off, col): one convex polygon q (grid metres, counter-clockwise), cut the same way, into G
+function drapeQ(G,q,off,col){let polys=[q];
+  for(const f of CUTS){const nxt=[];
+    for(let q of polys){let lo=1e9,hi=-1e9;for(const p of q){const v=f(p);if(v<lo)lo=v;if(v>hi)hi=v;}
+      for(let k=Math.floor(lo)+1;k<hi;k++){const [A,B]=cutAt(q,f,k);if(A.length>2)nxt.push(A);q=B;}
+      if(q.length>2)nxt.push(q);}
+    polys=nxt;}
+  for(const q of polys){let cx=0,cy=0;for(const p of q){cx+=p[0];cy+=p[1];}
+    if(inTerrain(cx/q.length,cy/q.length))G.onGround(q,off,col);}}
 function drape(src){
   const out=new GB(src.nv*2);const P=src.P,C=src.C,I=src.I;
   for(let t=0;t<src.ni;t+=3){const a=I[t]*3,b=I[t+1]*3,c=I[t+2]*3;
-    let polys=[[[P[a],-P[a+2]],[P[b],-P[b+2]],[P[c],-P[c+2]]]];
-    for(const f of CUTS){const nxt=[];
-      for(let q of polys){let lo=1e9,hi=-1e9;for(const p of q){const v=f(p);if(v<lo)lo=v;if(v>hi)hi=v;}
-        for(let k=Math.floor(lo)+1;k<hi;k++){const [A,B]=cutAt(q,f,k);if(A.length>2)nxt.push(A);q=B;}
-        if(q.length>2)nxt.push(q);}
-      polys=nxt;}
-    const col=[C[a],C[a+1],C[a+2]];for(const q of polys){let cx=0,cy=0;for(const p of q){cx+=p[0];cy+=p[1];}
-      if(inTerrain(cx/q.length,cy/q.length))out.onGround(q,P[a+1],col);}}
+    drapeQ(out,[[P[a],-P[a+2]],[P[b],-P[b+2]],[P[c],-P[c+2]]],P[a+1],[C[a],C[a+1],C[a+2]]);}
   return out;
 }
+// a stand-in for a GB that drapes each quad straight into G: flat strips (sideRibbon) cut as quads, not as two triangles
+const draped=G=>({quadXY(q,y,col){let A=0;for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length];A+=p[0]*r[1]-r[0]*p[1];}drapeQ(G,A<0?q.slice().reverse():q,y,col);}});
 
 /* =============== palettes =============== */
 const PAL={
@@ -2581,6 +2585,88 @@ function occBand(a,b,r){for(let gx=Math.floor((Math.min(a[0],b[0])-r-XMIN)/OC);g
 // no lots or trees on the Ruta 5 (26 m) or the railway (6 m of ballast), plus a margin: both are OpenStreetMap's
 // lines now (only the rail's central stretch is hand-traced), and the lots along their frontage streets reached them
 function linesOcc(){for(const [d,hw] of [[DATA.ruta5,15],[DATA.rail,5]]){const p=chaikin(dec(d),2);for(let i=0;i<p.length-1;i++)occBand(p[i],p[i+1],hw);}}
+/* =============== street level =============== */
+// Sidewalks, curbs and crosswalks (docs/PROYECTOS-SIMILARES.md, point 4). The map's streets are wider than the real
+// ones, so a sidewalk takes WALK[c] metres off the edge of its street's ribbon and goes on WALK_OUT metres past it, to
+// where the lots of cityGen start (their slabs cover the rest). The curb is a light line of one art pixel (0.5 m) on the
+// street side. A sidewalk runs along a street wherever a census block lies behind it, and stops at the carriageway
+// of a crossing street (its own carriageway: the street minus its sidewalks), so the two sidewalks of a corner overlap
+// in a square, in the same colour, and their curbs meet at a right angle. It also stops on what occupied the raster
+// before the city (rivers and bridges, the Ruta 5, the rail, the landmarks). Heights: sidewalks 0.16, curbs and
+// crosswalks 0.172 (streets 0.12-0.148; a 0.5 cm gap flickers). WALKS keeps the runs: the street trees and the parked
+// cars go along them.
+const WALK=[0,2,1.8,1.4,1.2,0.8,0,0],WALK_OUT=1.2,CURB=0.5,WALK_Y=0.16,CURB_Y=0.172;
+const STREET={}; // counts for __stats
+const WALKS=[]; // {si, side, pts (on the street's axis), hw, iw, bi (the block behind its middle)}
+// is (x, y) on the carriageway of a street that crosses segment k (at more than ~37 degrees, not its neighbour)?
+function onCrossing(x,y,k){const s0=segs[k],gx=Math.floor((x-XMIN)/SG),gy=Math.floor((y-YMIN)/SG);if(gx<0||gy<0||gx>=sgW||gy>=sgH)return false;
+  const L0=Math.hypot(s0[2]-s0[0],s0[3]-s0[1])||1;
+  for(const id of sgrid[gy*sgW+gx]){const s=segs[id];if(id===k)continue;const c=streets[s[5]].c;if(c>=6||streets[s[5]].bridge)continue;
+    if(s[5]===s0[5]&&Math.abs(s[6]-s0[6])<=1)continue;
+    const L=Math.hypot(s[2]-s[0],s[3]-s[1])||1;if(Math.abs(((s[2]-s[0])*(s0[2]-s0[0])+(s[3]-s[1])*(s0[3]-s0[1]))/L/L0)>0.8)continue;
+    const r=s[4]-(WALK[c]||-1);if(segDist2(x,y,s[0],s[1],s[2],s[3])<r*r)return true;}
+  return false;}
+// BLK: the cells of the occupancy raster inside a built census block or a park (a scanline fill of each block)
+let BLK=null;
+function blockMask(){BLK=new Uint8Array(ocW*ocH);
+  for(const b of blocks){if(!b.built&&b.A>=40000)continue;const r=b.r; // not the open ground of the outskirts
+    for(let gy=Math.max(0,Math.floor((b.bb[1]-YMIN)/OC));gy<=Math.min(ocH-1,Math.floor((b.bb[3]-YMIN)/OC));gy++){const cy=YMIN+(gy+.5)*OC,xs=[];
+      for(let i=0,j=r.length-1;i<r.length;j=i++){const a=r[i],c=r[j];if((a[1]>cy)!==(c[1]>cy))xs.push(a[0]+(cy-a[1])*(c[0]-a[0])/(c[1]-a[1]));}
+      xs.sort((p,q)=>p-q);
+      for(let i=0;i+1<xs.length;i+=2)for(let gx=Math.max(0,Math.ceil((xs[i]-XMIN)/OC-.5));gx<=Math.min(ocW-1,Math.floor((xs[i+1]-XMIN)/OC-.5));gx++)BLK[gy*ocW+gx]=1;}}}
+function walkRuns(){blockMask();
+  let k0=0;
+  streets.forEach((s,si)=>{const c=s.c,n=s.pts.length-1,k1=k0;k0+=n;if(!WALK[c]||s.bridge)return;const hw=SW[c]/2,iw=WALK[c],P=s.pts;
+    for(const side of [1,-1]){let run=null;
+      const at=(i,u)=>{const a=P[i],b=P[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1])||1,tx=(b[0]-a[0])/L,ty=(b[1]-a[1])/L,nx=-ty*side,ny=tx*side;
+        return (v)=>[a[0]+tx*u+nx*v,a[1]+ty*u+ny*v];};
+      const behind=([x,y])=>{const gx=Math.floor((x-XMIN)/OC),gy=Math.floor((y-YMIN)/OC);return gx>=0&&gy>=0&&gx<ocW&&gy<ocH&&BLK[gy*ocW+gx]===1;};
+      const ok=(i,u)=>{const p=at(i,u),m=p(hw+(WALK_OUT-iw)/2),o=p(hw+WALK_OUT-0.2);
+        return occAt(o[0],o[1])!==1&&occAt(...p(hw-iw+0.2))!==1&&behind(p(hw+5))&&!onCrossing(m[0],m[1],k1+i);};
+      const close=()=>{if(run&&run.pts.length>1&&Math.hypot(run.pts[0][0]-run.pts[run.pts.length-1][0],run.pts[0][1]-run.pts[run.pts.length-1][1])>2)WALKS.push(run);run=null;};
+      for(let i=0;i<n;i++){const a=P[i],b=P[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<0.01)continue;
+        const steps=Math.max(1,Math.ceil(L/3.5));let prev=ok(i,0);
+        if(prev){if(!run)run={si,side,pts:[a],hw,iw};else run.pts.push(a);}else if(run){run.pts.push(a);close();}
+        for(let j=1;j<=steps;j++){const u=L*j/steps,cur=ok(i,u);
+          if(cur!==prev){let lo=L*(j-1)/steps,hi=u;for(let t=0;t<6;t++){const mid=(lo+hi)/2;if(ok(i,mid)===prev)lo=mid;else hi=mid;}
+            const e=at(i,prev?lo:hi)(0);if(prev){run.pts.push(e);close();}else run={si,side,pts:[e],hw,iw};}
+          prev=cur;}}
+      if(run)run.pts.push(P[n]);close();}});
+  for(const w of WALKS){const p=w.pts[w.pts.length>>1],q=w.pts[(w.pts.length>>1)-1]||w.pts[1];
+    const L=Math.hypot(p[0]-q[0],p[1]-q[1])||1,m=[(p[0]+q[0])/2+(-(p[1]-q[1])/L*w.side)*(w.hw+4),(p[1]+q[1])/2+((p[0]-q[0])/L*w.side)*(w.hw+4)];
+    w.bi=blockAt(m[0],m[1]);}
+}
+// Crosswalks at the crossings of the central grid (within CROSS_R of the plaza, streets of class 1-4 at more than 60
+// degrees): zebra bars along the street, 0.6 m wide every 1.2 m, across its carriageway, in line with the sidewalks of
+// the crossing street. Only on arms that go on past the crossing (a T has three).
+const CROSS_R=1000;
+function crossings(B){const seen=new Set(),zeb=hex('#E4E0D6');let n=0;
+  const arm=(x,y,tx,ty)=>{const gx=Math.floor((x-XMIN)/SG),gy=Math.floor((y-YMIN)/SG);if(gx<0||gy<0||gx>=sgW||gy>=sgH)return false;
+    for(const id of sgrid[gy*sgW+gx]){const s=segs[id],L=Math.hypot(s[2]-s[0],s[3]-s[1])||1;if(streets[s[5]].c>5)continue;
+      if(Math.abs(((s[2]-s[0])*tx+(s[3]-s[1])*ty)/L)>0.9&&segDist2(x,y,s[0],s[1],s[2],s[3])<s[4]*s[4])return true;}return false;};
+  for(let cell=0;cell<sgrid.length;cell++){const ids=sgrid[cell];
+    for(let p=0;p<ids.length;p++)for(let q=p+1;q<ids.length;q++){const A=segs[ids[p]],Bs=segs[ids[q]],cA=streets[A[5]].c,cB=streets[Bs[5]].c;
+      if(cA<1||cA>4||cB<1||cB>4||A[5]===Bs[5])continue;
+      const ax=A[2]-A[0],ay=A[3]-A[1],bx=Bs[2]-Bs[0],by=Bs[3]-Bs[1],LA=Math.hypot(ax,ay),LB=Math.hypot(bx,by),d=ax*by-ay*bx;
+      if(LA<1||LB<1||Math.abs(d)/LA/LB<0.87)continue;
+      const t=((Bs[0]-A[0])*by-(Bs[1]-A[1])*bx)/d,u=((Bs[0]-A[0])*ay-(Bs[1]-A[1])*ax)/d;
+      if(t<-1/LA||t>1+1/LA||u<-1/LB||u>1+1/LB)continue;
+      const x=A[0]+ax*t,y=A[1]+ay*t;if(Math.hypot(x,y)>CROSS_R)continue;
+      const key=Math.round(x/4)+','+Math.round(y/4);if(seen.has(key))continue;seen.add(key);
+      for(const [S,cS,O,cO,sx,sy] of [[A,cA,Bs,cB,ax/LA,ay/LA],[Bs,cB,A,cA,bx/LB,by/LB]]){ // the zebras across S, beside O
+        const hwS=S[4],hwO=O[4],cw=hwS-WALK[cS]-0.3,nx=-sy,ny=sx;
+        // distance along S from the crossing to O's sidewalk, measured on S (O may cross at an angle)
+        const sin=Math.abs(d)/LA/LB,s0=(hwO-WALK[cO]+0.4)/sin;
+        for(const dir of [1,-1]){const tx=sx*dir,ty=sy*dir;if(!arm(x+tx*(hwO+4),y+ty*(hwO+4),sx,sy))continue;
+          const cx=x+tx*(s0+1.5),cy=y+ty*(s0+1.5);if(occAt(cx,cy)===1)continue;
+          for(let v=-cw+0.3;v<=cw-0.3+1e-6;v+=1.2){const P=(uu,vv)=>[x+tx*uu+nx*vv,y+ty*uu+ny*vv];
+            B.quadXY([P(s0,v-0.3),P(s0+3,v-0.3),P(s0+3,v+0.3),P(s0,v+0.3)],CURB_Y,zeb);}
+          n++;}}}}
+  return n;}
+// sidewalks, curbs and crosswalks, draped straight into G (buildBase's ground)
+function walkBase(G){const t0=performance.now(),B=draped(G),nv=G.nv,sw=hex('#C3C1BA'),curb=hex('#E8E5DC');walkRuns();const t1=performance.now();
+  for(const w of WALKS){sideRibbon(B,w.pts,w.side,w.hw-w.iw+CURB,w.iw+WALK_OUT-CURB,WALK_Y,sw);sideRibbon(B,w.pts,w.side,w.hw-w.iw,CURB,CURB_Y,curb);}
+  STREET.zebras=crossings(B);Object.assign(STREET,{walks:WALKS.length,walkVerts:G.nv-nv,walkMs:Math.round(performance.now()-t0),runMs:Math.round(t1-t0)});}
 const MAPC=(XMIN+XMAX)/2,MAPZ=(YMIN+YMAX)/2;
 function buildBase(){
   const B=new GB(1<<17);
@@ -3141,7 +3227,7 @@ function boot(){
     for(const k in MODELS)MODELS[k].h+=E(MODELS[k].x,MODELS[k].y);
     for(let k=0;k<EN_;k++){EHI=Math.max(EHI,EH[k]);ELO=Math.min(ELO,EH[k]);}
     scene.add(terrainMesh());
-    const base=buildBase();scene.add(new T.Mesh(base.geo(),matFlat));if(riverWater.nv)scene.add(new T.Mesh(riverWater.geo(),matWater));
+    const base=buildBase();walkBase(base);scene.add(new T.Mesh(base.geo(),matFlat));if(riverWater.nv)scene.add(new T.Mesh(riverWater.geo(),matWater));
     buildCerro(B);const hillTrees=wildTrees();
     const Y=new GB(1<<18);const {TR,PO,nb}=cityGen(B,Y);TR.push(...alamedaPark(B));
     // riparian poplars/willows
@@ -3162,7 +3248,7 @@ function boot(){
     if(cerroMesh)cast.push(cerroMesh);
     for(const m of cast){m.castShadow=m.receiveShadow=true;if(!m.parent)scene.add(m);}
     lampPts=lamps();scene.add(lampPts);
-    window.__stats={buildings:nb,lots:LOTS.length,verts:bgeo.attributes.position.count,yards:Y.nv,ground:base.nv+riverWater.nv,trees:TR.length+hillTrees.length+TREES.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0)};
+    window.__stats={buildings:nb,lots:LOTS.length,verts:bgeo.attributes.position.count,yards:Y.nv,ground:base.nv+riverWater.nv,street:STREET,trees:TR.length+hillTrees.length+TREES.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0)};
     // for tools/screenshot.py --js: centre the camera on a ground point (grid metres), at a zoom (4 = the card's) and azimuth
     window.__look=(x,y,zoom=4,az=view.az)=>{view.az=az;view.zoom=zoom;[view.tx,view.ty]=lift(x,y,az);placeCam();};
     window.__pads=PADS; // the landmark pads [x0,y0,x1,y1,h], for pipeline/traces.py check --pads
