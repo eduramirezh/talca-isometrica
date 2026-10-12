@@ -177,6 +177,11 @@ add('mercado-central', 'Mercado Central', 'ciudad', -35.42707, -71.66052, 'Entre
 add('escuelas-concentradas', 'Escuelas Concentradas', 'ciudad', -35.42687, -71.66239, '1 Sur 1025',
     'Escuelas públicas de 1939–1941, declaradas Monumento Histórico en 2013 para evitar su demolición tras el terremoto de 2010.',
     'alta', [['Consejo de Monumentos Nacionales', CMN + 'monumentos-historicos/escuelas-concentradas-de-talca']], pri=3)
+add('torre-talca', 'Torre Talca', 'ciudad', -35.426810, -71.664253, '1 Sur 865',
+    'Edificio de oficinas y departamentos de doce pisos, a una cuadra de la Plaza de Armas. Es de los pocos edificios altos del centro.',
+    'alta', [['OpenStreetMap vía Mapcarta', MC + 'W310246574'], ['Mercantil.com (dirección)', 'https://www.mercantil.com/empresa/inmobiliaria-honorato/talca/300378810/esp/']],
+    fact='Su dirección es de 1 Sur, pero la torre no da a la calle: se levanta en el interior de la manzana, unos 35 m detrás de la vereda, tras los locales de la calle.',
+    model='torre', pri=2)
 add('alameda', 'Alameda Bernardo O\'Higgins', 'ciudad', -35.42145, -71.67245, '4 Norte, del Río Claro a 11 Oriente',
     'Parque lineal de unos 3 km, el principal de la ciudad, con cerca de 950 árboles de 53 especies.',
     'alta', [['Wikipedia', 'https://es.wikipedia.org/wiki/Alameda_Bernardo_O%27Higgins_(Talca)']],
