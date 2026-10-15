@@ -38,8 +38,9 @@ sobre la imagen satelital con `satellite.py punto x y lado z --calles`; con ambo
 o «imagen satelital Esri»), `confianza` (alta: OSM y la imagen calzan, o la imagen es clara; media: OSM sin revisar
 en la imagen; baja: dudoso), `nota`, y atributos: `rumbo` (grados desde +x de la grilla: dirección de las hileras,
 los galpones o las canchas; por defecto, el lado largo del polígono), `cancha` (el deporte de una cancha de OSM),
-`tipo` (cementerio «parque»: de prados; industrial «corral»: patio de vehículos), `arboles` (árboles por hectárea en
-bosque y eriazo) y `matorral` (0–1, densidad de matorral del eriazo).
+`tipo` (cementerio «parque»: de prados; industrial «corral»: patio de vehículos; «aserradero»: rumas de madera y
+troncos entre pocos galpones largos), `arboles` (árboles por hectárea en bosque y eriazo) y `matorral` (0–1, densidad
+de matorral del eriazo).
 
 Usos: industrial, cementerio, militar, educacional, salud, deportivo (canchas y recintos), golf, parque, huerto, vina,
 potrero, feria, bosque y eriazo (sin suelo propio: matorral, huellas y árboles sobre la arena de la manzana o el

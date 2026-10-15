@@ -21,8 +21,8 @@
 //    leave out every ground-laying use (inUso). Then usosFringe() puts scrub on the bare ground of the urban fringe
 //    that no block, use or farmland parcel covers.
 // Uses: industrial (yard, sheds with ridge or saw-tooth roofs, trucks, tanks, a fence; o.t "corral": rows of parked
-// vehicles), cementerio (avenues with cypresses, niches, graves, mausoleums, chapel, wall; o.t "parque": lawn), militar
-// (parade ground, barracks, wall), educacional, salud, deportivo (o.c: one OSM pitch of that sport; otherwise a
+// vehicles; "aserradero": a sawmill's few long sheds, timber stacks and log piles), cementerio (avenues with
+// cypresses, niches, graves, mausoleums, chapel, wall; o.t "parque": lawn), militar (parade ground, barracks, wall), educacional, salud, deportivo (o.c: one OSM pitch of that sport; otherwise a
 // sports ground with a pitch and bleachers), golf, parque, huerto, vina, potrero, feria, terminal (bus platforms),
 // conjunto (rows of identical semi-detached houses where the map has no streets), parcelas, bosque, eriazo. The
 // `vivienda` entries never get here: build.py turns them into built census blocks for cityGen.
@@ -135,7 +135,7 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
       S.face([P(s0,0,h),P(s1,0,h),P(s1,0,h+th)],[-ey[0],0,ey[1]],wall);S.face([P(s0,D,h),P(s1,D,h+th),P(s1,D,h)],[ey[0],0,-ey[1]],wall);}};
   const pavilion=(q,fl,wall,roof,gable)=>{B.dy=groundMin(q);const h=fl*3.2+.3,D=Math.hypot(q[3][0]-q[0][0],q[3][1]-q[0][1]);if(gable)B.gable(q,0.3,h,D*.28,wall,roof);else{B.prism(q,0.3,h,wall,roof);}};
   const K={yard:C('#ABA79C'),yard2:C('#9E9A90'),swalls:['#D4D0C6','#C9C6BE','#B9B5AC','#D8CDB8','#C4BFB2'].map(C),zinc:['#A9ADB0','#C2C4C3','#9CA3A6','#8F969A','#B4B0A6'].map(C),
-    tank:C('#DAD7D0'),truck:C('#E8E6E0'),cab:['#B4372C','#3E6D9C','#E8E6E0','#3A3A3A'].map(C),fence:C('#BDB8AC'),
+    tank:C('#DAD7D0'),truck:C('#E8E6E0'),dust:C('#B9AC92'),timber:['#D9BE8C','#CBAA74','#E2CB9E'].map(C),logs:C('#86664A'),cab:['#B4372C','#3E6D9C','#E8E6E0','#3A3A3A'].map(C),fence:C('#BDB8AC'),
     gravel:C('#CFC5AE'),path:C('#D8C69C'),white:C('#E9E5DB'),white2:C('#D6D1C5'),grave:['#E8E4DA','#D3CFC5','#BDB8AE','#CFC2B2','#A8A49C'].map(C),stone:C('#C9C1B0'),
     tile:C('#A35C42'),tile2:C('#8E4F3A'),lawn:PAL.lawn,lawn2:C('#8AA055'),sand:C('#DCCB9E'),asph:C('#6E6A64'),line:C('#F1EEE4'),
     grass:C('#6F9F48'),grass2:C('#7DAD52'),dirt:C('#C39A6B'),court:C('#9EA39E'),court2:C('#5B8C74'),clay:C('#B5643F'),hard:C('#4F7C9A'),
@@ -162,18 +162,23 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
   const bleachers=(fr,a0,a1,b,dir,n)=>{for(let k=0;k<n;k++){const q=fr.R(a0,b+dir*k*1.1,a1,b+dir*(k+1)*1.1).map(p=>p);const qq=ccwQ(q);S.dy=groundMin(qq);S.prism(qq,0.3,0.6+k*.55,k%2?C('#B9B2A3'):C('#C9C3B6'),k%2?C('#C9C3B6'):C('#D9D3C5'));}};
   // ---- the uses
   const draw={
-    industrial(u,r,fr){ground(u,K.yard);if(u.built)return;const objs=[];
+    industrial(u,r,fr){const saw=u.o.t==='aserradero'; // a sawmill: fewer, longer sheds; a dusty yard with timber stacks and log piles in patches
+      ground(u,saw?K.dust:K.yard);if(u.built)return;const objs=[];
       if(u.o.t==='corral'){ // a yard of parked vehicles (the municipal impound): rows of cars and buses, an office
         for(let v=fr.v0+5;v<fr.v1-5;v+=7)for(let a=fr.u0+4;a<fr.u1-4;a+=2.6){if(r()<.25)continue;const bus=r()<.08,q=fr.R(a,v,a+(bus?2.5:1.9),v+(bus?11:4.5));if(!fits(u,q,2))continue;
           S.dy=groundMin(q);const c=bus?C('#E2B33C'):pick(r,[K.truck,C('#B9BCBE'),C('#6E7276'),C('#2F3133'),C('#9C2F27'),C('#2E3F66')]);S.prism(q,0.3,bus?3:1.5,shade(c,.85),c);if(bus)a+=1;}
         return;}
       for(let v=fr.v0+6;v<fr.v1-10;){const d=16+r()*22;let a=fr.u0+5;
-        while(a<fr.u1-12){const w=Math.min(18+r()*34,fr.u1-5-a);if(w<12)break;const q=fr.R(a,v,a+w,v+d);
-          if(r()<.8&&fits(u,q,4,objs)){objs.push(q);const h=6+r()*4.5,kind=d>26&&r()<.45?'saw':r()<.75?'gable':'flat';shed(q,h,pick(r,K.swalls),pick(r,K.zinc),kind);
+        while(a<fr.u1-12){const w=Math.min((saw?40:18)+r()*34,fr.u1-5-a);if(w<12)break;const q=fr.R(a,v,a+w,v+d);
+          if(r()<(saw?.25:.8)&&fits(u,q,4,objs)){objs.push(q);const h=6+r()*4.5,kind=d>26&&r()<.45?'saw':r()<.75?'gable':'flat';shed(q,h,pick(r,K.swalls),pick(r,K.zinc),kind);
             if(r()<.35){const tq=fr.R(a+2,v-4.2,a+12,v-1.8);if(fits(u,tq,2,objs)){S.dy=groundMin(tq);S.prism(tq,0.3,3.9,K.truck,K.truck);const cq=fr.R(a+12.3,v-4.2,a+14.6,v-1.8);S.dy=groundMin(cq);S.prism(cq,0.3,3.1,pick(r,K.cab),C('#2C3540'));}}
             if(r()<.15){const c=fr.G(a+w+5,v+3);const tq=ngon(c[0],c[1],2.6+r()*1.4,8);if(fits(u,fr.R(a+w+2,v,a+w+8,v+6),2,objs)){S.dy=groundMin(tq);S.prism(tq,0.3,6+r()*6,K.tank,shade(K.tank,.85));}}}
           a+=w+6+r()*8;}
         v+=d+10+r()*6;}
+      const nz=(x,y)=>.5+.5*Math.sin(x*.031+u.i)*Math.cos(y*.027-u.i*.7); // patches of stacks, open yard between them
+      if(saw)for(let v=fr.v0+5;v<fr.v1-6;v+=8+r()*2){const logs=r()<.4;if(r()<.2)continue; // rows of stacks with lanes between
+        for(let a=fr.u0+4;a<fr.u1-5;a+=(logs?13:3.4)+r()*1.5){const g=fr.G(a,v);if(r()<.18||nz(g[0],g[1])<.55)continue;const q=fr.R(a,v,a+(logs?11+r()*2:2.6),v+(logs?3.4:5));if(!fits(u,q,3,objs))continue;
+          S.dy=groundMin(q);const c=logs?K.logs:pick(r,K.timber);S.prism(q,0.3,(logs?1.4:1.6)+r()*1.1,shade(c,.82),c);}}
       wallsOf(u,2.2,.5,K.fence,K.fence);},
     cementerio(u,r,fr){const park=/parque/i.test(u.o.t||'');ground(u,park?K.lawn:K.gravel);const cu=(fr.u0+fr.u1)/2,cv=(fr.v0+fr.v1)/2,objs=[];
       if(park){rows(fr,3.2,.5,0.13,C('#DAD7CB'));for(let k=0;k<u.A/500;k++){const p=fr.G(fr.u0+r()*(fr.u1-fr.u0),fr.v0+r()*(fr.v1-fr.v0));if(inUso(u,...p)&&!nearStreet(...p,3))tree(p[0],p[1],.9+r()*.4,r());}}
