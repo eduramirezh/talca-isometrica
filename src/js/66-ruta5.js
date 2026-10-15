@@ -68,9 +68,10 @@ function ruta5Base(B){const K=R5K;
 // The Ruta 5's objects, after buildBase: the median barrier, the lamp posts (their lights go to GLOW) and the cars.
 // Returns the meshes for the scene (they cast shadows).
 function ruta5Objects(){const K=R5K,G=new GB(1<<15),A=R5C[0];
-  // barrier: 0.6 m wide, 0.85 m over the pavement, on the median's middle line, as long as the median is narrow
-  r5each(0,0,A.L,p=>p.hs<9,(p,q)=>{const a=r5off(p,p.hs),b=r5off(q,q.hs),L=Math.hypot(b[0]-a[0],b[1]-a[1])||1,nx=-(b[1]-a[1])/L*.3,ny=(b[0]-a[0])/L*.3,
-      ga=E(...a),gb=E(...b),V=(c,s,h)=>[c[0]+nx*s,h,-(c[1]+ny*s)];
+  // barrier: 0.6 m wide, 0.85 m over the pavement, on the median's middle line, as long as the median is narrow (and in
+  // the commune: the carriageways run on 300 m past its limit)
+  r5each(0,0,A.L,p=>p.hs<9,(p,q)=>{const a=r5off(p,p.hs),b=r5off(q,q.hs);if(!inTerrain(...a)||!inTerrain(...b))return;
+    const L=Math.hypot(b[0]-a[0],b[1]-a[1])||1,nx=-(b[1]-a[1])/L*.3,ny=(b[0]-a[0])/L*.3,ga=E(...a),gb=E(...b),V=(c,s,h)=>[c[0]+nx*s,h,-(c[1]+ny*s)];
     for(const s of [1,-1])G.face([V(a,s,ga-.3),V(b,s,gb-.3),V(b,s,gb+1.01),V(a,s,ga+1.01)],[nx*s/.3,0,-ny*s/.3],K.bar);
     G.face([V(a,1,ga+1.01),V(b,1,gb+1.01),V(b,-1,gb+1.01),V(a,-1,ga+1.01)],[0,1,0],K.bar2);});
   // lamp posts: 0.5 m square, 12 m; arms 3 m long over the inner lanes; heads in the lamp colour
@@ -129,9 +130,12 @@ function r5Deck(S,K,k,d0,d1,h,open=[],o={}){
   S.dy=0;return H;}
 // Both carriageways' profile through knots [x, y, h, n]: the point of the carriageway nearest to (x, y), moved n m
 // north along it, at height h (absolute; null: on the ground); open spans [[x, y], [x, y]] likewise (without n). Draws
-// r5Deck from the first knot to the last on carriageway k.
-function r5Raise(S,K,k,knots,open,o={}){const dir=k?1:-1; // carriageway 0 runs south, 1 north
-  const Q=knots.map(([x,y,h,n=0])=>[r5d(k,x,y)[0]+dir*n,h]).sort((a,b)=>a[0]-b[0]);for(const q of Q)if(q[1]===null)q[1]=r5gh(k,q[0]);
+// r5Deck from the first knot to the last on carriageway k. Which way is north along a carriageway comes from its
+// tangent: the chains' order in data/ruta5.json follows their length (traces.py calzadas), and it swapped when the
+// model became the commune.
+const r5north=(k,d)=>r5at(k,d).ty<0?-1:1; // +1 where d grows northwards on carriageway k
+function r5Raise(S,K,k,knots,open,o={}){
+  const Q=knots.map(([x,y,h,n=0])=>{const d=r5d(k,x,y)[0];return [d+r5north(k,d)*n,h];}).sort((a,b)=>a[0]-b[0]);for(const q of Q)if(q[1]===null)q[1]=r5gh(k,q[0]);
   const h=d=>{for(let i=0;i<Q.length-1;i++)if(d<=Q[i+1][0])return Q[i][1]+(Q[i+1][1]-Q[i][1])*(d-Q[i][0])/Math.max(Q[i+1][0]-Q[i][0],1e-6);return Q[Q.length-1][1];};
   return r5Deck(S,K,k,Q[0][0],Q[Q.length-1][0],h,open.map(([a,b])=>{const u=r5d(k,...a)[0],v=r5d(k,...b)[0];return [Math.min(u,v),Math.max(u,v)];}),o);}
 // A street over the motorway (landmarks): its deck along pts (grid metres; for a divided street, the middle of both

@@ -2,8 +2,8 @@
   // Every crossing of the Ruta 5 in the model, from OpenStreetMap (`python pipeline/traces.py cruces comuna`, north to
   // south; `traces.py vial` draws them over the Esri image):
   //   (7377, 8848) Estero Panguilemo, with a track under it: the motorway on two bridges of 124 m (w101547242,
-  //                w101547260), at the commune's northern limit; neither the stream nor the track is on the map, so
-  //                the motorway stays on the ground there
+  //                w101547260), at the commune's northern limit, which follows the stream: their southern ~55 m
+  //                (puente-panguilemo-ruta5)
   //   (6693, 7620) Pasarela Aldea Campesina, a footbridge (w101554009): not modelled yet
   //   (6307, 7028) Cruce Talca - Pelarco: the road to Pelarco over it (w83188779), a partial cloverleaf
   //   (5046, 5128) a footbridge (w101557387): not modelled yet
