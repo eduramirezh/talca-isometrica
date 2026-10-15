@@ -575,7 +575,8 @@ function facade(S,F,K){const {V,N3,R}=F;
 // A road or rail deck on piers, for any bridge (the Río Claro ones, puentes-rio-claro): pts the deck's polyline in grid
 // metres, hw half its width, hAt(p) its height along the span (never under the terrain plus 0.3 m), o its parts:
 // walk (half the roadway: asphalt, sidewalks and parapets) or deck (a plain top colour) with balus (balustrade in two
-// tones), beamD/beamCol the beam under the deck, pier the piers' spacing, lamps. K: asph, walk, par, red, metal, lamp,
+// tones), beamD/beamCol the beam under the deck, pier the piers' spacing, lamps, ends (false: no end walls, for a deck that
+// runs on into a road on the ground: the Ruta 5's, ruta5Base). K: asph, walk, par, red, metal, lamp,
 // old, old2. Marks its footprint in occ and removes the TREES under it. Call it from buildModels (before the city).
 function deckBridge(S,K,pts,hw,hAt,o){const sm=[];
     for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.max(1,Math.ceil(L/2.5));
@@ -589,7 +590,7 @@ function deckBridge(S,K,pts,hw,hAt,o){const sm=[];
       for(const s of [1,-1]){const rail=o.balus?(i%2?K.old2:K.old):K.par;
         side(s*hw,s,-o.beamD,o.walk?.15:0,o.beamCol);side(s*hw,s,o.walk?.15:0,o.walk?1.05:.9,rail);       // beam and the parapet's outer face
         side(s*(hw-.25),-s,o.walk?.15:0,o.walk?1.05:.9,rail);top(s*(hw-.25),s*hw,o.walk?1.05:.9,o.walk?K.par:K.old);}}
-    for(const [p,sg] of [[sm[0],-1],[sm[sm.length-1],1]])S.face([P(p,-hw,-o.beamD),P(p,hw,-o.beamD),P(p,hw,1),P(p,-hw,1)],[p.dx*sg,0,-p.dy*sg],o.beamCol);
+    if(o.ends!==false)for(const [p,sg] of [[sm[0],-1],[sm[sm.length-1],1]])S.face([P(p,-hw,-o.beamD),P(p,hw,-o.beamD),P(p,hw,1),P(p,-hw,1)],[p.dx*sg,0,-p.dy*sg],o.beamCol);
     let nextPier=o.pier/2,nextLamp=10,ls=1,nextRed=0;
     for(const p of sm){const g=E(p.x,p.y),a=Math.atan2(p.dy,p.dx);occMark(rotRect(p.x,p.y,3,2*hw+4,a));
       if(p.d>=nextPier){nextPier+=o.pier;if(p.h-g>2.5){
@@ -2384,6 +2385,80 @@ function buildModels(B,S){ // S: models drawn without the window shader
     // four chimneys for the wood fireplaces on the road-side slope
     for(const v of [-14,-5,5,14]){box(-3.1,v-.5,-1.9,v+.5,3.6,6.4,K.brick,K.brick);box(-3.25,v-.65,-1.75,v+.65,6.4,6.6,K.white,K.white);}
     const m=G(2,0);MODELS['viejas-cochinas']={x:m[0],y:m[1],h:7};S.dy=0;}
+  // ==== hito: puente-lircay-ruta5 ====
+  // The Ruta 5 over the Río Lircay and its floodplain, from the road under it at (3958, 3485) to the north bank: two
+  // decks, one per carriageway, as OpenStreetMap has them, on two bridges each: 164 m over the river (w52129398
+  // southbound, w151617647 northbound) and 81 m over the road (w151617653, w474496436), with the motorway on an
+  // embankment between them, over a hollow of the relief. No photos with a free licence: concrete decks with New
+  // Jersey parapets on wall piers every 25 m, like the Río Claro bridges; grass slopes on the embankments. Heights from
+  // the ground: 6 m over the road, 8 m over the levelled river; no pad (the railway bridge stands 50 m east, and two
+  // pads that close would fight). Lit from the road southwards, as in OSM. Approximate: every height, the piers'
+  // spacing, the ramps (60 m to the south, 120 m north of the river).
+  {const K={asph:R5K.asph,line:R5K.line,par:C('#D9D3C5'),old:C('#D9D3C5'),beam:C('#B3AEA4'),metal:C('#8A8F92'),lamp:R5K.lamp,fill:C('#93A35B'),fill2:C('#86964F'),void:C('#2B3036')};
+    const HR=E(3958,3485)+6,HL=E(4128,3717)+8;
+    for(const k of [0,1])r5Raise(S,K,k,[[3958,3485,null,-60],[3958,3485,HR,-8],[4004,3548,HR],[4096,3674,HL],[4193,3805,HL],[4193,3805,null,120]],
+      [[[3953,3478],[4004,3548]],[[4096,3674],[4193,3805]]],{pier:25,lamps:true});}
+  // ==== hito: puente-piduco-ruta5 ====
+  // The Ruta 5's bridge over the Estero Piduco: two decks of ~65 m, one per carriageway (OSM w478951509 southbound,
+  // w143102108 northbound, lit=yes; under them maxheight=4.3), on wall piers every 20 m, 4.5 m over the stream, on short
+  // embankments (a ramp of the Enlace 5 Sur leaves 35 m south of the bridge). Lamp posts on the median side.
+  // Approximate, as the Lircay bridge.
+  {const K={asph:R5K.asph,line:R5K.line,par:C('#D9D3C5'),old:C('#D9D3C5'),beam:C('#B3AEA4'),metal:C('#8A8F92'),lamp:R5K.lamp,fill:C('#93A35B'),fill2:C('#86964F'),void:C('#2B3036')};
+    const HP=E(2328,-1854)+4.5;
+    for(const k of [0,1])r5Raise(S,K,k,[[2336,-1821,null,70],[2336,-1821,HP],[2321,-1884,HP],[2321,-1884,null,-30]],[[[2336,-1821],[2321,-1884]]],{pier:20,lamps:true});}
+  // ==== hito: enlaces-ruta-5 ====
+  // Every crossing of the Ruta 5 in the model, from OpenStreetMap (`python pipeline/traces.py cruces`, north to south;
+  // `traces.py vial` draws them over the Esri image):
+  //   (4128, 3717) Río Lircay: the motorway on two bridges (puente-lircay-ruta5)
+  //   (3958, 3485) a road under the motorway (w373726646, tunnel), which crosses it on two 81 m bridges (w151617653,
+  //                w474496436; puente-lircay-ruta5); the Enlace Avenida Lircay's ramps join 70 m south
+  //   (3811, 3294) Enlace Avenida Lircay: Avenida Lircay over it (w45040637), a cloverleaf loop and four ramps
+  //   (3379, 2703) the railway (Línea Central Sur, electrified) under it: the motorway on two bridges (w151617648/9)
+  //   (3249, 2144) Enlace Las Industrias, over it (w101568643), three ramps
+  //   (2960, 890)  Pasarela Nueva Holanda, a footbridge with ramps (w101568620)
+  //   (2820, 276)  a street under it (w193825710, tunnel); ramps of the Enlace 2 Norte join beside it
+  //   (2747, -40)  Enlace 2 Norte (Talca Norte): Calle 2 Norte over it on two bridges (w83666254, w478675461)
+  //   (2670, -375) Enlace San Miguel (to San Clemente and the Paso Pehuenche): Avenida San Miguel on two bridges
+  //                (w478971526, w478971523) and a cycleway bridge beside them (w1121132285)
+  //   (2575, -788) a footbridge with ramps and stairs (w1025552569)
+  //   (2507, -1080) Enlace 8 Sur: Avenida 8 Sur over it on two bridges (w478951507, w478951521)
+  //   (2328, -1854) Estero Piduco: the motorway on two bridges (puente-piduco-ruta5)
+  //   (2144, -2642) Enlace El Tabaco (to Pirque), over it (w83143729)
+  // and six culverts it needs no model for (the canals Sandoval, Baeza and Parrón, a stream, a ditch, an unnamed river). Nothing crosses it
+  // at grade. Their ramps (motorway_link) are drawn by ruta5Base.
+  // In Talca the motorway runs in a cutting under its overpasses (Esri image; a photo of 2011 on Commons, CC BY-SA 2.0),
+  // with the frontage roads beside it at street level, a few metres from the bridges' ends. The relief, a node every
+  // 40 m, cannot hold a cutting 40 m wide, so the overpasses rise instead, 2-4 m over the ends of the streets on ramps
+  // between walls (the map's streets on the bridge are taken off the ground), with dark openings over the motorway
+  // where it would run below; out of town, where there is room, they rise higher, as on the Esri image. Where the
+  // motorway really is on bridges (the railway; the road at 3958, 3485), it climbs on embankments: 8.6 m over the
+  // railway (an electrified line: catenary), 6 m over the road. The street at 2820, 276, under the motorway at grade with
+  // ramps joining a few metres away, gets dark openings on both sides. Footbridges at their real height (5.6 m), on
+  // columns, with their ramps and stairs. Approximate: every height, ramp and embankment length, the decks' widths
+  // (the map's streets'), the piers.
+  {const K={asph:R5K.asph,line:R5K.line,par:C('#D9D3C5'),old:C('#D9D3C5'),walk:C('#C9C3B6'),red:C('#C8503A'),beam:C('#B3AEA4'),wall:C('#C4BEB1'),
+      void:C('#2B3036'),metal:C('#8A8F92'),lamp:R5K.lamp,fill:C('#93A35B'),fill2:C('#86964F'),foot:C('#CFC8B8'),foot2:C('#BDB6A6')};
+    // overpasses: deck polyline (the map's street, ends at the junctions beyond the bridge), half width, rise
+    for(const [pts,hw,top] of [
+      [[[3742,3323],[3792,3302],[3828,3286],[3839,3284],[3847,3285]],6.5,3.5],                       // Avenida Lircay
+      [[[3189,2158],[3214,2152],[3227,2150],[3274,2138],[3321,2124],[3369,2103]],5,4],                // Las Industrias
+      [[[2728,-35.5],[2736,-37],[2758,-42.5],[2766,-44.5]],10.6,2],                                   // 2 Norte, both bridges
+      [[[2651,-370],[2658.5,-372],[2681,-378],[2689,-380.5]],11.8,2],                                // San Miguel, both
+      [[[2472,-1071],[2493,-1076],[2519.5,-1082.5],[2535,-1086.5]],10.6,2.2],                         // 8 Sur, both
+      [[[2060,-2623],[2096,-2631],[2123,-2637],[2167,-2647],[2189,-2653],[2215,-2659]],5.5,4]])        // El Tabaco
+      r5Over(S,K,pts,hw,top,{lamps:true});
+    // the motorway over the railway: 8.6 m, on embankments of 200 m each side (the road at 3958, 3485: puente-lircay-ruta5)
+    {const H=E(3379,2703)+8.6;for(const k of [0,1])r5Raise(S,K,k,[[3379,2703,null,240],[3379,2703,H,42],[3379,2703,H,-42],[3379,2703,null,-240]],[[[3389,2744],[3369,2661]]],{pier:18,lamps:true});}
+    // the street under the motorway at 2820, 276: a dark opening (the shade under the motorway) where it meets each
+    // pavement's outer edge, 2.5 m deep, as wide as the street
+    for(const k of [0,1]){const [d]=r5d(k,2820.5,276.2),p=r5at(k,d),[sx,sy]=[(2837.2-2796.2)/43.1,(281.4-268.0)/43.1],c=Math.abs(p.tx*sy-p.ty*sx)||1,o=R5R(p);
+      const P=(t,u)=>{const q=r5at(k,d+t/c);return r5off(q,o-u);},q=[P(-4,0),P(4,0),P(4,2.5),P(-4,2.5)];
+      S.face(q.map(v=>[v[0],E(v[0],v[1])+.2,-v[1]]),[0,1,0],K.void);}
+    // footbridges: OSM polyline, span from point i0 to i1; stairs [foot, top]
+    {const ht=r5Foot(S,K,[[2934.1,847.7],[2944.7,893.9],[2974.7,887.1],[2963.8,839.7]],1,2,5.6);}
+    {const ht=r5Foot(S,K,[[2569.3,-705.4],[2552.2,-783.5],[2586.8,-791.0],[2573.2,-852.9]],1,2,5.6);
+      r5Stairs(S,K,2548.5,-796.3,2552.2,-783.5,ht);r5Stairs(S,K,2588.5,-781.6,2586.8,-791.0,ht);}
+    S.dy=0;}
   // ==== hito: puentes-rio-claro ====
   // The two bridges over the Río Claro at the Alameda's west end, on S in grid metres. The Ruta K-60-J bridge (OSM
   // w111133067, from 4 Norte's end to the west bank; the map's street of that name between the same points stays off
@@ -3040,9 +3115,178 @@ function buildBase(){
   railBase(B);   // over the streets
   return drape(B);
 }
+// ==== Ruta 5 ====
+// The Ruta 5 (Panamericana) as the motorway it is: two carriageways, each on its own line of OpenStreetMap in its
+// direction of travel (R5.c: the 74 ways highway=motorway "Ruta 5 Sur", from `python pipeline/traces.py calzadas`,
+// simplified to 0.3 m, with their lanes and lit tags per stretch), and the 40 motorway_link ramps of its interchanges
+// (R5.k), which the map's graph does not have (its trunk_links are map streets already). In OSM a carriageway's line is
+// the boundary between its first lane (by the median) and the second, also where a third lane is added on the right
+// (placement=right_of:1), so the pavement runs from 4.5 m left of the line (a 3.5 m lane and a 1 m inner shoulder) to
+// 3.5 m per further lane and a 2.5 m outer shoulder on its right; a third lane opens and closes over 40 m. White edge
+// lines and dashed lane lines one art pixel wide (0.5 m; 4.5 m dashes every 12 m). The median is what lies between the
+// two pavements (the lines are 9-15 m apart): concrete under 2.5 m (the city), grass when wider, nothing where the
+// carriageways part by more than 28 m; a concrete barrier down its middle where it is under 9 m. Where OSM says
+// lit=yes (everything south of the Lircay bridge), a lamp post every 45 m: 12 m with two arms in a narrow median, as in
+// a photo of 2011 on Commons (Ruta 5 talca, CC BY-SA 2.0), or on the outer shoulders, staggered, where the median is
+// wide. A few cars and lorries in each direction (ruta5Objects). Heights: pavement and median 0.16 (over the streets,
+// 0.12-0.148), lines 0.172. The landmarks puente-lircay-ruta5, puente-piduco-ruta5 and enlaces-ruta-5 draw the
+// stretches on bridges and embankments (r5Deck, which leaves a gap in the carriageway here) and the decks over it.
+const R5={"c":[{"p":[50631,51704,-2173,-3694,-195,-326,-183,-293,-542,-825,-4287,-6474,-481,-724,-380,-547,-517,-730,-968,-1318,-930,-1257,-474,-659,-374,-525,-377,-523,-196,-254,-165,-201,-201,-233,-348,-374,-237,-234,-196,-180,-1071,-956,-949,-856,-285,-273,-149,-167,-147,-175,-132,-181,-114,-179,-96,-179,-169,-345,-89,-219,-81,-222,-67,-210,-113,-408,-174,-686,-152,-663,-480,-2067,-214,-923,-139,-614,-1469,-6339,-1183,-5141,-233,-1002,-994,-4305,-105,-519,-128,-677,-102,-472,-108,-465,-341,-1472,-2095,-9055,-281,-1237,-217,-937,-1533,-6636,-527,-2286,-150,-643,-150,-649,-78,-345,-135,-555,-188,-691,-118,-451,-621,-2679,-195,-843,-89,-387,-430,-1861,-367,-1588,-656,-2825,-3276,-14162],"l":"2222233322232223333322222222222222232223222223233232232222333232","lit":"0000000001111111111111111111111111111111111111111111111111111111","br":"0000000010100000000000000000000001000000000000000000100000000000"},{"p":[17153,-45239,2365,10224,368,1570,909,3943,315,1351,325,1417,361,1556,144,608,152,668,600,2613,194,826,309,1339,61,263,141,609,540,2338,1652,7164,217,928,198,853,1139,4950,1140,4931,387,1666,952,4118,1832,7937,165,708,197,865,191,833,595,2563,266,1155,145,628,402,1739,412,1773,126,540,164,686,56,202,69,220,73,205,82,197,84,179,107,203,104,179,101,151,142,188,107,128,118,130,227,227,2153,1936,335,321,194,198,175,188,298,350,171,211,232,304,154,211,515,721,482,667,927,1262,964,1318,396,532,224,311,210,305,733,1104,633,954,421,660,3557,5368,182,289,200,330,1834,3127],"l":"222323332232232332232232323232222222222222222222222232222222232222","lit":"111111111111111111111111111111111111111111111111111111100000000000","br":"000000000000100000000000000000100000000000000000000001010000000000"}],"k":[[1,20349,-27003,246,-135,60,-42,48,-41,86,-92,46,-65,40,-69,34,-73,23,-68,17,-70,11,-71,7,-150,-4,-173,-14,-173],[1,20721,-27080,-372,77],[1,20721,-27080,-45,21,-42,26,-39,31,-37,41,-31,46,-23,46,-16,48,-9,50,-3,62,6,62,16,59,23,53,30,49,37,44,41,37,46,31,54,26,58,20,56,12,56,6,58,0],[2,20349,-27003,-167,33,-86,24],[1,20349,-27003,-53,61,-37,58,-26,73,-35,212],[1,20032,-27184,102,80,104,61,111,40],[1,21316,-26637,-66,-148,-72,-121,-35,-49,-38,-42,-44,-35,-48,-30,-50,-20,-52,-12,-57,-5,-58,3,-75,16],[1,21893,-26529,108,-71,55,-43,47,-45,40,-51,23,-39,34,-84,11,-52,1,-53,-6,-53,-17,-61,-26,-58,-34,-54,-38,-42,-44,-36,-49,-30,-52,-21,-49,-12,-50,-6,-50,3,-50,9,-48,16,-52,27,-48,33,-43,40,-37,46,-27,49,-20,52,-28,146,-8,92,-1,93],[2,21371,-27701,51,32,56,26,84,23,71,4,42,-5,497,-115],[1,21110,-28151,133,291,35,59,43,53,50,47],[1,22172,-27736,68,-28,64,-34,60,-42,64,-56],[1,22172,-27736,63,9,62,16,60,24,62,35],[1,23092,-19170,-152,-294,-116,-176,-89,-117,-31,-49,-50,-107,-18,-56],[1,23929,-14160,-5,-134,3,-135,8,-101,43,-297,9,-98,7,-99,3,-223],[1,22866,-21461,16,83,9,83,2,85,-24,341,-2,121,6,143,13,142],[2,22636,-19969,-87,-364],[3,22549,-20333,-202,-853],[1,23937,-15914,118,238,80,137,132,206,97,166],[1,25530,-8611,-62,-138,-107,-215,-111,-186,-127,-180,-49,-77,-53,-96,-45,-99],[1,26004,-6969,104,249,66,147,185,362,57,151],[1,26197,-5052,-47,-430,-96,-583,-23,-247,-3,-125],[1,25571,-9964,-1,863,19,351],[2,26505,-5685,65,309],[2,26570,-5376,38,198,48,289],[2,26416,-6060,24,79,65,296],[1,28123,2618,-81,-216,-124,-267],[1,27909,-461,-53,62,-45,68,-32,65,-44,139],[1,28196,1940,46,576,41,396],[2,27753,-48,392,1683,21,105,30,200],[2,27671,-402,82,354],[1,29901,10528,-37,-67,-45,-62,-65,-73,-48,-42,-55,-32,-45,-13],[1,32925,23624,-39,-88,-87,-148,-44,-60,-164,-191,-36,-55,-59,-116],[1,33242,23006,-116,95,-58,75,-24,49,-18,52,-10,53,-3,55],[1,32868,22757,52,91,29,42,66,71,38,24,42,16,49,10,49,2,49,-7],[1,37840,32747,-79,-53,-71,-36,-70,-25,-93,-19,-75,4,-75,26,-36,21,-32,27,-32,37,-24,42,-15,46,-9,48,-1,49,5,49,15,46,23,42,30,37,31,27,34,21,37,17,52,16,53,8,55,0],[1,38226,33732,67,-6,57,-20,46,-34,20,-23,14,-27,16,-52,2,-29,-5,-59,-18,-62,-36,-66],[1,39127,34332,-335,-344,-58,-51,-99,-73,-98,-55,-76,-31,-84,-24,-151,-22],[1,39363,34062,-27,-8,-28,-2,-50,14,-47,45,-27,59],[1,38843,33454,124,318,67,153,65,126],[1,43376,40528,-12,-144,-13,-50,-19,-55,-81,-187]]};
+const R5K={asph:hex('#6C6862'),line:hex('#E8E5DC'),conc:hex('#BDB8AD'),grass:hex('#97A65E'),bar:hex('#CFCAC0'),bar2:hex('#E2DDD2'),
+  pole:hex('#8A8F92'),lamp:hex('#F1E6C4')};
+// each carriageway resampled every 8 m or less: per point its distance d, the lanes and lit of the stretch ahead, the
+// third lane's share e (0..1), the tangent of the stretch ahead, a miter normal (nx, ny: left of travel, scaled so an
+// offset keeps its width at the bends) and hs, half the distance to the other carriageway's line
+const R5C=R5.c.map(c=>{let x=0,y=0;const raw=[],P=[];let d=0;for(let i=0;i<c.p.length;i+=2){x+=c.p[i];y+=c.p[i+1];raw.push([x/10,y/10]);}
+  for(let i=0;i<raw.length-1;i++){const a=raw[i],b=raw[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<.01)continue;const n=Math.max(1,Math.ceil(L/8));
+    for(let k=0;k<n;k++)P.push({x:a[0]+(b[0]-a[0])*k/n,y:a[1]+(b[1]-a[1])*k/n,d:d+L*k/n,l:+c.l[i],lit:c.lit[i]==='1',tx:(b[0]-a[0])/L,ty:(b[1]-a[1])/L,e:0});
+    d+=L;}
+  const z=raw[raw.length-1],q=P[P.length-1];P.push({x:z[0],y:z[1],d,l:q.l,lit:q.lit,tx:q.tx,ty:q.ty,e:0});
+  for(let i=0,r0=-1;i<=P.length;i++){const on=i<P.length&&P[i].l>=3;if(on&&r0<0)r0=i;
+    if(!on&&r0>=0){const a=P[r0].d,b=P[Math.min(i,P.length-1)].d;for(let j=r0;j<i;j++)P[j].e=Math.max(0,Math.min(1,(P[j].d-a)/40,(b-P[j].d)/40));r0=-1;}}
+  P.forEach((p,i)=>{const s=P[Math.max(0,i-1)];let mx=-s.ty-p.ty,my=s.tx+p.tx;const L=Math.hypot(mx,my)||1,c=Math.max(.5,(-mx*p.ty+my*p.tx)/L);p.nx=mx/L/c;p.ny=my/L/c;});
+  return {P,L:d,gaps:[]};});
+R5C.forEach((C,k)=>{const O=R5C[1-k].P;for(const p of C.P){let m=1e18;for(let i=0;i<O.length-1;i++){const a=O[i],b=O[i+1];
+  if(Math.abs(a.x-p.x)>120&&Math.abs(b.x-p.x)>120||Math.abs(a.y-p.y)>120&&Math.abs(b.y-p.y)>120)continue;m=Math.min(m,segDist2(p.x,p.y,a.x,a.y,b.x,b.y));}p.hs=Math.sqrt(m)/2;}});
+// carriageway k at distance d (interpolated); a point `o` metres left of its line; the right edge of its pavement
+function r5at(k,d){const P=R5C[k].P;let lo=0,hi=P.length-1;d=Math.max(0,Math.min(R5C[k].L,d));while(hi-lo>1){const m=(lo+hi)>>1;if(P[m].d<=d)lo=m;else hi=m;}
+  const a=P[lo],b=P[hi],t=b.d>a.d?(d-a.d)/(b.d-a.d):0,f=(u,v)=>u+(v-u)*t;
+  return {x:f(a.x,b.x),y:f(a.y,b.y),d,nx:f(a.nx,b.nx),ny:f(a.ny,b.ny),tx:a.tx,ty:a.ty,e:f(a.e,b.e),hs:f(a.hs,b.hs),lit:a.lit,l:a.l};}
+const r5off=(p,o)=>[p.x+p.nx*o,p.y+p.ny*o],R5R=p=>-(6+3.5*p.e);
+// the distance along carriageway k nearest to (x, y), and its signed offset from the line (left positive)
+function r5d(k,x,y){let best=1e18,bd=0,bo=0;const P=R5C[k].P;for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1],dx=b.x-a.x,dy=b.y-a.y,L2=dx*dx+dy*dy||1;
+  let t=((x-a.x)*dx+(y-a.y)*dy)/L2;t=t<0?0:t>1?1:t;const ex=x-a.x-dx*t,ey=y-a.y-dy*t,q=ex*ex+ey*ey;if(q<best){best=q;bd=a.d+(b.d-a.d)*t;bo=(-dy*ex+dx*ey)/Math.sqrt(L2);}}
+  return [bd,bo];}
+const r5gh=(k,d)=>{const p=r5at(k,d);return E(...r5off(p,(4.5+R5R(p))/2))+.16;}; // the pavement's height on the ground
+window.__E=(x,y)=>E(x,y); // the ground's height (grid metres), to measure the structures from tools/screenshot.py --js
+const r5gap=(k,d)=>R5C[k].gaps.find(g=>d>=g[0]&&d<=g[1]);
+// calls f(p, q) for the pieces of carriageway k between d0 and d1 that are off the gaps and whose start passes ok(p)
+function r5each(k,d0,d1,ok,f){const P=R5C[k].P,gaps=R5C[k].gaps;
+  for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1];if(b.d<=d0||a.d>=d1||(ok&&!ok(a)))continue;let iv=[[Math.max(a.d,d0),Math.min(b.d,d1)]];
+    for(const g of gaps)iv=iv.flatMap(([u,v])=>g[1]<=u||g[0]>=v?[[u,v]]:[[u,g[0]],[g[1],v]].filter(([s,t])=>t-s>.05));
+    for(const [u,v] of iv)f(r5at(k,u),r5at(k,v));}}
+const r5band=(G,k,f0,f1,y,col,ok)=>r5each(k,0,R5C[k].L,ok,(p,q)=>G.quadXY([r5off(p,f0(p)),r5off(q,f0(q)),r5off(q,f1(q)),r5off(p,f1(p))],y,col));
+function r5dash(G,k,o,y,col,ok){for(let d=6;d<R5C[k].L-4.5;d+=12){if(R5C[k].gaps.some(g=>d+4.5>=g[0]&&d<=g[1]))continue;const p=r5at(k,d),q=r5at(k,d+4.5);if(ok&&!ok(p))continue;
+  G.quadXY([r5off(p,o(p)-.25),r5off(q,o(q)-.25),r5off(q,o(q)+.25),r5off(p,o(p)+.25)],y,col);}}
+const R5X=[]; // decks over the motorway [polyline, half width] (overpasses, footbridges): no median lamp post under them
+const r5under=(x,y)=>R5X.some(([pts,hw])=>pts.some((a,i)=>i<pts.length-1&&segDist2(x,y,a[0],a[1],pts[i+1][0],pts[i+1][1])<(hw+3)**2));
+// The Ruta 5's flat layers, into buildBase's B (draped with it): pavements, lines, median, ramps. Keeps lots, trees and
+// sidewalks off them (occ), with a metre to spare.
+function ruta5Base(B){const K=R5K;
+  for(let k=0;k<2;k++){
+    r5band(B,k,()=>4.5,R5R,0.16,K.asph);
+    r5band(B,k,()=>3.25,()=>3.75,0.172,K.line);r5band(B,k,p=>-3.75-3.5*p.e,p=>-3.25-3.5*p.e,0.172,K.line);
+    r5dash(B,k,()=>0,0.172,K.line);r5dash(B,k,()=>-3.5,0.172,K.line,p=>p.e>.5);
+    r5band(B,k,()=>4.5,p=>p.hs,0.16,K.conc,p=>p.hs>4.55&&p.hs<5.75);r5band(B,k,()=>4.5,p=>p.hs,0.16,K.grass,p=>p.hs>=5.75&&p.hs<14);
+    r5each(k,0,R5C[k].L,null,(p,q)=>{for(const r of [p,q])occMark(rotRect(...r5off(r,(4.5+R5R(r))/2),3,12.5+3.5*r.e,Math.atan2(r.ty,r.tx)));});}
+  for(const r of R5.k){const w=r[0]*3.5+2.5;let x=0,y=0;const pts=[];for(let i=1;i<r.length;i+=2){x+=r[i];y+=r[i+1];pts.push([x/10,y/10]);}
+    ribbon(B,pts,w,0.16,K.asph);for(const s of [1,-1])sideRibbon(B,pts,s,w/2-1,.5,0.172,K.line);
+    for(let i=0;i<pts.length-1;i++)occBand(pts[i],pts[i+1],w/2+1);}}
+// The Ruta 5's objects, after buildBase: the median barrier, the lamp posts (their lights go to GLOW) and the cars.
+// Returns the meshes for the scene (they cast shadows).
+function ruta5Objects(){const K=R5K,G=new GB(1<<15),A=R5C[0];
+  // barrier: 0.6 m wide, 0.85 m over the pavement, on the median's middle line, as long as the median is narrow
+  r5each(0,0,A.L,p=>p.hs<9,(p,q)=>{const a=r5off(p,p.hs),b=r5off(q,q.hs),L=Math.hypot(b[0]-a[0],b[1]-a[1])||1,nx=-(b[1]-a[1])/L*.3,ny=(b[0]-a[0])/L*.3,
+      ga=E(...a),gb=E(...b),V=(c,s,h)=>[c[0]+nx*s,h,-(c[1]+ny*s)];
+    for(const s of [1,-1])G.face([V(a,s,ga-.3),V(b,s,gb-.3),V(b,s,gb+1.01),V(a,s,ga+1.01)],[nx*s/.3,0,-ny*s/.3],K.bar);
+    G.face([V(a,1,ga+1.01),V(b,1,gb+1.01),V(b,-1,gb+1.01),V(a,-1,ga+1.01)],[0,1,0],K.bar2);});
+  // lamp posts: 0.5 m square, 12 m; arms 3 m long over the inner lanes; heads in the lamp colour
+  const post=(x,y,arms)=>{const g=E(x,y);G.dy=g;G.prism(rotRect(x,y,.5,.5),0,12,K.pole,K.pole);
+    for(const [hx,hy] of arms){const a=Math.atan2(hy-y,hx-x),L=Math.hypot(hx-x,hy-y);G.prism(rotRect((x+hx)/2,(y+hy)/2,L,.4,a),11.6,12,K.pole,K.pole);
+      G.prism(rotRect(hx,hy,1.2,.6,a),11.3,11.75,K.pole,K.lamp);GLOW.push(hx,g+11.2,hy);}G.dy=0;};
+  let posts=0;
+  for(let k=0;k<2;k++)for(let d=(k?32.5:10);d<R5C[k].L;d+=45){const p=r5at(k,d);if(!p.lit||r5gap(k,d)||!inTerrain(p.x,p.y))continue;
+    if(p.hs<9){if(k)continue;const c=r5off(p,p.hs);if(r5under(...c))continue;post(...c,[r5off(p,p.hs-3),r5off(p,p.hs+3)]);posts++;}
+    else{const c=r5off(p,R5R(p)-1),h=r5off(p,R5R(p)+2);if(r5under(...c))continue;post(...c,[h]);posts++;}}
+  // cars: one every ~110 m in each direction, a fifth of them lorries in the right lane; on the decks at their height
+  const r=rng(5005),list=[],colW=CAR_COLS.reduce((a,c)=>a+c[3],0);
+  const H=(k,d)=>{const g=r5gap(k,d);if(g)return g[2](d);const p=r5at(k,d);return E(p.x,p.y)+.16;};
+  for(let k=0;k<2;k++)for(let d=30+r()*60;d<R5C[k].L-10;d+=20+r()*180){const p=r5at(k,d);if(!inTerrain(p.x,p.y))continue;
+    const truck=r()<.2,o=truck||r()<.55?-1.75:1.75,c=r5off(p,p.e>.9&&r()<.3?-5.25:o),len=truck?2.4+r()*.4:(4.1+r()*.6)/4.5;
+    let cc=r()*colW,col=CAR_COLS[0];for(const q of CAR_COLS){if((cc-=q[3])<0){col=q;break;}}
+    list.push([c[0],c[1],p.tx,p.ty,len,truck?2.1:1,col,r(),(H(k,d-2)+H(k,d+2))/2,Math.atan2(H(k,d+2)-H(k,d-2),4)]);}
+  const cars=new T.InstancedMesh(carGeo(),new T.MeshLambertMaterial({vertexColors:true}),list.length);
+  {const m=new T.Matrix4(),q=new T.Quaternion(),e=new T.Euler(0,0,0,'YZX'),s=new T.Vector3(),pp=new T.Vector3(),col=new T.Color();
+    list.forEach(([x,y,dx,dy,len,hs,c,k,h,sl],i)=>{e.set(0,Math.atan2(dy,dx),sl);q.setFromEuler(e);s.set(len,hs,1);pp.set(x,h,-y);m.compose(pp,q,s);cars.setMatrixAt(i,m);
+      const v=.96+k*.08;col.setRGB(c[0]*v,c[1]*v,c[2]*v);cars.setColorAt(i,col);});
+    cars.instanceMatrix.needsUpdate=true;if(cars.instanceColor)cars.instanceColor.needsUpdate=true;}
+  Object.assign(STREET,{r5posts:posts,r5cars:list.length,r5gaps:R5C.map(c=>c.gaps.length)});
+  const mesh=new T.Mesh(G.geo(),matFlat);for(const o of [mesh,cars])o.castShadow=true;
+  window.__r5cars=on=>{cars.visible=on;dirty=true;};
+  return [mesh,cars];}
+// Carriageway k on a bridge or an embankment from d0 to d1 (landmarks, from buildModels): the deck (deckBridge: its
+// pavement, parapets and beam, piers every o.pier m where it stands 2.5 m over the ground) at h(d), an absolute height
+// never under the terrain plus 0.3 m, with its lines; outside the open spans (open: [[d0, d1], ...], where it stands on
+// piers) an embankment of grass slopes, 1:1.5, in two tones, and an abutment wall at each end of an open span where the
+// deck is over a metre up; lamp posts on the median side where the stretch is lit; voids: [[d0, d1], ...] dark openings
+// in the embankment where a street passes under it. The carriageway on the ground stops there (gaps).
+function r5Deck(S,K,k,d0,d1,h,open=[],o={}){
+  let em=0;for(let d=d0;d<=d1;d+=5)em=Math.max(em,r5at(k,d).e);
+  const hw=(10.5+3.5*em)/2+.6,co=(4.5-6-3.5*em)/2,pts=[];
+  for(let d=d0;;d+=5){const dd=Math.min(d,d1);pts.push(r5off(r5at(k,dd),co));if(dd>=d1)break;}
+  const H=d=>{const c=r5off(r5at(k,d),co);return Math.max(h(d),E(c[0],c[1])+.3);};
+  deckBridge(S,K,pts,hw,p=>h(d0+p.d),{deck:K.asph,beamD:1.5,beamCol:K.beam,pier:o.pier||25,ends:false});
+  R5C[k].gaps.push([d0,d1,H]);
+  const isOpen=d=>open.some(([a,b])=>d>=a&&d<=b),isVoid=d=>(o.voids||[]).some(([a,b])=>d>=a&&d<=b),st=2.5;
+  for(let d=d0;d<d1-1e-6;d+=st){const e=Math.min(d+st,d1),p=r5at(k,d),q=r5at(k,e),hp=H(d),hq=H(e),m=(d+e)/2;
+    const V=(r,off,y)=>{const c=r5off(r,off);return [c[0],y,-c[1]];};
+    for(const [a,b] of [[3.25,3.75],[-3.75,-3.25],[-.25,.25]])if(a<0&&a>-1?(m-d0)%12<4.5:true)S.face([V(p,a,hp+.05),V(q,a,hq+.05),V(q,b,hq+.05),V(p,b,hp+.05)],[0,1,0],K.line);
+    if(isOpen(m))continue;
+    for(const s of [1,-1]){const off=co+s*hw,gp=E(...r5off(p,off)),gq=E(...r5off(q,off));
+      if(isVoid(m)){if(hp-gp>2)S.face([V(p,off+s*.02,gp-.3),V(q,off+s*.02,gq-.3),V(q,off+s*.02,hq-1.5),V(p,off+s*.02,hp-1.5)],[p.nx*s,0,-p.ny*s],K.void);continue;}
+      if(hp-gp<.35&&hq-gq<.35)continue;
+      const fp=off+s*1.5*Math.max(0,hp-gp),fq=off+s*1.5*Math.max(0,hq-gq),col=Math.floor(m/10)%2?K.fill:K.fill2;
+      S.face([V(p,off,hp-.02),V(q,off,hq-.02),V(q,fq,E(...r5off(q,fq))-.3),V(p,fp,E(...r5off(p,fp))-.3)],null,col);
+      occMark([r5off(p,off),r5off(q,off),r5off(q,fq),r5off(p,fp)]);}}
+  for(const [a,b] of open)for(const [d,sg] of [[a,1],[b,-1]]){if(d<=d0+1||d>=d1-1)continue;const p=r5at(k,d),g=E(...r5off(p,co)),hh=H(d);if(hh-g<1)continue;
+    const V=(off,y)=>{const c=r5off(p,off);return [c[0],y,-c[1]];};S.face([V(co-hw,g-.5),V(co+hw,g-.5),V(co+hw,hh-.1),V(co-hw,hh-.1)],[p.tx*sg,0,-p.ty*sg],K.beam);}
+  if(o.lamps)for(let d=d0+15;d<d1-5;d+=45){const p=r5at(k,d);if(!p.lit)continue;const c=r5off(p,co+hw-.35),hd=r5off(p,co+hw-3.3),hh=H(d),a=Math.atan2(p.ty,p.tx);
+    S.prism(rotRect(...c,.5,.5,a),hh+.9,hh+12,K.metal,K.metal);S.prism(rotRect(...r5off(p,co+hw-1.8),.4,3,a),hh+11.6,hh+12,K.metal,K.metal);
+    S.prism(rotRect(...hd,.6,1.2,a),hh+11.3,hh+11.75,K.metal,K.lamp);GLOW.push(hd[0],hh+11.2,hd[1]);}
+  S.dy=0;return H;}
+// Both carriageways' profile through knots [x, y, h, n]: the point of the carriageway nearest to (x, y), moved n m
+// north along it, at height h (absolute; null: on the ground); open spans [[x, y], [x, y]] likewise (without n). Draws
+// r5Deck from the first knot to the last on carriageway k.
+function r5Raise(S,K,k,knots,open,o={}){const dir=k?1:-1; // carriageway 0 runs south, 1 north
+  const Q=knots.map(([x,y,h,n=0])=>[r5d(k,x,y)[0]+dir*n,h]).sort((a,b)=>a[0]-b[0]);for(const q of Q)if(q[1]===null)q[1]=r5gh(k,q[0]);
+  const h=d=>{for(let i=0;i<Q.length-1;i++)if(d<=Q[i+1][0])return Q[i][1]+(Q[i+1][1]-Q[i][1])*(d-Q[i][0])/Math.max(Q[i+1][0]-Q[i][0],1e-6);return Q[Q.length-1][1];};
+  return r5Deck(S,K,k,Q[0][0],Q[Q.length-1][0],h,open.map(([a,b])=>{const u=r5d(k,...a)[0],v=r5d(k,...b)[0];return [Math.min(u,v),Math.max(u,v)];}),o);}
+// A street over the motorway (landmarks): its deck along pts (grid metres; for a divided street, the middle of both
+// carriageways) at street level at its ends and `top` m over the street's highest end above the motorway, on ramps
+// between walls in between; dark openings on both faces where the motorway runs under it (in Talca the motorway runs in
+// a cutting under its overpasses, which the 40 m relief cannot hold: the street rises instead). The map's streets that
+// lie on it are taken off the ground (s.bridge). Lamps if o.lamps.
+function r5Over(S,K,pts,hw,top,o={}){
+  const seg=[];let L=0;for(let i=0;i<pts.length-1;i++){const l=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]);seg.push([L,l]);L+=l;}
+  const at=u=>{let i=0;while(i<seg.length-1&&u>seg[i][0]+seg[i][1])i++;const a=pts[i],b=pts[i+1],t=Math.max(0,Math.min(1,(u-seg[i][0])/seg[i][1]));
+    return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,(b[0]-a[0])/seg[i][1],(b[1]-a[1])/seg[i][1]];};
+  // the stretch over the motorway: where the deck's middle is on a pavement or the median between them
+  let u0=1e9,u1=-1e9;for(let u=0;u<=L;u+=1){const [x,y]=at(u);for(let k=0;k<2;k++){const [d,off]=r5d(k,x,y),p=r5at(k,d);if(off>=R5R(p)-.5&&off<=Math.max(4.5,p.hs)+.5){u0=Math.min(u0,u);u1=Math.max(u1,u);}}}
+  const ha=E(...pts[0])+.13,hb=E(...pts[pts.length-1])+.13,ht=Math.max(ha,hb)+top;
+  const h=u=>u<u0?ha+(ht-ha)*u/Math.max(u0,1):u>u1?hb+(ht-hb)*(L-u)/Math.max(L-u1,1):ht;
+  deckBridge(S,K,pts,hw,p=>h(p.d),{walk:hw-2.5,beamD:.6,beamCol:K.beam,pier:1e9,lamps:o.lamps,ends:false});
+  for(let u=0;u<L-1e-6;u+=1){const v=Math.min(u+1,L),[ax,ay,tx,ty]=at(u),[bx,by]=at(v),ov=u+.5>=u0&&u+.5<=u1;
+    for(const s of [1,-1]){const nx=-ty*s,ny=tx*s,A=[ax+nx*(hw+.03),ay+ny*(hw+.03)],B=[bx+nx*(hw+.03),by+ny*(hw+.03)],ga=E(...A),gb=E(...B);
+      if(h(u)-.6-ga<.15&&h(v)-.6-gb<.15)continue;
+      S.face([[A[0],ov?ga+.16:ga-.3,-A[1]],[B[0],ov?gb+.16:gb-.3,-B[1]],[B[0],h(v)-.6,-B[1]],[A[0],h(u)-.6,-A[1]]],[nx,0,-ny],ov?K.void:K.wall);}}
+  const Z=pts[pts.length-1],dl=Math.hypot(Z[0]-pts[0][0],Z[1]-pts[0][1]);
+  streets.forEach(s=>{const [p,q]=s.pts,l=Math.hypot(q[0]-p[0],q[1]-p[1])||1;if(s.pts.length===2&&Math.abs(((Z[0]-pts[0][0])*(q[0]-p[0])+(Z[1]-pts[0][1])*(q[1]-p[1]))/dl/l)>.8
+    &&s.pts.every(p=>pts.some((a,i)=>i<pts.length-1&&segDist2(p[0],p[1],a[0],a[1],pts[i+1][0],pts[i+1][1])<(hw*.6)**2)))s.bridge=true;});
+  R5X.push([pts,hw]);S.dy=0;}
+// A footbridge over the motorway (landmarks): pts its OSM polyline (ramps and span); the span, from pts[i0] to pts[i1],
+// `top` m over the highest ground under it, the ramps down to the ground at the polyline's ends, on columns.
+function r5Foot(S,K,pts,i0,i1,top){let L=0;const D=[0];for(let i=0;i<pts.length-1;i++)D.push(L+=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]));
+  let g=-1e9;for(let i=i0;i<i1;i++)for(let t=0;t<=1;t+=.1)g=Math.max(g,E(pts[i][0]+(pts[i+1][0]-pts[i][0])*t,pts[i][1]+(pts[i+1][1]-pts[i][1])*t));
+  const ht=g+top,ha=E(...pts[0])+.2,hb=E(...pts[pts.length-1])+.2,u0=D[i0],u1=D[i1];
+  const h=u=>u<u0?ha+(ht-ha)*u/Math.max(u0,1):u>u1?hb+(ht-hb)*(L-u)/Math.max(L-u1,1):ht;
+  deckBridge(S,K,pts,1.6,p=>h(p.d),{deck:K.foot,beamD:.6,beamCol:K.beam,pier:9,ends:false});
+  R5X.push([pts.slice(i0,i1+1),1.6]);S.dy=0;return ht;}
+// stairs from (x, y) at the ground up to height ht at (x1, y1): 0.5 m steps, 1.6 m wide, on S
+function r5Stairs(S,K,x,y,x1,y1,ht){const g=E(x,y),n=Math.max(2,Math.ceil((ht-g)/.5)),a=Math.atan2(y1-y,x1-x),L=Math.hypot(x1-x,y1-y);
+  for(let i=0;i<n;i++){const t=(i+.5)/n;S.dy=0;S.prism(rotRect(x+(x1-x)*t,y+(y1-y)*t,L/n+.02,1.6,a),g-.5,g+(ht-g)*(i+1)/n,K.beam,i%2?K.foot:K.foot2);}
+  occMark(rotRect((x+x1)/2,(y+y1)/2,L+2,4,a));}
 // The Ruta 5 and the railway, each in a function of its own so that they can be worked on apart from the streets.
-// Ruta 5: one 26 m ribbon (the real width of both carriageways) with a centre line. Rail: 6 m of ballast and a rail line.
-function ruta5Base(B){const r5=chaikin(dec(DATA.ruta5),2);ribbon(B,r5,26,0.16,PAL.asphalt2);ribbon(B,r5,1.4,0.2,hex('#B9B6AE'),false);}
+// Ruta 5: above («Ruta 5», ruta5Base). Rail: 6 m of ballast and a rail line.
 function railBase(B){const rl=chaikin(dec(DATA.rail),2);ribbon(B,rl,6,0.2,PAL.ballast);ribbon(B,rl,0.35,0.26,PAL.rail,false);}
 const PO_FIELD=[];
 const PLAZA_BI=blockAt(BYID['plaza-de-armas'].x,BYID['plaza-de-armas'].y);
@@ -3566,6 +3810,7 @@ function boot(){
     for(let k=0;k<EN_;k++){EHI=Math.max(EHI,EH[k]);ELO=Math.min(ELO,EH[k]);}
     scene.add(terrainMesh());
     const base=buildBase(),D=new GB(1<<14);walkBase(base,D);scene.add(new T.Mesh(base.geo(),matFlat));if(riverWater.nv)scene.add(new T.Mesh(riverWater.geo(),matWater));
+    for(const m of ruta5Objects())scene.add(m); // the Ruta 5's barrier, lamp posts and cars
     buildCerro(B);const hillTrees=wildTrees();
     const Y=new GB(1<<18);const {TR,PO,nb}=cityGen(B,Y);TR.push(...alamedaPark(B),...streetTrees());const cars=instCars(parkedCars());
     // riparian poplars/willows

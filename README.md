@@ -52,7 +52,8 @@ pipeline/
   diagnostics.py         paneles PNG para revisar trazados contra las manzanas
   satellite.py           imagen satelital con las manzanas encima (qué hay de verdad en cada una)
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos de Commons
-  traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM
+  traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
+                         cruces, calzadas y ramales de la Ruta 5
 src/template.html        toda la aplicación: CSS, UI y motor three.js (r128)
 data/                    datos procesados (versionados)
 dist/                    resultado (no versionado: `make build`): talca.html (fragmento) e index.html (página completa)
