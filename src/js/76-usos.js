@@ -36,7 +36,7 @@ const UGRID=new Array(bgW*bgH); // the uses touching each 100 m cell of blockAt'
 for(const u of USOS)for(let gx=Math.max(0,Math.floor((u.bb[0]-XMIN)/BG));gx<=Math.min(bgW-1,Math.floor((u.bb[2]-XMIN)/BG));gx++)
   for(let gy=Math.max(0,Math.floor((u.bb[1]-YMIN)/BG));gy<=Math.min(bgH-1,Math.floor((u.bb[3]-YMIN)/BG));gy++)(UGRID[gy*bgW+gx]||(UGRID[gy*bgW+gx]=[])).push(u);
 let OCC0=null; // occ as it was before the uses: rivers and their gravel, landmarks, the Ruta 5 and the rail
-const occ0At=(x,y)=>{const gx=Math.floor((x-XMIN)/OC),gy=Math.floor((y-YMIN)/OC);return (gx<0||gy<0||gx>=ocW||gy>=ocH)?1:OCC0[gy*ocW+gx];};
+const occ0At=(x,y)=>{const gx=Math.floor((x-XMIN)/OC),gy=Math.floor((y-YMIN)/OC);return (gx<0||gy<0||gx>=ocW||gy>=ocH)?1:OCC0.get(gx,gy);};
 // is (x, y) in use u and none of its kids? A use without ground of its own (eriazo, bosque, parcelas) may overlap
 // others: it also leaves out every ground-laying use
 const groundAt=(x,y)=>(UGRID[Math.floor((y-YMIN)/BG)*bgW+Math.floor((x-XMIN)/BG)]||[]).some(p=>!p.skip&&USO_GROUND.has(p.k)&&x>=p.bb[0]&&x<=p.bb[2]&&y>=p.bb[1]&&y<=p.bb[3]&&pip([x,y],p.r));
@@ -44,7 +44,7 @@ const inUso=(u,x,y)=>x>=u.bb[0]&&x<=u.bb[2]&&y>=u.bb[1]&&y<=u.bb[3]&&pip([x,y],u
 const ccwQ=q=>{let A=0;for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length];A+=p[0]*r[1]-r[0]*p[1];}return A<0?q.slice().reverse():q;};
 function usoSamples(u,n=48){const [x0,y0,x1,y1]=u.bb,s=Math.max(4,Math.sqrt(u.A/n)),o=[];
   for(let x=x0+s/2;x<x1;x+=s)for(let y=y0+s/2;y<y1;y+=s)if(pip([x,y],u.r))o.push([x,y]);return o.length?o:[u.r[0]];}
-function usosPlan(){const t0=performance.now();OCC0=occ.slice();
+function usosPlan(){const t0=performance.now();OCC0=occ.clone();
   // nesting: a use whose polygon lies inside a larger one is its kid (a pitch in a school, a school in a park)
   const by=USOS.slice().sort((a,b)=>a.A-b.A);
   for(const c of USOS){let best=null;for(const p of by){if(p.A<=c.A||(best&&p.A>=best.A))continue;
@@ -55,7 +55,7 @@ function usosPlan(){const t0=performance.now();OCC0=occ.slice();
   const HN=NOLOTS.map(q=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}return {q,bb:[x0,y0,x1,y1]};});
   const inHito=(x,y)=>HN.some(({q,bb})=>x>=bb[0]&&x<=bb[2]&&y>=bb[1]&&y<=bb[3]&&pip([x,y],q));
   for(const u of USOS){const S=usoSamples(u);let pre=0,built=0,alam=0;
-    for(const [x,y] of S){if(OCC0[Math.floor((y-YMIN)/OC)*ocW+Math.floor((x-XMIN)/OC)]===1||inHito(x,y))pre++;const bi=blockAt(x,y);if(bi>=0){if(blocks[bi].built)built++;if(ALAM.has(bi)||bi===PLAZA_BI)alam++;}}
+    for(const [x,y] of S){if(occ0At(x,y)===1||inHito(x,y))pre++;const bi=blockAt(x,y);if(bi>=0){if(blocks[bi].built)built++;if(ALAM.has(bi)||bi===PLAZA_BI)alam++;}}
     // a ground use mostly inside a larger one it is not the kid of (two OSM pitches drawn over each other) would flicker
     const dup=USO_GROUND.has(u.k)&&(UGRID[Math.floor((S[0][1]-YMIN)/BG)*bgW+Math.floor((S[0][0]-XMIN)/BG)]||[]).some(p=>p!==u&&!p.skip&&p.A>u.A&&USO_GROUND.has(p.k)&&!p.kids.includes(u)&&S.filter(q=>pip(q,p.r)).length>S.length*.5);
     if(dup||alam>S.length*.2||pre>S.length*(u.k==='eriazo'||u.k==='bosque'?.6:.35)){u.skip=true;USTAT.skip.push(u.i);continue;}
@@ -69,7 +69,7 @@ function usosPlan(){const t0=performance.now();OCC0=occ.slice();
     const [x0,y0,x1,y1]=u.bb;for(let gy=Math.max(0,Math.floor((y0-YMIN)/OC));gy<=Math.min(ocH-1,Math.floor((y1-YMIN)/OC));gy++){const cy=YMIN+(gy+.5)*OC,xs=[];
       for(let i=0,j=u.r.length-1;i<u.r.length;j=i++){const a=u.r[i],c=u.r[j];if((a[1]>cy)!==(c[1]>cy))xs.push(a[0]+(cy-a[1])*(c[0]-a[0])/(c[1]-a[1]));}xs.sort((p,q)=>p-q);
       for(let i=0;i+1<xs.length;i+=2)for(let gx=Math.max(0,Math.ceil((xs[i]-XMIN)/OC-.5));gx<=Math.min(ocW-1,Math.floor((xs[i+1]-XMIN)/OC-.5));gx++){
-        const k=gy*ocW+gx;if(occ[k]===1)continue;if(!nearStreet(XMIN+(gx+.5)*OC,cy,2.5))occ[k]=1;}}}
+        if(occ.get(gx,gy)===1)continue;if(!nearStreet(XMIN+(gx+.5)*OC,cy,2.5))occ.set(gx,gy,1);}}}
   USTAT.planMs=Math.round(performance.now()-t0);
 }
 // the use's frame: u along its rows (o.r, degrees from +x, or the long side of the polygon's minimum-area rectangle), v
@@ -95,7 +95,7 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
   // ground pieces: split where the raster was occupied before the uses, down to ~2 m (rivers, gravel, landmarks)
   const dry=(q,off,col)=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
     let busy=false;for(let gx=Math.floor((x0-XMIN)/OC);gx<=Math.floor((x1-XMIN)/OC)&&!busy;gx++)for(let gy=Math.floor((y0-YMIN)/OC);gy<=Math.floor((y1-YMIN)/OC);gy++){
-      if(gx<0||gy<0||gx>=ocW||gy>=ocH||OCC0[gy*ocW+gx]===1){busy=true;break;}}
+      if(gx<0||gy<0||gx>=ocW||gy>=ocH||OCC0.get(gx,gy)===1){busy=true;break;}}
     if(!busy)return UG.onGround(q,off,col);
     if(x1-x0<2.2&&y1-y0<2.2){let cx=0,cy=0;for(const p of q){cx+=p[0];cy+=p[1];}if(!occ0At(cx/q.length,cy/q.length))UG.onGround(q,off,col);return;}
     const f=x1-x0>y1-y0?p=>p[0]:p=>p[1],[A,Bq]=cutAt(q,f,x1-x0>y1-y0?(x0+x1)/2:(y0+y1)/2);if(A.length>2)dry(A,off,col);if(Bq.length>2)dry(Bq,off,col);};

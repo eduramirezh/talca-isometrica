@@ -81,7 +81,7 @@ function buildCerro(B){ // Cerro La Virgen: the hill is real terrain now; the st
 // scrub and wood on steep ground (wildAt), in clumps
 function wildTrees(){
   const r=rng(5),T0=[];const n=(x,y)=>0.5+0.5*Math.sin(x*0.011+y*0.017)*Math.cos(x*0.006-y*0.009+1.3);
-  for(let x=XMIN;x<XMAX;x+=13)for(let y=YMIN;y<YMAX;y+=13){const w=wildAt(x,y);if(w<0.15)continue;
+  for(let x=XMIN;x<XMAX;x+=13)for(let y=YMIN;y<YMAX;y+=13){if(!CM[cellOf(x,y)])continue;const w=wildAt(x,y);if(w<0.15)continue;
     if(r()>w*0.55*(0.25+n(x,y)))continue;const tx=x+r()*12,ty=y+r()*12;if(blockAt(tx,ty)>=0||nearStreet(tx,ty,2)||occAt(tx,ty))continue;T0.push([tx,ty,0.8+r()*.7,r()]);}
   return T0;
 }

@@ -1,12 +1,12 @@
 # Talca Isométrica
 
-Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca los lugares del ámbito jurídico (tribunales, fiscalías, defensorías, notarías, registros, academia y la historia legal de la ciudad) junto a sus hitos urbanos. Está hecha sobre datos reales: las 3.456 manzanas del Censo 2017 y la red vial de OpenStreetMap.
+Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca los lugares del ámbito jurídico (tribunales, fiscalías, defensorías, notarías, registros, academia y la historia legal de la ciudad) junto a sus hitos urbanos. Cubre toda la comuna de Talca (232 km²), recortada por su límite: la ciudad y el campo que la rodea. Está hecha sobre datos reales: las manzanas del Censo 2017 de la comuna y la red vial de OpenStreetMap.
 
 ![Vista del barrio judicial de la Alameda](docs/img/barrio-judicial.jpg)
 
 - **52 lugares** en 8 categorías, cada uno con dirección, coordenadas, fuente y nivel de confianza.
 - **Dos recorridos guiados:** la Ruta de la Justicia y Talca icónica.
-- **~72.000 edificios** generados en el navegador frente a cada calle real, con alturas según la densidad del censo y 24 hitos con modelo propio, sobre su planta real.
+- **~59.000 edificios** generados en el navegador frente a cada calle real, con alturas según la densidad del censo y 24 hitos con modelo propio, sobre su planta real.
 - **Relieve real** del modelo de elevación SRTM: los cerros del poniente y las terrazas de la ciudad hacia sus ríos, con exageración logarítmica. El lector muestra la altura sobre el nivel del mar.
 - **Lector de direcciones:** al pasar el cursor muestra la dirección aproximada según la grilla numerada («1 Norte ≈ 850, entre 1 y 2 Oriente»).
 - **Vistas:** pixel art (píxeles de 0,5 m con contorno), modo noche, giro de la vista en 90°, tema claro y oscuro, y diseño para móvil.
@@ -27,6 +27,7 @@ Para regenerar todo desde las fuentes originales:
 
 ```bash
 make fetch          # descarga manzanas del Censo, grafo vial OSM y elevación SRTM a raw/ (~72 MB, requiere git y curl)
+make osm            # la API de OpenStreetMap sobre la comuna: caminos rurales, Ruta 5 y vía (~240 cajas, ~35 MB)
 make all            # geometría -> lugares -> HTML
 make validate       # compara cada lugar con su dirección en la grilla
 ```
@@ -45,7 +46,7 @@ config/
   trazados.json          ríos (de OpenStreetMap), vía férrea y Ruta 5, con su procedencia
   usos.json              usos de suelo de los terrenos en blanco del Censo (industria, cementerios, colegios, canchas, eriazos…), con su fuente
 pipeline/
-  common.py              rutas y proyección (origen en la Plaza de Armas, grilla girada 5°)
+  common.py              rutas, proyección (origen en la Plaza de Armas, grilla girada 5°) y el límite de la comuna (OSM)
   fetch_sources.sh       descarga las fuentes a raw/
   process_geometry.py    manzanas + calles + trazados -> data/geometry.json
   elevation.py           elevación SRTM -> data/elevation.json
@@ -57,6 +58,7 @@ pipeline/
   usos.py                usos de suelo: importación desde OSM, revisión de lo que falta y de config/usos.json
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos de Commons
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
+                         la API map de OSM por cajas (tiles, tiles-comuna);
                          cruces, calzadas y ramales de la Ruta 5 -> data/ruta5.json
   railway.py             la vía férrea y el ramal desde OSM: cruces bajo la vía o a nivel, catenaria y señales -> config/trazados.json
 src/                     toda la aplicación (CSS, UI y motor three.js r128), en fuentes que build.py une en un solo fragmento:

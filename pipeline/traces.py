@@ -16,15 +16,20 @@
   python traces.py tiles x0 x1 y0 y1 <nombre>
       Baja la API `map` de OSM en cajas de 0,01° (las que pasan los 50 mil nodos se dividen en cuatro), las guarda
       en raw/osm/tiles/ y las junta en raw/osm/map-<nombre>.json. Sirve cuando Overpass no responde.
+  python traces.py tiles-comuna [nombre] [base ...]
+      Lo mismo sobre toda la comuna (cajas de 0,01° alineadas a los grados, solo las que tocan el límite con 300 m de
+      margen y no caen dentro de la caja de map-todo), juntas con raw/osm/map-<base>.json (por omisión todo y este)
+      en raw/osm/map-<nombre>.json (por omisión comuna). Es la fuente de las calles rurales, la Ruta 5 y la vía.
   python traces.py line <nombre> clave=regex [...] [--mid] [--eps 2]
       Encadena las vías de raw/osm/map-<nombre>.json cuyas etiquetas calzan con todas las condiciones y escribe a
-      stdout los `puntos` [lat, lon] de norte a sur de la cadena más larga, recortada a la maqueta con 300 m de
+      stdout los `puntos` [lat, lon] de norte a sur de la cadena más larga, recortada a la comuna con 300 m de
       margen y simplificada a --eps m; --mid: el eje medio de las dos cadenas más largas (las dos calzadas de una
       autopista). Así salieron la Ruta 5 (highway=^motorway$ "name=^Ruta 5 Sur$" --mid) y el tramo norte de la
       vía (railway=^rail$ usage=^main$).
 
   python traces.py cruces [nombre]
-      Los cruces de la Ruta 5 en la maqueta, de norte a sur, desde raw/osm/map-<nombre>.json (por omisión `este`):
+      Los cruces de la Ruta 5 en la comuna, de norte a sur, desde raw/osm/map-<nombre>.json (por omisión `este`;
+      `comuna` para toda la comuna):
       cada vía de OSM (calle, vía férrea, agua) que cruza una calzada de la autopista, agrupada por estructura y con
       su tipo (paso superior, paso inferior, pasarela, puente sobre agua o sobre la vía, alcantarilla, a nivel) y
       los ramales a menos de 350 m; luego los tramos de la autopista con sus pistas, `lit` y puentes.
@@ -88,19 +93,9 @@ def tiles(x0, x1, y0, y1, name, step=0.01):
     """OSM `map` boxes over a grid-metre box, cached per box and merged into raw/osm/map-<name>.json."""
     cs = [unloc(x, y) for x in (x0, x1) for y in (y0, y1)]
     la0, la1 = min(c[0] for c in cs), max(c[0] for c in cs); lo0, lo1 = min(c[1] for c in cs), max(c[1] for c in cs)
-    T = RAW / 'osm' / 'tiles'; T.mkdir(parents=True, exist_ok=True)
     els = {}
     def fetch(a, b, c, d):
-        f = T / f'{a:.4f}_{b:.4f}_{c:.4f}_{d:.4f}.json'
-        if not f.exists():
-            try: data = get(f'https://api.openstreetmap.org/api/0.6/map.json?bbox={a:.5f},{b:.5f},{c:.5f},{d:.5f}')
-            except urllib.error.HTTPError as e:
-                if e.code != 400: raise
-                mx, my = (a+c)/2, (b+d)/2
-                for q in [(a, b, mx, my), (mx, b, c, my), (a, my, mx, d), (mx, my, c, d)]: fetch(*q)
-                return
-            f.write_bytes(data)
-        for e in json.load(open(f))['elements']: els[(e['type'], e['id'])] = e
+        for e in tiles_box(a, b, c, d): els[(e['type'], e['id'])] = e
     lo = lo0
     while lo < lo1:
         la = la0
@@ -112,6 +107,47 @@ def tiles(x0, x1, y0, y1, name, step=0.01):
 
 def cmd_tiles(x0, x1, y0, y1, name):
     tiles(*map(float, (x0, x1, y0, y1)), name)
+
+def cmd_tiles_comuna(name='comuna', *bases):
+    """The OSM `map` boxes over the whole commune: a 0,01° grid aligned to whole degrees, skipping the boxes that do
+    not reach the commune (300 m margin) and, when raw/osm/map-todo.json exists, those inside its box (the old model,
+    -4000 5600 -4200 4700); merged with raw/osm/map-<base>.json for each base there is (by default todo and este)."""
+    from common import comuna, in_ring
+    R = comuna(); xs, ys = [p[0] for p in R], [p[1] for p in R]
+    cs = [unloc(x, y) for x in (min(xs)-300, max(xs)+300) for y in (min(ys)-300, max(ys)+300)]
+    la0, la1 = min(c[0] for c in cs), max(c[0] for c in cs); lo0, lo1 = min(c[1] for c in cs), max(c[1] for c in cs)
+    have = [b for b in bases or ('todo', 'este') if (RAW / 'osm' / f'map-{b}.json').exists()]
+    old = lambda p: 'todo' in have and -4000 <= p[0] <= 5600 and -4200 <= p[1] <= 4700
+    def near(p, m=300):
+        if in_ring(p, R): return True
+        return min(segd(p, R[i-1], R[i]) for i in range(len(R))) < m
+    els, n, k0 = {}, 0, math.floor(lo0*100)
+    for b in have:
+        for e in json.load(open(RAW / 'osm' / f'map-{b}.json'))['elements']: els[(e['type'], e['id'])] = e
+    for i in range(k0, math.ceil(lo1*100)):
+        for j in range(math.floor(la0*100), math.ceil(la1*100)):
+            a, b, c, d = i/100, j/100, (i+1)/100, (j+1)/100
+            corners = [loc(x, y) for x in (a, c) for y in (b, d)]
+            if all(old(q) for q in corners): continue
+            pts = corners + [loc((a+c)/2, (b+d)/2)] + [loc(a+(c-a)*u/4, b+(d-b)*v/4) for u in range(5) for v in range(5)]
+            if not any(near(q) for q in pts) and not any(a <= unloc(*q)[1] <= c and b <= unloc(*q)[0] <= d for q in R): continue
+            n += 1
+            for e in tiles_box(a, b, c, d): els[(e['type'], e['id'])] = e
+    out = RAW / 'osm' / f'map-{name}.json'; out.write_text(json.dumps({'elements': list(els.values())}))
+    print(f'{n} cajas; raw/osm/{out.name}: {len(els)} elementos', file=sys.stderr)
+
+def tiles_box(a, b, c, d):
+    """One OSM `map` box (lon a..c, lat b..d), cached in raw/osm/tiles/ and split in four when it has too many nodes."""
+    T = RAW / 'osm' / 'tiles'; T.mkdir(parents=True, exist_ok=True)
+    f = T / f'{a:.4f}_{b:.4f}_{c:.4f}_{d:.4f}.json'
+    if not f.exists():
+        try: data = get(f'https://api.openstreetmap.org/api/0.6/map.json?bbox={a:.5f},{b:.5f},{c:.5f},{d:.5f}')
+        except urllib.error.HTTPError as e:
+            if e.code != 400: raise
+            mx, my = (a+c)/2, (b+d)/2
+            return [e for q in [(a, b, mx, my), (mx, b, c, my), (a, my, mx, d), (mx, my, c, d)] for e in tiles_box(*q)]
+        f.write_bytes(data)
+    return json.load(open(f))['elements']
 
 # ---------------------------------------------------------------- river
 def river(name, osm=None):
@@ -322,7 +358,8 @@ def cmd_line(name, *args):
     length = lambda c: sum(math.dist(c[i], c[i+1]) for i in range(len(c)-1))
     chains.sort(key=length, reverse=True)
     print(f'{len(W)} vías -> {len(chains)} cadenas; las más largas: ' + ', '.join(f'{length(c):.0f} m' for c in chains[:4]), file=sys.stderr)
-    inm = lambda p: pg.XMIN-300 < p[0] < pg.XMAX+300 and pg.YMIN-300 < p[1] < pg.YMAX+300
+    from common import comuna, near_ring
+    R = comuna(); inm = lambda p: near_ring(p, R, 300)   # the commune, with a 300 m margin
     A = chains[0]
     if '--mid' in kw:
         B = chains[1]; mid, seps = [], []
@@ -367,7 +404,8 @@ def cmd_cruces(*args):
     """Every way of OSM that crosses the Ruta 5 inside the model, grouped by structure, with its type."""
     name = args[0] if args else 'este'
     mw, other = motorway(name)
-    inside = lambda p: pg.XMIN < p[0] < pg.XMAX and pg.YMIN < p[1] < pg.YMAX
+    from common import comuna, in_ring
+    R = comuna(); inside = lambda p: in_ring(p, R)    # the model is the commune
     links = [(t, pts) for e, t, pts in other if t.get('highway') in ('motorway_link', 'trunk_link')]
     found = []
     for e, t, pts in other:
@@ -405,7 +443,8 @@ def cmd_calzadas(*args):
     """The Ruta 5's two carriageways and its motorway_link ramps -> data/ruta5.json (R5 in src/js/66-ruta5.js, via build.py)."""
     name = args[0] if args else 'este'
     mw, other = motorway(name)
-    near = lambda p, m=150: pg.XMIN-m < p[0] < pg.XMAX+m and pg.YMIN-m < p[1] < pg.YMAX+m
+    from common import comuna, near_ring
+    R = comuna(); near = lambda p, m=150: near_ring(p, R, m)    # the model is the commune
     mw = [w for w in mw if any(near(p, 300) for p in w[2])]
     nid = lambda w: (w[0]['nodes'][0], w[0]['nodes'][-1])
     st, en = {}, {}
@@ -495,6 +534,6 @@ def cmd_vial(*args):
     img.convert('RGB').save(out); print(out.relative_to(ROOT), img.size)
 
 if __name__ == '__main__':
-    cmds = {'check': cmd_check, 'panel': cmd_panel, 'tiles': cmd_tiles, 'line': cmd_line, 'cruces': cmd_cruces, 'calzadas': cmd_calzadas, 'vial': cmd_vial}
+    cmds = {'check': cmd_check, 'panel': cmd_panel, 'tiles': cmd_tiles, 'tiles-comuna': cmd_tiles_comuna, 'line': cmd_line, 'cruces': cmd_cruces, 'calzadas': cmd_calzadas, 'vial': cmd_vial}
     if len(sys.argv) < 2 or sys.argv[1] not in cmds: raise SystemExit(__doc__)
     cmds[sys.argv[1]](*sys.argv[2:])

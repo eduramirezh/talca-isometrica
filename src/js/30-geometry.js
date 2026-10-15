@@ -66,9 +66,9 @@ GB.prototype.onGround=function(q,off,col){
   for(let j=1;j<q.length-1;j++){this.I[this.ni++]=base;this.I[this.ni++]=base+j;this.I[this.ni++]=base+j+1;}};
 // drape(src): src holds flat ground layers (y = small layer offset). Each triangle is cut along the terrain mesh's
 // edges (x and y grid lines and the cell diagonals), so every piece lies inside one terrain triangle and, raised by
-// E(), stays coplanar with it: the layer offsets of a few centimetres keep working on any slope. The cuts include the
-// grid's outer lines, so a piece is either inside the terrain or outside it (rivers and roads that run past the
-// diorama's edge): the outside ones are dropped.
+// E(), stays coplanar with it: the layer offsets of a few centimetres keep working on any slope. A piece in a cell
+// outside the commune is dropped (rivers and roads that run past the diorama's edge), and one in a cell the limit
+// crosses is cut to the commune's part of the cell (LIMT).
 const CUTS=[p=>(p[0]-EX0)/ES,p=>(p[1]-EY0)/ES,p=>(p[0]-EX0+p[1]-EY0)/ES];
 function cutAt(q,f,k){const A=[],B=[];for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length],fp=f(p),fr=f(r);
     if(fp<=k)A.push(p);if(fp>=k)B.push(p);
@@ -82,7 +82,8 @@ function drapeQ(G,q,off,col){let polys=[q];
       if(q.length>2)nxt.push(q);}
     polys=nxt;}
   for(const q of polys){let cx=0,cy=0;for(const p of q){cx+=p[0];cy+=p[1];}
-    if(inTerrain(cx/q.length,cy/q.length))G.onGround(q,off,col);}}
+    const c=cellOf(cx/q.length,cy/q.length);if(c<0||!CM[c])continue;
+    if(CM[c]===1)G.onGround(q,off,col);else for(const t of LIMT.get(c)){const r=clipTo(q,t);if(r.length>2)G.onGround(r,off,col);}}}
 function drape(src){
   const out=new GB(src.nv*2);const P=src.P,C=src.C,I=src.I;
   for(let t=0;t<src.ni;t+=3){const a=I[t]*3,b=I[t+1]*3,c=I[t+2]*3;

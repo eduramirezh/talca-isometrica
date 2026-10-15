@@ -12,7 +12,10 @@ const SL=[];
   want.forEach((list,nm)=>{let acc=0;const every=nm==='Alameda'?900:650;
     list.forEach(s=>{for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<30){acc+=L;continue;}
       if(acc<=0||acc>every){const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];if(Math.abs(m[0])<3200&&Math.abs(m[1])<3400){SL.push({t:nm,x:m[0],y:m[1],dx:b[0]-a[0],dy:b[1]-a[1],w:false});acc=1;}}else acc+=L;}});});
-  [['Río Claro','claro',25],['Río Claro','claro',42],['Río Lircay','lircay',32],['Estero Piduco','piduco',83],['Estero Piduco','piduco',42]].forEach(([t,k,i])=>{const pts=dec(DATA.water[k]);const a=pts[i],b=pts[i+1];SL.push({t,x:(a[0]+b[0])/2,y:(a[1]+b[1])/2,dx:b[0]-a[0],dy:b[1]-a[1],w:true});});
+  // the rivers: each label on the segment of the OSM axis nearest to its point (grid metres)
+  [['Río Claro','claro',-1593,872],['Río Claro','claro',-2916,-1198],['Río Claro','claro',2932,7645],['Río Lircay','lircay',3198,4293],['Río Lircay','lircay',8677,2158],
+   ['Estero Piduco','piduco',680,-1264],['Estero Piduco','piduco',2966,-2243],['Estero Piduco','piduco',6654,-3266]].forEach(([t,k,x,y])=>{const pts=dec(DATA.water[k]);
+    let i=0,bd=1e18;for(let j=0;j<pts.length-1;j++){const d=segDist2(x,y,pts[j][0],pts[j][1],pts[j+1][0],pts[j+1][1]);if(d<bd){bd=d;i=j;}}const a=pts[i],b=pts[i+1];SL.push({t,x:(a[0]+b[0])/2,y:(a[1]+b[1])/2,dx:b[0]-a[0],dy:b[1]-a[1],w:true});});
   SL.forEach(l=>{const e=document.createElement('div');e.className='street'+(l.w?' water':'');e.textContent=l.t;overlay.appendChild(e);l.el=e;});
 })();
 let showStreets=true;

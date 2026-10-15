@@ -13,16 +13,18 @@ Salida (metros de grilla; nodos de la grilla, no celdas):
   s    distancia entre nodos (m)
   n    [nx, ny]  nodos por fila y número de filas (filas de sur a norte)
   z0   altura de la Plaza de Armas sobre el nivel del mar (m); las alturas son relativas a ella
-  h    alturas en decímetros, por filas, codificadas en delta respecto del valor anterior
+  h    alturas en decímetros, por filas, codificadas en delta respecto del valor anterior. Los nodos a más de
+       KEEP celdas fuera del límite de la comuna repiten el valor anterior (delta 0): la plantilla no los usa
 
   python elevation.py            -> data/elevation.json
   python elevation.py stats      -> además compara bruto y filtrado por zonas
 """
 import gzip, json, math, struct, sys
-from common import RAW, DATA, unloc, require
+from common import RAW, DATA, unloc, require, EXT, comuna, in_ring
 
 HGT = RAW / 'dem' / 'S36W072.hgt.gz'
-XMIN, XMAX, YMIN, YMAX = -4000, 5600, -4200, 4700     # mismo recorte que process_geometry.py
+XMIN, XMAX, YMIN, YMAX = EXT                          # la caja de la comuna (common.EXT), como process_geometry.py
+KEEP = 4                                               # nodos fuera del límite que se guardan (celdas de margen)
 S, FINE = 40, 20                                       # grilla de salida y grilla de trabajo (m)
 OPEN_R = 2                                             # radio de la apertura, en celdas de FINE (ventana 5x5 = 100 m)
 SIGMA = 1.5                                            # suavizado gaussiano, en celdas de FINE (30 m)
@@ -71,15 +73,26 @@ def main():
 
     nx, ny = math.ceil((XMAX - XMIN) / S) + 1, math.ceil((YMAX - YMIN) / S) + 1
     z0 = fine(smooth, 0, 0)
+    R = comuna(); keep = bytearray(nx * ny)          # the nodes the template uses: inside the limit or near it
+    for j in range(ny):
+        for i in range(nx): keep[j*nx+i] = in_ring((XMIN + i * S, YMIN + j * S), R)
+    for k in range(len(R)):
+        a, b = R[k-1], R[k]; n = int(math.dist(a, b) / (S / 2)) + 1
+        for t in range(n + 1):
+            ci, cj = round((a[0] + (b[0]-a[0])*t/n - XMIN) / S), round((a[1] + (b[1]-a[1])*t/n - YMIN) / S)
+            for j in range(max(0, cj-KEEP), min(ny, cj+KEEP+1)):
+                for i in range(max(0, ci-KEEP), min(nx, ci+KEEP+1)): keep[j*nx+i] = 1
     h, prev = [], 0
     for j in range(ny):
         for i in range(nx):
-            v = round((fine(smooth, XMIN + i * S, YMIN + j * S) - z0) * 10); h.append(v - prev); prev = v
+            if keep[j*nx+i]: v = round((fine(smooth, XMIN + i * S, YMIN + j * S) - z0) * 10)
+            else: v = prev
+            h.append(v - prev); prev = v
     out = {'o': [XMIN, YMIN], 's': S, 'n': [nx, ny], 'z0': round(z0, 1), 'h': h}
     s = json.dumps(out, separators=(',', ':'))
     (DATA / 'elevation.json').write_text(s)
-    vals = [fine(smooth, XMIN + i * S, YMIN + j * S) for j in range(ny) for i in range(nx)]
-    print(f'data/elevation.json: {len(s)} bytes, {nx}x{ny} nodos de {S} m, '
+    vals = [fine(smooth, XMIN + i * S, YMIN + j * S) for j in range(ny) for i in range(nx) if keep[j*nx+i]]
+    print(f'data/elevation.json: {len(s)} bytes, {nx}x{ny} nodos de {S} m ({sum(keep)} en la comuna), '
           f'{min(vals):.0f}–{max(vals):.0f} m s.n.m., plaza {z0:.1f} m')
 
     if 'stats' in sys.argv:   # cuánto quita el filtro: debería ser poco en el campo y algo más en el centro

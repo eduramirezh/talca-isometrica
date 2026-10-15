@@ -3,17 +3,17 @@
 function walkBase(G,D){const t0=performance.now(),B=draped(G),nv=G.nv,sw=hex('#C3C1BA'),curb=hex('#E8E5DC');diagonalBase(G,D);walkRuns();const t1=performance.now();
   for(const w of WALKS){sideRibbon(B,w.pts,w.side,w.hw-w.iw+CURB,w.iw+WALK_OUT-CURB,WALK_Y,sw);sideRibbon(B,w.pts,w.side,w.hw-w.iw,CURB,CURB_Y,curb);}
   STREET.zebras=crossings(B);Object.assign(STREET,{walks:WALKS.length,walkVerts:G.nv-nv,walkMs:Math.round(performance.now()-t0),runMs:Math.round(t1-t0)});}
-const MAPC=(XMIN+XMAX)/2,MAPZ=(YMIN+YMAX)/2;
 function buildBase(){
   const B=new GB(1<<17);
   // farmland parcels outside urban area
   const r=rng(4242);
   for(let x=XMIN;x<XMAX;x+=160){for(let y=YMIN;y<YMAX;y+=130){
+    if(!CM[cellOf(x+80,y+65)]&&!CM[cellOf(x,y)]&&!CM[cellOf(x+160,y+130)]&&!CM[cellOf(x,y+130)]&&!CM[cellOf(x+160,y)])continue; // outside the commune
     let px=x,w=160;
     while(px<x+160){const pw=Math.min(40+r()*120,x+160-px);const cx=px+pw/2,cy=y+65;
       if(blockAt(cx,cy)<0&&blockAt(px+3,y+3)<0&&blockAt(px+pw-3,y+127)<0&&Math.max(wildAt(cx,cy),wildAt(px,y),wildAt(px+pw,y+130))<0.35){
         B.quadXY([[px+1.5,y+1.5],[px+pw-1.5,y+1.5],[px+pw-1.5,y+128.5],[px+1.5,y+128.5]],0.02,pick(r,PAL.fields));
-        if(r()<.07){for(let yy=y+4;yy<y+126;yy+=6)PO_FIELD.push([px+2,yy,0.9+r()*0.4,r()]);}
+        if(r()<.07){for(let yy=y+4;yy<y+126;yy+=6)if(inTerrain(px+2,yy))PO_FIELD.push([px+2,yy,0.9+r()*0.4,r()]);}
       }
       px+=pw;}
   }}

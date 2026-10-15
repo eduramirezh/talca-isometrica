@@ -63,7 +63,7 @@
     S.dy=padAt(-56,-55,56.5,55.2);
     {const row0=inset(PZ,4.5),row1=inset(PZ,8.5);
       for(let gx=Math.floor((-57-XMIN)/OC);gx<=Math.floor((57-XMIN)/OC);gx++)for(let gy=Math.floor((-56-YMIN)/OC);gy<=Math.floor((56-YMIN)/OC);gy++){
-        const c=[XMIN+(gx+.5)*OC,YMIN+(gy+.5)*OC];if(!pip(c,PZ)||LAWNS.some(q=>pip(c,q))||(pip(c,row0)&&!pip(c,row1)))continue;occ[gy*ocW+gx]=1;}}
+        const c=[XMIN+(gx+.5)*OC,YMIN+(gy+.5)*OC];if(!pip(c,PZ)||LAWNS.some(q=>pip(c,q))||(pip(c,row0)&&!pip(c,row1)))continue;occ.set(gx,gy,1);}}
     // paving, darker bands every 6 m, sett round the west fountain
     S.flat(PZ,0.30,K.pave);const pin=inset(PZ,.6);
     for(let k=-54;k<=54;k+=6){for(const [a,b] of [[[k,-60],[k,60]],[[-60,k],[60,k]]]){const s=clip(a,b,pin);if(!s)continue;

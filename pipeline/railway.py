@@ -1,12 +1,12 @@
 """La vía férrea desde OpenStreetMap: la Línea Central, el ramal a Constitución y lo que va sobre ellas.
 
-  python railway.py check este        # revisa, sin escribir nada
-  python railway.py write este        # además reescribe `ferrocarril` y `ramal` en config/trazados.json
+  python railway.py check comuna      # revisa, sin escribir nada
+  python railway.py write comuna      # además reescribe `ferrocarril` y `ramal` en config/trazados.json
 
-Lee raw/osm/map-<nombre>.json (la API `map` por cajas: python traces.py tiles 1300 5200 -4400 4900 este) y:
+Lee raw/osm/map-<nombre>.json (la API `map` por cajas: python traces.py tiles-comuna, toda la comuna) y:
 
   * encadena la Línea Central (railway=rail, usage=main) y el ramal (usage=branch) como `traces.py line`, simplificadas
-    a 1,5 m, de norte a sur y recortadas a la maqueta con 300 m de margen;
+    a 1,5 m, de norte a sur y recortadas a la comuna con 300 m de margen;
   * cruza cada línea con las calles del mapa (data/geometry.json) y decide, con las vías de OSM del mismo cruce, si
     la calle pasa bajo la vía (la vía con bridge=yes o la calle con tunnel=yes / layer<0: «bajo») o la cruza a nivel
     (un nodo railway=level_crossing a menos de 15 m: «nivel», con barreras, luces y campana según sus etiquetas);
@@ -34,7 +34,7 @@ def chain(name, usage):
     return [loc(lo, la) for la, lo in json.loads(out.getvalue())]
 
 def survey(name):
-    el = json.load(open(require(RAW / 'osm' / f'map-{name}.json', f'Ejecute: python traces.py tiles 1300 5200 -4400 4900 {name}')))['elements']
+    el = json.load(open(require(RAW / 'osm' / f'map-{name}.json', f'Ejecute: python traces.py tiles-comuna {name}')))['elements']
     N = {e['id']: e for e in el if e['type'] == 'node'}
     P = lambda w: [loc(N[n]['lon'], N[n]['lat']) for n in w['nodes'] if n in N]
     ways = [e for e in el if e['type'] == 'way']
@@ -42,7 +42,8 @@ def survey(name):
     for k, l in lines.items():
         print(f'{k}: {len(l)} puntos, {sum(math.dist(l[i], l[i+1]) for i in range(len(l)-1)):.0f} m, '
               f'de ({l[0][0]:.0f}, {l[0][1]:.0f}) a ({l[-1][0]:.0f}, {l[-1][1]:.0f})')
-    inm = lambda p: pg.XMIN <= p[0] <= pg.XMAX and pg.YMIN <= p[1] <= pg.YMAX
+    from common import comuna, in_ring
+    lim = comuna(); inm = lambda p: in_ring(p, lim)      # the model is the commune
     rails = [(w, P(w)) for w in ways if (w.get('tags') or {}).get('railway') == 'rail' and w['tags'].get('usage') in ('main', 'branch')]
     roads = [(w, P(w)) for w in ways if 'highway' in (w.get('tags') or {})]
     lcs = [(n, loc(n['lon'], n['lat'])) for n in N.values() if (n.get('tags') or {}).get('railway') == 'level_crossing']
@@ -115,7 +116,7 @@ def survey(name):
 
 def cmd_check(name): survey(name)
 
-FUENTE = ('OpenStreetMap, tomado una vez de la API `map` (python pipeline/railway.py write este): la Línea Central '
+FUENTE = ('OpenStreetMap, tomado una vez de la API `map` (python pipeline/railway.py write comuna): la Línea Central '
           '(vías railway=rail «Línea Central Sur», usage=main, trocha de 1,676 m, electrified=contact_line), simplificada '
           'a 1,5 m. Reemplazó en octubre de 2026 al trazado a mano del tramo central (hasta 26 m al oriente de la vía '
           'principal en la estación) y del tramo sur (hasta ~500 m fuera). `postes`: los postes de la catenaria '
@@ -123,7 +124,7 @@ FUENTE = ('OpenStreetMap, tomado una vez de la API `map` (python pipeline/railwa
           'calle del mapa que cruza la vía, bajo ella («bajo»: la vía con bridge=yes o la calle con tunnel=yes) o a nivel '
           '(«nivel», con las barreras y luces del nodo railway=level_crossing).')
 FUENTE_RAMAL = ('OpenStreetMap, como la Línea Central: el ramal Talca–Constitución (vías railway=rail usage=branch, trocha '
-                'de 1 m, sin electrificar), desde el tope de su vía junto a la estación hasta el borde sur de la maqueta.')
+                'de 1 m, sin electrificar), desde el tope de su vía junto a la estación hasta 300 m fuera del límite sur de la comuna.')
 
 def block(lines, pasos, masts, sigs):
     """The `ferrocarril` entry of config/trazados.json as text, with the ramal inside it: each list of points on one

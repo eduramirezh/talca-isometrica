@@ -1,6 +1,12 @@
   // ==== hito: enlaces-ruta-5 ====
-  // Every crossing of the Ruta 5 in the model, from OpenStreetMap (`python pipeline/traces.py cruces`, north to south;
-  // `traces.py vial` draws them over the Esri image):
+  // Every crossing of the Ruta 5 in the model, from OpenStreetMap (`python pipeline/traces.py cruces comuna`, north to
+  // south; `traces.py vial` draws them over the Esri image):
+  //   (7377, 8848) Estero Panguilemo, with a track under it: the motorway on two bridges of 124 m (w101547242,
+  //                w101547260), at the commune's northern limit; neither the stream nor the track is on the map, so
+  //                the motorway stays on the ground there
+  //   (6693, 7620) Pasarela Aldea Campesina, a footbridge (w101554009): not modelled yet
+  //   (6307, 7028) Cruce Talca - Pelarco: the road to Pelarco over it (w83188779), a partial cloverleaf
+  //   (5046, 5128) a footbridge (w101557387): not modelled yet
   //   (4128, 3717) Río Lircay: the motorway on two bridges (puente-lircay-ruta5)
   //   (3958, 3485) a road under the motorway (w373726646, tunnel), which crosses it on two 81 m bridges (w151617653,
   //                w474496436; puente-lircay-ruta5); the Enlace Avenida Lircay's ramps join 70 m south
@@ -16,8 +22,9 @@
   //   (2507, -1080) Enlace 8 Sur: Avenida 8 Sur over it on two bridges (w478951507, w478951521)
   //   (2328, -1854) Estero Piduco: the motorway on two bridges (puente-piduco-ruta5)
   //   (2144, -2642) Enlace El Tabaco (to Pirque), over it (w83143729)
-  // and six culverts it needs no model for (the canals Sandoval, Baeza and Parrón, a stream, a ditch, an unnamed river). Nothing crosses it
-  // at grade. Their ramps (motorway_link) are drawn by ruta5Base.
+  // and culverts it needs no model for (the canals Sandoval, Baeza and Parrón, the Canal de Regadío Pencahue, a canal
+  // at the Pelarco junction, a stream, a ditch, an unnamed river). No road crosses it at grade; three service roads of
+  // OSM end on its pavement (4460, 4188; 4877, 4854; 6099, 6739). Their ramps (motorway_link) are drawn by ruta5Base.
   // In Talca the motorway runs in a cutting under its overpasses (Esri image; a photo of 2011 on Commons, CC BY-SA 2.0),
   // with the frontage roads beside it at street level, a few metres from the bridges' ends. The relief, a node every
   // 40 m, cannot hold a cutting 40 m wide, so the overpasses rise instead, 2-4 m over the ends of the streets on ramps
@@ -37,7 +44,8 @@
       [[[2728,-35.5],[2736,-37],[2758,-42.5],[2766,-44.5]],10.6,2],                                   // 2 Norte, both bridges
       [[[2651,-370],[2658.5,-372],[2681,-378],[2689,-380.5]],11.8,2],                                // San Miguel, both
       [[[2472,-1071],[2493,-1076],[2519.5,-1082.5],[2535,-1086.5]],10.6,2.2],                         // 8 Sur, both
-      [[[2060,-2623],[2096,-2631],[2123,-2637],[2167,-2647],[2189,-2653],[2215,-2659]],5.5,4]])        // El Tabaco
+      [[[2060,-2623],[2096,-2631],[2123,-2637],[2167,-2647],[2189,-2653],[2215,-2659]],5.5,4],         // El Tabaco
+      [[[6259,7062],[6283,7045],[6328,7012],[6350,6997]],5.5,4]])                                      // Cruce Talca - Pelarco
       r5Over(S,K,pts,hw,top,{lamps:true});
     // the motorway over the railway: 8.6 m, on embankments of 200 m each side (the road at 3958, 3485: puente-lircay-ruta5)
     {const H=E(3379,2703)+8.6;for(const k of [0,1])r5Raise(S,K,k,[[3379,2703,null,240],[3379,2703,H,42],[3379,2703,H,-42],[3379,2703,null,-240]],[[[3389,2744],[3369,2661]]],{pier:18,lamps:true});}

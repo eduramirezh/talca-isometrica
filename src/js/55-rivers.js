@@ -35,9 +35,10 @@ function riverBase(B,BW,k,[w,rb]){
     for(const t of T.ShapeUtils.triangulateShape(V(outer),isl.map(V)))BW.face(t.map(i=>[all[i][0],0.11,-all[i][1]]),[0,1,0],PAL.water);}
   // shore strips, outside the water: right of a counter-clockwise outer ring, left of a counter-clockwise island.
   // None on ring edges the clip laid along the model's border, nor on the edge where the area ends across the river,
-  // and in water colour where it would lie in another river's water: the Piduco's mouths in the Claro, where the two
-  // OSM areas leave a crack of a few metres between them
-  const wet=p=>Object.keys(RIV).some(j=>j!==k&&inRiver(j,p[0],p[1]));
+  // and in water colour where it would lie in another river's water, or in another piece of the same river's: the
+  // Piduco's mouths in the Claro, where the two OSM areas leave a crack of a few metres between them, and the cut
+  // lines across the Claro and the Lircay where their OSM water changes multipolygon (a strip is outside its own piece)
+  const wet=p=>Object.keys(RIV).some(j=>inRiver(j,p[0],p[1]));
   const lines=riverLines(k),o=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
   const cross=(a,b)=>lines.some(axis=>axis.some((c,i)=>i<axis.length-1&&o(a,b,c)*o(a,b,axis[i+1])<0&&o(c,axis[i+1],a)*o(c,axis[i+1],b)<0));
   const skip=(a,b)=>[XMIN,XMAX].some(v=>Math.abs(a[0]-v)<1&&Math.abs(b[0]-v)<1)||[YMIN,YMAX].some(v=>Math.abs(a[1]-v)<1&&Math.abs(b[1]-v)<1)||cross(a,b);
@@ -62,9 +63,14 @@ function riverBase(B,BW,k,[w,rb]){
 // riversRelevel() puts the levels back after the pads, which set every node within 40 m of their box.
 const RIV_LEV=new Float32Array(EN_).fill(NaN);
 function riversLevel(){const ks=Object.keys(RIV);if(!ks.length)return;const ch=new Uint8Array(EN_);
+  // the nodes inside each area's outer ring, or within w/2 of the ribbon, each tested only within its box
+  const nodes=(x0,y0,x1,y1,f)=>{for(let j=Math.max(0,Math.ceil((y0-EY0)/ES));j<=Math.min(ENY-1,Math.floor((y1-EY0)/ES));j++)
+    for(let i=Math.max(0,Math.ceil((x0-EX0)/ES));i<=Math.min(ENX-1,Math.floor((x1-EX0)/ES));i++)if(f(EX0+i*ES,EY0+j*ES))ch[j*ENX+i]=1;};
   for(const k of ks){const [w]=DATA.widths[k];
-    const onRun=(x,y)=>riverRuns(k).some(run=>run.some((a,i)=>i<run.length-1&&segDist2(x,y,a[0],a[1],run[i+1][0],run[i+1][1])<w*w/4));
-    for(let j=0;j<ENY;j++)for(let i=0;i<ENX;i++){const x=EX0+i*ES,y=EY0+j*ES;if(RIV[k].some(p=>pip([x,y],p[0]))||onRun(x,y))ch[j*ENX+i]=1;}}
+    for(const [o] of RIV[k]){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of o){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
+      nodes(x0,y0,x1,y1,(x,y)=>pip([x,y],o));}
+    for(const run of riverRuns(k))for(let i=0;i<run.length-1;i++){const a=run[i],b=run[i+1],r=w/2;
+      nodes(Math.min(a[0],b[0])-r,Math.min(a[1],b[1])-r,Math.max(a[0],b[0])+r,Math.max(a[1],b[1])+r,(x,y)=>segDist2(x,y,a[0],a[1],b[0],b[1])<r*r);}}
   for(let j=0;j<ENY;j++)for(let i=0;i<ENX;i++){const k=j*ENX+i;if(!ch[k])continue;let s=0,n=0;
     for(let dj=-2;dj<=2;dj++)for(let di=-2;di<=2;di++){const ii=i+di,jj=j+dj;if(ii<0||jj<0||ii>=ENX||jj>=ENY||di*di+dj*dj>5)continue;const kk=jj*ENX+ii;if(ch[kk]){s+=EH[kk];n++;}}
     RIV_LEV[k]=s/n;}
@@ -79,7 +85,7 @@ function riversOcc(){for(const k in RIV){
     for(let gy=Math.max(0,Math.floor((y0-YMIN)/OC));gy<=Math.min(ocH-1,Math.floor((y1-YMIN)/OC));gy++){const cy=YMIN+(gy+.5)*OC,xs=[];
       for(const [a,b] of ed)if((a[1]>cy)!==(b[1]>cy))xs.push(a[0]+(cy-a[1])*(b[0]-a[0])/(b[1]-a[1]));
       xs.sort((p,q)=>p-q);
-      for(let i=0;i+1<xs.length;i+=2)for(let gx=Math.max(0,Math.ceil((xs[i]-XMIN)/OC-.5));gx<=Math.min(ocW-1,Math.floor((xs[i+1]-XMIN)/OC-.5));gx++)occ[gy*ocW+gx]=1;}}
+      for(let i=0;i+1<xs.length;i+=2)for(let gx=Math.max(0,Math.ceil((xs[i]-XMIN)/OC-.5));gx<=Math.min(ocW-1,Math.floor((xs[i+1]-XMIN)/OC-.5));gx++)occ.set(gx,gy,1);}}
   const [w,rb]=DATA.widths[k],hw=w/2+rb;
   for(const P of RIV[k])for(const r of P)for(let i=0;i<r.length;i++)occBand(r[i],r[(i+1)%r.length],rb); // the gravel strip along every shore
   for(const run of riverRuns(k))for(let i=0;i<run.length-1;i++)occBand(run[i],run[i+1],hw);
@@ -87,7 +93,7 @@ function riversOcc(){for(const k in RIV){
 // occupies the cells within r of the segment a-b
 function occBand(a,b,r){for(let gx=Math.floor((Math.min(a[0],b[0])-r-XMIN)/OC);gx<=Math.floor((Math.max(a[0],b[0])+r-XMIN)/OC);gx++)
   for(let gy=Math.floor((Math.min(a[1],b[1])-r-YMIN)/OC);gy<=Math.floor((Math.max(a[1],b[1])+r-YMIN)/OC);gy++){
-    if(gx<0||gy<0||gx>=ocW||gy>=ocH)continue;if(segDist2(XMIN+(gx+.5)*OC,YMIN+(gy+.5)*OC,a[0],a[1],b[0],b[1])<r*r)occ[gy*ocW+gx]=1;}}
+    if(gx<0||gy<0||gx>=ocW||gy>=ocH)continue;if(segDist2(XMIN+(gx+.5)*OC,YMIN+(gy+.5)*OC,a[0],a[1],b[0],b[1])<r*r)occ.set(gx,gy,1);}}
 // no lots or trees on the Ruta 5 (26 m) or the railway (6 m of ballast), plus a margin: both are OpenStreetMap's
 // lines now (only the rail's central stretch is hand-traced), and the lots along their frontage streets reached them
 function linesOcc(){for(const [d,hw] of [[DATA.ruta5,15],[DATA.rail,5]]){const p=chaikin(dec(d),2);for(let i=0;i<p.length-1;i++)occBand(p[i],p[i+1],hw);}}

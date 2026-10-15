@@ -189,7 +189,7 @@ function cityGen(B,Y){
           // where the block ends straight behind the lot: the yards of both sides reach its middle and meet there
           const back=()=>{let v=o0;for(;v<o0+120;v+=3){const p=P(u+w/2,v+3);if(blockAt(p[0],p[1])!==bi)break;}return (hw+v)/2;};
           // a rectangle free of other lots, of what occupied the raster before, of streets, and inside block bi
-          const fits=(u0,u1,v0,v1)=>{const q=Q(u0,u1,v0,v1);if(!lotFree(q))return false;
+          const fits=(u0,u1,v0,v1)=>{const q=Q(u0,u1,v0,v1);if(!q.every(p=>inTerrain(p[0],p[1]))||!lotFree(q))return false;
             const nu=Math.max(1,Math.ceil((u1-u0)/2.5)),nv=Math.max(1,Math.ceil((v1-v0)/2.5));
             for(let i=0;i<=nu;i++)for(let j=0;j<=nv;j++){const p=P(u0+(u1-u0)*i/nu,v0+(v1-v0)*j/nv);if(occAt(p[0],p[1])===1)return false;
               if((i===0||j===0||i===nu||j===nv)&&nearStreet(p[0],p[1],0.6))return false;}

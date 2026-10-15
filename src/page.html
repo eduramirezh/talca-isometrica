@@ -43,10 +43,11 @@
     <section class="pane" id="p-rutas" hidden></section>
     <section class="pane about" id="p-acerca" hidden>
       <h3>Cómo se hizo esta maqueta</h3>
-      <p>La trama urbana es real: cada manzana viene del Censo 2017 del INE y cada calle de OpenStreetMap. La ciudad está girada 5° para que la grilla de calles numeradas quede alineada con los ejes isométricos, como en los simuladores de ciudades.</p>
+      <p>La trama urbana es real: cada manzana viene del Censo 2017 del INE y cada calle de OpenStreetMap. La maqueta es la comuna de Talca, recortada por su límite, con la ciudad y el campo que la rodea. Está girada 5° para que la grilla de calles numeradas quede alineada con los ejes isométricos, como en los simuladores de ciudades.</p>
       <ul>
-        <li><b>Manzanas:</b> Censo 2017, INE (3.134 manzanas con datos y 322 sin información), vía el repositorio <a href="https://github.com/jiboncom/chile_geojson" target="_blank" rel="noopener">jiboncom/chile_geojson</a>.</li>
-        <li><b>Calles:</b> © colaboradores de <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL), tomadas del grafo vial de Talca del proyecto <a href="https://github.com/Shiroku36/cicloconecta" target="_blank" rel="noopener">cicloconecta</a>.</li>
+        <li><b>Manzanas:</b> Censo 2017, INE (las de la comuna de Talca: 2.811 manzanas con datos, 296 sin información y 21 de aldeas), vía el repositorio <a href="https://github.com/jiboncom/chile_geojson" target="_blank" rel="noopener">jiboncom/chile_geojson</a>.</li>
+        <li><b>Calles:</b> © colaboradores de <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL), tomadas del grafo vial de Talca del proyecto <a href="https://github.com/Shiroku36/cicloconecta" target="_blank" rel="noopener">cicloconecta</a> y, en el campo, de la API de OpenStreetMap.</li>
+        <li><b>Límite comunal:</b> el de OpenStreetMap (© colaboradores de OpenStreetMap, ODbL).</li>
         <li><b>Relieve:</b> modelo de elevación SRTM de la NASA (~30 m), vía los <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles de AWS</a>, filtrado para quitar techos y copas de árboles.</li>
         <li><b>Ubicaciones:</b> puntos de OpenStreetMap consultados en Mapcarta, fichas del Consejo de Monumentos Nacionales y sitios de cada institución. Cada ficha indica su fuente y el nivel de confianza.</li>
         <li><b>Direcciones sin coordenadas:</b> se ubicaron con la numeración de la grilla (100 números por cuadra; la cuadra de la plaza es la 700 en calles Norte y Sur y la 1100 en calles Oriente y Poniente).</li>
@@ -54,7 +55,8 @@
       <h3>Qué es aproximado</h3>
       <ul>
         <li>Los edificios se generan por algoritmo frente a cada calle real, con alturas según la densidad de viviendas del censo. Solo los hitos (Catedral, Corte, Mercado, Estadio y otros) tienen un modelo propio, simplificado.</li>
-        <li>Los ríos Claro y Lircay, el estero Piduco, la Ruta 5 y el tramo norte de la vía férrea son los de OpenStreetMap; el resto de la vía se trazó a partir de puntos conocidos (estación, pasos bajo nivel, puentes). Donde OpenStreetMap no tiene el agua del Claro o del Piduco, su ancho es aproximado.</li>
+        <li>Los ríos Claro y Lircay, el estero Piduco, la Ruta 5 y la vía férrea son los de OpenStreetMap. Donde OpenStreetMap no tiene el agua de un río (el Piduco aguas arriba de 6 Oriente, el Lircay en el extremo oriente de la comuna), su ancho es aproximado.</li>
+        <li>En el campo, las parcelas, las hileras de álamos y el matorral de los cerros son genéricos: no siguen los predios reales.</li>
         <li>El relieve está exagerado para que se note: unas 3 veces en el plano de la ciudad, donde el desnivel es de pocas decenas de metros, y menos en los cerros del poniente. El lector de la esquina inferior muestra la altura real.</li>
         <li>Bajo los hitos grandes (Estadio, Mall, Plaza de Armas) el terreno se nivela, como en una obra real.</li>
       </ul>
@@ -86,7 +88,7 @@
   <div id="readout" aria-live="off"><div class="a" id="ro-a">1 Norte ≈ 750</div><div class="b" id="ro-b">Frente a la Plaza de Armas</div></div>
   <div id="scale"><span id="sc-t">200 m</span><i id="sc-i" style="width:80px"></i></div>
 
-  <div id="loading"><div class="box"><div class="seal">TALCA<br>1742</div><p id="load-msg">Levantando 3.134 manzanas del Censo 2017…</p><p id="err" hidden></p></div></div>
+  <div id="loading"><div class="box"><div class="seal">TALCA<br>1742</div><p id="load-msg">Levantando 2.811 manzanas del Censo 2017…</p><p id="err" hidden></p></div></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

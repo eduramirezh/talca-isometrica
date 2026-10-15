@@ -33,7 +33,8 @@ function resize(){W=canvas.clientWidth;H=canvas.clientHeight;renderer.setSize(W,
 function wpp(){return (BASEH/view.zoom)/H;}
 function pan(dx,dy){const R=new T.Vector3().setFromMatrixColumn(cam.matrixWorld,0);const U=new T.Vector3().setFromMatrixColumn(cam.matrixWorld,1);U.y=0;U.normalize();const k=wpp();
   const mx=-R.x*dx*k+U.x*dy*k/Math.sin(EL),mz=-R.z*dx*k+U.z*dy*k/Math.sin(EL);view.tx+=mx;view.ty-=mz;clampView();placeCam();}
-function clampView(){view.tx=Math.max(XMIN,Math.min(XMAX,view.tx));view.ty=Math.max(YMIN,Math.min(YMAX,view.ty));view.zoom=Math.max(0.35,Math.min(26,view.zoom));}
+// the view's centre stays over the commune's box; the farthest zoom shows the whole commune (24 km from north to south)
+function clampView(){view.tx=Math.max(XMIN,Math.min(XMAX,view.tx));view.ty=Math.max(YMIN,Math.min(YMAX,view.ty));view.zoom=Math.max(0.12,Math.min(26,view.zoom));}
 const ray=new T.Raycaster(),plane=new T.Plane(new T.Vector3(0,1,0),0);
 // the camera aims at the y=0 plane; planeAt() is where a screen point meets it (zoom anchoring, which only needs
 // a stable reference), ground() is where it meets the terrain (readout, rotation centre)

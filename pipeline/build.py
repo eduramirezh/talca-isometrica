@@ -105,9 +105,12 @@ def land_uses(geo):
     """config/usos.json -> DATA.usos = {k: [uso, …], u: [[uso index, ring (delta-encoded), {opts} | 0], …]}.
     A `vivienda` entry is housing the Censo does not have: with `bi`, that block becomes built (type 3, as with
     manzanas.json); with `poly` (ground without a census block), a new built block is appended, ~35 dwellings/ha,
-    so that cityGen lays houses along the map's streets inside it."""
-    names, out = [], []
+    so that cityGen lays houses along the map's streets inside it. Entries with most of their vertices outside the
+    commune's limit (DATA.limit) are left out."""
+    names, out, lim = [], [], dec(geo['limit'])
     for u in json.load(open(CONFIG / 'usos.json'))['usos']:
+        r = u['poly'] if 'poly' in u else dec(geo['blocks'][u['bi']][3])
+        if sum(pip(p, lim) for p in r) < len(r) / 2: continue   # mostly outside the commune (in Maule): not drawn
         if u['uso'] == 'vivienda':
             if 'poly' in u:
                 r = u['poly']; A = abs(sum(r[i-1][0]*r[i][1]-r[i][0]*r[i-1][1] for i in range(len(r))))/2

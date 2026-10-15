@@ -21,19 +21,19 @@ function onCrossing(x,y,k){const s0=segs[k],gx=Math.floor((x-XMIN)/SG),gy=Math.f
   return false;}
 // BLK: the cells of the occupancy raster inside a built census block or a park (a scanline fill of each block)
 let BLK=null;
-function blockMask(){BLK=new Uint8Array(ocW*ocH);
+function blockMask(){BLK=new Grid();
   for(const b of blocks){if(!b.built&&b.A>=40000)continue;const r=b.r; // not the open ground of the outskirts
     for(let gy=Math.max(0,Math.floor((b.bb[1]-YMIN)/OC));gy<=Math.min(ocH-1,Math.floor((b.bb[3]-YMIN)/OC));gy++){const cy=YMIN+(gy+.5)*OC,xs=[];
       for(let i=0,j=r.length-1;i<r.length;j=i++){const a=r[i],c=r[j];if((a[1]>cy)!==(c[1]>cy))xs.push(a[0]+(cy-a[1])*(c[0]-a[0])/(c[1]-a[1]));}
       xs.sort((p,q)=>p-q);
-      for(let i=0;i+1<xs.length;i+=2)for(let gx=Math.max(0,Math.ceil((xs[i]-XMIN)/OC-.5));gx<=Math.min(ocW-1,Math.floor((xs[i+1]-XMIN)/OC-.5));gx++)BLK[gy*ocW+gx]=1;}}}
+      for(let i=0;i+1<xs.length;i+=2)for(let gx=Math.max(0,Math.ceil((xs[i]-XMIN)/OC-.5));gx<=Math.min(ocW-1,Math.floor((xs[i+1]-XMIN)/OC-.5));gx++)BLK.set(gx,gy,1);}}}
 function walkRuns(){blockMask();
   let k0=0;
   streets.forEach((s,si)=>{const n=s.pts.length-1,k1=k0;k0+=n;if(!walkOf(s)||s.bridge)return;const hw=swOf(s)/2,iw=walkOf(s),P=s.pts;
     for(const side of [1,-1]){let run=null;
       const at=(i,u)=>{const a=P[i],b=P[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1])||1,tx=(b[0]-a[0])/L,ty=(b[1]-a[1])/L,nx=-ty*side,ny=tx*side;
         return (v)=>[a[0]+tx*u+nx*v,a[1]+ty*u+ny*v];};
-      const behind=([x,y])=>{const gx=Math.floor((x-XMIN)/OC),gy=Math.floor((y-YMIN)/OC);return gx>=0&&gy>=0&&gx<ocW&&gy<ocH&&BLK[gy*ocW+gx]===1;};
+      const behind=([x,y])=>{const gx=Math.floor((x-XMIN)/OC),gy=Math.floor((y-YMIN)/OC);return gx>=0&&gy>=0&&gx<ocW&&gy<ocH&&BLK.get(gx,gy)===1;};
       const ok=(i,u)=>{const p=at(i,u),m=p(hw+(WALK_OUT-iw)/2),o=p(hw+WALK_OUT-0.2);
         return occAt(o[0],o[1])!==1&&occAt(...p(hw-iw+0.2))!==1&&!inMedian(...p(hw-iw+0.6))&&behind(p(hw+5))&&!onCrossing(m[0],m[1],k1+i);};
       const close=()=>{if(run&&run.pts.length>1&&Math.hypot(run.pts[0][0]-run.pts[run.pts.length-1][0],run.pts[0][1]-run.pts[run.pts.length-1][1])>2)WALKS.push(run);run=null;};
@@ -145,7 +145,7 @@ function carGeo(){const P=[],N=[],C=[],I=[],W=[1,1,1],G=[.2,.23,.28];
   box(-2.25,2.25,0,.8,-.9,.9,W,W);box(-1.35,.85,.8,1.3,-.74,.74,G,W);
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(P,3));g.setAttribute('normal',new T.Float32BufferAttribute(N,3));
   g.setAttribute('color',new T.Float32BufferAttribute(C,3));g.setIndex(I);return g;}
-function instCars(list){
+function instCars(list){list=list.filter(c=>inTerrain(c[0],c[1]));
   const mesh=new T.InstancedMesh(carGeo(),new T.MeshLambertMaterial({vertexColors:true}),list.length);
   const m=new T.Matrix4(),q=new T.Quaternion(),e=new T.Euler(0,0,0,'YZX'),s=new T.Vector3(),p=new T.Vector3(),col=new T.Color();
   list.forEach(([x,y,dx,dy,len,hs,c,k],i)=>{const h=2.25*len,f=E(x+dx*h,y+dy*h),b=E(x-dx*h,y-dy*h);

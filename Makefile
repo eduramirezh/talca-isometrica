@@ -2,12 +2,15 @@
 PY ?= python3
 PW ?= uv run --with "playwright==1.63" python   # Python con Playwright, para las capturas (el del sistema no lo tiene)
 PORT ?= 8765
-.PHONY: all fetch data elevation ruta5 pois build check smoke hooks validate diagnostics shots serve clean
+.PHONY: all fetch osm data elevation ruta5 pois build check smoke hooks validate diagnostics shots serve clean
 
 all: data elevation pois build          ## pipeline completo (requiere raw/: make fetch)
 
 fetch:                        ## descarga las fuentes a raw/ (~72 MB)
 	./pipeline/fetch_sources.sh
+
+osm:                          ## la API map de OSM sobre toda la comuna -> raw/osm/map-comuna.json (caminos rurales, Ruta 5, vía; ~240 cajas la primera vez)
+	cd pipeline && $(PY) traces.py tiles-comuna
 
 data:                         ## raw/ + config/trazados.json -> data/geometry.json
 	cd pipeline && $(PY) process_geometry.py
@@ -15,8 +18,8 @@ data:                         ## raw/ + config/trazados.json -> data/geometry.js
 elevation:                    ## raw/dem/ (SRTM) -> data/elevation.json
 	cd pipeline && $(PY) elevation.py
 
-ruta5:                        ## raw/osm/map-este.json -> data/ruta5.json (calzadas y ramales de la Ruta 5; requiere traces.py tiles)
-	cd pipeline && $(PY) traces.py calzadas
+ruta5:                        ## raw/osm/map-comuna.json -> data/ruta5.json (calzadas y ramales de la Ruta 5; requiere traces.py tiles-comuna)
+	cd pipeline && $(PY) traces.py calzadas comuna
 
 pois:                         ## pipeline/pois.py -> data/pois.json + data/pois.csv
 	cd pipeline && $(PY) pois.py

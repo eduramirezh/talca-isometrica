@@ -18,7 +18,8 @@
 // that they can glow at night; the cars do not use winMat(), whose windows are anchored to the world and would slide
 // over a moving body.
 // Timetable (trainsTick), fictional but plausible: on the Línea Central the sfb enters from the north, slows down
-// (0.5 m/s²), stops 25 s under the shed (s 6148-6272, centred at 6210) and leaves by the south; a freight follows it
+// (0.5 m/s²), stops 25 s under the shed (y −143 to −268, centred at the point of the line nearest to 1519, −205: ST)
+// and leaves by the south; a freight follows it
 // 2 min later without stopping; then both come back from the south, and so on (one direction at a time on the single
 // track, 30 s between the last train out and the next one in). On the ramal the Buscarril waits 40 s at the open
 // platform (its west face, s 24 on), goes out by the south edge, waits 40 s outside and comes back. Off the terrain
@@ -109,7 +110,9 @@ function trainHide(t){t.grp.visible=false;trainLight(t);}
 function trainsInit(){if(!RAILP.main||!RAILP.ramal)return;const t0=performance.now();
   const sfb=makeTrain('main','sfb',[['sfb',1],['sfb',0],['sfb',-1]]),adm=makeTrain('ramal','adm',[['adm',1],['adm',-1]]),
     carga=makeTrain('main','carga',[['loco',1],['wagon',0],['wagon',0],['wagon',0],['wagon',0],['wagon',0],['wagon',0]]);
-  const LM=RAILP.main.s[RAILP.main.s.length-1],LR=RAILP.ramal.s[RAILP.ramal.s.length-1],ST=6210,PLAT=24;
+  const LM=RAILP.main.s[RAILP.main.s.length-1],LR=RAILP.ramal.s[RAILP.ramal.s.length-1],PLAT=24;
+  // the shed's middle as a distance along the line, found by its place: the line's ends move with the model's limit
+  const ST=(m=>{let k=0,bd=1e18;for(let i=0;i<m.s.length;i++){const d=(m.x[i]-1519)**2+(m.y[i]+205)**2;if(d<bd){bd=d;k=i;}}return m.s[k];})(RAILP.main);
   TRAIN.lines.main={i:0,t:0,live:0,clearAt:0,startAt:0,runs:[
     {t:sfb,dir:1,from:-5,stops:[[ST+sfb.len/2,25]],to:LM+sfb.len+5,vmax:28,acc:.5,after:0},
     {t:carga,dir:1,from:-5,stops:[],to:LM+carga.len+5,vmax:18,acc:.3,after:120},

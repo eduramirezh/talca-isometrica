@@ -4,14 +4,19 @@ Entradas:
   raw/chile_geojson/manzanas/R07_MANZANA_{IND,SIN_INF,ALDEA}_C17.shp.geojson  (Censo 2017, INE)
   raw/cicloconecta/data/cities/talca/nav_graph.json                         (OSM, vía cicloconecta)
   config/trazados.json                                                      (ríos, vía férrea, Ruta 5)
+  raw/osm/comuna-talca.json   límite de la comuna (OSM, relación 541797; common.comuna() lo baja la primera vez)
+  raw/osm/map-comuna.json     calles de OSM donde el grafo no llega (python traces.py tiles-comuna)
   raw/osm/rio-<río>.json      (eje y agua de cada río con clave `osm`, de la API de OSM; se baja solo la primera vez)
 
 Salida (todas las coordenadas en metros de grilla enteros, codificadas en delta:
 [x0, y0, dx1, dy1, ...]):
-  ext      [xmin, xmax, ymin, ymax] recorte de la maqueta
-  blocks   [[tipo, personas, viviendas, anillo]]  tipo 0=con datos, 1=sin información, 2=aldea
+  ext      [xmin, xmax, ymin, ymax] caja de la maqueta (common.EXT: la comuna, ajustada a la grilla del relieve)
+  limit    límite de la comuna (anillo antihorario): la plantilla recorta todo a él
+  blocks   [[tipo, personas, viviendas, anillo]]  tipo 0=con datos, 1=sin información, 2=aldea; solo las manzanas
+                                                  de la comuna de Talca (COMUNA 7101 del Censo)
                                                   (build.py marca 3=construida según config/manzanas.json)
-  streets  [[clase, idx_nombre, polilínea]]       clase 0 troncal ... 7 servicio
+  streets  [[clase, idx_nombre, polilínea]]       clase 0 troncal ... 7 servicio, recortadas al límite: las del
+                                                  grafo de cicloconecta y, donde no llega, las de OSM
   names    nombres de calle
   water    {claro, lircay, piduco}  ejes de los ríos (de OSM los que tienen clave `osm`; los otros, a mano)
   area     {río: [[contorno, isla, ...], ...]}  agua de cada río de OSM: polígonos de anillos codificados
@@ -25,9 +30,10 @@ Salida (todas las coordenadas en metros de grilla enteros, codificadas en delta:
   ruta5, widths
 """
 import json, math, collections
-from common import loc, MANZANAS_DIR, NAV_GRAPH, CONFIG, DATA, RAW, require
+from common import loc, MANZANAS_DIR, NAV_GRAPH, CONFIG, DATA, RAW, require, EXT, comuna, clip_line
 
-XMIN, XMAX, YMIN, YMAX = -4000, 5600, -4200, 4700     # ≈ lon -71.712..-71.598, lat -35.468..-35.380
+XMIN, XMAX, YMIN, YMAX = EXT                          # ≈ lon -71.722..-71.492, lat -35.532..-35.311
+COMUNA = '7101'                                       # código del Censo de la comuna de Talca
 EPS_BLOCK, EPS_STREET = 1.2, 0.8                      # tolerancia Douglas-Peucker (m)
 
 def rdp(pts, eps):
@@ -76,6 +82,7 @@ def load_blocks():
         for f in d['features']:
             g = f['geometry']; polys = g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']]
             pr = f['properties']
+            if pr.get('COMUNA') != COMUNA: continue
             for p in polys:
                 ring = [loc(x, y) for x, y in p[0]]
                 xs = [q[0] for q in ring]; ys = [q[1] for q in ring]
@@ -94,8 +101,10 @@ def load_blocks():
 CLS = {'trunk':0,'trunk_link':0,'primary':1,'primary_link':1,'secondary':2,'secondary_link':2,'tertiary':3,
        'tertiary_link':3,'unclassified':4,'residential':4,'living_street':5,'pedestrian':6,'service':7}
 
-def load_streets():
-    """Encadena las aristas del grafo (dirigidas, duplicadas) en polilíneas por way de OSM."""
+def load_streets(R):
+    """Encadena las aristas del grafo (dirigidas, duplicadas) en polilíneas por way de OSM; luego agrega las vías de
+    OSM (raw/osm/map-comuna.json) que el grafo no tiene: el grafo es de una caja alrededor de la ciudad, sin el campo.
+    Todo se recorta al límite de la comuna R."""
     g = json.load(open(require(NAV_GRAPH)))
     NN = {n['id']: loc(n['lon'], n['lat']) for n in g['nodes']}
     seen = set(); ways = collections.defaultdict(list); winfo = {}
@@ -106,7 +115,12 @@ def load_streets():
         if k in seen: continue
         seen.add(k); ways[e['way_id']].append((e['u'], e['v'])); winfo[e['way_id']] = (c, e['name'] or '')
     names, nidx, streets = [], {}, []
+    def add(c, nm, pts):
+        for part in clip_line(pts, R):
+            if nm not in nidx: nidx[nm] = len(names); names.append(nm)
+            streets.append([c, nidx[nm], enc(part)])
     key = lambda a, b: (a, b) if a < b else (b, a)
+    graph = []
     for wid, es in ways.items():
         adj = collections.defaultdict(list)
         for u, v in es: adj[u].append(v); adj[v].append(u)
@@ -119,13 +133,52 @@ def load_streets():
                     nx = [w for w in adj[cur] if w != prev][0]
                     if key(cur, nx) in used: break
                     used.add(key(cur, nx)); chain.append(nx); prev, cur = cur, nx
-                pts = rdp([NN[i] for i in chain], EPS_STREET)
-                if all(not (XMIN < p[0] < XMAX and YMIN < p[1] < YMAX) for p in pts): continue
-                c, nm = winfo[wid]
-                if nm not in nidx: nidx[nm] = len(names); names.append(nm)
-                streets.append([c, nidx[nm], enc(pts)])
-    print('calles:', len(streets), 'polilíneas,', sum(len(s[2])//2 for s in streets), 'vértices')
+                pts = [NN[i] for i in chain]; graph.append(pts)
+                add(*winfo[wid], rdp(pts, EPS_STREET))
+    ng = len(streets)
+    osm = osm_streets(graph)
+    for c, nm, pts in osm: add(c, nm, pts)
+    print('calles:', len(streets), 'polilíneas,', sum(len(s[2])//2 for s in streets), 'vértices;',
+          len(streets) - ng, f'de OSM ({len(osm)} tramos donde el grafo no llega)')
     return streets, names
+
+def osm_streets(graph, near=6, cell=50):
+    """The highway ways of raw/osm/map-comuna.json (the classes of CLS, no areas) where the graph has no street: a
+    segment is left out when both ends and its middle lie within `near` m of a graph segment. Returns
+    [(class, name, polyline)], the runs of segments kept, simplified like the graph's."""
+    f = RAW / 'osm' / 'map-comuna.json'
+    if not f.exists():
+        print('(sin raw/osm/map-comuna.json: solo las calles del grafo; python traces.py tiles-comuna)'); return []
+    H = collections.defaultdict(list)
+    for pl in graph:
+        for i in range(len(pl)-1):
+            a, b = pl[i], pl[i+1]
+            for gx in range(int(min(a[0], b[0])-near)//cell, int(max(a[0], b[0])+near)//cell+1):
+                for gy in range(int(min(a[1], b[1])-near)//cell, int(max(a[1], b[1])+near)//cell+1): H[(gx, gy)].append((a, b))
+    def covered(p):
+        for a, b in H.get((int(p[0])//cell, int(p[1])//cell), ()):
+            dx, dy = b[0]-a[0], b[1]-a[1]; L = dx*dx+dy*dy or 1e-9
+            t = max(0, min(1, ((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L))
+            if math.hypot(p[0]-a[0]-t*dx, p[1]-a[1]-t*dy) < near: return True
+        return False
+    el = json.load(open(f))['elements']
+    N = {e['id']: loc(e['lon'], e['lat']) for e in el if e['type'] == 'node'}
+    out = []
+    for e in el:
+        t = e.get('tags') or {}
+        if e['type'] != 'way' or CLS.get(t.get('highway')) is None or t.get('area') == 'yes': continue
+        if not all(n in N for n in e['nodes']): continue
+        P = [N[n] for n in e['nodes']]
+        if all(not (XMIN < p[0] < XMAX and YMIN < p[1] < YMAX) for p in P): continue
+        c, nm, run = CLS[t['highway']], t.get('name', ''), []
+        for i in range(len(P)-1):
+            a, b = P[i], P[i+1]
+            if covered(a) and covered(b) and covered(((a[0]+b[0])/2, (a[1]+b[1])/2)):
+                if len(run) > 1: out.append((c, nm, rdp(run, EPS_STREET)))
+                run = []
+            else: run = run + [b] if run else [a, b]
+        if len(run) > 1: out.append((c, nm, rdp(run, EPS_STREET)))
+    return out
 
 def osm_objs(v, kind):
     """'osm' config value -> [(type, id)]: a number or a list; numbers are `kind`, 'w<id>'/'r<id>' say it."""
@@ -185,17 +238,32 @@ def osm_river(name, r):
             (outers if m['role'] == 'outer' else inners).append(ring)
     if len(outers) > 1:
         # merge outers along their shared edges: with every ring counter-clockwise, a shared edge runs both ways
-        # and cancels; the edges left chain into the merged rings
-        es = {}
-        for ring in outers:
-            ring = ring[:-1] if area2(ring[:-1]) > 0 else ring[:-1][::-1]
-            for k in range(len(ring)): es[(ring[k], ring[(k+1) % len(ring)])] = 1
-        nxt = {u: v for (u, v) in es if (v, u) not in es}
+        # and cancels; the edges left chain into the merged rings. Only rings that share an edge are merged (two
+        # pieces that only touch at a node, like the Claro's at y ≈ −629, stay apart), and a group whose edges do not
+        # chain into rings is left as it was
+        rings = [r[:-1] if area2(r[:-1]) > 0 else r[:-1][::-1] for r in outers]
+        owner, grp = {}, list(range(len(rings)))
+        find = lambda i: i if grp[i] == i else find(grp[i])
+        for i, r in enumerate(rings):
+            for k in range(len(r)): owner[(r[k], r[(k+1) % len(r)])] = i
+        for (u, v), i in owner.items():
+            if (v, u) in owner: grp[find(i)] = find(owner[(v, u)])
         outers = []
-        while nxt:
-            s = next(iter(nxt)); ring = [s]
-            while nxt[ring[-1]] != s: ring.append(nxt.pop(ring[-1]))
-            nxt.pop(ring[-1]); outers.append(ring + [s])
+        for g in {find(i) for i in range(len(rings))}:
+            members = [rings[i] for i in range(len(rings)) if find(i) == g]
+            es = {(r[k], r[(k+1) % len(r)]) for r in members for k in range(len(r))}
+            nxt, ok = {}, True
+            for u, v in es:
+                if (v, u) in es: continue
+                if u in nxt: ok = False
+                nxt[u] = v
+            merged = []
+            while ok and nxt:
+                s = next(iter(nxt)); ring = [s]
+                while nxt.get(ring[-1], s) != s and len(ring) <= len(es): ring.append(nxt.pop(ring[-1]))
+                if nxt.pop(ring[-1], None) != s: ok = False
+                merged.append(ring + [s])
+            outers += merged if ok else [r + [r[0]] for r in members]
     def clean(ring):
         ring = clip_poly(rdp_ring([P[n] for n in ring[:-1]], 1.5))
         if len(ring) < 3: return None
@@ -230,14 +298,14 @@ def rail_extras(fe, L):
 def main():
     tz = json.load(open(CONFIG / 'trazados.json'))
     L = lambda pts: enc([loc(lo, la) for la, lo in pts])
-    blocks = load_blocks(); streets, names = load_streets()
+    R = comuna(); blocks = load_blocks(); streets, names = load_streets(R)
     water, area, branch = {}, {}, {}
     for k, v in tz['rios'].items():
         if 'osm' in v:
             cl, polys, br = osm_river(k, v); water[k] = enc(cl); area[k] = [[enc(r) for r in p] for p in polys]
             if br: branch[k] = [enc(b) for b in br]
         else: water[k] = L(v['puntos'])
-    data = {'ext': [XMIN, XMAX, YMIN, YMAX], 'blocks': blocks, 'streets': streets, 'names': names,
+    data = {'ext': [XMIN, XMAX, YMIN, YMAX], 'limit': enc(R), 'blocks': blocks, 'streets': streets, 'names': names,
             'water': water, 'area': area, 'branch': branch,
             'widths': {k: [v['ancho_m'], v['ribera_m']] for k, v in tz['rios'].items()},
             'rail': L(tz['ferrocarril']['puntos']), 'ruta5': L(tz['ruta5']['puntos'])}
