@@ -158,9 +158,9 @@ def cmd_check(name, *args):
         for l in lines:
             for p in crossings(dec(s[2]), l):
                 print(f'  {g["names"][s[1]][:32]:<32} {CLS[s[0]]:<11} ({p[0]:.0f}, {p[1]:.0f})  {near(p)}')
-    for k, nm in (('rail', 'vía férrea'), ('ruta5', 'Ruta 5')):
+    for k, nm in (('rail', 'vía férrea'), ('ramal', 'ramal a Constitución'), ('ruta5', 'Ruta 5')):
         for l in lines:
-            for p in crossings(dec(g[k]), l): print(f'  {nm:<44} ({p[0]:.0f}, {p[1]:.0f})  {near(p)}')
+            for p in crossings(dec(g.get(k, [])), l): print(f'  {nm:<44} ({p[0]:.0f}, {p[1]:.0f})  {near(p)}')
     # blocks in the water: the area, or the ribbon of ancho_m on the axis where there is no area
     runs = [(l[i], l[i+1]) for l in lines for i in range(len(l)-1) if not (inA(l[i]) and inA(l[i+1]))]
     def depth(q):
@@ -260,8 +260,9 @@ def cmd_panel(name, *args):
                 for t in range(0, 20, 2):
                     d.line([(A[0]+(B[0]-A[0])*t/20, A[1]+(B[1]-A[1])*t/20), (A[0]+(B[0]-A[0])*(t+1)/20, A[1]+(B[1]-A[1])*(t+1)/20)], fill=(255, 0, 255, 255), width=2)
     for l in [cl] + br: d.line([P(q) for q in l], fill=(255, 40, 40, 255), width=3)
-    for k, col, wd in (('rail', (20, 20, 20), RAILW), ('ruta5', (255, 140, 0), R5W)):
-        pts = [P(q) for q in dec(g[k])]
+    for k, col, wd in (('rail', (20, 20, 20), RAILW), ('ramal', (90, 40, 20), 4), ('ruta5', (255, 140, 0), R5W)):
+        pts = [P(q) for q in dec(g.get(k, []))]
+        if len(pts) < 2: continue
         d.line(pts, fill=col+(90,), width=max(1, int(wd*mpp))); d.line(pts, fill=col+(255,), width=2)
     m = RAW / 'osm' / f'map-rio-{name}.json'
     if m.exists():
