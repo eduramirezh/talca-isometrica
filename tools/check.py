@@ -11,7 +11,8 @@ Comprueba:
   - las restricciones de los artifacts de Claude: scripts solo de cdnjs, jsdelivr o unpkg; estilos solo de Google Fonts;
     sin fetch, alert, confirm ni prompt;
   - que data/pois.json tenga ids únicos y que cada recorrido apunte a lugares que existen;
-  - que cada script de dist/talca.html compile (node --check) y que la página pese menos de 16 MB.
+  - que cada script de dist/talca.html compile (node --check; el error da el archivo de src/ y la línea, con
+    build.where()) y que la página pese menos de 16 MB.
 Termina con código 1 y una línea por falla. No reemplaza a `make smoke` (carga la página en Chromium y revisa la
 generación) ni a `python pipeline/usos.py check` (14 s; avisos sobre los usos de suelo).
 """
@@ -77,13 +78,18 @@ def main(dist=True):
             node = shutil.which('node')
             if not node: fail('node no está en el PATH: hace falta para node --check (nodenv / brew install node)')
             else:
-                for n, js in enumerate(re.findall(r'<script>(.*?)</script>', html, re.S), 1):
+                for n, sm in enumerate(re.finditer(r'<script>(.*?)</script>', html, re.S), 1):
+                    js, l0 = sm.group(1), html.count('\n', 0, sm.start(1))   # line k of the script is line l0+k of the page
                     with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as f: f.write(js); tmp = f.name
                     r = subprocess.run([node, '--check', tmp], capture_output=True, text=True); Path(tmp).unlink()
                     if r.returncode:
                         err = next((l for l in r.stderr.splitlines() if 'Error' in l), r.stderr.strip())
                         where = re.search(r':(\d+)\n', r.stderr)
-                        fail(f'dist/talca.html: el script {n} no compila' + (f' (línea {where.group(1)} del script)' if where else '') + f': {err}')
+                        at = ''
+                        if where:
+                            try: src, k = build.where(l0 + int(where.group(1))); at = f' en {src}:{k}'
+                            except ValueError: at = f' (línea {where.group(1)} del script)'
+                        fail(f'dist/talca.html: el script {n} no compila{at}: {err}')
 
     for m in bad: print('FALLA:', m)
     print(f'check: {len(bad)} fallas' if bad else f'check: ok ({(time.time()-t0)*1000:.0f} ms)')

@@ -51,7 +51,7 @@ pipeline/
   elevation.py           elevación SRTM -> data/elevation.json
   pois.py                catálogo de lugares y recorridos -> data/pois.json + pois.csv
   geocode.py             geocodificador de la numeración de Talca y validador
-  build.py               plantilla + datos -> dist/
+  build.py               plantilla + datos -> dist/; --where traduce una línea de dist/ a su archivo de src/
   diagnostics.py         paneles PNG para revisar trazados contra las manzanas
   satellite.py           imagen satelital con las manzanas y los usos de suelo encima (qué hay de verdad en cada una)
   usos.py                usos de suelo: importación desde OSM, revisión de lo que falta y de config/usos.json

@@ -11,17 +11,25 @@ las fuentes de Google Fonts.
   python pipeline/build.py             -> dist/talca.html (fragmento, como se publica en Claude)
   python pipeline/build.py --standalone -> además dist/index.html con <!doctype>, <head> y <body>,
                                            para abrir directo en el navegador o servir con un hosting estático.
+  python pipeline/build.py --where index.html:4026
+                                        -> el archivo de src/ y la línea que dan esa línea de dist/ (index.html:N o
+                                           (index):N como en la consola del navegador; talca.html:N o N para
+                                           dist/talca.html y los errores de make check)
 """
 import json, re, sys
 from common import ROOT, DATA, CONFIG, require, loc
 
 SRC = ROOT / 'src'
 
-def include(text, marker, part):
-    """Replace the line holding only `marker` (and its indentation) with `part`, which ends in a newline."""
-    m = list(re.finditer(rf'^[ \t]*{re.escape(marker)}\n', text, re.M))
-    assert len(m) == 1, f'el marcador {marker} aparece {len(m)} veces en los fuentes (debe ser 1)'
-    return text[:m[0].start()] + part + text[m[0].end():]
+def cut(path, *markers):
+    """A source file cut at the lines holding only each marker (and its indentation), in that order: [(first line, text)]
+    for the pieces between them, so that the line numbers of each piece are known."""
+    t, out, pos = path.read_text(), [], 0
+    for marker in markers:
+        m = list(re.finditer(rf'^[ \t]*{re.escape(marker)}\n', t, re.M))
+        assert len(m) == 1 and m[0].start() >= pos, f'{path.relative_to(ROOT)}: el marcador {marker} aparece {len(m)} veces o fuera de orden (debe ser 1)'
+        out.append((t.count('\n', 0, pos) + 1, t[pos:m[0].start()])); pos = m[0].end()
+    return out + [(t.count('\n', 0, pos) + 1, t[pos:])]
 
 def hito_ids():
     """The landmarks' ids in src/js/hitos/ORDER, in their order (one per line; # starts a comment)."""
@@ -33,14 +41,33 @@ def sources():
     return [SRC / 'page.html', SRC / 'style.css', *sorted((SRC / 'js').glob('*.js')),
             *(SRC / 'js' / 'hitos' / f'{h}.js' for h in hito_ids())]
 
-def template():
-    """The template, a single HTML fragment (src/template.html until it was split): src/page.html with src/style.css in /*STYLE*/ and
-    the script in /*SCRIPT*/, the files src/js/*.js joined in the order of their names; src/js/45-landmarks.js holds
+def pieces():
+    """The template as [(source file, its first line, text)], in order: src/page.html with src/style.css at /*STYLE*/
+    and the script at /*SCRIPT*/, the files src/js/*.js in the order of their names; src/js/45-landmarks.js holds
     /*HITOS*/ inside buildModels(B,S), where the landmarks src/js/hitos/<id>.js go in the order of hitos/ORDER."""
-    hitos = ''.join((SRC / 'js' / 'hitos' / f'{h}.js').read_text() for h in hito_ids())
-    js = ''.join(f.read_text() for f in sorted((SRC / 'js').glob('*.js')))
-    t = include((SRC / 'page.html').read_text(), '/*STYLE*/', (SRC / 'style.css').read_text())
-    return include(t, '/*SCRIPT*/', include(js, '/*HITOS*/', hitos))
+    (a, page0), (b, page1), (c, page2) = cut(SRC / 'page.html', '/*STYLE*/', '/*SCRIPT*/')
+    out = [(SRC / 'page.html', a, page0), (SRC / 'style.css', 1, (SRC / 'style.css').read_text()), (SRC / 'page.html', b, page1)]
+    for f in sorted((SRC / 'js').glob('*.js')):
+        if f.name != '45-landmarks.js': out.append((f, 1, f.read_text())); continue
+        (a, head), (b, tail) = cut(f, '/*HITOS*/')
+        out.append((f, a, head))
+        out += [(SRC / 'js' / 'hitos' / f'{h}.js', 1, (SRC / 'js' / 'hitos' / f'{h}.js').read_text()) for h in hito_ids()]
+        out.append((f, b, tail))
+    return out + [(SRC / 'page.html', c, page2)]
+
+def template():
+    """The template, a single HTML fragment (src/template.html until it was split): the pieces() joined."""
+    return ''.join(t for _, _, t in pieces())
+
+def where(line):
+    """A line of the template, which is also a line of dist/talca.html (the JSON of /*DATA*/ and /*POIS*/ has no line
+    breaks) -> (source file relative to ROOT, its line)."""
+    n = 1
+    for f, a, t in pieces():
+        k = t.count('\n')
+        if line < n + k: return f.relative_to(ROOT), a + line - n
+        n += k
+    raise ValueError(f'la plantilla tiene {n - 1} líneas: no hay línea {line}')
 
 def dec(a):
     pts, x, y = [], 0, 0
@@ -89,7 +116,22 @@ def land_uses(geo):
         out.append([names.index(u['uso']), enc(ring), o or 0])
     geo['usos'] = {'k': names, 'u': out}
 
+# What --standalone puts before the fragment in dist/index.html: its lines are this many lines further down.
+STANDALONE = ('<!doctype html>\n<html lang="es"><head><meta charset="utf-8">\n'
+              '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
+              '<style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>\n'
+              '</head><body>\n')
+
+def cmd_where(arg):
+    """`--where 4021`, `--where talca.html:4021` or `--where index.html:4026` (as the browser's console gives it,
+    also `(index):4026`): the source file and line of that line of dist/."""
+    f, _, n = arg.rpartition(':'); n = int(n)
+    if 'index' in f: n -= STANDALONE.count('\n')
+    src, k = where(n)
+    print(f'{src}:{k}'); print((ROOT / src).read_text().split('\n')[k-1][:160])
+
 def main():
+    if '--where' in sys.argv: return cmd_where(sys.argv[sys.argv.index('--where') + 1])
     geo = json.load(open(require(DATA / 'geometry.json', 'Ejecute: make data')))
     mark_built(geo['blocks'])
     land_uses(geo)
@@ -105,10 +147,7 @@ def main():
     (ROOT / 'dist' / 'talca.html').write_text(out)
     print('dist/talca.html:', len(out.encode()), 'bytes')
     if '--standalone' in sys.argv:
-        page = ('<!doctype html>\n<html lang="es"><head><meta charset="utf-8">\n'
-                '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
-                '<style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>\n'
-                '</head><body>\n' + out + '\n</body></html>\n')
+        page = STANDALONE + out + '\n</body></html>\n'
         (ROOT / 'dist' / 'index.html').write_text(page); print('dist/index.html:', len(page.encode()), 'bytes')
 
 if __name__ == '__main__':

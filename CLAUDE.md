@@ -6,6 +6,7 @@ Maqueta isométrica de Talca (Chile) con lugares jurídicos e icónicos. Lee pri
 
 ```bash
 make build                      # src/ (page.html, style.css, js/) + data/ + config/ -> dist/talca.html y dist/index.html
+python pipeline/build.py --where index.html:4026   # el archivo de src/ y la línea de un error de la consola del navegador ((index):N, talca.html:N o N)
 make check                      # revisión rápida (<1 s): JSON, marcadores, restricciones de artifact, node --check de dist/; la corre el hook de pre-commit (make hooks)
 make smoke                      # carga dist/ en Chromium y falla si hay errores de consola o la generación sale vacía (~1 min; tools/screenshot.py --strict)
 make serve                      # http://localhost:8765
@@ -145,7 +146,7 @@ Para publicar: `make build` y sube `dist/talca.html`, el fragmento, no `index.ht
 
 ## Trampas conocidas
 
-- **Un solo script en muchos archivos.** `src/js/*.js` no son módulos: se unen en un solo `<script>`, dentro de una función, y ninguno es JavaScript válido por sí solo (no los revise con `node --check` uno a uno: `make check` revisa el resultado, y su número de línea es el del script en `dist/talca.html`). Una `const` de primer nivel no se puede repetir entre archivos, y un archivo nuevo entra donde lo pone su número: lo que declara no existe para el código de primer nivel de los archivos anteriores (sí dentro de las funciones que corren después, en `boot`). Lo mismo vale para los hitos dentro de `buildModels` y su `ORDER`.
+- **Un solo script en muchos archivos.** `src/js/*.js` no son módulos: se unen en un solo `<script>`, dentro de una función, y ninguno es JavaScript válido por sí solo (no los revise con `node --check` uno a uno: `make check` revisa el resultado y da el archivo y la línea del error; para uno de la consola del navegador, `python pipeline/build.py --where index.html:N`). Una `const` de primer nivel no se puede repetir entre archivos, y un archivo nuevo entra donde lo pone su número: lo que declara no existe para el código de primer nivel de los archivos anteriores (sí dentro de las funciones que corren después, en `boot`). Lo mismo vale para los hitos dentro de `buildModels` y su `ORDER`.
 - **Medianas de calles.** `geocode.lines()` calcula la mediana de cada calle dentro de 900 m de la plaza. Con una ventana mayor, algunas calles salen corrompidas por tramos lejanos con el mismo nombre: así quedó mal ubicada la Universidad Autónoma en la v1 (ver CHANGELOG). `config/grid_lines.json` es la versión revisada a mano y es la única que usa el mapa.
 - **Grilla irregular.** La grilla es regular solo en el centro, hasta unas 9–10 cuadras de la plaza. Más afuera las calles se curvan, y cerca de la vía férrea (11–12 Oriente) faltan números.
 - **La Alameda (4 Norte).** Es una avenida con parque central de unos 70 m. Las direcciones sobre ella necesitan `side_off` de 45–95 m, no 14.
