@@ -4,9 +4,9 @@
   //   (7377, 8848) Estero Panguilemo, with a track under it: the motorway on two bridges of 124 m (w101547242,
   //                w101547260), at the commune's northern limit, which follows the stream: their southern ~55 m
   //                (puente-panguilemo-ruta5)
-  //   (6693, 7620) Pasarela Aldea Campesina, a footbridge (w101554009): not modelled yet
+  //   (6693, 7620) Pasarela Aldea Campesina, a footbridge with ramps (w101554009)
   //   (6307, 7028) Cruce Talca - Pelarco: the road to Pelarco over it (w83188779), a partial cloverleaf
-  //   (5046, 5128) a footbridge (w101557387): not modelled yet
+  //   (5046, 5128) a footbridge with ramps (w101557387)
   //   (4128, 3717) Río Lircay: the motorway on two bridges (puente-lircay-ruta5)
   //   (3958, 3485) a road under the motorway (w373726646, tunnel), which crosses it on two 81 m bridges (w151617653,
   //                w474496436; puente-lircay-ruta5); the Enlace Avenida Lircay's ramps join 70 m south
@@ -56,6 +56,8 @@
       S.face(q.map(v=>[v[0],E(v[0],v[1])+.2,-v[1]]),[0,1,0],K.void);}
     // footbridges: OSM polyline, span from point i0 to i1; stairs [foot, top]
     {const ht=r5Foot(S,K,[[2934.1,847.7],[2944.7,893.9],[2974.7,887.1],[2963.8,839.7]],1,2,5.6);}
+    r5Foot(S,K,[[6651.0,7584.1],[6678.6,7628.7],[6705.0,7611.6],[6677.4,7568.2]],1,2,5.6);   // Aldea Campesina
+    r5Foot(S,K,[[5052.5,5176.1],[5029.9,5138.2],[5059.7,5120.7],[5077.6,5152.2]],1,2,5.6);   // (5046, 5128)
     {const ht=r5Foot(S,K,[[2569.3,-705.4],[2552.2,-783.5],[2586.8,-791.0],[2573.2,-852.9]],1,2,5.6);
       r5Stairs(S,K,2548.5,-796.3,2552.2,-783.5,ht);r5Stairs(S,K,2588.5,-781.6,2586.8,-791.0,ht);}
     S.dy=0;}

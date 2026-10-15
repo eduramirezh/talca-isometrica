@@ -108,9 +108,9 @@ Lo revisado antes de reemplazar: el nuevo eje coincide con el anterior (0 m) des
 | Cruce | Dónde | Tipo en OSM |
 |---|---|---|
 | Estero Panguilemo, en el límite norte de la comuna | (7377, 8848) | la autopista en dos puentes de 124 m, con una huella debajo; el límite de la comuna va por el estero, así que solo entran sus ~55 m del sur, que terminan cortados en el borde (`puente-panguilemo-ruta5`) |
-| Pasarela Aldea Campesina | (6693, 7620) | pasarela (sin modelo todavía) |
+| Pasarela Aldea Campesina | (6693, 7620) | pasarela con rampas |
 | Cruce Talca–Pelarco | (6307, 7028) | paso superior y ramales en trébol parcial |
-| pasarela | (5046, 5128) | pasarela (sin modelo todavía) |
+| pasarela | (5046, 5128) | pasarela con rampas |
 | Río Lircay | (4128, 3717) | la autopista en dos puentes de 164 m |
 | camino sin nombre, junto al Caserío Lircay | (3958, 3485) | bajo la autopista, que va en dos puentes de 81 m |
 | Enlace Avenida Lircay | (3811, 3294) | paso superior, un lazo y cuatro ramales |
@@ -331,7 +331,7 @@ Los hitos restantes se rehicieron en cinco sesiones paralelas, una por zona (Pla
 
 - Los edificios generados no son los reales: son una interpretación según las reglas descritas. Solo los hitos siguen su planta real (sección 9), y en ellos lo que está sobre el suelo es una interpretación de fotos: cada modelo dice en su comentario qué es aproximado.
 - Los tres ríos, la Ruta 5 y el ferrocarril son los de OpenStreetMap. Donde OSM no tiene el agua, el ancho es una constante: el Lircay al oriente de x ≈ 13.700 (60 m) y el Piduco aguas arriba de 6 Oriente (12 m). Los puentes de las calles son solo la calle sobre el agua, salvo los dos del Claro junto a la Alameda.
-- La maqueta termina en el límite de la comuna, también donde el límite sigue un río: el Lircay en el oriente (x ≈ 9.800–11.700 y al oriente de 13.700) queda cortado a lo largo, por donde pasa el límite. En el campo, las parcelas, las hileras de álamos y el matorral son genéricos (no los predios reales), y los caminos rurales son los de OSM con el ancho de su clase. Sin modelo todavía: dos pasarelas sobre la Ruta 5 y ningún estero ni canal fuera de los tres ríos.
+- La maqueta termina en el límite de la comuna, también donde el límite sigue un río: el Lircay en el oriente (x ≈ 9.800–11.700 y al oriente de 13.700) queda cortado a lo largo, por donde pasa el límite. En el campo, las parcelas, las hileras de álamos y el matorral son genéricos (no los predios reales), y los caminos rurales son los de OSM con el ancho de su clase. Sin modelo todavía: ningún estero ni canal fuera de los tres ríos.
 - El relieve está exagerado (×3 en el plano, ×1,3 en los cerros) y suavizado a ~40 m: no se ven taludes ni desniveles de pocos metros. Los ríos no siempre van por el fondo del valle del modelo; el Claro y el Lircay se nivelan a lo ancho del cauce, y en las celdas de la orilla el agua sube un poco hacia la ribera.
 - Fuera del centro, la grilla se deforma y el lector de direcciones deja de funcionar. Muestra «Fuera del centro numerado».
 - La información institucional (direcciones, notarios) es de septiembre de 2026 y puede cambiar.
