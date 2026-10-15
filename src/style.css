@@ -54,6 +54,7 @@ button{font:inherit;color:inherit}
 @keyframes pulse{0%{box-shadow:0 0 0 2px var(--pin-ring),0 0 0 2px var(--cc)}70%{box-shadow:0 0 0 2px var(--pin-ring),0 0 0 14px transparent}100%{box-shadow:0 0 0 2px var(--pin-ring),0 0 0 2px transparent}}
 @media (prefers-reduced-motion: reduce){.pin.sel .coin{animation:none}}
 .street{position:absolute;left:0;top:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:#FBFAF5;text-shadow:0 0 3px #3d3a37,0 0 2px #3d3a37;white-space:nowrap;pointer-events:none;transform-origin:50% 50%}
+.street.rural{font-family:var(--sans);font-size:12px;font-weight:500;letter-spacing:.03em;color:#FFF8EA;text-shadow:0 0 3px #5b4a33,0 0 2px #5b4a33}
 .street.water{font-family:var(--sans);font-style:italic;font-size:13px;letter-spacing:.02em;color:#E8F4F8;text-shadow:0 0 3px #2d5d70,0 0 2px #2d5d70}
 
 /* ---------- brand ---------- */

@@ -12,11 +12,18 @@ const SL=[];
   want.forEach((list,nm)=>{let acc=0;const every=nm==='Alameda'?900:650;
     list.forEach(s=>{for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<30){acc+=L;continue;}
       if(acc<=0||acc>every){const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];if(Math.abs(m[0])<3200&&Math.abs(m[1])<3400){SL.push({t:nm,x:m[0],y:m[1],dx:b[0]-a[0],dy:b[1]-a[1],w:false});acc=1;}}else acc+=L;}});});
+  // the countryside's main roads: the named routes and caminos of OSM (trunk to tertiary), sparsely, on stretches of
+  // 60 m or more away from the urban area; shown from farther out than the city's streets (r)
+  const RURAL={'Avenida San Miguel':'Ruta 115-CH a San Clemente'}; // its name in OSM all the way out; the ref and the destination are OSM's
+  const rural=new Map();streets.forEach(s=>{if(!s.name||s.c>3||!(/^(Ruta|Camino) /.test(s.name)||RURAL[s.name]))return;const t=RURAL[s.name]||s.name;
+    if(!rural.has(t))rural.set(t,[]);rural.get(t).push(s);});
+  rural.forEach((list,t)=>{let acc=0;list.forEach(s=>{for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]),m=[(a[0]+b[0])/2,(a[1]+b[1])/2];
+    if(L<60||urbanAt(...m)||!inTerrain(...m)||(acc>0&&acc<3000)){acc+=L;continue;}SL.push({t,x:m[0],y:m[1],dx:b[0]-a[0],dy:b[1]-a[1],w:false,r:true});acc=1;}});});
   // the rivers: each label on the segment of the OSM axis nearest to its point (grid metres)
   [['Río Claro','claro',-1593,872],['Río Claro','claro',-2916,-1198],['Río Claro','claro',2932,7645],['Río Lircay','lircay',3198,4293],['Río Lircay','lircay',8677,2158],
    ['Estero Piduco','piduco',680,-1264],['Estero Piduco','piduco',2966,-2243],['Estero Piduco','piduco',6654,-3266]].forEach(([t,k,x,y])=>{const pts=dec(DATA.water[k]);
     let i=0,bd=1e18;for(let j=0;j<pts.length-1;j++){const d=segDist2(x,y,pts[j][0],pts[j][1],pts[j+1][0],pts[j+1][1]);if(d<bd){bd=d;i=j;}}const a=pts[i],b=pts[i+1];SL.push({t,x:(a[0]+b[0])/2,y:(a[1]+b[1])/2,dx:b[0]-a[0],dy:b[1]-a[1],w:true});});
-  SL.forEach(l=>{const e=document.createElement('div');e.className='street'+(l.w?' water':'');e.textContent=l.t;overlay.appendChild(e);l.el=e;});
+  SL.forEach(l=>{const e=document.createElement('div');e.className='street'+(l.w?' water':l.r?' rural':'');e.textContent=l.t;overlay.appendChild(e);l.el=e;});
 })();
 let showStreets=true;
 const vtmp=new T.Vector3();
@@ -44,10 +51,10 @@ function layout(){
     el.classList.toggle('sel',p.id===selId);
   }
   const sz=z>=2.6&&showStreets;
-  for(const l of SL){if((!sz&&!l.w)||(l.w&&z<0.5)){l.el.hidden=true;continue;}
+  for(const l of SL){if(l.r?(z<0.45||!showStreets):(!sz&&!l.w)||(l.w&&z<0.5)){l.el.hidden=true;continue;}
     if(l.h==null)l.h=E(l.x,l.y)+0.3;const s=proj(l.x,l.y,l.h);if(s[0]<0||s[1]<0||s[0]>W||s[1]>H){l.el.hidden=true;continue;}
     const s2=proj(l.x+l.dx,l.y+l.dy,l.h);let ang=Math.atan2(s2[1]-s[1],s2[0]-s[0]);if(ang>Math.PI/2)ang-=Math.PI;if(ang<-Math.PI/2)ang+=Math.PI;
-    const w=l.t.length*(l.w?7:6.6),hgt=14;const c=Math.abs(Math.cos(ang)),sn=Math.abs(Math.sin(ang));const bw=w*c+hgt*sn,bh=w*sn+hgt*c;
+    const w=l.t.length*(l.w?7:l.r?6.2:6.6),hgt=14;const c=Math.abs(Math.cos(ang)),sn=Math.abs(Math.sin(ang));const bw=w*c+hgt*sn,bh=w*sn+hgt*c;
     const r=[s[0]-bw/2,s[1]-bh/2,s[0]+bw/2,s[1]+bh/2];if(hit(r)){l.el.hidden=true;continue;}rects.push(r);
     l.el.hidden=false;l.el.style.transform=`translate(${(s[0]-w/2).toFixed(1)}px,${(s[1]-7).toFixed(1)}px) rotate(${ang.toFixed(3)}rad)`;}
   // compass
