@@ -16,6 +16,8 @@
     {"nombre": "3 Norte–Alameda, 8 Oriente–9 Oriente", "punto": [-35.42363, -71.65481],
      "nota": "Supermercado: un solo edificio comercial con su estacionamiento."},
     {"nombre": "1 Sur–2 Sur, 9 Oriente–10 Oriente", "punto": [-35.42878, -71.65303],
-     "nota": "Bodegas y comercio."}
+     "nota": "Bodegas y comercio."},
+    {"nombre": "Camino El Guindo Grande con Los Robles (Panguilemo)", "punto": [-35.36506, -71.59262],
+     "nota": "Casas y galpones en la esquina oriente; el resto es la cancha de fútbol de OSM (w1135758137), un uso de suelo."}
   ]
 }

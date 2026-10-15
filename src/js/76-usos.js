@@ -26,7 +26,7 @@
 // sports ground with a pitch and bleachers), golf, parque, huerto, vina, potrero, feria, terminal (bus platforms),
 // conjunto (rows of identical semi-detached houses where the map has no streets), parcelas, bosque, eriazo. The
 // `vivienda` entries never get here: build.py turns them into built census blocks for cityGen.
-// window.__usos: counts per use, skipped entries, trees and the time taken.
+// window.__usos: counts per use, skipped entries, trees and the time taken (tk: ms per use).
 const USOS=(()=>{const D=DATA.usos||{k:[],u:[]};return D.u.map(([k,rr,o],i)=>{const r=dec(rr);let A=0,x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   for(let j=0;j<r.length;j++){const p=r[j],q=r[(j+1)%r.length];A+=p[0]*q[1]-q[0]*p[1];x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
   if(A<0)r.reverse();return {i,k:D.k[k],r,o:o||{},A:Math.abs(A)/2,bb:[x0,y0,x1,y1],kids:[],skip:false};});})();
@@ -40,6 +40,8 @@ const occ0At=(x,y)=>{const gx=Math.floor((x-XMIN)/OC),gy=Math.floor((y-YMIN)/OC)
 // is (x, y) in use u and none of its kids? A use without ground of its own (eriazo, bosque, parcelas) may overlap
 // others: it also leaves out every ground-laying use
 const groundAt=(x,y)=>(UGRID[Math.floor((y-YMIN)/BG)*bgW+Math.floor((x-XMIN)/BG)]||[]).some(p=>!p.skip&&USO_GROUND.has(p.k)&&x>=p.bb[0]&&x<=p.bb[2]&&y>=p.bb[1]&&y<=p.bb[3]&&pip([x,y],p.r));
+// is (x, y) in a use that replaces the generic farmland parcels (buildBase)? all but parcelas, whose houses stand on it
+const usoAt=(x,y)=>(UGRID[Math.floor((y-YMIN)/BG)*bgW+Math.floor((x-XMIN)/BG)]||[]).some(p=>!p.skip&&p.k!=='parcelas'&&x>=p.bb[0]&&x<=p.bb[2]&&y>=p.bb[1]&&y<=p.bb[3]&&pip([x,y],p.r));
 const inUso=(u,x,y)=>x>=u.bb[0]&&x<=u.bb[2]&&y>=u.bb[1]&&y<=u.bb[3]&&pip([x,y],u.r)&&!u.kids.some(k=>pip([x,y],k.r))&&(USO_GROUND.has(u.k)||!groundAt(x,y));
 const ccwQ=q=>{let A=0;for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length];A+=p[0]*r[1]-r[0]*p[1];}return A<0?q.slice().reverse():q;};
 function usoSamples(u,n=48){const [x0,y0,x1,y1]=u.bb,s=Math.max(4,Math.sqrt(u.A/n)),o=[];
@@ -139,7 +141,7 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
     gravel:C('#CFC5AE'),path:C('#D8C69C'),white:C('#E9E5DB'),white2:C('#D6D1C5'),grave:['#E8E4DA','#D3CFC5','#BDB8AE','#CFC2B2','#A8A49C'].map(C),stone:C('#C9C1B0'),
     tile:C('#A35C42'),tile2:C('#8E4F3A'),lawn:PAL.lawn,lawn2:C('#8AA055'),sand:C('#DCCB9E'),asph:C('#6E6A64'),line:C('#F1EEE4'),
     grass:C('#6F9F48'),grass2:C('#7DAD52'),dirt:C('#C39A6B'),court:C('#9EA39E'),court2:C('#5B8C74'),clay:C('#B5643F'),hard:C('#4F7C9A'),
-    play:['#C23B32','#E2B33C','#3E6D9C','#4F8A4C'].map(C),soil:C('#B4A27C'),vine:C('#6F8B47'),vine2:C('#7E9A52'),orch:C('#A3A06C'),
+    play:['#C23B32','#E2B33C','#3E6D9C','#4F8A4C'].map(C),soil:C('#B4A27C'),vine:C('#6F8B47'),vine2:C('#7E9A52'),orch:C('#A3A06C'),canopy:C('#5F7D3F'),canopy2:C('#688746'),canopyS:C('#7E7D57'),
     stall:['#3E6D9C','#E9E4D8','#D9792E','#4F8A4C','#C23B32'].map(C),pave:C('#A8A49C'),track:C('#D3BE94'),patch:['#C9B58C','#C2B98E','#A8AD76','#B3A77E','#9FA86E'].map(C),
     golf:C('#86AE58'),golf2:C('#7BA44F'),green:C('#69A345'),bunker:C('#E2D4A6'),walls:['#E8DCC4','#F0E6D2','#D9C9A7','#E6D3B5','#E4E0D6'].map(C)};
   // a pitch on the rectangle (a0..a1, b0..b1) of frame fr: surface, mowing stripes, lines (ESTETICA: 0.5 m), goals or hoops
@@ -235,7 +237,15 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
       for(let a=fr.u0+r()*10;a<fr.u1;a+=20+r()*8)for(let b=fr.v0+r()*10;b<fr.v1;b+=20+r()*8){if(r()<.3)continue;const n=2+Math.floor(r()*5);
         for(let k=0;k<n;k++){const ta=a+(r()-.5)*12,tb=b+(r()-.5)*12;if(Math.abs(tb-cv)<3||(W>30&&Math.abs(ta-cu)<3))continue;const p=fr.G(ta,tb);
           if(inUso(u,...p)&&!occ0At(...p)&&!nearStreet(...p,2)&&objs.every(o=>!pip(p,o)))tree(p[0],p[1],.9+r()*.5,r());}}},
-    huerto(u,r,fr){ground(u,K.orch);for(let b=fr.v0+3;b<fr.v1-2;b+=6)for(const [a0,a1] of usoBand(fr,b-1,b+1))for(let a=a0+2.5;a<a1-2;a+=5.5){const p=fr.G(a,b);if(!occ0At(...p)&&!nearStreet(...p,2))tree(p[0],p[1],.42+r()*.08,.25+r()*.3);}},
+    // rows of fruit trees 6 m apart. A big orchard (the countryside's, up to 240 ha: a tree every 33 m² would be
+    // hundreds of thousands) gets its trees only along its edge, 12 m deep; inside, each row is a strip of canopy in
+    // two tones with its shade on the side away from the sun (south)
+    huerto(u,r,fr){ground(u,K.orch);const big=u.A>4e4,sv=fr.G(0,1)[1]>0?-1:1;let n=0;
+      for(let b=fr.v0+3;b<fr.v1-2;b+=6,n++){const nb=big?[usoSpans(fr,b-12),usoSpans(fr,b+12)]:null;
+        for(const [a0,a1] of usoBand(fr,b-1,b+1)){
+          if(big){strip(fr,b-1.6,b+1.6,a0+1,a1-1,0.13,n%2?K.canopy2:K.canopy,6);strip(fr,b+sv*2.6,b+sv*1.6,a0+1,a1-1,0.13,K.canopyS,6);}
+          for(let a=a0+2.5;a<a1-2;a+=5.5){if(big&&a-a0>12&&a1-a>12&&nb.every(sp=>sp.some(([p,q])=>a>p&&a<q)))continue;
+            const p=fr.G(a,b);if(!occ0At(...p)&&!nearStreet(...p,2))tree(p[0],p[1],.42+r()*.08,.25+r()*.3);}}}},
     vina(u,r,fr){ground(u,K.soil);rows(fr,2.8,1.2,0.13,K.vine,K.vine2);},
     potrero(u,r,fr){const c=pick(r,PAL.fields);ground(u,c);rows(fr,18,9,0.13,shade(c,.93));},
     // a bus terminal: paved yard, platforms under long canopies, buses at the bays
@@ -276,7 +286,7 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
       for(let k=0;k<Math.ceil(u.A/6e4);k++){let p=fr.G(fr.u0+r()*(fr.u1-fr.u0),fr.v0+r()*(fr.v1-fr.v0)),h=r()*Math.PI*2;
         for(let s=0;s<40;s++){h+=(r()-.5)*.6;const q=[p[0]+Math.cos(h)*9,p[1]+Math.sin(h)*9];if(!inUso(u,...q)||occ0At(...q)||nearStreet(...q,1))break;
           const nx=-Math.sin(h)*1.5,ny=Math.cos(h)*1.5;flatD([[p[0]+nx,p[1]+ny],[p[0]-nx,p[1]-ny],[q[0]-nx,q[1]-ny],[q[0]+nx,q[1]+ny]],0.13,K.track);p=q;}}}};
-  for(const u of USOS){if(u.skip||!draw[u.k])continue;const r=rng(1000+u.i*7919);draw[u.k](u,r,usoFrame(u));USTAT.n[u.k]=(USTAT.n[u.k]||0)+1;}
+  USTAT.tk={};for(const u of USOS){if(u.skip||!draw[u.k])continue;const r=rng(1000+u.i*7919),t1=performance.now();draw[u.k](u,r,usoFrame(u));USTAT.n[u.k]=(USTAT.n[u.k]||0)+1;USTAT.tk[u.k]=Math.round((USTAT.tk[u.k]||0)+performance.now()-t1);}
   usosFringe();
   S.dy=0;B.dy=0;if(UG.nv)scene.add(new T.Mesh(UG.geo(),matFlat));USTAT.verts=UG.nv;
   USTAT.ms=Math.round(performance.now()-t0);window.__usos=USTAT;OCC0=null;

@@ -6,13 +6,14 @@ cementerios, los colegios). config/usos.json dice qué es cada uno de esos terre
 confianza como la de pois.py; build.py lo inyecta como DATA.usos y la sección «usos de suelo» de la plantilla lo
 dibuja (METODOLOGIA §13).
 
-  python pipeline/usos.py importar todo
-      Rehace las entradas automáticas (`"auto": true`) desde raw/osm/map-todo.json: cada polígono de OSM con una
-      etiqueta de MAPA (abajo) dentro de la maqueta, salvo los que contienen el punto de un hito, los de `excluir`, los
+  python pipeline/usos.py importar comuna
+      Rehace las entradas automáticas (`"auto": true`) desde raw/osm/map-comuna.json (`make osm`): cada polígono de
+      OSM con una etiqueta de MAPA (abajo) con su centro en la comuna, salvo los que contienen el punto de un hito, los de `excluir`, los
       potreros, huertos, viñas, bosques y eriazos sobre manzanas con datos, y los que pisan más de 40 % de agua. Si
       dos se superponen, el que está dentro del otro queda como hijo (su suelo se recorta del padre) y si no, gana el
       de más prioridad. Las entradas a mano (sin `auto`) se conservan y mandan: lo automático que no es un recinto y
-      las cubre en más de 30 % se descarta. Todas quedan con confianza media hasta revisarlas en la imagen.
+      las cubre en más de 30 % se descarta. Todas quedan con confianza media hasta revisarlas en la imagen. Con
+      `todo` (raw/osm/map-todo.json, el rectángulo anterior a la comuna) se perderían las del campo.
   python pipeline/usos.py survey todo [x0 x1 y0 y1] [--todo]
       Los polígonos etiquetados de raw/osm/map-todo.json (landuse, amenity, leisure, natural, military…) en la caja,
       del más grande al más chico, con su área, su centro, las manzanas que pisan (t1: «sin información»; t0: con
@@ -50,7 +51,7 @@ para que la ciudad generada ponga casas a lo largo de las calles del mapa; con `
 construida, igual que config/manzanas.json).
 """
 import json, math, sys
-from common import ROOT, DATA, CONFIG, RAW, loc, require
+from common import ROOT, DATA, CONFIG, RAW, loc, require, comuna
 from build import hito_ids
 
 USOS = ['industrial', 'cementerio', 'militar', 'educacional', 'salud', 'deportivo', 'parque', 'huerto', 'vina',
@@ -271,9 +272,8 @@ MAPA = [('militar', lambda t: t.get('landuse') == 'military' or 'military' in t)
         ('eriazo', lambda t: t.get('natural') in ('scrub', 'grassland', 'heath') or t.get('landuse') in ('brownfield', 'greenfield', 'construction'))]
 MINA = {'educacional': 2000, 'salud': 2000, 'terminal': 2000, 'deportivo': 600, 'parque': 2500, 'feria': 1000}  # m², 5000 otherwise
 RECINTO = {'militar', 'cementerio', 'salud', 'educacional', 'feria', 'terminal', 'deportivo', 'industrial', 'parque'}
-TERRAIN = (-4000, 5600, -4200, 4720)
 
-def cmd_importar(name='todo'):
+def cmd_importar(name='comuna'):
     """Entries from OSM for every mapped feature in the model; hand entries (no `auto`) and `excluir` are kept."""
     cfg = json.load(open(CONFIG / 'usos.json')); hand = [u for u in cfg['usos'] if not u.get('auto')]
     excl = {e['osm'] for e in cfg.get('excluir', [])}
@@ -281,7 +281,7 @@ def cmd_importar(name='todo'):
     hitos = hito_ids()
     pois = {p['id']: p for p in json.load(open(DATA / 'pois.json'))['pois']}
     hp = [(pois[h]['x'], pois[h]['y']) for h in hitos if h in pois]
-    N, W, R = load_map(name); cands = []
+    lim = comuna(); N, W, R = load_map(name); cands = []
     for obj in list(W.values()) + list(R.values()):
         t = obj.get('tags', {}); oid = f"{obj['type'][0]}{obj['id']}"
         uso = next((u for u, f in MAPA if f(t)), None)
@@ -290,7 +290,7 @@ def cmd_importar(name='todo'):
         if not s: continue
         r = simplify(max(s[0], key=area), 1.0); A = area(r)
         c = centroid(r)
-        if A < MINA.get(uso, 5000) or not (TERRAIN[0] < c[0] < TERRAIN[1] and TERRAIN[2] < c[1] < TERRAIN[3]): continue
+        if A < MINA.get(uso, 5000) or not pip(c, lim): continue   # in the commune (its centre)
         if any(pip(p, r) for p in hp): continue                         # a landmark models it
         pts = samples(r, max(6, math.sqrt(A)/10))
         kinds = [bix.at(p) for p in pts]; blank = sum(1 for b in kinds if b is None or b['t'] == 1) / len(pts)
