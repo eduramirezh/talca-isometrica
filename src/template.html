@@ -3027,7 +3027,8 @@ function wildTrees(){
 //  - usosBase(B,S), once the terrain is final, lays the ground of each use in its own draped mesh at 0.11 (blocks 0.10,
 //    rivers 0.11, streets from 0.12), with the smaller uses inside it cut out, and none where the raster was occupied
 //    before (rivers and their gravel, landmarks, the Ruta 5 and the rail: pieces are split down to ~2 m there); details
-//    (lines, paths, rows) at 0.125-0.14, cut where they meet a street; objects on S (sheds, walls, graves, stalls,
+//    in 1 cm steps (a 0.5 cm step flickers): surfaces 0.12 (pitches, parade ground), stripes, rows and paths 0.13,
+//    lines, greens and sand 0.14; strips are cut where they meet a street; objects on S (sheds, walls, graves, stalls,
 //    bleachers: no window shader) or B (barracks, pavilions and houses, with windows); trees into TREES and PO_FIELD.
 //    Eriazo, bosque and parcelas lay no ground (the block's sand, the terrain or the farmland stays; an eriazo on a block
 //    painted as a park gets the sand) but scrub, dirt tracks, trees or houses, and they may overlap the others: they
@@ -3073,6 +3074,10 @@ function usosPlan(){const t0=performance.now();OCC0=occ.slice();
     const dup=USO_GROUND.has(u.k)&&(UGRID[Math.floor((S[0][1]-YMIN)/BG)*bgW+Math.floor((S[0][0]-XMIN)/BG)]||[]).some(p=>p!==u&&!p.skip&&p.A>u.A&&USO_GROUND.has(p.k)&&!p.kids.includes(u)&&S.filter(q=>pip(q,p.r)).length>S.length*.5);
     if(dup||alam>S.length*.2||pre>S.length*(u.k==='eriazo'||u.k==='bosque'?.6:.35)){u.skip=true;USTAT.skip.push(u.i);continue;}
     u.built=built>S.length*.5;u.green=S.filter(([x,y])=>{const bi=blockAt(x,y);return bi>=0&&!blocks[bi].built&&blocks[bi].A<40000;}).length>S.length*.5; // on a block painted as park
+    // a ground use that overlaps a larger one without lying inside it (OSM draws pitches over pitches) lays its ground
+    // 1 cm higher, or the two would flicker where they meet
+    if(USO_GROUND.has(u.k)){const nb=new Set();for(let gx=Math.max(0,Math.floor((u.bb[0]-XMIN)/BG));gx<=Math.min(bgW-1,Math.floor((u.bb[2]-XMIN)/BG));gx++)for(let gy=Math.max(0,Math.floor((u.bb[1]-YMIN)/BG));gy<=Math.min(bgH-1,Math.floor((u.bb[3]-YMIN)/BG));gy++)for(const p of UGRID[gy*bgW+gx]||[])nb.add(p);
+      for(const p of nb)if(p!==u&&!p.skip&&p.A>u.A&&USO_GROUND.has(p.k)&&!p.kids.includes(u)&&(u.r.some(q=>pip(q,p.r))||S.some(q=>pip(q,p.r)))){u.lift=0.01;break;}}
     if(u.k==='industrial'&&u.built)continue; // cityGen's sheds stay; only the yard is laid
     // occ: a scanline fill, leaving 2.5 m past each street's edge free
     const [x0,y0,x1,y1]=u.bb;for(let gy=Math.max(0,Math.floor((y0-YMIN)/OC));gy<=Math.min(ocH-1,Math.floor((y1-YMIN)/OC));gy++){const cy=YMIN+(gy+.5)*OC,xs=[];
@@ -3111,7 +3116,7 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
   const PX={onGround:dry};
   const ground=(u,col)=>{const holes=u.kids.filter(k=>!k.skip&&USO_GROUND.has(k.k)).map(k=>k.r);let t;
     try{t=T.ShapeUtils.triangulateShape(u.r.map(p=>new T.Vector2(p[0],p[1])),holes.map(h=>h.map(p=>new T.Vector2(p[0],p[1]))));}catch(e){return;}
-    const all=u.r.concat(...holes);for(const [a,b,c] of t)drapeQ(PX,ccwQ([all[a],all[b],all[c]]),0.11,col);};
+    const all=u.r.concat(...holes);for(const [a,b,c] of t)drapeQ(PX,ccwQ([all[a],all[b],all[c]]),0.11+(u.lift||0),col);};
   const flatD=(q,y,col)=>drapeQ(PX,ccwQ(q),y,col); // a small convex detail, draped (no street test)
   // a strip along u from ua to ub between v0 and v1, cut where it meets a street or what was there before
   const strip=(fr,v0,v1,ua,ub,y,col,step=4)=>{const vm=(v0+v1)/2;let s=null,last=ua;
@@ -3156,7 +3161,7 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
   const pitch=(fr,a0,b0,a1,b1,sport,r,surf,lay)=>{const L=a1-a0,W=b1-b0,lw=.5,ln=(p,q,s,t,y=0.14)=>flatD(fr.R(p,q,s,t),y,K.line);
     const kind=/soccer|futbol|football/.test(sport)?'f':/tennis|padel/.test(sport)?'t':/basket|multi|volley|futsal|hand/.test(sport)?'b':'o';
     if(lay)flatD(fr.R(a0,b0,a1,b1),0.12,surf);
-    if(kind==='f'&&surf===K.grass)for(let k=0,n=Math.max(2,Math.round(L/9));k<n;k+=2)flatD(fr.R(a0+L*k/n,b0,a0+L*(k+1)/n,b1),0.125,K.grass2);
+    if(kind==='f'&&surf===K.grass)for(let k=0,n=Math.max(2,Math.round(L/9));k<n;k+=2)flatD(fr.R(a0+L*k/n,b0,a0+L*(k+1)/n,b1),0.13,K.grass2);
     if(L<12||W<8)return;
     ln(a0,b0,a1,b0+lw);ln(a0,b1-lw,a1,b1);ln(a0,b0,a0+lw,b1);ln(a1-lw,b0,a1,b1);ln((a0+a1-lw)/2,b0,(a0+a1+lw)/2,b1);
     const cu=(a0+a1)/2,cv=(b0+b1)/2;
@@ -3185,10 +3190,10 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
         v+=d+10+r()*6;}
       wallsOf(u,2.2,.5,K.fence,K.fence);},
     cementerio(u,r,fr){const park=/parque/i.test(u.o.t||'');ground(u,park?K.lawn:K.gravel);const cu=(fr.u0+fr.u1)/2,cv=(fr.v0+fr.v1)/2,objs=[];
-      if(park){rows(fr,3.2,.5,0.125,C('#DAD7CB'));for(let k=0;k<u.A/500;k++){const p=fr.G(fr.u0+r()*(fr.u1-fr.u0),fr.v0+r()*(fr.v1-fr.v0));if(inUso(u,...p)&&!nearStreet(...p,3))tree(p[0],p[1],.9+r()*.4,r());}}
+      if(park){rows(fr,3.2,.5,0.13,C('#DAD7CB'));for(let k=0;k<u.A/500;k++){const p=fr.G(fr.u0+r()*(fr.u1-fr.u0),fr.v0+r()*(fr.v1-fr.v0));if(inUso(u,...p)&&!nearStreet(...p,3))tree(p[0],p[1],.9+r()*.4,r());}}
       else{// avenues along v and u through the middle, with cypresses; quarters of niches, graves or mausoleums between them
-        for(const [a,b] of usoSpans({...fr,lr:fr.lr.map(p=>[p[1],p[0]]),kl:fr.kl.map(k=>k.map(p=>[p[1],p[0]]))},cu))strip({...fr,G:(x,y)=>fr.G(y,x),R:(a0,b0,a1,b1)=>fr.R(b0,a0,b1,a1)},cu-4,cu+4,a,b,0.125,C('#DCD3BF'));
-        for(const [a,b] of usoSpans(fr,cv))strip(fr,cv-3,cv+3,a,b,0.125,C('#DCD3BF'));
+        for(const [a,b] of usoSpans({...fr,lr:fr.lr.map(p=>[p[1],p[0]]),kl:fr.kl.map(k=>k.map(p=>[p[1],p[0]]))},cu))strip({...fr,G:(x,y)=>fr.G(y,x),R:(a0,b0,a1,b1)=>fr.R(b0,a0,b1,a1)},cu-4,cu+4,a,b,0.13,C('#DCD3BF'));
+        for(const [a,b] of usoSpans(fr,cv))strip(fr,cv-3,cv+3,a,b,0.13,C('#DCD3BF'));
         for(let v=fr.v0+3;v<fr.v1;v+=6)for(const sd of [-1,1]){const p=fr.G(cu+sd*5,v);if(inUso(u,...p)&&!occ0At(...p)&&!nearStreet(...p,2))tree(p[0],p[1],.75+r()*.15,r()*.2,true);}
         for(let a=fr.u0+4;a<fr.u1-8;a+=40)for(let v=fr.v0+4;v<fr.v1-8;v+=27){const a1=Math.min(a+36,fr.u1-4),v1=Math.min(v+23,fr.v1-4);
           if(Math.abs((a+a1)/2-cu)<(a1-a)/2+4||Math.abs((v+v1)/2-cv)<(v1-v)/2+3)continue; // the avenues
@@ -3202,7 +3207,7 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
         const ch=fr.R(cu-6,fr.v0+8,cu+6,fr.v0+26);if(fits(u,ch,3)){pavilion(ch.slice(1).concat([ch[0]]),2,K.white,K.tile,true);const tq=fr.R(cu-2,fr.v0+4.5,cu+2,fr.v0+8.5);S.dy=groundMin(tq);S.prism(tq,0.3,13,K.white,K.white);pyramid(S,tq,13,3,K.tile);}}
       wallsOf(u,2.8,.6,K.white,K.white2,(x,y)=>{const [a,b]=fr.L(x,y);return Math.abs(a-cu)<4||Math.abs(b-cv)<3;});},
     militar(u,r,fr){ground(u,C('#C2B591'));const cu=(fr.u0+fr.u1)/2,cv=(fr.v0+fr.v1)/2,pw=Math.min(130,(fr.u1-fr.u0)*.45),pd=Math.min(80,(fr.v1-fr.v0)*.35),objs=[];
-      const pg=fr.R(cu-pw/2,cv-pd/2,cu+pw/2,cv+pd/2);if(fits(u,pg,3)){flatD(pg,0.125,K.asph);objs.push(pg);for(const s of [-1,1])flatD(fr.R(cu-pw/2+3,cv+s*(pd/2-3)-.25,cu+pw/2-3,cv+s*(pd/2-3)+.25),0.135,K.line);
+      const pg=fr.R(cu-pw/2,cv-pd/2,cu+pw/2,cv+pd/2);if(fits(u,pg,3)){flatD(pg,0.12,K.asph);objs.push(pg);for(const s of [-1,1])flatD(fr.R(cu-pw/2+3,cv+s*(pd/2-3)-.25,cu+pw/2-3,cv+s*(pd/2-3)+.25),0.14,K.line);
         const fq=fr.R(cu-.3,cv-pd/2-3,cu+.3,cv-pd/2-2.4);S.dy=groundMin(fq);S.prism(fq,0.3,12,C('#707070'),C('#707070'));}
       for(const [b0,dir] of [[cv-pd/2-8,-1],[cv+pd/2+8,1]])for(let k=0;k<3;k++){const b=b0+dir*k*26;for(let a=fr.u0+8;a<fr.u1-50;a+=52){const q=ccwQ(fr.R(a,b,a+44,b+dir*12));
         if(fits(u,q,4,objs)){objs.push(q);pavilion(q,2,pick(r,[C('#E9DFC8'),C('#E2D3B4')]),r()<.6?K.tile:pick(r,K.zinc),true);}}}
@@ -3227,21 +3232,21 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
           const bq=fr.R(cu-pl*.3,cv+pd/2+2,cu+pl*.3,cv+pd/2+2+4*1.1);if(fits(u,bq,2,objs)){bleachers(fr,cu-pl*.3,cu+pl*.3,cv+pd/2+2,1,4);objs.push(bq);}break;}}}
       const hq=ccwQ(fr.R(fr.u0+4,fr.v0+4,fr.u0+20,fr.v0+12));if(fits(u,hq,3,objs))pavilion(hq,1,pick(r,K.walls),pick(r,K.zinc),false);
       for(let a=fr.u0+5;a<fr.u1;a+=10)for(const b of [fr.v0+3,fr.v1-3]){const p=fr.G(a,b);if(r()<.6&&inUso(u,...p)&&!occ0At(...p)&&!nearStreet(...p,2)&&objs.every(o=>!pip(p,o)))tree(p[0],p[1],1+r()*.3,r(),r()<.4);}},
-    golf(u,r,fr){ground(u,K.golf);rows(fr,24,12,0.125,K.golf2);
+    golf(u,r,fr){ground(u,K.golf);rows(fr,24,12,0.13,K.golf2);
       for(let v=fr.v0+30;v<fr.v1-10;v+=55)for(let a=fr.u0+5;a<fr.u1;a+=7){if(Math.sin(a*.05+v)>.55)continue;const p=fr.G(a+(r()-.5)*3,v+(r()-.5)*4);if(inUso(u,...p)&&!occ0At(...p)&&!nearStreet(...p,3))tree(p[0],p[1],1.1+r()*.4,r(),r()<.15);}
       for(let k=0;k<u.A/1.2e4;k++){const a=fr.u0+r()*(fr.u1-fr.u0),b=fr.v0+r()*(fr.v1-fr.v0),c=fr.G(a,b),R=8+r()*6;if(!fits(u,fr.R(a-R,b-R,a+R,b+R),4))continue;
-        flatD(ngon(c[0],c[1],R,12),0.13,K.green);const s=fr.G(a+R+5,b+r()*6-3);flatD(ngon(s[0],s[1],3+r()*2.5,10),0.13,K.bunker);
+        flatD(ngon(c[0],c[1],R,12),0.14,K.green);const s=fr.G(a+R+5,b+r()*6-3);flatD(ngon(s[0],s[1],3+r()*2.5,10),0.14,K.bunker);
         const fq=[[c[0]-.25,c[1]-.25],[c[0]+.25,c[1]-.25],[c[0]+.25,c[1]+.25],[c[0]-.25,c[1]+.25]];S.dy=groundMin(fq);S.prism(fq,0.3,2.6,K.line,C('#C23B32'));}},
     parque(u,r,fr){ground(u,K.lawn);const cu=(fr.u0+fr.u1)/2,cv=(fr.v0+fr.v1)/2,L=fr.u1-fr.u0,W=fr.v1-fr.v0,objs=[];
-      for(const [a,b] of usoSpans(fr,cv))strip(fr,cv-1.25,cv+1.25,a,b,0.125,K.path);
-      if(W>30)for(const [a,b] of usoSpans({...fr,lr:fr.lr.map(p=>[p[1],p[0]]),kl:fr.kl.map(k=>k.map(p=>[p[1],p[0]]))},cu))strip({...fr,G:(x,y)=>fr.G(y,x),R:(a0,b0,a1,b1)=>fr.R(b0,a0,b1,a1)},cu-1.25,cu+1.25,a,b,0.125,K.path);
-      if(u.A>2500){const pq=fr.R(cu+6,cv+5,cu+18,cv+15);if(fits(u,pq,3)){flatD(pq,0.13,K.sand);objs.push(pq);for(let k=0;k<3;k++){const c=fr.G(cu+8.5+k*3.5,cv+7+(k%2)*4),q=[[c[0]-.6,c[1]-.6],[c[0]+.6,c[1]-.6],[c[0]+.6,c[1]+.6],[c[0]-.6,c[1]+.6]];S.dy=groundMin(q);S.prism(q,0.3,1+k*.6,K.play[k],K.play[(k+1)%4]);}}}
+      for(const [a,b] of usoSpans(fr,cv))strip(fr,cv-1.25,cv+1.25,a,b,0.13,K.path);
+      if(W>30)for(const [a,b] of usoSpans({...fr,lr:fr.lr.map(p=>[p[1],p[0]]),kl:fr.kl.map(k=>k.map(p=>[p[1],p[0]]))},cu))strip({...fr,G:(x,y)=>fr.G(y,x),R:(a0,b0,a1,b1)=>fr.R(b0,a0,b1,a1)},cu-1.25,cu+1.25,a,b,0.13,K.path);
+      if(u.A>2500){const pq=fr.R(cu+6,cv+5,cu+18,cv+15);if(fits(u,pq,3)){flatD(pq,0.14,K.sand);objs.push(pq);for(let k=0;k<3;k++){const c=fr.G(cu+8.5+k*3.5,cv+7+(k%2)*4),q=[[c[0]-.6,c[1]-.6],[c[0]+.6,c[1]-.6],[c[0]+.6,c[1]+.6],[c[0]-.6,c[1]+.6]];S.dy=groundMin(q);S.prism(q,0.3,1+k*.6,K.play[k],K.play[(k+1)%4]);}}}
       for(let a=fr.u0+r()*10;a<fr.u1;a+=20+r()*8)for(let b=fr.v0+r()*10;b<fr.v1;b+=20+r()*8){if(r()<.3)continue;const n=2+Math.floor(r()*5);
         for(let k=0;k<n;k++){const ta=a+(r()-.5)*12,tb=b+(r()-.5)*12;if(Math.abs(tb-cv)<3||(W>30&&Math.abs(ta-cu)<3))continue;const p=fr.G(ta,tb);
           if(inUso(u,...p)&&!occ0At(...p)&&!nearStreet(...p,2)&&objs.every(o=>!pip(p,o)))tree(p[0],p[1],.9+r()*.5,r());}}},
     huerto(u,r,fr){ground(u,K.orch);for(let b=fr.v0+3;b<fr.v1-2;b+=6)for(const [a0,a1] of usoBand(fr,b-1,b+1))for(let a=a0+2.5;a<a1-2;a+=5.5){const p=fr.G(a,b);if(!occ0At(...p)&&!nearStreet(...p,2))tree(p[0],p[1],.42+r()*.08,.25+r()*.3);}},
-    vina(u,r,fr){ground(u,K.soil);rows(fr,2.8,1.2,0.125,K.vine,K.vine2);},
-    potrero(u,r,fr){const c=pick(r,PAL.fields);ground(u,c);rows(fr,18,9,0.125,shade(c,.93));},
+    vina(u,r,fr){ground(u,K.soil);rows(fr,2.8,1.2,0.13,K.vine,K.vine2);},
+    potrero(u,r,fr){const c=pick(r,PAL.fields);ground(u,c);rows(fr,18,9,0.13,shade(c,.93));},
     // a bus terminal: paved yard, platforms under long canopies, buses at the bays
     terminal(u,r,fr){ground(u,K.pave);const objs=[];for(let v=fr.v0+6;v<fr.v1-8;v+=22){const L=Math.min(90,fr.u1-fr.u0-12),a=(fr.u0+fr.u1)/2-L/2,q=ccwQ(fr.R(a,v,a+L,v+5));
         if(!fits(u,q,3))continue;flatD(fr.R(a,v,a+L,v+5),0.13,C('#C9C3B6'));S.dy=groundMin(q);S.prism(ccwQ(fr.R(a,v+1.5,a+L,v+3.5)),4.2,4.8,K.white2,C('#B9BCBE'),true);
@@ -3251,7 +3256,7 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
     // housing the census does not have, where the map has no streets in it (a social housing estate of identical
     // semi-detached houses): passages along u every 30 m, a row of houses facing each, on their yards
     conjunto(u,r,fr){const yc=pick(r,PAL.yard);ground(u,yc);const Ws=[0,1,2].map(()=>pick(r,PAL.walls)),Rf=r()<.65?pick(r,PAL.tile):pick(r,PAL.zinc),fl=r()<.7?1:2,objs=[];
-      for(let v=fr.v0+4;v<fr.v1-4;v+=30){for(const [a,b] of usoBand(fr,v,v+5))strip(fr,v,v+5,a,b,0.125,PAL.asphalt);
+      for(let v=fr.v0+4;v<fr.v1-4;v+=30){for(const [a,b] of usoBand(fr,v,v+5))strip(fr,v,v+5,a,b,0.13,PAL.asphalt);
         for(const [b0,dir] of [[v-2.5,-1],[v+7.5,1]])for(let a=fr.u0+2;a<fr.u1-6;a+=16.5){const q=ccwQ(fr.R(a,b0,a+13,b0+dir*7.5));if(!fits(u,q,2.5,objs))continue;objs.push(q);
           for(const h of [0,6.5]){const hq=ccwQ(fr.R(a+h,b0,a+h+6.5,b0+dir*7.5));B.dy=groundMin(hq);B.gable(hq,0.3,fl*2.8+.3,1.9,pick(r,Ws),Rf);} // a semi-detached pair
           if(r()<.3){const t=fr.G(a+r()*13,b0+dir*(10+r()*2.5));if(inUso(u,...t))tree(t[0],t[1],.6+r()*.3,r());}}}},
@@ -3279,7 +3284,7 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
       // dirt tracks: random walks of 2 m wide segments
       for(let k=0;k<Math.ceil(u.A/6e4);k++){let p=fr.G(fr.u0+r()*(fr.u1-fr.u0),fr.v0+r()*(fr.v1-fr.v0)),h=r()*Math.PI*2;
         for(let s=0;s<40;s++){h+=(r()-.5)*.6;const q=[p[0]+Math.cos(h)*9,p[1]+Math.sin(h)*9];if(!inUso(u,...q)||occ0At(...q)||nearStreet(...q,1))break;
-          const nx=-Math.sin(h)*1.5,ny=Math.cos(h)*1.5;flatD([[p[0]+nx,p[1]+ny],[p[0]-nx,p[1]-ny],[q[0]-nx,q[1]-ny],[q[0]+nx,q[1]+ny]],u.green?0.13:0.125,K.track);p=q;}}}};
+          const nx=-Math.sin(h)*1.5,ny=Math.cos(h)*1.5;flatD([[p[0]+nx,p[1]+ny],[p[0]-nx,p[1]-ny],[q[0]-nx,q[1]-ny],[q[0]+nx,q[1]+ny]],0.13,K.track);p=q;}}}};
   for(const u of USOS){if(u.skip||!draw[u.k])continue;const r=rng(1000+u.i*7919);draw[u.k](u,r,usoFrame(u));USTAT.n[u.k]=(USTAT.n[u.k]||0)+1;}
   usosFringe();
   S.dy=0;B.dy=0;if(UG.nv)scene.add(new T.Mesh(UG.geo(),matFlat));USTAT.verts=UG.nv;
