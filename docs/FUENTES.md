@@ -89,6 +89,11 @@ Las fotos y fichas solo se consultaron para el modelo (alturas, techos, colores)
 
   No hay fotos con licencia libre de los puentes del Piduco ni del estado actual de los del Lircay: su forma es aproximada (y lo dice el comentario de cada hito).
 
+- **Trenes.** Fotos de Wikimedia Commons, solo para los modelos (volúmenes, colores, cuántos coches):
+  - el automotor SFB de EFE (Santiago–Chillán): [«Tren BMU en Estación de Trenes de Talca»](https://commons.wikimedia.org/wiki/File:Tren_BMU_en_Estaci%C3%B3n_de_Trenes_de_Talca.jpg) (2024, CC0, TomasVial) y [«Automotor SFB en Estación Talca»](https://commons.wikimedia.org/wiki/File:Automotor_SFB_en_Estaci%C3%B3n_Talca.jpg) (2024, CC BY-SA 4.0, Segurasebas): el costado y la trompa bajo la cubierta;
+  - el Buscarril del ramal: [«Buscarril en Estación Talca»](https://commons.wikimedia.org/wiki/File:Buscarril_en_Estaci%C3%B3n_Talca.jpg) y [«Coches del buscarril en Estación Talca»](https://commons.wikimedia.org/wiki/File:Coches_del_buscarril_en_Estaci%C3%B3n_Talca.jpg) (2024, CC BY-SA 4.0, Segurasebas), [«EFE ADM 255 Corinto»](https://commons.wikimedia.org/wiki/File:EFE_ADM_255_Corinto.jpg) (2019, CC BY-SA 4.0, Kabelleger / David Gubler);
+  - el tren de madera: [«Andén Estación Talca 2017 - 1»](https://commons.wikimedia.org/wiki/File:And%C3%A9n_Estaci%C3%B3n_Talca_2017_-_1.jpg) (2017, CC BY-SA 4.0, Cristobal carrasco). Su locomotora no aparece en ninguna foto: el modelo es genérico, con los colores de [«Chaqueta amarilla»](https://commons.wikimedia.org/wiki/File:Chaqueta_amarilla_-_Flickr_-_Sebasti%C3%A1n_Betancourt.jpg) (2014, CC BY 2.0, Sebastián Betancourt), una locomotora de EFE fotografiada fuera de Talca.
+
 ## Contexto histórico y trazados
 
 - [Qué Talca: la historia de las calles enumeradas](https://quetalca.com/la-historia-de-talca-y-sus-calles-enumeradas/) (sistema de Daniel Barros Grez, 1869)

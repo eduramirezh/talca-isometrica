@@ -1,6 +1,6 @@
 # Plan: la vía férrea y un tren en movimiento
 
-Plan de trabajo de octubre de 2026. **Las etapas 2.1 a 2.3 (el trazado completo, el detalle de la vía y los puentes ferroviarios) están hechas**; quedan el tren y el render con algo en movimiento (2.4 a 2.6), que cambian `loop()` para toda la página y van en una sesión aparte. Junta la vía férrea con su detalle, los dos pendientes que estaban en CLAUDE.md (el tramo sur desde OSM y los puentes ferroviarios) y lo nuevo: un tren que recorre la vía. Es independiente de los puntos 4 a 6 de [PROYECTOS-SIMILARES.md](PROYECTOS-SIMILARES.md), aunque comparte `buildBase()` con el punto 4 (ver «Coordinación»).
+Plan de trabajo de octubre de 2026. **Todas las etapas están hechas** (2.1 a 2.3, la vía, en una sesión; 2.4 a 2.6, el tren y el render con algo en movimiento, que cambian `loop()` para toda la página, en otra). Junta la vía férrea con su detalle, los dos pendientes que estaban en CLAUDE.md (el tramo sur desde OSM y los puentes ferroviarios) y lo nuevo: un tren que recorre la vía. Es independiente de los puntos 4 a 6 de [PROYECTOS-SIMILARES.md](PROYECTOS-SIMILARES.md), aunque comparte `buildBase()` con el punto 4 (ver «Coordinación»).
 
 ## 1. Cómo está hoy
 
@@ -22,7 +22,8 @@ Plan de trabajo de octubre de 2026. **Las etapas 2.1 a 2.3 (el trazado completo,
   - Los puentes de OSM sobre esteros y canales que la maqueta no dibuja (Caiván, Los Molinos, El Parrón, el Canal Sandoval y un estero de 4 m al norte de la Alameda) no se modelan: la vía pasa a nivel.
 - **Estación.** La vía principal de OSM es la de la cubierta (u ≈ 18–20 del marco de la estación) y la dibuja `railBase()`; el andén descubierto queda entre ella (al oriente) y el ramal (al poniente). Las dos vías de patio del hito (u 33,5 y 38,5, simplificadas) van en `RAIL_YARD` y se dibujan igual que las líneas; los topes siguen en el hito, también el del ramal.
 - **El camino para el tren.** `RAILP` (`window.__rail`) guarda cada línea, `main` y `ramal`, como arreglos de la misma longitud, uno por muestra (cada 0,7 m): `x`, `y` (metros de grilla), `s` (distancia acumulada: desde el borde norte en la Línea Central, desde el tope de la estación en el ramal), `h` (altura del riel: la del suelo, el terraplén, el tablero o el puente), `g` (el suelo), `kind` (0 suelo, 1 terraplén, 2 tablero de paso bajo nivel, 3 puente, 4 cruce a nivel) y `lifts` (`{s0, s1, H, bridge}`, los tableros y puentes). Puntos de referencia: Línea Central, 10.477 m, 14.969 muestras; la cubierta de la estación entre s ≈ 6.150 y 6.270, el puente del Piduco en 7.397, el cruce de 14 Sur en 8.133, el Lircay N° 1 en ~1.200–1.334 y el N° 2 en ~1.528–1.560. Ramal, 4.224 m, 6.035 muestras; el puente del Piduco en s ≈ 1.145 y 14 Sur en 1.880.
-- **El render.** Sin cambios: se redibuja solo cuando algo cambia (`dirty`), y cada cuadro hace una pasada de sombras, la escena a baja resolución y, de cerca, la pasada de normales del pixel art (METODOLOGIA §8).
+- **El render.** Se redibuja cuando algo cambia (`dirty`) y, desde la etapa 2.5, a 18 cuadros por segundo mientras un tren se mueve dentro de la vista (`trainsTick`, llamado por `loop()` en cada cuadro); cada cuadro hace una pasada de sombras, la escena a baja resolución y, de cerca, la pasada de normales del pixel art (METODOLOGIA §8).
+- **Los trenes** (sección «trains» de la plantilla, después de `railPiers`): el automotor SFB de EFE (tres coches) y un tren de madera (locomotora y seis carros) en la Línea Central, el Buscarril (dos coches) en el ramal, cada uno un `Group` con dos mallas por coche. `TRAIN.lines` guarda el horario de cada línea como corridas cíclicas.
 
 ## 2. Las etapas
 
@@ -44,7 +45,9 @@ Plan de trabajo de octubre de 2026. **Las etapas 2.1 a 2.3 (el trazado completo,
 
 Los tres previstos y uno más (el N° 2 del Lircay, sobre el brazo sur, que OSM tiene dentro del agua del río). Formas aproximadas: hay una sola foto con licencia libre, del Lircay N° 1 hacia 1900, y ninguna de los del Piduco. Cómo se registra un puente en `RAIL_BR` está en el comentario de `railBase()` y en CLAUDE.md.
 
-### 2.4 El tren
+### 2.4 El tren (hecho)
+
+Hecho como estaba previsto. Lo que se verificó y lo aproximado: por Talca corren hoy el automotor bimodal SFB-3000 de EFE (Santiago–Chillán, fotos de 2024 bajo la cubierta) y el Buscarril ADM del ramal (fotos de 2019 y 2024); el tren de madera sale de una foto de 2017 de los carros en la estación, y su locomotora, que no aparece en ninguna foto libre, es un modelo genérico en amarillo y azul. Tres coches en el SFB (los de las fotos), dos en el Buscarril, seis carros en el de madera. Las medidas de los coches son las del tipo donde se conocen y aproximadas en lo demás; la velocidad (100 km/h el automotor, 65 el de carga, 50 el Buscarril) y las paradas (25 s bajo la cubierta, 40 s en el andén) son ficticias. Sin luz de cola. El Buscarril parte del andén descubierto y no empalma con la principal (la maqueta no tiene los cambios del patio).
 
 - **Qué trenes.** En la Línea Central, los servicios de pasajeros que paran en Talca (las relaciones de OSM: Tren Chillán–Estación Central, el Expreso y el Curicó–Linares) y quizá uno de carga; en el ramal, el Buscarril. Modelos según fotos fechadas (Wikimedia Commons: hay del Buscarril y del servicio Talca–Constitución de 2009 a 2016), con la estética de los hitos: volumen escalonado, dos tonos, ventanas oscuras, franjas de color de la empresa. Hay que verificar qué material rueda hoy por Talca antes de dibujarlo.
 - **Recorrido.** El camino muestreado ya existe: `RAILP` (§1). Cada carro se ubica por su `s` (el del primero menos el largo de los anteriores), a la altura `h`, orientado por la tangente entre sus dos bogies (los puntos de `s ± media distancia entre bogies`), para que tome bien las curvas y las rampas de los pasos bajo nivel (1:16).
@@ -52,7 +55,9 @@ Los tres previstos y uno más (el N° 2 del Lircay, sobre el brazo sur, que OSM 
 - **Horario.** Ficticio pero verosímil: un tren cada pocos minutos de tiempo real, que entra por un borde, se detiene en la estación unos segundos (Línea Central: s ≈ 6.150–6.270, bajo la cubierta) y sale por el otro. El Buscarril parte del tope del ramal (s = 0), va hasta el borde sur y vuelve. De noche, un foco delantero y las ventanas encendidas.
 - **Movimiento lento.** Si `prefers-reduced-motion` está activo, el tren queda detenido en la estación.
 
-### 2.5 El render con algo en movimiento
+### 2.5 El render con algo en movimiento (hecho)
+
+Hecho como estaba previsto: `trainsTick()` corre en cada cuadro de `loop()`, mueve los trenes y pide un cuadro a 18 por segundo solo mientras uno se mueve dentro de la vista (prueba de frustum con la esfera de cada coche, y un cuadro más cuando sale o se oculta). `window.__train(línea, s, tipo, sentido)` detiene el horario y deja un tren en `s`; `__train(null)` lo reanuda. `__trainFps()` mide los cuadros que piden los trenes. Medido con SwiftShader la generación sube ~2 ms; en una GPU real hay que mirar `__trainFps()` con un tren en pantalla (2.6).
 
 Es el cambio de fondo: hasta ahora la escena solo se dibuja cuando algo cambia.
 
@@ -63,7 +68,9 @@ Es el cambio de fondo: hasta ahora la escena solo se dibuja cuando algo cambia.
 - **Sombras.** El tren las proyecta: va con `castShadow`, como `B`, `S` y la malla de la vía.
 - **Para las capturas.** `window.__train(línea, s)` deja un tren detenido en un punto, para `tools/screenshot.py --js` y `tools/variants.py`.
 
-### 2.6 Verificación
+### 2.6 Verificación (hecha)
+
+Capturas en `shots/tren/` (ignorado por git): la estación (el tren detenido queda bajo la cubierta y no se ve: se ve entrar y salir), el andén del ramal con el Buscarril, el tablero de 1 Sur, los puentes del Lircay y del Piduco (las dos líneas), el tren de madera, la noche y el móvil; de cerca con `__pixelArt(null)` y `__look(x, y, 70–90)` para revisar cada modelo, el borde del andén y los parapetos. Una hoja de `tools/variants.py` con el tren en diez `s` de las dos líneas: no flota ni se hunde, y fuera del terreno se oculta. `stats:` iguales salvo `trains` (12 coches, 1.328 vértices, 2 ms); cero errores de consola. `tools/probe.py` salió de aquí.
 
 - Capturas de cerca de la estación con un tren detenido y de cada puente y paso bajo nivel con un tren encima (para la vía sola ya están hechas: zoom 22–26, que en esta versión es el de píxeles de arte de ~0,5 m; `__look(x, y, 14.2)` queda más lejos). Ver también la vista girada, la noche y el móvil.
 - Una hoja de `tools/variants.py` con el tren en varios `s` a lo largo de cada línea, para ver que no flote, no se hunda en los tableros y no atraviese el andén ni los parapetos.
