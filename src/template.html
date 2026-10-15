@@ -3024,7 +3024,9 @@ function railBase(B){const t0=performance.now(),R=new GB(1<<16),RX=DATA.railx||[
   // (~1.5 cm: drawn as one art pixel it broke into dashes, ESTETICA §2)
   const M=done.find(d=>d.L.k==='main');
   if(M&&DATA.rmast){const {P,TH,kind,L,hwD}=M;
-    const ms=dec(DATA.rmast).filter(m=>inTerrain(m[0],m[1])).map(m=>{const i=near(P,m[0],m[1]),p=P[i],min=kind[i]===2?hwD+.3:L.bw/2+.7;
+    // none under the Ruta 5, which crosses over the line on its own bridge (its deck carries the wire there)
+    const r5=dec(DATA.ruta5),underR5=m=>r5.some((q,j)=>j&&segDist2(m[0],m[1],r5[j-1][0],r5[j-1][1],q[0],q[1])<16*16);
+    const ms=dec(DATA.rmast).filter(m=>inTerrain(m[0],m[1])&&!underR5(m)).map(m=>{const i=near(P,m[0],m[1]),p=P[i],min=kind[i]===2?hwD+.3:L.bw/2+.7;
       let off=(m[0]-p.x)*p.nx+(m[1]-p.y)*p.ny;if(Math.abs(off)<min)off=(off<0?-1:1)*min;return {i,off};}).sort((a,b)=>a.i-b.i);
     for(const m of ms){const p=P[m.i],t=TH[m.i],x=p.x+p.nx*m.off,y=p.y+p.ny*m.off,a=Math.atan2(p.dy,p.dx),sg=m.off<0?-1:1;
       R.prism(rotRect(x,y,.5,.5,a),Math.min(t,E(x,y))-.3,t+7.2,K.mast,K.mast);
