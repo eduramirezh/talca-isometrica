@@ -57,7 +57,7 @@ Hecho como estaba previsto. Lo que se verificó y lo aproximado: por Talca corre
 
 ### 2.5 El render con algo en movimiento (hecho)
 
-Hecho como estaba previsto: `trainsTick()` corre en cada cuadro de `loop()`, mueve los trenes y pide un cuadro a 18 por segundo solo mientras uno se mueve dentro de la vista (prueba de frustum con la esfera de cada coche, y un cuadro más cuando sale o se oculta). `window.__train(línea, s, tipo, sentido)` detiene el horario y deja un tren en `s`; `__train(null)` lo reanuda. `__trainFps()` mide los cuadros que piden los trenes. Medido con SwiftShader la generación sube ~2 ms; en una GPU real hay que mirar `__trainFps()` con un tren en pantalla (2.6).
+Hecho como estaba previsto: `trainsTick()` corre en cada cuadro de `loop()`, mueve los trenes y pide un cuadro a 18 por segundo solo mientras uno se mueve dentro de la vista (prueba de frustum con la esfera de cada coche, y un cuadro más cuando sale o se oculta). `window.__train(línea, s, tipo, sentido)` detiene el horario y deja un tren en `s`; `__train(null)` lo reanuda. `__trainFps()` mide los cuadros que piden los trenes. Medido con SwiftShader la generación sube ~2 ms. En la GPU real de Edu (Chrome, pantalla Retina a 60 Hz, 2026-10-15), con el automotor en pantalla a zoom 22, `__trainFps()` da 16–17 cuadros por segundo con 1–2 ms de CPU por cuadro (el tope de 18 cae entre cada tercer y cuarto cuadro de los 60), y 0 cuando ningún tren se mueve en la vista.
 
 Es el cambio de fondo: hasta ahora la escena solo se dibuja cuando algo cambia.
 
