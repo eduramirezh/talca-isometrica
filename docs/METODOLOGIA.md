@@ -166,6 +166,7 @@ En 1 Norte los impares están al lado norte. La Alameda es la 4 Norte.
 - **Base.**
   - Una malla de terreno (sección 6) con bordes de tierra que siguen su perfil.
   - Parcelas agrícolas generadas donde no hay manzanas, con algunas hileras de álamos.
+  - Usos de suelo (sección 13) en los terrenos que el Censo deja en blanco: industria, cementerios, el regimiento, colegios, canchas, parques, huertos, viñas, eriazos.
   - Manzanas como polígonos planos, calles como cintas encima, ríos con ribera de ripio y una franja verde de parque ribereño. El Río Claro es el agua de OSM con sus islas, sobre las manzanas, con una franja de ripio en cada orilla, nivelada a lo ancho del cauce.
 - **Edificios procedurales** (`cityGen`). Se generan **a lo largo de cada tramo de calle**, por ambos lados, y no siguiendo el borde de la manzana. Las manzanas del censo pueden contener pasajes interiores, y así los edificios dan siempre a una calle real. Para cada lote:
   1. Se identifica la manzana que hay detrás de la calle.
@@ -285,3 +286,21 @@ Los hitos restantes se rehicieron en cinco sesiones paralelas, una por zona (Pla
 - El relieve está exagerado (×3 en el plano, ×1,3 en los cerros) y suavizado a ~40 m: no se ven taludes ni desniveles de pocos metros. Los ríos no siempre van por el fondo del valle del modelo; el Claro y el Lircay se nivelan a lo ancho del cauce, y en las celdas de la orilla el agua sube un poco hacia la ribera.
 - Fuera del centro, la grilla se deforma y el lector de direcciones deja de funcionar. Muestra «Fuera del centro numerado».
 - La información institucional (direcciones, notarios) es de septiembre de 2026 y puede cambiar.
+
+## 13. Usos de suelo (`config/usos.json`, `pipeline/usos.py`)
+
+El Censo describe las manzanas por sus habitantes. Donde no hay viviendas da el tipo «sin información», que la maqueta pintaba como arena (más de 4 ha) o como parque, y fuera de las manzanas no hay nada: el terreno pelado. Además, las manzanas con datos que no son vivienda (el regimiento, los cementerios, los colegios, el golf) se llenaban de casas generadas. En octubre de 2026 eso dejaba 14 manzanas en blanco de 4 ha o más (267 ha) y campos de arena a ambos lados de la Ruta 5 y al sur del Piduco.
+
+**Levantamiento.** Se hizo por cuadrante (nororiente, norponiente, surponiente y suroriente), primero las 14 manzanas grandes, luego el borde al oriente de la Ruta 5 y al sur del Piduco, luego las manzanas chicas:
+
+1. OSM entero en una sola descarga, por la API `map` (Overpass no respondía): `python pipeline/traces.py tiles -4000 5600 -4200 4700 todo` → `raw/osm/map-todo.json` (~137 mil elementos, ~3 min).
+2. `python pipeline/usos.py survey todo [caja]` lista los polígonos etiquetados (`landuse`, `amenity`, `leisure`, `natural`, `military`…) que caen sobre terreno en blanco, con las manzanas que pisan. `usos.py blancos 0.5 --osm todo` lista al revés: las manzanas en blanco que ningún uso cubre, con lo que OSM tiene en ellas.
+3. `python pipeline/satellite.py punto x y lado 17 --calles` muestra la imagen de Esri con las manzanas, las calles del mapa, una cruz cada 100 m y los usos ya cargados (naranjo): así se revisa cada entrada y se dibujan a mano los polígonos que OSM no tiene.
+4. Lo que OSM tiene y la imagen confirma se importa: `usos.py importar todo` rehace todas las entradas con `"auto": true` (confianza media hasta revisarlas en la imagen). Lo que OSM no tiene, o tiene mal, va como entrada a mano, que manda: las 14 manzanas grandes, villas, conjuntos y parcelas. Lo que otra sección dibuja (la Alameda, el patio de la Estación) va en `excluir`.
+5. `usos.py check` revisa el archivo (fuente, confianza, hitos, superposiciones, cuánta agua pisa) y cuánto de las manzanas grandes queda cubierto.
+
+Lo que se encontró en las 14 manzanas grandes: casi todas son eriazos (rastrojo seco, ribera, sitios junto a la Ruta 5); en la 3156 están la planta de Cecinas PF y un recinto deportivo; en la 3193, el humedal urbano del Claro; en la 3387 y la 3438, conjuntos de vivienda posteriores al Censo; la 3451 es una villa entera construida después de 2017; la 3184 es una ladera de bosque. Fuera de las manzanas, OSM tiene villas recientes con sus calles en el mapa (`vivienda`: build.py las convierte en manzanas construidas y la ciudad generada pone las casas), condominios con pasajes que el mapa no tiene (`conjunto`: hileras de casas pareadas iguales) y parcelas a lo largo de los caminos.
+
+**Render.** Cada uso tiene un dibujador genérico en la sección `// ==== usos de suelo ====` de la plantilla, con el vocabulario de ESTETICA §3 (dos tonos, líneas de 0,5 m, blanco como contorno) y números aleatorios con semilla por entrada. Los usos reservan su suelo en `occ` antes de la ciudad, como un hito, pero dejan libres 2,5 m junto a las calles para que sigan las veredas, los árboles de vereda y los autos. El suelo va a 0,11 en su propia malla, recortado donde hay ríos, hitos, la Ruta 5 o la vía; los detalles a 0,12–0,14, de a 1 cm. Las industrias sobre manzanas con datos conservan los galpones de `cityGen` y solo reciben el patio.
+
+**Lo aproximado.** Todo lo que está sobre el suelo es genérico: los galpones, las tumbas y las cuadras no son los reales; las canchas de OSM llevan las líneas de su deporte, y los recintos sin canchas en OSM reciben una cancha de fútbol al centro si cabe. Las entradas importadas de OSM no se revisaron una por una en la imagen. Las villas posteriores al Censo tienen ~35 viviendas por hectárea supuestas.

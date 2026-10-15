@@ -41,6 +41,7 @@ config/
   grid_lines.json        posición de cada calle numerada (lector de direcciones)
   manzanas.json          manzanas «sin información» del Censo que están construidas (revisadas en imagen satelital)
   trazados.json          ríos (de OpenStreetMap), vía férrea y Ruta 5, con su procedencia
+  usos.json              usos de suelo de los terrenos en blanco del Censo (industria, cementerios, colegios, canchas, eriazos…), con su fuente
 pipeline/
   common.py              rutas y proyección (origen en la Plaza de Armas, grilla girada 5°)
   fetch_sources.sh       descarga las fuentes a raw/
@@ -50,7 +51,8 @@ pipeline/
   geocode.py             geocodificador de la numeración de Talca y validador
   build.py               plantilla + datos -> dist/
   diagnostics.py         paneles PNG para revisar trazados contra las manzanas
-  satellite.py           imagen satelital con las manzanas encima (qué hay de verdad en cada una)
+  satellite.py           imagen satelital con las manzanas y los usos de suelo encima (qué hay de verdad en cada una)
+  usos.py                usos de suelo: importación desde OSM, revisión de lo que falta y de config/usos.json
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos de Commons
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM
 src/template.html        toda la aplicación: CSS, UI y motor three.js (r128)
