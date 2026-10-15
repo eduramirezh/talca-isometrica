@@ -1,54 +1,55 @@
 # Plan: la vía férrea y un tren en movimiento
 
-Plan de trabajo (octubre de 2026), todavía sin empezar. Junta la vía férrea con su detalle, los dos pendientes que ya estaban en CLAUDE.md (el tramo sur desde OSM y los puentes ferroviarios) y lo nuevo: un tren que recorre la vía. Es independiente de los puntos 4 a 6 de [PROYECTOS-SIMILARES.md](PROYECTOS-SIMILARES.md), aunque comparte `buildBase()` con el punto 4 (ver «Coordinación»).
+Plan de trabajo de octubre de 2026. **Las etapas 2.1 a 2.3 (el trazado completo, el detalle de la vía y los puentes ferroviarios) están hechas**; quedan el tren y el render con algo en movimiento (2.4 a 2.6), que cambian `loop()` para toda la página y van en una sesión aparte. Junta la vía férrea con su detalle, los dos pendientes que estaban en CLAUDE.md (el tramo sur desde OSM y los puentes ferroviarios) y lo nuevo: un tren que recorre la vía. Es independiente de los puntos 4 a 6 de [PROYECTOS-SIMILARES.md](PROYECTOS-SIMILARES.md), aunque comparte `buildBase()` con el punto 4 (ver «Coordinación»).
 
 ## 1. Cómo está hoy
 
-- **Trazado.** `config/trazados.json` → `ferrocarril` → `DATA.rail`, una sola línea.
-  - El tramo norte, desde 2 Norte hasta el puente del Lircay, es la Línea Central de OSM.
-  - El tramo central está trazado a mano y calza con los pasos inferiores de 1 Norte, 1 Sur y 8 Sur, con la estación y con el puente del Piduco.
-  - El tramo sur es aproximado: queda hasta ~500 m fuera en el borde sur.
-  - La vía y la Ruta 5 de OSM no se bajan en el pipeline, porque solo están en relaciones de ruta de más de mil miembros. Se tomaron una vez de la API `map` con `pipeline/traces.py tiles` y `line` (METODOLOGIA §5).
-- **Dibujo.** En `buildBase()` la vía es una cinta de balasto de 6 m (a 0,2) y una línea de riel de 0,35 m (a 0,26), apoyadas en el terreno con `drape()`. `linesOcc()` deja ocupada una banda de 5 m a cada lado, sin casas ni árboles.
-- **Estación.** El hito `estacion`, bajo `// ==== hito: estacion ====`, dibuja el edificio, la cubierta de hormigón, los andenes y tres vías del patio (la del andén cubierto y dos de patio, simplificadas). La línea principal es la de la capa base, en u ≈ 46 de su marco.
-- **Ramal Talca–Constitución.** Está como lugar (`ramal-constitucion`, en el puente sobre el Piduco), pero su vía no se dibuja. Es de trocha métrica, de 1888–1915, lo recorre el Buscarril y es Monumento Histórico desde 2007 (ficha del CMN en `pois.py`).
-- **Cruces con el agua.** La vía cruza el Piduco y el Lircay como una cinta plana sobre el agua.
-- **El render.** Hoy se redibuja solo cuando algo cambia (`dirty`), y cada cuadro hace una pasada de sombras, la escena a baja resolución y, de cerca, la pasada de normales del pixel art (METODOLOGIA §8).
+- **Trazado.** Las dos líneas son de OpenStreetMap, tomadas una vez de la API `map` (caché `raw/osm/map-este.json`, de `traces.py tiles`) con `python pipeline/railway.py write este`, que reescribe `config/trazados.json` → `ferrocarril` (METODOLOGIA §5):
+  - la **Línea Central** (`puntos`, 32 puntos, 10,5 km; trocha de 1,676 m; electrificada) → `DATA.rail`;
+  - el **ramal a Constitución** (`ferrocarril.ramal.puntos`, 9 puntos, 4,2 km; trocha de 1 m; sin electrificar) → `DATA.ramal`. Empieza en el tope de su vía, al sur del edificio de la estación (OSM n4330545413), baja por la cara poniente del andén descubierto, corre 5–8 m al poniente de la Línea Central y deja la maqueta por el sur, en (1180, −4200), rumbo al surponiente;
+  - los cruces con las calles del mapa (`pasos` → `DATA.railx`, `[tipo, línea, x, y]`), los postes de la catenaria (`postes` → `DATA.rmast`), las señales (`senales` → `DATA.rsig`) y las trochas (`DATA.rgauge`).
+  - Ya no hay tramos a mano: el central iba hasta 26 m al oriente de la vía principal en la estación, por una vía de patio, y el sur quedaba hasta ~500 m fuera.
+- **Dibujo** (`railBase()`, llamado desde `buildBase()` después de las calles; corre después de las explanadas y antes de la ciudad). Cada línea se muestrea cada 0,7 m sobre su eje suavizado (Chaikin, 2 pasadas) con un perfil de alturas `T`, la cara superior del balasto:
+  - **en el suelo** (`T = E + 0,2`): balasto drapeado a 0,2 (grava `PAL.ballast` en la Línea Central, tierra en el ramal, como en las fotos), durmientes a 0,22 cada 1,4 m y de 0,7 m de ancho (hormigón o madera), dos rieles de 0,4 m a 0,24 separados por la trocha;
+  - **sobre un terraplén o un tablero** (malla propia, no drapeada, que proyecta sombra): la misma vía a `T`, `T + 0,02` y `T + 0,04`.
+  - `linesOcc()` deja libre una banda de 5 m a cada lado de la Línea Central; `railBase()`, 4 m del ramal y el pie de los terraplenes.
+- **Pasos bajo nivel** (`DATA.railx` tipo 0): donde OSM dice que la calle pasa bajo la vía (la vía con `bridge=yes`: 1 Norte, 2 Norte, la Alameda y un camino al norte del Lircay; la calle con `tunnel=yes`: 1 Sur, 6 Sur y 8 Sur, estos dos bajo las dos líneas). La calle no puede bajar (el relieve es una malla de 40 m), así que la vía sube: tablero a `E(cruce) + RAIL_HU` (3 m) del largo de la calle más 1,2 m por lado, rampas de 1:`RAIL_G` (1:16, 48 m) y, entre dos pasos a menos de `RAIL_FILL` (160 m), terraplén continuo (1 Sur, 1 Norte y 2 Norte quedan unidos, a la altura del más bajo). El tablero es blanco, con balaustrada de postes y huecos cada 0,7 m y estribos blancos, como el de 1 Sur en las fotos de 2014; el terraplén, de pasto seco en dos tonos cada 4 m, con taludes de 1:1,5. Las dos calzadas de 1 Sur y de la Alameda pasan bajo un solo tablero.
+- **Cruce a nivel** (tipo 1, con barreras): 14 Sur, en las dos líneas. El balasto se corta en la calzada y los rieles cruzan sobre un panel; en cada acceso, a la derecha, un poste blanco con la cruz de San Andrés (blanca con borde rojo), dos luces rojas y la barrera levantada (rojo y blanco cada 0,6 m). No hay otros en el mapa: el camino a nivel al norte del Lircay (OSM n4684344952) no es una calle del mapa.
+- **Catenaria y señales.** Los 181 postes de OSM a menos de 8 m de la Línea Central, desplazados fuera del balasto si caían en él, con una ménsula sobre la vía a `T + 6,2`; ninguno bajo la Ruta 5. Sin hilo de contacto: dibujado como un píxel de arte se cortaba en trazos. Las 16 señales luminosas de OSM: poste, cabeza oscura con una banda roja y una luz (`GLOW`) de noche.
+- **Puentes** (hitos que se registran en `RAIL_BR` y que `railBase()` dibuja con el perfil final):
+  - `puente-lircay-ferrocarril`: N° 1 sobre el cauce (OSM w143173502, 132 m) y N° 2 sobre el brazo sur (w101562801, 32 m). Tablero con vigas de celosía a los lados (`railGirder`, 3 m sobre el tablero), pilas de piedra con tajamares y estribos con pilares (`railPiers`), según la foto de c. 1900; 6 y 2 tramos. Tablero a 0,6 m sobre la orilla más alta. Sin explanada: el puente de la Ruta 5 está a 30 m.
+  - `puente-piduco-ferrocarril` (w102212627) y `puente-ramal-piduco` (w435101040, el lugar `ramal-constitucion`): un tramo de 14 m sobre vigas de alma llena, uno junto al otro, a 2 m sobre la orilla más alta para que el agua se vea bajo ellos (el estero corre en una zanja que el relieve no tiene).
+  - Los puentes de OSM sobre esteros y canales que la maqueta no dibuja (Caiván, Los Molinos, El Parrón, el Canal Sandoval y un estero de 4 m al norte de la Alameda) no se modelan: la vía pasa a nivel.
+- **Estación.** La vía principal de OSM es la de la cubierta (u ≈ 18–20 del marco de la estación) y la dibuja `railBase()`; el andén descubierto queda entre ella (al oriente) y el ramal (al poniente). Las dos vías de patio del hito (u 33,5 y 38,5, simplificadas) van en `RAIL_YARD` y se dibujan igual que las líneas; los topes siguen en el hito, también el del ramal.
+- **El camino para el tren.** `RAILP` (`window.__rail`) guarda cada línea, `main` y `ramal`, como arreglos de la misma longitud, uno por muestra (cada 0,7 m): `x`, `y` (metros de grilla), `s` (distancia acumulada: desde el borde norte en la Línea Central, desde el tope de la estación en el ramal), `h` (altura del riel: la del suelo, el terraplén, el tablero o el puente), `g` (el suelo), `kind` (0 suelo, 1 terraplén, 2 tablero de paso bajo nivel, 3 puente, 4 cruce a nivel) y `lifts` (`{s0, s1, H, bridge}`, los tableros y puentes). Puntos de referencia: Línea Central, 10.477 m, 14.969 muestras; la cubierta de la estación entre s ≈ 6.150 y 6.270, el puente del Piduco en 7.397, el cruce de 14 Sur en 8.133, el Lircay N° 1 en ~1.200–1.334 y el N° 2 en ~1.528–1.560. Ramal, 4.224 m, 6.035 muestras; el puente del Piduco en s ≈ 1.145 y 14 Sur en 1.880.
+- **El render.** Sin cambios: se redibuja solo cuando algo cambia (`dirty`), y cada cuadro hace una pasada de sombras, la escena a baja resolución y, de cerca, la pasada de normales del pixel art (METODOLOGIA §8).
 
 ## 2. Las etapas
 
-### 2.1 Trazado completo
+### 2.1 Trazado completo (hecho)
 
-1. **Tramo sur desde OSM.** Igual que el norte: `traces.py tiles` sobre las cajas del borde sur y `traces.py line ferrocarril railway=rail ...` para encadenar la Línea Central, comparando con `traces.py check` y con un panel sobre la imagen satelital. Reemplaza los puntos aproximados de `config/trazados.json`, con la procedencia en `fuente`.
-2. **El ramal a Constitución** como segunda línea: desde el patio de la estación hasta el borde de la maqueta, cruzando el Piduco.
-   - Hay que decidir el formato: `DATA.rail` como lista de líneas, o una clave nueva `ramal`. `process_geometry.py` y `build.py` lo pasan a la plantilla; `linesOcc()` y la capa base lo recorren.
-   - Su ancho es menor: trocha de 1 m.
-3. **Revisión de los cruces.** Las calles que pasan bajo la vía (pasos inferiores) y las que la cruzan a nivel, según OSM (`railway=level_crossing`). Hoy todo se dibuja a nivel.
+1. **Tramo sur desde OSM.** Hecho con `pipeline/railway.py`: toda la Línea Central, no solo el sur, sale de la cadena `usage=main` de la caché `map-este`. Revisado con `traces.py check piduco` y `check lircay` (los cruces caen a 0–1 m de los puentes de OSM) y con paneles sobre la imagen satelital del sur y de la estación.
+2. **El ramal a Constitución.** Hecho: clave nueva `DATA.ramal` (y `ramal` dentro de `ferrocarril` en `config/trazados.json`), para no cambiar la forma de `DATA.rail`, que otras herramientas leen. Arranca en el patio de la estación (su vía de andén), sin empalme dibujado con la principal: en OSM se une a ella por los cambios del patio sur, que la maqueta no tiene.
+3. **Revisión de los cruces.** Hecha: las 13 calles del mapa que cruzan la vía (10 la Línea Central, 3 el ramal) están en `DATA.railx`, cada una con lo que dice OSM. Aproximado: la altura de los tableros (3 m sobre la calle, la vía sube en vez de bajar la calle).
 
-### 2.2 Detalle de la vía, para el píxel de 0,5 m
+### 2.2 Detalle de la vía (hecho)
 
-Siguiendo ESTETICA §2 y §3: líneas de 0,4–0,5 m como mínimo, dos tonos alternados donde hay ritmo y nada menor de 0,4 m.
+- **Rieles y durmientes.** Hechos, como estaba previsto (ESTETICA §2 y §3). Los durmientes se distinguen del balasto en un 15–20 % de luminosidad (más claros en la Línea Central, más oscuros en el ramal).
+- **Pasos bajo nivel.** Hechos como terraplén y tablero (arriba). Fotos solo del de 1 Sur; los demás son iguales por licencia.
+- **Pasos a nivel.** El de 14 Sur, el único del mapa.
+- **Catenaria.** Verificado: OSM marca la Línea Central `electrified=contact_line` y las fotos de 1 Sur (2014) muestran postes e hilo. Postes y ménsulas, sin hilo.
+- **Luces de noche.** Las señales. Los faroles del andén no se agregaron (serían un cambio del hito de la estación fuera de su patio).
 
-- **Rieles y durmientes.** Dos rieles oscuros de ~0,4 m sobre el balasto, separados por la trocha: 1,676 m en la Línea Central y 1 m en el ramal. Los durmientes van como bandas alternadas de dos tonos cada ~1–1,5 m, no cada 0,6 m como los reales, que a esta escala serían ruido.
-- **Pasos inferiores.** La vía sobre un terraplén o un tablero corto en 1 Norte, 1 Sur y 8 Sur, con muros de contención. Hay que ver en fotos cómo son.
-- **Pasos a nivel.** Barreras, señales y el cruce de tablones o asfalto. Solo donde OSM los marca.
-- **Catenaria.** Postes y cable solo si las fotos muestran la Línea Central electrificada en Talca (por verificar). El cable mide menos de 0,4 m: se dibujan los postes y, a lo más, una línea de un píxel.
-- **Luces de noche.** Pocas: señales y los faroles del andén con `GLOW`.
+### 2.3 Puentes ferroviarios (hecho)
 
-Todo lo que va en el suelo se apoya con `drape()` (capas planas) o `E(x, y)`, como el resto de la capa base. La vía de la estación sigue en su hito.
-
-### 2.3 Puentes ferroviarios
-
-- **Piduco:** el de la Línea Central y el del ramal.
-- **Lircay:** el ferroviario, junto al Puente Lircay N.° 1 de la Ruta 5.
-
-Se modelan como los puentes del Río Claro (tablero sobre pilas que reemplaza la cinta, un hito por puente), con su planta de OSM (`landmark.py osm`) y fotos fechadas. La vía deja de dibujarse sobre el agua donde hay puente, como la calle con `s.bridge`. El tren tiene que tomar la altura del tablero.
+Los tres previstos y uno más (el N° 2 del Lircay, sobre el brazo sur, que OSM tiene dentro del agua del río). Formas aproximadas: hay una sola foto con licencia libre, del Lircay N° 1 hacia 1900, y ninguna de los del Piduco. Cómo se registra un puente en `RAIL_BR` está en el comentario de `railBase()` y en CLAUDE.md.
 
 ### 2.4 El tren
 
-- **Qué trenes.** En la Línea Central, los servicios de pasajeros que paran en Talca y quizá uno de carga; en el ramal, el Buscarril. Modelos según fotos fechadas (Wikimedia Commons), con la estética de los hitos: volumen escalonado, dos tonos, ventanas oscuras, franjas de color de la empresa. Hay que verificar qué material rueda hoy por Talca antes de dibujarlo.
-- **Recorrido.** Cada línea se convierte en un camino muestreado: puntos cada ~1 m con su distancia acumulada `s`, el rumbo y la altura (terreno, terraplén o tablero de puente). Cada carro se ubica por su `s` (el del primero menos el largo de los anteriores), orientado por la tangente entre sus dos bogies, para que tome bien las curvas.
-- **Horario.** Ficticio pero verosímil: un tren cada pocos minutos de tiempo real, que entra por un borde, se detiene en la estación unos segundos y sale por el otro. El Buscarril va y vuelve por el ramal. De noche, un foco delantero y las ventanas encendidas.
+- **Qué trenes.** En la Línea Central, los servicios de pasajeros que paran en Talca (las relaciones de OSM: Tren Chillán–Estación Central, el Expreso y el Curicó–Linares) y quizá uno de carga; en el ramal, el Buscarril. Modelos según fotos fechadas (Wikimedia Commons: hay del Buscarril y del servicio Talca–Constitución de 2009 a 2016), con la estética de los hitos: volumen escalonado, dos tonos, ventanas oscuras, franjas de color de la empresa. Hay que verificar qué material rueda hoy por Talca antes de dibujarlo.
+- **Recorrido.** El camino muestreado ya existe: `RAILP` (§1). Cada carro se ubica por su `s` (el del primero menos el largo de los anteriores), a la altura `h`, orientado por la tangente entre sus dos bogies (los puntos de `s ± media distancia entre bogies`), para que tome bien las curvas y las rampas de los pasos bajo nivel (1:16).
+- **Gálibos que ya hay que respetar.** Sobre los tableros de los pasos bajo nivel hay parapetos a ±2,8 m del eje (±2,2 en el ramal) y 1 m de alto; en los puentes del Lircay, las vigas de celosía por dentro a ±2,5 m y 3 m de alto; las ménsulas de la catenaria a 6,2 m sobre el balasto y los postes a ≥3 m del eje. Un coche de trocha ancha (~3,2 m de ancho, ~4,3 de alto) cabe. En la estación, el borde del andén descubierto (u = 18) queda a ~1,5 m del eje: un coche de 3,2 m lo roza; el piso del coche va sobre el andén (1 m).
+- **Horario.** Ficticio pero verosímil: un tren cada pocos minutos de tiempo real, que entra por un borde, se detiene en la estación unos segundos (Línea Central: s ≈ 6.150–6.270, bajo la cubierta) y sale por el otro. El Buscarril parte del tope del ramal (s = 0), va hasta el borde sur y vuelve. De noche, un foco delantero y las ventanas encendidas.
 - **Movimiento lento.** Si `prefers-reduced-motion` está activo, el tren queda detenido en la estación.
 
 ### 2.5 El render con algo en movimiento
@@ -59,17 +60,18 @@ Es el cambio de fondo: hasta ahora la escena solo se dibuja cuando algo cambia.
 - **Cuadros por segundo.** 15–20 por segundo bastan y van con el pixel art. Cada cuadro cuesta las sombras, la escena a baja resolución y, de cerca, la pasada de normales. Hay que medirlo en una GPU real, no con SwiftShader.
 - **El paso del tren.** Como la imagen de baja resolución está anclada a la grilla, el tren avanza de a un píxel de arte, como en un juego. No hay que suavizarlo.
 - **El bucle.** No usar `anim`, que es el vuelo de la cámara y se cancela con la rueda o el arrastre. Hace falta un gancho propio por cuadro que marque `dirty` cuando corresponda.
-- **Sombras.** El tren las proyecta: va con `castShadow`, como `B` y `S`.
+- **Sombras.** El tren las proyecta: va con `castShadow`, como `B`, `S` y la malla de la vía.
 - **Para las capturas.** `window.__train(línea, s)` deja un tren detenido en un punto, para `tools/screenshot.py --js` y `tools/variants.py`.
 
 ### 2.6 Verificación
 
-- Capturas de cerca (`__look(x, y, 14.2)`, píxel de 0,5 m) de los rieles, los pasos inferiores, la estación con un tren detenido y cada puente. Ver también la vista girada, la noche y el móvil.
-- Una hoja de `tools/variants.py` con el tren en varios `s` a lo largo de cada línea, para ver que no flote, no se hunda en los puentes y no atraviese el andén.
+- Capturas de cerca de la estación con un tren detenido y de cada puente y paso bajo nivel con un tren encima (para la vía sola ya están hechas: zoom 22–26, que en esta versión es el de píxeles de arte de ~0,5 m; `__look(x, y, 14.2)` queda más lejos). Ver también la vista girada, la noche y el móvil.
+- Una hoja de `tools/variants.py` con el tren en varios `s` a lo largo de cada línea, para ver que no flote, no se hunda en los tableros y no atraviese el andén ni los parapetos.
 - Cuadros por segundo en una GPU real con un tren en pantalla, contra la vista quieta.
-- CHANGELOG, FUENTES (fotos y licencias), METODOLOGIA §5 (los trazados nuevos) y CLAUDE.md, si aparece una trampa nueva.
+- CHANGELOG, FUENTES (fotos y licencias), METODOLOGIA y CLAUDE.md, si aparece una trampa nueva.
 
 ## 3. Coordinación
 
-- **Con el punto 4** (veredas, autos, árboles de vereda; PROYECTOS-SIMILARES), que también edita `buildBase()`. Conviene sacar primero el dibujo de la vía a una función propia, `railBase()`, llamada desde `buildBase()`, para que las dos sesiones toquen bloques distintos. Los autos del punto 4 no deben quedar sobre los pasos a nivel.
-- **Con el hito de la estación.** Las vías del patio quedan en el hito. Si el ramal sale del patio, empalmarlo ahí y documentarlo en el comentario del hito.
+- **Con el punto 4** (veredas, autos, árboles de vereda; PROYECTOS-SIMILARES), que también edita `buildBase()`. El dibujo de la vía es `railBase()`, una función propia. Los autos y las veredas se cortan en la banda ocupada de la vía (`occ`), que cubre también los cruces a nivel y los tableros: no hay autos sobre la vía.
+- **Con la Ruta 5.** La Ruta 5 pasa sobre la Línea Central en (3378, 2703), en su propio puente (OSM w151617648 y w151617649, `layer=1`); la vía va a nivel debajo (`kind` 0) y sin postes de catenaria a menos de 16 m del eje de la autopista. El tablero de ese puente tiene que quedar sobre la vía (balasto a `E + 0,2`) con espacio para el tren (~5 m). Junto al puente ferroviario N° 1 del Lircay está el de la Ruta 5, a 30 m: ninguno de los dos tiene explanada.
+- **Con el hito de la estación.** Las vías del patio son del hito, que las registra en `RAIL_YARD`; las dibuja `railBase()`. El ramal sale del andén descubierto y no tiene empalme dibujado con la principal.

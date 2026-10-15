@@ -16,7 +16,13 @@ Salida (todas las coordenadas en metros de grilla enteros, codificadas en delta:
   water    {claro, lircay, piduco}  ejes de los ríos (de OSM los que tienen clave `osm`; los otros, a mano)
   area     {río: [[contorno, isla, ...], ...]}  agua de cada río de OSM: polígonos de anillos codificados
   branch   {río: [rama, ...]}  ramas laterales de un río de OSM (el Piduco Norte)
-  rail, ruta5, widths
+  rail     eje de la Línea Central (config/trazados.json -> ferrocarril; pipeline/railway.py)
+  ramal    eje del ramal a Constitución (ferrocarril -> ramal)
+  railx    [[tipo, línea, x, y]] cruces de calles con la vía: tipo 0 la calle pasa bajo la vía, 1 a nivel con
+           barreras, 2 a nivel sin barreras; línea 0 la Línea Central, 1 el ramal
+  rmast    postes de la catenaria (polilínea codificada: solo los puntos), rsig  señales luminosas (ídem)
+  rgauge   [trocha de la Línea Central, trocha del ramal] en metros
+  ruta5, widths
 """
 import json, math, collections
 from common import loc, MANZANAS_DIR, NAV_GRAPH, CONFIG, DATA, RAW, require
@@ -213,6 +219,14 @@ def pip_xy(p, ring):
         if (a[1] > y) != (b[1] > y) and x < a[0] + (y-a[1])*(b[0]-a[0])/(b[1]-a[1]): c = not c
     return c
 
+def rail_extras(fe, L):
+    """The ramal, the crossings, the catenary masts and the signals of `ferrocarril` (pipeline/railway.py writes them)."""
+    if 'ramal' not in fe: return {}
+    x = [[0 if e['tipo'] == 'bajo' else 1 if e.get('barreras') else 2, k] + [round(c) for c in loc(e['punto'][1], e['punto'][0])]
+         for k, ps in enumerate((fe.get('pasos', []), fe['ramal'].get('pasos', []))) for e in ps]
+    return {'ramal': L(fe['ramal']['puntos']), 'railx': x, 'rmast': L(fe.get('postes', [])), 'rsig': L(fe.get('senales', [])),
+            'rgauge': [fe.get('trocha_m', 1.676), fe['ramal'].get('trocha_m', 1.0)]}
+
 def main():
     tz = json.load(open(CONFIG / 'trazados.json'))
     L = lambda pts: enc([loc(lo, la) for la, lo in pts])
@@ -227,6 +241,7 @@ def main():
             'water': water, 'area': area, 'branch': branch,
             'widths': {k: [v['ancho_m'], v['ribera_m']] for k, v in tz['rios'].items()},
             'rail': L(tz['ferrocarril']['puntos']), 'ruta5': L(tz['ruta5']['puntos'])}
+    fe = tz['ferrocarril']; data.update(rail_extras(fe, L))
     DATA.mkdir(exist_ok=True)
     s = json.dumps(data, separators=(',', ':'), ensure_ascii=False)
     (DATA / 'geometry.json').write_text(s); print('data/geometry.json:', len(s), 'bytes')

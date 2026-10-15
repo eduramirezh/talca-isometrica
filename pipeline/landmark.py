@@ -2,6 +2,8 @@
 
   python landmark.py osm estadio [250]          # baja OSM alrededor del lugar (caja de ±250 m), lista lo
                                                 # etiquetado y dibuja diagnostics/plan-estadio.png
+  python landmark.py osm 4170,3725 [120]        # lo mismo alrededor de un punto de la grilla (x,y en metros),
+                                                # para lo que no es un lugar: un puente, un paso bajo nivel
   python landmark.py frame estadio 815575960 1073859992 [--origin X Y --angle A]
                                                 # coordenadas de esas vías en el marco local del modelo
   python landmark.py photos estadio ["consulta"]  # fotos de Commons en diagnostics/fotos/estadio/
@@ -28,7 +30,7 @@ una remodelación.
 Requiere internet y Pillow para el plano (uv run --with pillow python landmark.py osm …).
 """
 import json, math, re, sys, time, urllib.error, urllib.parse, urllib.request
-from common import ROOT, DATA, RAW, loc, require
+from common import ROOT, DATA, RAW, loc, unloc, require
 
 UA = {'User-Agent': 'talca-isometrica/1.0 (maqueta isometrica de Talca)'}
 OSM = 'https://api.openstreetmap.org/api/0.6/map.json?bbox={},{},{},{}'
@@ -44,6 +46,10 @@ def get(url, tries=6):
             time.sleep(10 * (k + 1))
 
 def poi(pid):
+    m = re.fullmatch(r'(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)', pid)
+    if m:                                # a point of the grid, not a place: «4170,3725» (a bridge, a crossing)
+        x, y = map(float, m.groups()); la, lo = unloc(x, y)
+        return {'id': pid, 'n': pid, 'x': x, 'y': y, 'lat': la, 'lon': lo}
     pois = {p['id']: p for p in json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois')))['pois']}
     if pid not in pois: raise SystemExit(f'No existe el lugar {pid!r} en data/pois.json')
     return pois[pid]
@@ -75,7 +81,8 @@ def cmd_osm(pid, half='250'):
     nodes, ways, rels, xy = load_osm(pid, half)
     inrel = {m['ref'] for r in rels for m in r['members'] if m['type'] == 'way'}
     keys = ('name', 'leisure', 'building', 'amenity', 'landuse', 'man_made', 'sport', 'surface', 'highway',
-            'building:levels', 'height', 'roof:shape', 'roof:colour', 'building:colour', 'wikimedia_commons')
+            'building:levels', 'height', 'roof:shape', 'roof:colour', 'building:colour', 'wikimedia_commons',
+            'railway', 'usage', 'gauge', 'bridge', 'tunnel', 'layer', 'waterway')
     print(f"lugar {pid}: ({p['x']:.0f}, {p['y']:.0f}) m de grilla\n\nvías (id, etiquetas, centroide, caja en metros de grilla):")
     shown = []
     for w in ways.values():
