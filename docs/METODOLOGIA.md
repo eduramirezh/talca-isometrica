@@ -90,6 +90,26 @@ python pipeline/traces.py line este railway=^rail$ usage=^main$ --eps 1.5       
 ```
  Sin lotes ni árboles sobre ellas (`linesOcc`): 15 m a cada lado del eje de la Ruta 5 y 5 m de la vía.
 
+**La Ruta 5 como autopista (octubre de 2026).** El eje medio sigue en `config/trazados.json`, pero la plantilla ya no dibuja una cinta de 26 m sobre él: dibuja las dos calzadas, cada una sobre su línea de OSM y en su sentido, como se modela un hito (§9), con los datos en un literal de la plantilla (`R5`, de `python pipeline/traces.py calzadas`: las 74 vías `highway=motorway` encadenadas en dos cadenas, simplificadas a 0,3 m, con `lanes`, `lit` y `bridge` por tramo, y los 40 ramales `motorway_link`, que el grafo de cicloconecta no trae; sus `trunk_link` sí son calles del mapa). Antes de modelar se listaron todos los cruces con `traces.py cruces` y se miraron sobre la imagen de Esri con `traces.py vial`:
+
+| Cruce | Dónde | Tipo en OSM |
+|---|---|---|
+| Río Lircay | (4128, 3717) | la autopista en dos puentes de 164 m |
+| camino sin nombre, junto al Caserío Lircay | (3958, 3485) | bajo la autopista, que va en dos puentes de 81 m |
+| Enlace Avenida Lircay | (3811, 3294) | paso superior, un lazo y cuatro ramales |
+| vía férrea (electrificada) | (3379, 2703) | bajo la autopista, en dos puentes de ~60 m |
+| Enlace Las Industrias | (3249, 2144) | paso superior y tres ramales |
+| Pasarela Nueva Holanda | (2960, 890) | pasarela con rampas |
+| calle sin nombre | (2820, 276) | bajo la autopista, que va a nivel |
+| Enlace 2 Norte | (2747, −40) | paso superior en dos puentes |
+| Enlace San Miguel | (2670, −375) | paso superior en dos puentes y una ciclovía |
+| pasarela | (2575, −788) | pasarela con rampas y escaleras |
+| Enlace 8 Sur | (2507, −1080) | paso superior en dos puentes |
+| Estero Piduco | (2328, −1854) | la autopista en dos puentes de ~65 m |
+| Enlace El Tabaco | (2144, −2642) | paso superior y ramales en trébol |
+
+Más seis cursos de agua en alcantarilla, que no se dibujan: los canales Sandoval, Baeza y Parrón, un estero, una acequia y un cauce sin nombre. Nada cruza a nivel. En OSM cada calzada tiene dos pistas (tres en los tramos de entrada y salida, `placement=right_of:1`), está iluminada desde el Lircay al sur y sus líneas quedan a 9–15 m entre sí. La imagen de Esri y una foto de 2011 muestran que en la ciudad la autopista va en trinchera bajo los pasos superiores, con las caleteras a nivel junto a los estribos. El relieve, con nodos cada 40 m, no puede hundir 40 m de ancho sin hundir las manzanas vecinas, así que se invirtió: los pasos superiores suben 2–4 m sobre la calle en rampas entre muros, con una abertura oscura donde la autopista pasaría por debajo, y la autopista sube en terraplén donde de verdad va en puente (8,6 m sobre la vía férrea, por la catenaria; 6 m sobre el camino de 3958, 3485; 8 m sobre el Lircay). Las pasarelas van a su altura real (5,6 m), con sus rampas y escaleras de OSM.
+
 El relieve tampoco sigue a los ríos en todas partes: el SRTM suavizado pone el fondo del valle a decenas de metros del cauce real, y el agua apoyada en el terreno quedaba inclinada (10 m a lo largo de un muelle de 45 m en el Claro). La plantilla nivela, en una sola pasada para los tres ríos, los nodos del relieve que caen dentro del agua al promedio del cauce en 80 m a la redonda (`riversLevel`) y repone esos niveles después de las explanadas (`riversRelevel`). El Piduco, de 12 m, casi no tiene nodos dentro: su agua sigue el terreno. Donde el cauce nivelado sube hacia la orilla, el agua (1 cm sobre las manzanas) necesita un desplazamiento de profundidad proporcional a la pendiente (`polygonOffsetFactor` −1), o las manzanas asoman en astillas. En las bocas del Piduco, su agua de OSM y la del Claro dejan una grieta de pocos metros: las franjas de orilla que caerían en el agua de otro río se dibujan con el agua.
 
 Si Overpass responde, esta consulta trae todos los trazados de una vez:
@@ -166,6 +186,7 @@ En 1 Norte los impares están al lado norte. La Alameda es la 4 Norte.
 - **Base.**
   - Una malla de terreno (sección 6) con bordes de tierra que siguen su perfil.
   - Parcelas agrícolas generadas donde no hay manzanas, con algunas hileras de álamos.
+  - La Ruta 5 como autopista (sección 5): dos calzadas con sus pistas, líneas, bandejón, barrera, ramales, postes de iluminación y autos; sus puentes, terraplenes, pasos superiores y pasarelas son hitos.
   - Manzanas como polígonos planos, calles como cintas encima, ríos con ribera de ripio y una franja verde de parque ribereño. El Río Claro es el agua de OSM con sus islas, sobre las manzanas, con una franja de ripio en cada orilla, nivelada a lo ancho del cauce.
 - **Edificios procedurales** (`cityGen`). Se generan **a lo largo de cada tramo de calle**, por ambos lados, y no siguiendo el borde de la manzana. Las manzanas del censo pueden contener pasajes interiores, y así los edificios dan siempre a una calle real. Para cada lote:
   1. Se identifica la manzana que hay detrás de la calle.
