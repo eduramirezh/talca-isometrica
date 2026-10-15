@@ -28,7 +28,7 @@
       cada vía de OSM (calle, vía férrea, agua) que cruza una calzada de la autopista, agrupada por estructura y con
       su tipo (paso superior, paso inferior, pasarela, puente sobre agua o sobre la vía, alcantarilla, a nivel) y
       los ramales a menos de 350 m; luego los tramos de la autopista con sus pistas, `lit` y puentes.
-  python traces.py calzadas [nombre] > r5.js
+  python traces.py calzadas [nombre]
       Las dos calzadas de la Ruta 5 (las dos cadenas más largas de vías highway=motorway, cada una en su sentido,
       simplificadas a 0,3 m, con pistas, `lit` y `bridge` por tramo) y sus ramales (motorway_link), como el literal
       `const R5=…;` de src/template.html (décimos de metro, en delta).
@@ -402,7 +402,7 @@ def cmd_cruces(*args):
               f'  lit={mt.get("lit", "-")}  {mt.get("maxspeed", "")} km/h' + ('  PUENTE' if mt.get('bridge') else '') + (f'  ancho {mt["width"]}' if 'width' in mt else ''))
 
 def cmd_calzadas(*args):
-    """The Ruta 5's two carriageways and its motorway_link ramps as a JS literal (R5) for src/template.html."""
+    """The Ruta 5's two carriageways and its motorway_link ramps -> data/ruta5.json (R5 in src/template.html, via build.py)."""
     name = args[0] if args else 'este'
     mw, other = motorway(name)
     near = lambda p, m=150: pg.XMIN-m < p[0] < pg.XMAX+m and pg.YMIN-m < p[1] < pg.YMAX+m
@@ -444,7 +444,8 @@ def cmd_calzadas(*args):
     A, B = [dec(c['p']) for c in out['c']]
     sep = [min(segd(((p[0]/10), (p[1]/10)), (B[i][0]/10, B[i][1]/10), (B[i+1][0]/10, B[i+1][1]/10)) for i in range(len(B)-1)) for p in A[::3]]
     print(f'separación entre las líneas de las calzadas: {min(sep):.1f}–{max(sep):.1f} m (mediana {sorted(sep)[len(sep)//2]:.1f})', file=sys.stderr)
-    print('const R5=' + json.dumps(out, separators=(',', ':')) + ';')
+    (DATA / 'ruta5.json').write_text(json.dumps(out, separators=(',', ':')) + '\n')
+    print(f'-> {DATA / "ruta5.json"} (build.py lo inyecta como DATA.r5; luego make build)', file=sys.stderr)
 
 def cmd_vial(*args):
     """Panel of the Ruta 5 over the Esri image: OSM's carriageways, ramps, crossings, and the map's axis and streets."""

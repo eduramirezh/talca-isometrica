@@ -1,0 +1,4 @@
+#!/bin/sh
+# Revisión rápida antes de cada commit: make check (tools/check.py). Se instala con `make hooks`
+# (git config core.hooksPath .githooks). Para saltarla una vez: git commit --no-verify.
+cd "$(git rev-parse --show-toplevel)" && make -s check

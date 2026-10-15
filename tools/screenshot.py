@@ -8,6 +8,8 @@
   python tools/screenshot.py shots/puente.png --js "__look(-1640,533,6,Math.PI/4+Math.PI)"  # cámara en (x, y) de grilla, zoom, giro
   python tools/screenshot.py shots/ --view "plaza=__look(-60,30,14.2)" --view "giro=__look(-60,30,14.2,Math.PI/4+Math.PI/2)"
       # varias vistas de una sola carga (shots/plaza.png, shots/giro.png): genera una vez, no una por captura
+  python tools/screenshot.py shots/smoke.png --strict             # termina con código 1 si hay errores de consola o la
+      # generación sale vacía (sin edificios, árboles o vértices): es `make smoke`, la prueba de humo del repo
 
 Usa dist/index.html (make build) y sirve three.js r128 desde node_modules (npm install), así funciona
 sin internet. Imprime las estadísticas de generación (edificios, vértices, árboles, ms) y los
@@ -63,7 +65,14 @@ async def main(a):
             Path(a.out).parent.mkdir(parents=True, exist_ok=True)
             await pg.screenshot(path=a.out); print('->', a.out)
         for l in logs: print(l)
+        bad = []
+        if a.strict:
+            bad = [l for l in logs if l.startswith(('ERROR:', 'error:'))]
+            st = await pg.evaluate('window.__stats') or {}
+            bad += [f'stats.{k} = {st.get(k)}' for k in ('buildings', 'trees', 'verts', 'ground') if not st.get(k)]
         await b.close()
+        if bad: raise SystemExit('smoke: ' + '; '.join(bad))
+        if a.strict: print('smoke: ok')
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
@@ -72,4 +81,5 @@ if __name__ == '__main__':
     ap.add_argument('--view', action='append', help='nombre=expresión JS; varias capturas de una carga (out es un directorio)')
     ap.add_argument('--dpr', type=float, default=1, help='densidad de pantalla (2: Retina)')
     ap.add_argument('--offline', action='store_true', help='bloquea fuentes web y todo lo externo salvo three.js')
+    ap.add_argument('--strict', action='store_true', help='código 1 si hay errores de consola o la generación sale vacía (make smoke)')
     asyncio.run(main(ap.parse_args()))

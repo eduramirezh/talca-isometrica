@@ -6,10 +6,13 @@ Maqueta isométrica de Talca (Chile) con lugares jurídicos e icónicos. Lee pri
 
 ```bash
 make build                      # src/template.html + data/ + config/ -> dist/talca.html y dist/index.html
+make check                      # revisión rápida (<1 s): JSON, marcadores, restricciones de artifact, node --check de dist/; la corre el hook de pre-commit (make hooks)
+make smoke                      # carga dist/ en Chromium y falla si hay errores de consola o la generación sale vacía (~1 min; tools/screenshot.py --strict)
 make serve                      # http://localhost:8765
 make pois build                 # tras editar pipeline/pois.py
 make data build                 # tras editar config/trazados.json o process_geometry.py (requiere raw/)
 make elevation build            # tras editar elevation.py (requiere raw/dem/; no necesita las otras fuentes)
+make ruta5 build                # raw/osm/map-este.json -> data/ruta5.json (las dos calzadas y los ramales de la Ruta 5; requiere traces.py tiles)
 make fetch                      # descarga raw/ (solo la primera vez)
 make validate                   # distancia entre cada lugar y su dirección en la grilla (requiere raw/)
 python tools/screenshot.py shots/x.png --hash corte-apelaciones [--size 390x844] [--dpr 2] [--dark] [--js "..."]
@@ -35,14 +38,13 @@ uv run --with pillow python pipeline/traces.py panel lircay x0 x1 y0 y1 [18]  # 
 python pipeline/traces.py tiles x0 x1 y0 y1 <nombre>                # API map de OSM por cajas (sin Overpass) -> raw/osm/map-<nombre>.json
 python pipeline/traces.py line <nombre> clave=regex [...] [--mid]   # encadena vías de OSM en `puntos` para config/trazados.json
 python pipeline/traces.py cruces                                    # cada cruce de la Ruta 5 en OSM con su tipo (paso superior, pasarela, puente…)
-python pipeline/traces.py calzadas > r5.js                          # las dos calzadas y los ramales de la Ruta 5: el literal `const R5=…;` de la plantilla
 uv run --with pillow python pipeline/traces.py vial x0 x1 y0 y1 [18] # calzadas, ramales y cruces de OSM sobre la imagen satelital
 python pipeline/railway.py check este                               # la vía y el ramal de OSM: cruces con las calles (bajo la vía o a nivel), puentes, postes, señales
 python pipeline/railway.py write este                               # lo mismo, escrito en config/trazados.json -> ferrocarril (y su ramal); luego make data build
 uv run --with pillow python pipeline/landmark.py osm 4178,3725 [120]  # planta OSM alrededor de un punto de la grilla (un puente, un cruce), no de un lugar
 ```
 
-Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.py`. Imprime las estadísticas de generación y los errores de consola. Una vista de escritorio y una de móvil suelen bastar; con `--view nombre=expresión` (repetible) se toman varias de una sola carga, que es lo que cuesta (~1 min con SwiftShader). Si el Python del sistema no tiene Playwright (o Pillow para `satellite.py`), `uv run --with "playwright==1.63" python tools/screenshot.py …` funciona sin instalar nada: el Chromium de la caché de Playwright (`~/Library/Caches/ms-playwright/chromium_headless_shell-1243`) es el de la 1.63; una versión más nueva pide otro navegador y falla con «Executable doesn't exist».
+Después de cualquier cambio en la plantilla, `make check` (menos de un segundo; el hook de pre-commit lo corre solo) y luego verifícalo con `tools/screenshot.py` (`make smoke` es la captura mínima que falla sola). Imprime las estadísticas de generación y los errores de consola. Una vista de escritorio y una de móvil suelen bastar; con `--view nombre=expresión` (repetible) se toman varias de una sola carga, que es lo que cuesta (~1 min con SwiftShader). Si el Python del sistema no tiene Playwright (o Pillow para `satellite.py`), `uv run --with "playwright==1.63" python tools/screenshot.py …` funciona sin instalar nada: el Chromium de la caché de Playwright (`~/Library/Caches/ms-playwright/chromium_headless_shell-1243`) es el de la 1.63; una versión más nueva pide otro navegador y falla con «Executable doesn't exist».
 
 ## Arquitectura
 
@@ -50,9 +52,10 @@ Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.
 
 `raw/` + `config/trazados.json` (+ el Río Claro de la API de OSM, en `raw/osm/rio-claro.json`) → `process_geometry.py` → `data/geometry.json` (`water`: ejes; `area`: el agua del Claro con sus islas; `rail`, `ramal`, `railx`, `rmast`, `rsig`, `rgauge`: la vía férrea, que `pipeline/railway.py` escribe en `config/trazados.json`)
 `raw/dem/S36W072.hgt.gz` (SRTM) → `elevation.py` → `data/elevation.json`
+`raw/osm/map-este.json` (`traces.py tiles`) → `traces.py calzadas` → `data/ruta5.json` (las dos calzadas y los ramales de la Ruta 5)
 `pois.py` → `data/pois.json`, `data/pois.csv`
 `raw/osm/map-todo.json` (`traces.py tiles -4000 5600 -4200 4700 todo`) → `usos.py importar` → `config/usos.json` (+ entradas a mano)
-`build.py` marca como construidas (tipo 3) las manzanas de `config/manzanas.json` y las `vivienda` de `config/usos.json` (las que no tienen manzana se agregan), inyecta `config/usos.json` (como `DATA.usos`) e inyecta geometry + elevation (como `DATA.elev`) + `config/grid_lines.json` (como `DATA.lines`) + pois en `src/template.html`, reemplazando los marcadores `/*DATA*/` y `/*POIS*/`.
+`build.py` marca como construidas (tipo 3) las manzanas de `config/manzanas.json` y las `vivienda` de `config/usos.json` (las que no tienen manzana se agregan), inyecta `config/usos.json` (como `DATA.usos`) e inyecta geometry + elevation (como `DATA.elev`) + `data/ruta5.json` (como `DATA.r5`, el `R5` de la plantilla) + `config/grid_lines.json` (como `DATA.lines`) + pois en `src/template.html`, reemplazando los marcadores `/*DATA*/` y `/*POIS*/`.
 
 **Coordenadas.** Todo usa «metros de grilla» (`common.loc` / `common.unloc`):
 - El origen es la Plaza de Armas.
@@ -61,7 +64,7 @@ Después de cualquier cambio en la plantilla, verifícalo con `tools/screenshot.
 - En three.js: `X = x`, `Z = -y` (`Y` es la altura). El suelo no está en `Y = 0`: está en `E(x, y)`, el relieve exagerado, con 0 en la plaza.
 - En `geometry.json` las geometrías están codificadas en delta con enteros `[x0,y0,dx1,dy1,…]`; las decodifica `dec()` en la plantilla.
 
-**Plantilla (`src/template.html`, ~1040 líneas).** Es un fragmento HTML, no un documento completo: la plataforma de artifacts de Claude agrega `<!doctype>`, `<head>` y `<body>` (`build.py --standalone` hace lo mismo para uso local). Secciones del script, en orden:
+**Plantilla (`src/template.html`, ~4500 líneas).** Es un fragmento HTML, no un documento completo: la plataforma de artifacts de Claude agrega `<!doctype>`, `<head>` y `<body>` (`build.py --standalone` hace lo mismo para uso local). Secciones del script, en orden:
 
 | Sección | Qué hace |
 |---|---|
@@ -137,7 +140,7 @@ Para publicar: `make build` y sube `dist/talca.html`, el fragmento, no `index.ht
 - **La Alameda (4 Norte).** Es una avenida con parque central de unos 70 m. Las direcciones sobre ella necesitan `side_off` de 45–95 m, no 14.
 - **Calles bajo las manzanas.** Las manzanas del censo pueden contener pasajes interiores. Por eso las calles se dibujan encima de las manzanas (y 0,12–0,15 contra 0,10) y los edificios se generan a lo largo de las calles, no del borde de la manzana.
 - **Manzanas «sin información».** El Censo da ese tipo (1) a toda manzana sin viviendas, y la plantilla la pinta como parque (`built` falso: sin lotes, árboles densos). En el centro muchas son comercio o recintos. Si una se ve verde y no lo es, compruébalo con `pipeline/satellite.py` y agrega un punto dentro de ella en `config/manzanas.json` si son casas o comercio corriente, o una entrada en `config/usos.json` si es otra cosa (una industria, un colegio, un eriazo); no edites `data/geometry.json`, que `make data` regenera.
-- **Datos fuera del grafo.** El grafo de cicloconecta excluye autopistas (la Ruta 5 no está) y ferrocarriles. Por eso esos trazados están en `config/trazados.json`: puntos tomados de OSM una vez (la Ruta 5 y el tramo norte de la vía; ver `fuente`) o a mano (el resto de la vía). Las dos calzadas y los ramales de la Ruta 5 van en la plantilla como un hito (`R5`, de `traces.py calzadas`); el eje de `config/trazados.json` solo sirve para `linesOcc` y las revisiones de `traces.py`. Los ríos se bajan de OSM en `make data`.
+- **Datos fuera del grafo.** El grafo de cicloconecta excluye autopistas (la Ruta 5 no está) y ferrocarriles. Por eso esos trazados están en `config/trazados.json`: puntos tomados de OSM una vez (la Ruta 5 y el tramo norte de la vía; ver `fuente`) o a mano (el resto de la vía). Las dos calzadas y los ramales de la Ruta 5 van en `data/ruta5.json` (`make ruta5`, de `traces.py calzadas`), que `build.py` inyecta como `DATA.r5` (`R5` en la plantilla); el eje de `config/trazados.json` solo sirve para `linesOcc` y las revisiones de `traces.py`. Los ríos se bajan de OSM en `make data`.
 - **Navegadores sin GPU.** En Chromium sin GPU (las capturas) hay que usar SwiftShader; ver los argumentos en `tools/screenshot.py`.
 - **Árboles.** `IcosahedronGeometry` ya viene sin índice en r128; `treeGeo()` lo detecta para no llamar a `toNonIndexed()`.
 - **Relieve.** Todo lo nuevo que vaya en el suelo necesita la altura del terreno: capas planas en `buildBase()` (pasan por `drape()`), objetos con `B.dy = groundMin(huella)`, puntos sueltos con `E(x, y)`. `MODELS[id].h` es absoluta (se le suma el suelo al terminar `buildModels`). Para centrar la cámara en un lugar, usa `lift(x, y)`, no `(x, y)`. Si cambias la triangulación de `terrainMesh()`, cambia `sampleTri()` igual: `drape()` depende de que coincidan.

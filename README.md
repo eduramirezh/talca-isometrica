@@ -19,6 +19,8 @@ No hace falta descargar nada para ver o modificar la página: los datos procesad
 ```bash
 make build          # -> dist/index.html (página completa) y dist/talca.html (fragmento para Claude)
 make serve          # sirve en http://localhost:8765 y lo abre en el navegador
+make check          # revisión rápida (<1 s): JSON, marcadores, restricciones de artifact, node --check; make hooks la deja en el pre-commit
+make smoke          # carga la página en Chromium y falla si hay errores o la generación sale vacía (~1 min)
 ```
 
 Para regenerar todo desde las fuentes originales:
@@ -55,8 +57,7 @@ pipeline/
   usos.py                usos de suelo: importación desde OSM, revisión de lo que falta y de config/usos.json
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos de Commons
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
-                         cruces, calzadas y ramales de la Ruta 5
-  traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM
+                         cruces, calzadas y ramales de la Ruta 5 -> data/ruta5.json
   railway.py             la vía férrea y el ramal desde OSM: cruces bajo la vía o a nivel, catenaria y señales -> config/trazados.json
 src/template.html        toda la aplicación: CSS, UI y motor three.js (r128)
 data/                    datos procesados (versionados)
@@ -64,6 +65,7 @@ dist/                    resultado (no versionado: `make build`): talca.html (fr
 tools/screenshot.py      capturas con Chromium sin interfaz
 tools/variants.py        hoja de comparación: varias vistas por varias variantes de render
 tools/probe.py           evalúa expresiones JS en el mapa cargado (window.__rail, __trains…) e imprime el resultado
+tools/check.py           revisión rápida del repo (make check); .githooks/pre-commit la corre antes de cada commit (make hooks)
 docs/                    metodología, fuentes, investigación de proyectos similares
 ```
 
