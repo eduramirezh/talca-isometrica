@@ -1,0 +1,65 @@
+/* =============== boot =============== */
+function loop(now){
+  if(anim){anim(now);}
+  if(ring.visible){const t=((now-(ring.userData.t0||0))%1800)/1800;const s=18+t*38;ring.scale.set(s,s,s);ring.material.opacity=0.85*(1-t);dirty=true;}
+  const tr=trainsTick(now);if(tr)dirty=true; // the trains: a frame at TRAIN_FPS while one moves in the view
+  if(dirty){const t0=performance.now();if(PA)paRender();else renderer.render(scene,cam);layout();dirty=false;if(tr)trainFrame(now,performance.now()-t0);}
+  updateReadout();
+  requestAnimationFrame(loop);
+}
+function boot(){
+  const t0=performance.now();
+  loadMsg('Levantando hitos y edificios…');
+  setTimeout(()=>{
+    const B=new GB(1<<19),S=new GB(1<<16);
+    riversLevel();riversOcc();linesOcc();   // level water; no lots or trees in the rivers, the Ruta 5 or the rail
+    buildModels(B,S);                       // records the landmark pads...
+    usosPlan();                             // land uses: their ground in occ, like a landmark
+    applyPads();riversRelevel();terrainNormals(); // ...which level the terrain before anything is laid on it
+    for(const k in MODELS)MODELS[k].h+=E(MODELS[k].x,MODELS[k].y);
+    for(let k=0;k<EN_;k++){EHI=Math.max(EHI,EH[k]);ELO=Math.min(ELO,EH[k]);}
+    scene.add(terrainMesh());
+    const base=buildBase(),D=new GB(1<<14);walkBase(base,D);scene.add(new T.Mesh(base.geo(),matFlat));if(riverWater.nv)scene.add(new T.Mesh(riverWater.geo(),matWater));
+    for(const m of ruta5Objects())scene.add(m); // the Ruta 5's barrier, lamp posts and cars
+    trainsInit();                           // the trains, on the paths railBase left in RAILP
+    usosBase(B,S);                          // land uses: ground, objects and trees
+    buildCerro(B);const hillTrees=wildTrees();
+    const Y=new GB(1<<18);const {TR,PO,nb}=cityGen(B,Y);TR.push(...alamedaPark(B),...streetTrees());const cars=instCars(parkedCars());
+    // riparian poplars/willows
+    const rip=[];const r=rng(77);
+    // the rivers from OSM: along their real shores (the water side is occupied and skipped), on their islands, and
+    // along their axes outside the area; the hand-traced ones along their axes
+    for(const k in RIV)for(const ring of RIV[k].flat()){const off0=DATA.widths[k][1]+.5;for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<1)continue;const nx=-(b[1]-a[1])/L,ny=(b[0]-a[0])/L;
+      for(let u=0;u<L;u+=11)for(const sd of [1,-1]){if(r()<.35)continue;const off=off0+r()*12;const x=a[0]+(b[0]-a[0])*u/L+nx*off*sd,y=a[1]+(b[1]-a[1])*u/L+ny*off*sd;if(occAt(x,y)||nearStreet(x,y,1))continue;(r()<.5?PO:TR).push([x,y,0.8+r()*.6,r()]);}}}
+    for(const k in RIV)for(const P of RIV[k])for(const ring of P.slice(1)){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of ring){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
+      for(let n=(x1-x0)*(y1-y0)/90;n>0;n--){const x=x0+r()*(x1-x0),y=y0+r()*(y1-y0);if(!pip([x,y],ring)||occAt(x,y))continue;(r()<.3?PO:TR).push([x,y,0.8+r()*.6,r()]);}}
+    for(const k of ['claro','lircay','piduco']){const w=DATA.widths[k][0],runs=RIV[k]?riverRuns(k):[chaikin(dec(DATA.water[k]),3)];
+      for(const pts of runs)for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const nx=-(b[1]-a[1])/L,ny=(b[0]-a[0])/L;
+        for(let u=0;u<L;u+=11){for(const sd of [1,-1]){if(r()<.35)continue;const off=w/2+(w<30?5:18)+r()*14;const x=a[0]+(b[0]-a[0])*u/L+nx*off*sd,y=a[1]+(b[1]-a[1])*u/L+ny*off*sd;if(occAt(x,y)||nearStreet(x,y,1))continue;(r()<.5?PO:TR).push([x,y,0.8+r()*.6,r()]);}}}}
+    const bgeo=B.geo(),cast=[new T.Mesh(bgeo,matBld),new T.Mesh(S.geo(),matFlat),instTrees(TR.concat(hillTrees,TREES),'round'),instTrees(PO.concat(PO_FIELD),'poplar'),new T.Mesh(D.geo(),matFlat),cars];
+    scene.add(new T.Mesh(Y.geo(),matFlat));
+    // shadows: everything receives them; the buildings, the landmarks (and the Cerro's sanctuary) and the trees cast them
+    scene.traverse(o=>{if(o.isMesh&&o!==ring)o.receiveShadow=true;});
+    if(cerroMesh)cast.push(cerroMesh);
+    for(const m of cast){m.castShadow=m.receiveShadow=true;if(!m.parent)scene.add(m);}
+    lampPts=lamps();scene.add(lampPts);
+    window.__stats={buildings:nb,lots:LOTS.length,verts:bgeo.attributes.position.count,yards:Y.nv,ground:base.nv+riverWater.nv,street:STREET,trees:TR.length+hillTrees.length+TREES.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0)};
+    window.__stats.city=CITY; // cityGen: barrios, house types, the Z mesh (procedural city)
+    // for tools/screenshot.py --js: centre the camera on a ground point (grid metres), at a zoom (4 = the card's) and azimuth
+    window.__look=(x,y,zoom=4,az=view.az)=>{view.az=az;view.zoom=zoom;[view.tx,view.ty]=lift(x,y,az);placeCam();};
+    window.__trees=on=>{for(const m of cast)if(m.isInstancedMesh&&m!==cars)m.visible=on;dirty=true;}; // hide the trees to see the ground under them (tools/variants.py)
+    window.__cars=on=>{cars.visible=on;dirty=true;}; // the parked cars, likewise
+    window.__pads=PADS; // the landmark pads [x0,y0,x1,y1,h], for pipeline/traces.py check --pads
+    buildPanel();resize();
+    const h=decodeURIComponent(location.hash.slice(1));
+    if(h&&BYID[h]){const m=MODELS[h]||BYID[h];select(h,false);view.zoom=4;const f=framed(...lift(m.x,m.y),4);view.tx=f[0];view.ty=f[1];placeCam();} // card first: framed() measures it
+    else if(h==='justicia'||h==='iconica'){startTour(h);}
+    $('#loading').style.opacity=0;setTimeout(()=>$('#loading').hidden=true,500);
+    requestAnimationFrame(loop);
+  },30);
+}
+window.addEventListener('resize',resize);
+if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{dirty=true;});
+resize();
+setTimeout(boot,30);
+})();

@@ -188,7 +188,9 @@ En 1 Norte los impares están al lado norte. La Alameda es la 4 Norte.
 - **Ruta de la Justicia:** 13 paradas, de la jura de la Independencia (1818) al barrio cívico de la Alameda, y termina en la Facultad de Derecho de la U. de Talca.
 - **Talca icónica:** 13 paradas.
 
-## 8. Render (`src/template.html`)
+## 8. Render (`src/`)
+
+La aplicación es un solo fragmento HTML con un solo script, pero se escribe en fuentes separados que `pipeline/build.py` une sin cambiarlos: `src/page.html` (el DOM), `src/style.css`, el script por secciones en `src/js/NN-<sección>.js` (unidas en el orden de su número) y los hitos en `src/js/hitos/<id>.js`, dentro de `buildModels`, en el orden de `src/js/hitos/ORDER`. Hasta octubre de 2026 era un solo archivo, `src/template.html`, de 4.500 líneas; al partirlo, el resultado de `make build` quedó idéntico byte a byte.
 
 - **Base.**
   - Una malla de terreno (sección 6) con bordes de tierra que siguen su perfil.
@@ -267,7 +269,8 @@ Anote de dónde sale cada detalle. Los detalles sin fuente se marcan como aproxi
 - **Huella y terreno.** `occMark(polígono)` con la huella real, no un rectángulo, para que la ciudad y los árboles no la invadan. `padAt(caja)` nivela el terreno y su altura va en `S.dy` (o `B.dy`). Las capas planas del modelo van a 0,30–0,43 m sobre la explanada, separadas al menos 0,03 m para evitar parpadeo.
 - **Recintos.** Si el hito está dentro de un recinto cercado (el polígono OSM del recinto deportivo, simplificado), agregue ese polígono a `NOLOTS`: la ciudad no genera casas ahí, pero sí árboles.
 - **Luces.** Los puntos que deben brillar de noche van a `GLOW` (x, altura absoluta, y). Póngalos delante de la cara que los lleva, o la prueba de profundidad los esconde.
-- **Comentario.** Arriba del modelo, en la plantilla, cite los ids de OSM y las fuentes de lo que está sobre el suelo, y diga qué es aproximado.
+- **Archivo.** El modelo va en `src/js/hitos/<id>.js`, que empieza con la línea `  // ==== hito: <id> ====` (con la sangría del cuerpo de `buildModels`), y su id se agrega a `src/js/hitos/ORDER`: al final, salvo que su explanada deba ceder ante la de un vecino (el encabezado de ORDER explica el orden). `make check` avisa si falta uno de los dos.
+- **Comentario.** Arriba del modelo, en su archivo, cite los ids de OSM y las fuentes de lo que está sobre el suelo, y diga qué es aproximado.
 
 ### 9.5 Verificación
 
@@ -295,7 +298,7 @@ Si un hito no tiene fotos con licencia libre (el Juzgado de Garantía, la Fiscal
 
 Los hitos restantes se rehicieron en cinco sesiones paralelas, una por zona (Plaza de Armas; barrio judicial de la Alameda; Alameda centro y oriente; oriente del centro; afueras), cada una en su propio `git worktree`. Para que las ramas se mezclen sin conflictos:
 
-- En `buildModels`, cada hito ocupa el bloque bajo su línea de marca `// ==== hito: <id> ====`, y un hito nuevo tiene la suya. Una sesión solo edita entre su marca y la siguiente. Git no mezcla cambios de dos ramas en líneas contiguas: las marcas, que no cambian, los separan.
+- Cada hito está en su archivo, `src/js/hitos/<id>.js`, y una sesión solo edita el suyo. (Entonces era un bloque de la plantilla bajo su línea de marca `// ==== hito: <id> ====`, que sigue siendo la primera línea de cada archivo: las marcas, que no cambiaban, separaban los cambios de dos ramas, porque git no mezcla cambios en líneas contiguas.) Dos sesiones que agregan un hito cada una tocan las dos el final de `src/js/hitos/ORDER`: esa mezcla se resuelve a mano, con una línea por hito.
 - Lo compartido (`localFrame`, `facade`, el terreno, la ciudad) no se toca en paralelo. Antes de repartir el trabajo se subió a `facade()` el vocabulario de la Catedral, para que nadie lo copiara por su cuenta; los ayudantes nuevos quedan dentro de cada bloque y se suben después (CLAUDE.md, «Ideas pendientes»).
 - Las sesiones no editan la documentación: entregan sus entradas de CHANGELOG, FUENTES y trampas, y se integran todas al final, en un solo cambio.
 - `raw/` y `node_modules/` no están en git: en cada worktree van como enlaces simbólicos a los del checkout principal.
@@ -336,6 +339,6 @@ El Censo describe las manzanas por sus habitantes. Donde no hay viviendas da el 
 
 Lo que se encontró en las 14 manzanas grandes: casi todas son eriazos (rastrojo seco, ribera, sitios junto a la Ruta 5); en la 3156 están la planta de Cecinas PF y un recinto deportivo; en la 3193, el humedal urbano del Claro; en la 3387 y la 3438, conjuntos de vivienda posteriores al Censo; la 3451 es una villa entera construida después de 2017; la 3184 es una ladera de bosque. Fuera de las manzanas, OSM tiene villas recientes con sus calles en el mapa (`vivienda`: build.py las convierte en manzanas construidas y la ciudad generada pone las casas), condominios con pasajes que el mapa no tiene (`conjunto`: hileras de casas pareadas iguales) y parcelas a lo largo de los caminos.
 
-**Render.** Cada uso tiene un dibujador genérico en la sección `// ==== usos de suelo ====` de la plantilla, con el vocabulario de ESTETICA §3 (dos tonos, líneas de 0,5 m, blanco como contorno) y números aleatorios con semilla por entrada. Los usos reservan su suelo en `occ` antes de la ciudad, como un hito, pero dejan libres 2,5 m junto a las calles para que sigan las veredas, los árboles de vereda y los autos. El suelo va a 0,11 en su propia malla, recortado donde hay ríos, hitos, la Ruta 5 o la vía; los detalles a 0,12–0,14, de a 1 cm. Las industrias sobre manzanas con datos conservan los galpones de `cityGen` y solo reciben el patio.
+**Render.** Cada uso tiene un dibujador genérico en `src/js/76-usos.js` (sección `// ==== usos de suelo ====`), con el vocabulario de ESTETICA §3 (dos tonos, líneas de 0,5 m, blanco como contorno) y números aleatorios con semilla por entrada. Los usos reservan su suelo en `occ` antes de la ciudad, como un hito, pero dejan libres 2,5 m junto a las calles para que sigan las veredas, los árboles de vereda y los autos. El suelo va a 0,11 en su propia malla, recortado donde hay ríos, hitos, la Ruta 5 o la vía; los detalles a 0,12–0,14, de a 1 cm. Las industrias sobre manzanas con datos conservan los galpones de `cityGen` y solo reciben el patio.
 
 **Lo aproximado.** Todo lo que está sobre el suelo es genérico: los galpones, las tumbas y las cuadras no son los reales; las canchas de OSM llevan las líneas de su deporte, y los recintos sin canchas en OSM reciben una cancha de fútbol al centro si cabe. Las entradas importadas de OSM no se revisaron una por una en la imagen. Las villas posteriores al Censo tienen ~35 viviendas por hectárea supuestas.

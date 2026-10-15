@@ -1,0 +1,99 @@
+<title>Talca Isométrica</title>
+<meta name="description" content="Maqueta isométrica de Talca con sus lugares icónicos y jurídicos">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700;800&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/*STYLE*/
+</style>
+
+<div id="app">
+  <div id="stage"><canvas id="gl" aria-label="Maqueta isométrica de Talca. Arrastre para mover, rueda o pellizco para acercar."></canvas></div>
+  <div id="overlay" aria-hidden="false"></div>
+
+  <header class="brand">
+    <h1>Talca <span>Isométrica</span></h1>
+    <p>San Agustín de Talca · 1742 · 35°25′ S 71°40′ O</p>
+  </header>
+
+  <aside id="panel" aria-label="Expediente de lugares">
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-lugares" aria-selected="true" data-pane="p-lugares">Lugares</button>
+      <button role="tab" id="tab-rutas" aria-selected="false" data-pane="p-rutas">Recorridos</button>
+      <button role="tab" id="tab-acerca" aria-selected="false" data-pane="p-acerca">Acerca</button>
+      <button class="fold" id="fold" aria-label="Plegar panel" title="Plegar panel">
+        <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12l5-5 5 5"/></svg>
+      </button>
+    </div>
+    <section class="pane" id="p-lugares">
+      <label class="search" for="q">
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4 4"/></svg>
+        <input id="q" type="search" placeholder="Buscar: corte, notaría, 1 Norte…" autocomplete="off">
+      </label>
+      <div>
+        <p class="eyebrow" style="margin-bottom:6px">Capas del ámbito jurídico</p>
+        <div class="chips" id="chips-legal"></div>
+      </div>
+      <div>
+        <p class="eyebrow" style="margin-bottom:6px">Ciudad</p>
+        <div class="chips" id="chips-city"></div>
+      </div>
+      <div id="list"></div>
+    </section>
+    <section class="pane" id="p-rutas" hidden></section>
+    <section class="pane about" id="p-acerca" hidden>
+      <h3>Cómo se hizo esta maqueta</h3>
+      <p>La trama urbana es real: cada manzana viene del Censo 2017 del INE y cada calle de OpenStreetMap. La ciudad está girada 5° para que la grilla de calles numeradas quede alineada con los ejes isométricos, como en los simuladores de ciudades.</p>
+      <ul>
+        <li><b>Manzanas:</b> Censo 2017, INE (3.134 manzanas con datos y 322 sin información), vía el repositorio <a href="https://github.com/jiboncom/chile_geojson" target="_blank" rel="noopener">jiboncom/chile_geojson</a>.</li>
+        <li><b>Calles:</b> © colaboradores de <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL), tomadas del grafo vial de Talca del proyecto <a href="https://github.com/Shiroku36/cicloconecta" target="_blank" rel="noopener">cicloconecta</a>.</li>
+        <li><b>Relieve:</b> modelo de elevación SRTM de la NASA (~30 m), vía los <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles de AWS</a>, filtrado para quitar techos y copas de árboles.</li>
+        <li><b>Ubicaciones:</b> puntos de OpenStreetMap consultados en Mapcarta, fichas del Consejo de Monumentos Nacionales y sitios de cada institución. Cada ficha indica su fuente y el nivel de confianza.</li>
+        <li><b>Direcciones sin coordenadas:</b> se ubicaron con la numeración de la grilla (100 números por cuadra; la cuadra de la plaza es la 700 en calles Norte y Sur y la 1100 en calles Oriente y Poniente).</li>
+      </ul>
+      <h3>Qué es aproximado</h3>
+      <ul>
+        <li>Los edificios se generan por algoritmo frente a cada calle real, con alturas según la densidad de viviendas del censo. Solo los hitos (Catedral, Corte, Mercado, Estadio y otros) tienen un modelo propio, simplificado.</li>
+        <li>Los ríos Claro y Lircay, el estero Piduco, la Ruta 5 y el tramo norte de la vía férrea son los de OpenStreetMap; el resto de la vía se trazó a partir de puntos conocidos (estación, pasos bajo nivel, puentes). Donde OpenStreetMap no tiene el agua del Claro o del Piduco, su ancho es aproximado.</li>
+        <li>El relieve está exagerado para que se note: unas 3 veces en el plano de la ciudad, donde el desnivel es de pocas decenas de metros, y menos en los cerros del poniente. El lector de la esquina inferior muestra la altura real.</li>
+        <li>Bajo los hitos grandes (Estadio, Mall, Plaza de Armas) el terreno se nivela, como en una obra real.</li>
+      </ul>
+      <h3>Inspiración</h3>
+      <p><a href="https://sf.isopolis.city/" target="_blank" rel="noopener">Isopolis San Francisco</a> de Vivek Aithal y <a href="https://isometric.nyc" target="_blank" rel="noopener">Isometric NYC</a> de Andy Coenen: vista fija de simulador, capas de lugares y recorridos guiados. Aquí se dibuja con geometría real en vez de imágenes generadas, para que calles y manzanas estén donde corresponden.</p>
+      <h3>Controles</h3>
+      <ul>
+        <li>Arrastrar: mover. Rueda o pellizco: acercar.</li>
+        <li>Teclas: flechas para mover, + y − para acercar, Q y E para girar la vista.</li>
+        <li>Cada lugar tiene su propio enlace: la dirección de la página termina en su identificador (por ejemplo, #corte-apelaciones).</li>
+      </ul>
+    </section>
+  </aside>
+
+  <article id="card" hidden aria-live="polite"></article>
+
+  <div class="ctrls" role="toolbar" aria-label="Vista">
+    <button id="compass" title="Norte: volver a la vista inicial" aria-label="Brújula, volver al norte"><svg viewBox="0 0 40 40"><path d="M20 5l5 15h-10z" fill="var(--wine)"/><path d="M20 35l5-15h-10z" fill="var(--ink-3)"/><text x="20" y="14.5" font-size="7" text-anchor="middle" fill="#fff" font-family="IBM Plex Mono,monospace">N</text></svg></button>
+    <hr>
+    <button id="zin" title="Acercar" aria-label="Acercar"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 4v12M4 10h12"/></svg></button>
+    <button id="zout" title="Alejar" aria-label="Alejar"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10h12"/></svg></button>
+    <button id="rl" title="Girar a la izquierda (Q)" aria-label="Girar vista a la izquierda"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 9a6 6 0 1 1 1.6 4.3"/><path d="M4 4v5h5"/></svg></button>
+    <button id="rr" title="Girar a la derecha (E)" aria-label="Girar vista a la derecha"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M16 9a6 6 0 1 0-1.6 4.3"/><path d="M16 4v5h-5"/></svg></button>
+    <hr>
+    <button id="night" aria-pressed="false" title="Noche" aria-label="Vista nocturna"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M15.5 12.5A6.5 6.5 0 0 1 7.5 4.5a6.5 6.5 0 1 0 8 8z"/></svg></button>
+    <button id="streets" aria-pressed="true" title="Nombres de calles" aria-label="Mostrar nombres de calles"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 16L8 4M17 16L12 4M10 5v2M10 9.5v2M10 14v2"/></svg></button>
+  </div>
+
+  <div id="readout" aria-live="off"><div class="a" id="ro-a">1 Norte ≈ 750</div><div class="b" id="ro-b">Frente a la Plaza de Armas</div></div>
+  <div id="scale"><span id="sc-t">200 m</span><i id="sc-i" style="width:80px"></i></div>
+
+  <div id="loading"><div class="box"><div class="seal">TALCA<br>1742</div><p id="load-msg">Levantando 3.134 manzanas del Censo 2017…</p><p id="err" hidden></p></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const DATA=/*DATA*/;
+const PD=/*POIS*/;
+</script>
+<script>
+/*SCRIPT*/
+</script>

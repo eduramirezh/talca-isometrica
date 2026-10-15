@@ -50,6 +50,7 @@ construida, igual que config/manzanas.json).
 """
 import json, math, sys
 from common import ROOT, DATA, CONFIG, RAW, loc, require
+from build import hito_ids
 
 USOS = ['industrial', 'cementerio', 'militar', 'educacional', 'salud', 'deportivo', 'parque', 'huerto', 'vina',
         'potrero', 'eriazo', 'bosque', 'feria', 'golf', 'vivienda', 'conjunto', 'parcelas', 'terminal']
@@ -276,7 +277,7 @@ def cmd_importar(name='todo'):
     cfg = json.load(open(CONFIG / 'usos.json')); hand = [u for u in cfg['usos'] if not u.get('auto')]
     excl = {e['osm'] for e in cfg.get('excluir', [])}
     g, blocks = geometry(); bix = BlockIndex(blocks); wet = river_tests(g)
-    hitos = __import__('re').findall(r'// ==== hito: ([\w-]+) ====', (ROOT / 'src' / 'template.html').read_text())
+    hitos = hito_ids()
     pois = {p['id']: p for p in json.load(open(DATA / 'pois.json'))['pois']}
     hp = [(pois[h]['x'], pois[h]['y']) for h in hitos if h in pois]
     N, W, R = load_map(name); cands = []
@@ -345,8 +346,7 @@ def river_tests(g):
 def cmd_check():
     g, blocks = geometry(); E = entries(g); wet = river_tests(g); bix = BlockIndex(blocks); bad = 0
     pois = {p['id']: p for p in json.load(open(DATA / 'pois.json'))['pois']}
-    import re
-    hitos = re.findall(r'// ==== hito: ([\w-]+) ====', (ROOT / 'src' / 'template.html').read_text())
+    hitos = hito_ids()
     tot = {}
     for k, (u, rings) in enumerate(E):
         tag = f"{k:3} {u['uso']:<11} {u.get('nombre', '')[:30]:<30}"

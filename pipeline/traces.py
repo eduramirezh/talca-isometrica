@@ -30,8 +30,8 @@
       los ramales a menos de 350 m; luego los tramos de la autopista con sus pistas, `lit` y puentes.
   python traces.py calzadas [nombre]
       Las dos calzadas de la Ruta 5 (las dos cadenas más largas de vías highway=motorway, cada una en su sentido,
-      simplificadas a 0,3 m, con pistas, `lit` y `bridge` por tramo) y sus ramales (motorway_link), como el literal
-      `const R5=…;` de src/template.html (décimos de metro, en delta).
+      simplificadas a 0,3 m, con pistas, `lit` y `bridge` por tramo) y sus ramales (motorway_link), en
+      data/ruta5.json (décimos de metro, en delta), que build.py inyecta como DATA.r5 (R5 en src/js/66-ruta5.js).
   uv run --with pillow python traces.py vial x0 x1 y0 y1 [zoom] [nombre]
       Panel de la Ruta 5 sobre la imagen de Esri: calzadas de OSM (rojo; amarillo en puente), ramales (ámbar), vías
       de OSM en puente (celeste) o en túnel (magenta), el eje del mapa con 26 m (naranja) y las calles del mapa.
@@ -402,7 +402,7 @@ def cmd_cruces(*args):
               f'  lit={mt.get("lit", "-")}  {mt.get("maxspeed", "")} km/h' + ('  PUENTE' if mt.get('bridge') else '') + (f'  ancho {mt["width"]}' if 'width' in mt else ''))
 
 def cmd_calzadas(*args):
-    """The Ruta 5's two carriageways and its motorway_link ramps -> data/ruta5.json (R5 in src/template.html, via build.py)."""
+    """The Ruta 5's two carriageways and its motorway_link ramps -> data/ruta5.json (R5 in src/js/66-ruta5.js, via build.py)."""
     name = args[0] if args else 'este'
     mw, other = motorway(name)
     near = lambda p, m=150: pg.XMIN-m < p[0] < pg.XMAX+m and pg.YMIN-m < p[1] < pg.YMAX+m

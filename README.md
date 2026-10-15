@@ -59,7 +59,12 @@ pipeline/
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
                          cruces, calzadas y ramales de la Ruta 5 -> data/ruta5.json
   railway.py             la vía férrea y el ramal desde OSM: cruces bajo la vía o a nivel, catenaria y señales -> config/trazados.json
-src/template.html        toda la aplicación: CSS, UI y motor three.js (r128)
+src/                     toda la aplicación (CSS, UI y motor three.js r128), en fuentes que build.py une en un solo fragmento:
+  page.html              fuentes, DOM y etiquetas <script>; los marcadores /*STYLE*/ y /*SCRIPT*/
+  style.css              estilos de la interfaz (tokens de tema en :root)
+  js/NN-<sección>.js     el script por secciones (terreno, ciudad, Ruta 5, vía, trenes, usos…), unidas en orden de número
+  js/hitos/<id>.js       un hito por archivo, dentro de buildModels (marcador /*HITOS*/ de js/45-landmarks.js)
+  js/hitos/ORDER         el orden de los hitos (importa: explanadas vecinas, ayudantes de la plaza)
 data/                    datos procesados (versionados)
 dist/                    resultado (no versionado: `make build`): talca.html (fragmento) e index.html (página completa)
 tools/screenshot.py      capturas con Chromium sin interfaz

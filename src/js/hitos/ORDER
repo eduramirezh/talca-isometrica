@@ -1,0 +1,46 @@
+# El orden de los hitos dentro de buildModels(B,S): build.py pega src/js/hitos/<id>.js en este orden en el marcador
+# /*HITOS*/ de src/js/45-landmarks.js. Una línea por hito; lo que sigue a # es comentario.
+#
+# El orden importa:
+#   - plaza-de-armas va primero: define palmS y flagS, que usan gore-maule, municipalidad y parque-rio-claro (son
+#     const de buildModels, no existen antes de su línea), y su explanada (MODELS['plaza-de-armas'].pad) la toman
+#     el memorial, la Catedral, el GORE, la Municipalidad, Servicios Públicos y la Torre Talca.
+#   - Las explanadas a menos de ~80 m comparten nodos del relieve y gana la última registrada (CLAUDE.md, trampa
+#     «Explanadas vecinas»).
+#   - puentes-rio-claro va después de parque-rio-claro: deckBridge() saca los árboles del parque bajo el tablero.
+#
+# Un hito nuevo: src/js/hitos/<id>.js, que empieza con la línea `  // ==== hito: <id> ====` (con la sangría de dos
+# espacios del cuerpo de buildModels), y su id en esta lista, al final salvo que deba ir antes de un vecino.
+plaza-de-armas
+gore-maule
+municipalidad
+memorial-firma
+catedral
+corte-apelaciones
+garantia-top
+fiscalia-local
+juzgado-familia
+servicios-publicos
+ex-carcel
+mercado-central
+escuelas-concentradas
+torre-talca
+casa-independencia
+teatro-regional
+la-victoria
+liceo-abate-molina
+estadio
+estacion
+puente-lircay-ferrocarril
+puente-piduco-ferrocarril
+puente-ramal-piduco
+hospital-regional
+mall-plaza-maule
+utalca-derecho
+ucm-derecho
+parque-rio-claro
+viejas-cochinas
+puente-lircay-ruta5
+puente-piduco-ruta5
+enlaces-ruta-5
+puentes-rio-claro

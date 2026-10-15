@@ -1,9 +1,10 @@
-"""Ensambla dist/talca.html: src/template.html + data/geometry.json + data/elevation.json + data/ruta5.json
+"""Ensambla dist/talca.html: la plantilla (src/, ver template()) + data/geometry.json + data/elevation.json + data/ruta5.json
 + config/grid_lines.json + config/usos.json + data/pois.json. config/manzanas.json reclasifica como construidas (tipo 3) manzanas «sin
 información» del Censo; config/usos.json va como DATA.usos (usos de suelo; sus entradas `vivienda` agregan manzanas
 construidas donde el Censo no tiene).
 
-La plantilla tiene dos marcadores, /*DATA*/ y /*POIS*/, que se reemplazan por JSON literal.
+La plantilla se arma con los fuentes de src/ (template()) y tiene dos marcadores, /*DATA*/ y /*POIS*/, que se
+reemplazan por JSON literal.
 El resultado es un único HTML autocontenido (~670 KB) que solo carga three.js r128 desde cdnjs y
 las fuentes de Google Fonts.
 
@@ -11,8 +12,35 @@ las fuentes de Google Fonts.
   python pipeline/build.py --standalone -> además dist/index.html con <!doctype>, <head> y <body>,
                                            para abrir directo en el navegador o servir con un hosting estático.
 """
-import json, sys
+import json, re, sys
 from common import ROOT, DATA, CONFIG, require, loc
+
+SRC = ROOT / 'src'
+
+def include(text, marker, part):
+    """Replace the line holding only `marker` (and its indentation) with `part`, which ends in a newline."""
+    m = list(re.finditer(rf'^[ \t]*{re.escape(marker)}\n', text, re.M))
+    assert len(m) == 1, f'el marcador {marker} aparece {len(m)} veces en los fuentes (debe ser 1)'
+    return text[:m[0].start()] + part + text[m[0].end():]
+
+def hito_ids():
+    """The landmarks' ids in src/js/hitos/ORDER, in their order (one per line; # starts a comment)."""
+    ids = [l.split('#')[0].strip() for l in (SRC / 'js' / 'hitos' / 'ORDER').read_text().splitlines()]
+    return [i for i in ids if i]
+
+def sources():
+    """The template's source files: the page, the style, the script's sections and the landmarks in ORDER."""
+    return [SRC / 'page.html', SRC / 'style.css', *sorted((SRC / 'js').glob('*.js')),
+            *(SRC / 'js' / 'hitos' / f'{h}.js' for h in hito_ids())]
+
+def template():
+    """The template, a single HTML fragment (src/template.html until it was split): src/page.html with src/style.css in /*STYLE*/ and
+    the script in /*SCRIPT*/, the files src/js/*.js joined in the order of their names; src/js/45-landmarks.js holds
+    /*HITOS*/ inside buildModels(B,S), where the landmarks src/js/hitos/<id>.js go in the order of hitos/ORDER."""
+    hitos = ''.join((SRC / 'js' / 'hitos' / f'{h}.js').read_text() for h in hito_ids())
+    js = ''.join(f.read_text() for f in sorted((SRC / 'js').glob('*.js')))
+    t = include((SRC / 'page.html').read_text(), '/*STYLE*/', (SRC / 'style.css').read_text())
+    return include(t, '/*SCRIPT*/', include(js, '/*HITOS*/', hitos))
 
 def dec(a):
     pts, x, y = [], 0, 0
@@ -69,7 +97,7 @@ def main():
     geo['r5'] = json.load(open(require(DATA / 'ruta5.json', 'Ejecute: make ruta5')))   # las calzadas y ramales de la Ruta 5 (R5)
     geo['lines'] = {k: v for k, v in json.load(open(CONFIG / 'grid_lines.json')).items() if not k.startswith('_')}
     pois = json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois')))
-    t = (ROOT / 'src' / 'template.html').read_text()
+    t = template()
     assert '/*DATA*/' in t and '/*POIS*/' in t, 'faltan los marcadores en la plantilla'
     js = lambda o: json.dumps(o, separators=(',', ':'), ensure_ascii=False).replace('</', '<\\/')
     out = t.replace('/*DATA*/', js(geo)).replace('/*POIS*/', js(pois))
