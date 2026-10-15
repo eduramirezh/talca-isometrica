@@ -154,13 +154,15 @@ function railGirder(G,K,a,b,hw,hAt,o){const L=Math.hypot(b[0]-a[0],b[1]-a[1]),dx
         G.face([P(t0,sd*(hw+.06),h),P(t1,sd*(hw+.06),h),P(t1,sd*(hw-.31),h),P(t0,sd*(hw-.31),h)],[0,1,0],K.steel2);}}}}
 // The piers and abutments of a rail bridge (same arguments as railGirder): o.spans-1 piers with cutwaters from the
 // riverbed to under the beam (o.beamD), with a cap band in the second tone; an abutment at each end, outside the deck,
-// from the ground to the deck; o.pillars, a stone pillar on each corner of the abutments, above the girders.
+// from the ground to the deck; o.pillars, a stone pillar on each corner of the abutments, above the girders; o.cut,
+// a bridge that goes on past b out of the commune: a pier there instead of the abutment.
 function railPiers(G,K,a,b,hw,hAt,o){const L=Math.hypot(b[0]-a[0],b[1]-a[1]),dx=(b[0]-a[0])/L,dy=(b[1]-a[1])/L,nx=-dy,ny=dx;
   const at=(t,n)=>[a[0]+dx*t+nx*n,a[1]+dy*t+ny*n];
-  for(let k=1;k<o.spans;k++){const t=L*k/o.spans,c=at(t,0),h=hAt({x:c[0],y:c[1]})-o.beamD,g=E(c[0],c[1]);if(h-g<1)continue;
+  const pier=t=>{const c=at(t,0),h=hAt({x:c[0],y:c[1]})-o.beamD,g=E(c[0],c[1]);if(h-g<1)return;
     const hex6=(r)=>[[-1.2*r,-hw-1],[0,-hw-2.4],[1.2*r,-hw-1],[1.2*r,hw+1],[0,hw+2.4],[-1.2*r,hw+1]].map(([lt,ln])=>at(t+lt,ln));
-    G.prism(hex6(1),g-.6,h-.5,K.stone,K.stone);G.prism(hex6(1.12),h-.5,h-.05,K.stone2,K.stone2);}
-  for(const [t,sg] of [[0,-1],[L,1]]){const q=[at(t,-hw-.8),at(t+sg*2.2,-hw-.8),at(t+sg*2.2,hw+.8),at(t,hw+.8)],c=at(t,0),h=hAt({x:c[0],y:c[1]});
+    G.prism(hex6(1),g-.6,h-.5,K.stone,K.stone);G.prism(hex6(1.12),h-.5,h-.05,K.stone2,K.stone2);};
+  for(let k=1;k<o.spans;k++)pier(L*k/o.spans);
+  for(const [t,sg] of [[0,-1],[L,1]]){if(o.cut&&t){pier(L-1.4);continue;}const q=[at(t,-hw-.8),at(t+sg*2.2,-hw-.8),at(t+sg*2.2,hw+.8),at(t,hw+.8)],c=at(t,0),h=hAt({x:c[0],y:c[1]});
     G.prism(q,groundMin(q)-.5,h-.02,K.stone,K.stone);
     if(o.pillars)for(const n of [-hw-.2,hw+.2]){const pc=at(t+sg*1.1,n),pq=rotRect(pc[0],pc[1],1.4,1.4,Math.atan2(dy,dx));
       G.prism(pq,h-.02,h+3.2,K.stone2,K.stone);G.prism(rotRect(pc[0],pc[1],1.7,1.7,Math.atan2(dy,dx)),h+3.2,h+3.6,K.stone,K.stone);}}}

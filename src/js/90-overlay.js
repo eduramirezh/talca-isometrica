@@ -21,7 +21,8 @@ const SL=[];
     if(L<60||urbanAt(...m)||!inTerrain(...m)||(acc>0&&acc<3000)){acc+=L;continue;}SL.push({t,x:m[0],y:m[1],dx:b[0]-a[0],dy:b[1]-a[1],w:false,r:true});acc=1;}});});
   // the rivers: each label on the segment of the OSM axis nearest to its point (grid metres)
   [['Río Claro','claro',-1593,872],['Río Claro','claro',-2916,-1198],['Río Claro','claro',2932,7645],['Río Lircay','lircay',3198,4293],['Río Lircay','lircay',8677,2158],
-   ['Estero Piduco','piduco',680,-1264],['Estero Piduco','piduco',2966,-2243],['Estero Piduco','piduco',6654,-3266]].forEach(([t,k,x,y])=>{const pts=dec(DATA.water[k]);
+   ['Estero Piduco','piduco',680,-1264],['Estero Piduco','piduco',2966,-2243],['Estero Piduco','piduco',6654,-3266],
+   ['Estero Pangue','panguilemo',9300,8420],['Estero Panguilemo','panguilemo',6300,8640],['Canal Pencahue','pencahue',7600,4780],['Canal Pencahue','pencahue',-1400,2700]].forEach(([t,k,x,y])=>{const pts=dec(DATA.water[k]);
     let i=0,bd=1e18;for(let j=0;j<pts.length-1;j++){const d=segDist2(x,y,pts[j][0],pts[j][1],pts[j+1][0],pts[j+1][1]);if(d<bd){bd=d;i=j;}}const a=pts[i],b=pts[i+1];SL.push({t,x:(a[0]+b[0])/2,y:(a[1]+b[1])/2,dx:b[0]-a[0],dy:b[1]-a[1],w:true});});
   SL.forEach(l=>{const e=document.createElement('div');e.className='street'+(l.w?' water':l.r?' rural':'');e.textContent=l.t;overlay.appendChild(e);l.el=e;});
 })();

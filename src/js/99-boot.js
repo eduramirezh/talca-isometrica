@@ -34,9 +34,10 @@ function boot(){
       for(let u=0;u<L;u+=11)for(const sd of [1,-1]){if(r()<.35)continue;const off=off0+r()*12;const x=a[0]+(b[0]-a[0])*u/L+nx*off*sd,y=a[1]+(b[1]-a[1])*u/L+ny*off*sd;if(occAt(x,y)||nearStreet(x,y,1))continue;(r()<.5?PO:TR).push([x,y,0.8+r()*.6,r()]);}}}
     for(const k in RIV)for(const P of RIV[k])for(const ring of P.slice(1)){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of ring){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
       for(let n=(x1-x0)*(y1-y0)/90;n>0;n--){const x=x0+r()*(x1-x0),y=y0+r()*(y1-y0);if(!pip([x,y],ring)||occAt(x,y))continue;(r()<.3?PO:TR).push([x,y,0.8+r()*.6,r()]);}}
-    for(const k of ['claro','lircay','piduco']){const w=DATA.widths[k][0],runs=RIV[k]?riverRuns(k):[chaikin(dec(DATA.water[k]),3)];
+    // along the axes outside the areas (a canal: a tree here and there along its service track)
+    for(const k in DATA.water){const [w,,canal]=DATA.widths[k],runs=RIV[k]?riverRuns(k):[chaikin(dec(DATA.water[k]),3)];
       for(const pts of runs)for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const nx=-(b[1]-a[1])/L,ny=(b[0]-a[0])/L;
-        for(let u=0;u<L;u+=11){for(const sd of [1,-1]){if(r()<.35)continue;const off=w/2+(w<30?5:18)+r()*14;const x=a[0]+(b[0]-a[0])*u/L+nx*off*sd,y=a[1]+(b[1]-a[1])*u/L+ny*off*sd;if(occAt(x,y)||nearStreet(x,y,1))continue;(r()<.5?PO:TR).push([x,y,0.8+r()*.6,r()]);}}}}
+        for(let u=0;u<L;u+=11){for(const sd of [1,-1]){if(r()<(canal?.85:.35))continue;const off=w/2+(w<30?5:18)+r()*14;const x=a[0]+(b[0]-a[0])*u/L+nx*off*sd,y=a[1]+(b[1]-a[1])*u/L+ny*off*sd;if(occAt(x,y)||nearStreet(x,y,1))continue;(r()<.5?PO:TR).push([x,y,0.8+r()*.6,r()]);}}}}
     tm('riparian');const bgeo=B.geo(),cast=[new T.Mesh(bgeo,matBld),new T.Mesh(S.geo(),matFlat),instTrees(TR.concat(hillTrees,TREES),'round'),instTrees(PO.concat(PO_FIELD),'poplar'),new T.Mesh(D.geo(),matFlat),cars];
     scene.add(new T.Mesh(Y.geo(),matFlat));
     // shadows: everything receives them; the buildings, the landmarks (and the Cerro's sanctuary) and the trees cast them

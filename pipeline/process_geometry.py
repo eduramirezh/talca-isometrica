@@ -191,15 +191,18 @@ def osm_objs(v, kind):
 def osm_river(name, r):
     """Centreline and water area of a river from OpenStreetMap. r['osm']['via']: the waterway way, or a list of
     them in downstream order, chained into one line. r['osm']['ramas'] (optional): ways of side branches, each a
-    line of its own (the Piduco Norte, an arm of the Piduco into the Claro). r['osm']['agua']: the natural=water multipolygon (a number),
-    or a list of multipolygons and closed ways ('w<id>'). Outer rings that share an edge (OSM splits long water
+    line of its own (the Piduco Norte, an arm of the Piduco into the Claro). r['osm']['tunel'] (optional): ways of
+    `via` that run underground (a canal's siphons): the axis is cut there, its longest open stretch is the centreline
+    and the others are branches. r['osm']['agua'] (optional: a stream or a canal without one is a ribbon): the
+    natural=water multipolygon (a number), or a list of multipolygons and closed ways ('w<id>'). Outer rings that share an edge (OSM splits long water
     areas into pieces) are merged into one; inner rings are the islands. The download is cached in
     raw/osm/rio-<name>.json (fetched again when an object is missing); delete it to fetch it again. Returns
     (centreline, [[outer, island, ...], ...], [branch, ...]) in grid metres, cut to the model with a 300 m margin
     (lines) or exactly (area)."""
     from landmark import get
     f = RAW / 'osm' / f'rio-{name}.json'
-    via, agua = osm_objs(r['osm']['via'], 'way'), osm_objs(r['osm']['agua'], 'relation')
+    via, agua = osm_objs(r['osm']['via'], 'way'), osm_objs(r['osm'].get('agua', []), 'relation')
+    tunel = set(r['osm'].get('tunel', []))
     ramas = osm_objs(r['osm'].get('ramas', []), 'way')
     have = lambda d, k, objs: {(e['type'], e['id']) for e in d[k]['elements']} >= set(objs)
     d = json.load(open(f)) if f.exists() else None
@@ -213,19 +216,29 @@ def osm_river(name, r):
         P = {i: loc(e['lon'], e['lat']) for i, e in N.items()}
         return el, {e['id']: e['nodes'] for e in el if e['type'] == 'way'}, P
     _, ways, P = parts('via')
-    ch = list(ways[via[0][1]])
+    ch = list(ways[via[0][1]]); under = [via[0][1] in tunel] * (len(ch)-1)   # under[j]: segment ch[j]-ch[j+1] is in a tunnel
     for k, (_, i) in enumerate(via[1:]):                 # chain the ways, each turned to follow the previous one
         w = ways[i]
-        if k == 0 and ch[0] in (w[0], w[-1]): ch.reverse()
+        if k == 0 and ch[0] in (w[0], w[-1]): ch.reverse(); under.reverse()
         if w[-1] == ch[-1]: w = w[::-1]
         assert w[0] == ch[-1], f'la vía {i} no sigue a la anterior'
-        ch += w[1:]
+        ch += w[1:]; under += [i in tunel] * (len(w)-1)
     def crop(cl):
         inside = [XMIN-300 < x < XMAX+300 and YMIN-300 < y < YMAX+300 for x, y in cl]
+        if True not in inside: return None
         i0, i1 = inside.index(True), len(inside) - inside[::-1].index(True)
         return rdp(cl[max(0, i0-1):i1+1], 3)
-    cl = crop([P[n] for n in ch])
-    br = [crop([P[n] for n in ways[i]]) for _, i in ramas]
+    runs, cur = [], [ch[0]]                               # the open stretches between the tunnels
+    for j, u in enumerate(under):
+        if u:
+            if len(cur) > 1: runs.append(cur)
+            cur = [ch[j+1]]
+        else: cur.append(ch[j+1])
+    if len(cur) > 1: runs.append(cur)
+    runs = [c for c in (crop([P[n] for n in run]) for run in runs) if c]
+    runs.sort(key=lambda c: -sum(math.dist(c[j], c[j+1]) for j in range(len(c)-1)))
+    cl = runs[0]
+    br = runs[1:] + [c for c in (crop([P[n] for n in ways[i]]) for _, i in ramas) if c]
     el, ways, P = parts('agua')
     area2 = lambda ring: sum(P[ring[i-1]][0]*P[ring[i]][1] - P[ring[i]][0]*P[ring[i-1]][1] for i in range(len(ring)))
     outers, inners = [], []
@@ -307,7 +320,7 @@ def main():
         else: water[k] = L(v['puntos'])
     data = {'ext': [XMIN, XMAX, YMIN, YMAX], 'limit': enc(R), 'blocks': blocks, 'streets': streets, 'names': names,
             'water': water, 'area': area, 'branch': branch,
-            'widths': {k: [v['ancho_m'], v['ribera_m']] for k, v in tz['rios'].items()},
+            'widths': {k: [v['ancho_m'], v['ribera_m']] + ([1] if v.get('canal') else []) for k, v in tz['rios'].items()},
             'rail': L(tz['ferrocarril']['puntos']), 'ruta5': L(tz['ruta5']['puntos'])}
     fe = tz['ferrocarril']; data.update(rail_extras(fe, L))
     DATA.mkdir(exist_ok=True)

@@ -26,10 +26,11 @@ function buildBase(){
     B.flat(b.r,0.1,col);});
   alamedaGround(B);
   // plaza de armas block recolor handled by trees
-  // rivers: a green riparian margin, then gravel bank and water. A river with OpenStreetMap's water (RIV) lies over
-  // the blocks (riverBase); a hand-traced one is a ribbon under them
+  // rivers: a green riparian margin (not along an irrigation canal, W[k][2]), then gravel bank and water. A river
+  // from OpenStreetMap (RIV; an estero or a canal without OSM water is all ribbon) lies over the blocks (riverBase);
+  // a hand-traced one is a ribbon under them
   const W=DATA.widths,BW=new GB(1<<14);
-  for(const k of ['lircay','claro','piduco']){const pts=chaikin(dec(DATA.water[k]),3);ribbon(B,pts,W[k][0]+W[k][1]*2+(W[k][0]<30?40:150),0.03,hex('#A7B472'));
+  for(const k in DATA.water){const pts=chaikin(dec(DATA.water[k]),3);if(!W[k][2])ribbon(B,pts,W[k][0]+W[k][1]*2+(W[k][0]<30?40:150),0.03,hex('#A7B472'));
     if(RIV[k]){riverBase(B,BW,k,W[k]);continue;}
     ribbon(B,pts,W[k][0]+W[k][1]*2,0.05,PAL.bank);ribbon(B,pts,W[k][0],0.07,PAL.water);}
   riverWater=drape(BW);

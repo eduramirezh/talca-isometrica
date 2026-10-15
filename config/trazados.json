@@ -1,5 +1,5 @@
 {
-  "_comentario": "Trazados que no están en el grafo vial. Un río con clave `osm` se baja de la API de OpenStreetMap en `make data` (via: vías del eje aguas abajo; ramas: brazos laterales; agua: multipolígonos o 'w<id>' para vías cerradas). Los `puntos` son listas [lat, lon]: tomados de OSM una vez (Ruta 5; la vía férrea y el ramal con python pipeline/railway.py write este) o dibujados a mano mirando los huecos entre manzanas del Censo en los paneles de diagnóstico (python pipeline/diagnostics.py). Cada trazado dice su procedencia en `fuente`. Editar aquí y correr `make data`.",
+  "_comentario": "Trazados que no están en el grafo vial. Un río con clave `osm` se baja de la API de OpenStreetMap en `make data` (via: vías del eje aguas abajo; ramas: brazos laterales; tunel: vías de `via` bajo tierra, que no se dibujan; agua, opcional: multipolígonos o 'w<id>' para vías cerradas; canal: un canal de regadío, sin franja de ribera verde ni árboles densos). Los `puntos` son listas [lat, lon]: tomados de OSM una vez (Ruta 5; la vía férrea y el ramal con python pipeline/railway.py write este) o dibujados a mano mirando los huecos entre manzanas del Censo en los paneles de diagnóstico (python pipeline/diagnostics.py). Cada trazado dice su procedencia en `fuente`. Editar aquí y correr `make data`.",
   "rios": {
     "claro": {
       "ancho_m": 60, "ribera_m": 6,
@@ -15,6 +15,16 @@
       "ancho_m": 12, "ribera_m": 5,
       "osm": {"via": [818896454, 115278012, 115278408], "ramas": [115765863], "agua": [15792513]},
       "fuente": "OpenStreetMap: eje del estero (vías 818896454, 115278012 y 115278408, waterway=river, de la relación 12030965), el brazo del Piduco Norte hacia el Claro (vía 115765863) y el agua del tramo bajo, desde la desembocadura hasta 6 Oriente, con su isla (multipolígono 15792513, natural=water), que calzan con la imagen satelital. Aguas arriba de 6 Oriente, una cinta de ancho_m sobre el eje. Reemplazó en octubre de 2026 al trazado a mano, que quedaba hasta 140 m fuera en la ciudad y 320 m al oriente."
+    },
+    "panguilemo": {
+      "ancho_m": 10, "ribera_m": 4,
+      "osm": {"via": [101547239, 631639959], "agua": ["w1135758132"]},
+      "fuente": "OpenStreetMap: el Estero Pangue (vía 101547239, waterway=river), que desde su junta con el Estero Las Chilcas (7525, 8839) sigue como Estero Panguilemo (vía 631639959), y el agua de la junta (vía cerrada 1135758132, natural=water). Los dos son el límite norte de la comuna: la maqueta dibuja la mitad sur del cauce, ~2 km de cada uno. El Estero Las Chilcas (vía 101547258) y el brazo norte del Panguilemo (vía 101547222) quedan fuera de la comuna."
+    },
+    "pencahue": {
+      "ancho_m": 6, "ribera_m": 2, "canal": true,
+      "osm": {"via": [101557431, 101557434, 101557449, 521046942, 201352313], "tunel": [101557434, 521046942]},
+      "fuente": "OpenStreetMap: el Canal de Regadío Pencahue (vías 101557431, 101557449 y 201352313, waterway=canal, width=5), desde el oriente de la comuna (10177, 2408) hasta los cerros del poniente, donde sale de la comuna. Pasa en túnel bajo la Ruta 5 (vía 101557434, 128 m) y en sifón bajo el Lircay y el Claro (vía 521046942, 1,4 km): ahí no se dibuja. Canal revestido de 6–8 m con un camino de servicio al lado (imagen de Esri)."
     }
   },
   "ferrocarril": {

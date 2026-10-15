@@ -1,12 +1,14 @@
 """Revisión de trazados (ríos, vía férrea, Ruta 5) contra OpenStreetMap y el mapa, antes de reemplazarlos.
 
-  python traces.py check piduco [--osm '{"via": [...], "agua": [...]}'] [--pads pads.txt]
+  python traces.py check piduco [--osm '{"via": [...], "agua": [...]}'] [--pads pads.txt] [--map comuna]
       Para un río de config/trazados.json (o la clave `osm` que se prueba con --osm): las calles del mapa, la vía
       y la Ruta 5 que cruzan el eje, cada una con el puente de OSM más cercano; las vías de OSM que cruzan el eje
       (puentes o no); las manzanas que entran en el agua y cuánto; las calles cuyo pavimento corre dentro del agua
       más allá de un cruce; y, con --pads, las explanadas a menos de 120 m del agua. Regla (METODOLOGIA §5): toda
-      calle que cruza el eje debe ser un puente en OSM, y si OSM y el mapa difieren en más de ~15 m se mira la
-      imagen (panel) antes de reemplazar. Las explanadas salen de la página:
+      calle que cruza el eje debe ser un puente en OSM (en un canal o un estero chico, una alcantarilla: el cauce
+      con tunnel=culvert, que también se cuenta), y si OSM y el mapa difieren en más de ~15 m se mira la imagen
+      (panel) antes de reemplazar. Las vías de OSM salen de cajas de la API `map` sobre el eje; con --map <nombre>,
+      de raw/osm/map-<nombre>.json (un canal de 24 km serían cientos de cajas). Las explanadas salen de la página:
         python tools/screenshot.py diagnostics/x.png --js "console.log('PADS '+JSON.stringify(__pads))" > pads.txt
   uv run --with pillow python traces.py panel piduco x0 x1 y0 y1 [zoom]
       Panel sobre la imagen de Esri (caja en metros de grilla, zoom 17–18): eje y agua de OSM (rojo, azul),
@@ -166,7 +168,7 @@ def opts(args, flags):
     return pos, kw
 
 def cmd_check(name, *args):
-    _, kw = opts(args, {'--osm': 1, '--pads': 1})
+    _, kw = opts(args, {'--osm': 1, '--pads': 1, '--map': 1})
     r, cl, polys, br = river(name, kw.get('--osm')); w = r['ancho_m']
     g = json.load(open(require(DATA / 'geometry.json', 'Ejecute: make data')))
     lines = [cl] + br
@@ -184,17 +186,22 @@ def cmd_check(name, *args):
         print('trazado a mano -> eje de OSM (m):', ', '.join(f'{pld(h, cl):.0f}' for h in hand if inbox(h)))
     # OSM ways that cross the axis
     xs = [p[0] for l in lines for p in l if inbox(p)]; ys = [p[1] for l in lines for p in l if inbox(p)]
-    el = tiles(min(xs)-150, max(xs)+150, min(ys)-150, max(ys)+150, f'rio-{name}')
+    el = (json.load(open(require(RAW / 'osm' / f"map-{kw['--map']}.json", 'Ejecute: make osm')))['elements'] if '--map' in kw
+          else tiles(min(xs)-150, max(xs)+150, min(ys)-150, max(ys)+150, f'rio-{name}'))
     N = {e['id']: e for e in el if e['type'] == 'node'}
+    pt = lambda e: [loc(N[n]['lon'], N[n]['lat']) for n in e['nodes'] if n in N]
+    # culverts: the stream or canal itself under the road (tunnel=culvert on a waterway)
+    culv = [pt(e) for e in el if e['type'] == 'way' and 'waterway' in (e.get('tags') or {}) and e['tags'].get('tunnel') == 'culvert']
     osmx = []
     for e in el:
         t = e.get('tags') or {}
         if e['type'] != 'way' or not ('highway' in t or 'railway' in t): continue
-        pts = [loc(N[n]['lon'], N[n]['lat']) for n in e['nodes'] if n in N]
+        pts = pt(e)
         for l in lines:
             for p in crossings(pts, l):
-                osmx.append((e['id'], t.get('highway') or 'vía:' + t.get('railway', ''), t.get('name', ''),
-                             'puente' if t.get('bridge') and t['bridge'] != 'no' else 'túnel' if t.get('tunnel') else 'SIN PUENTE', p))
+                kind = ('puente' if t.get('bridge') and t['bridge'] != 'no' else 'túnel' if t.get('tunnel') else
+                        'alcantarilla' if any(crossings(pts, c) for c in culv) else 'SIN PUENTE')
+                osmx.append((e['id'], t.get('highway') or 'vía:' + t.get('railway', ''), t.get('name', ''), kind, p))
     print(f'\nvías de OSM que cruzan el eje ({len(osmx)}; sin senderos ni servicio a nivel):')
     for b in sorted(osmx, key=lambda b: b[4][0]):
         if b[1] in ('footway', 'path', 'track', 'steps', 'cycleway', 'service') and b[3] == 'SIN PUENTE': continue
