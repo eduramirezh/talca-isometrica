@@ -23,6 +23,20 @@
       autopista). Así salieron la Ruta 5 (highway=^motorway$ "name=^Ruta 5 Sur$" --mid) y el tramo norte de la
       vía (railway=^rail$ usage=^main$).
 
+  python traces.py cruces [nombre]
+      Los cruces de la Ruta 5 en la maqueta, de norte a sur, desde raw/osm/map-<nombre>.json (por omisión `este`):
+      cada vía de OSM (calle, vía férrea, agua) que cruza una calzada de la autopista, agrupada por estructura y con
+      su tipo (paso superior, paso inferior, pasarela, puente sobre agua o sobre la vía, alcantarilla, a nivel) y
+      los ramales a menos de 350 m; luego los tramos de la autopista con sus pistas, `lit` y puentes.
+  python traces.py calzadas [nombre] > r5.js
+      Las dos calzadas de la Ruta 5 (las dos cadenas más largas de vías highway=motorway, cada una en su sentido,
+      simplificadas a 0,3 m, con pistas, `lit` y `bridge` por tramo) y sus ramales (motorway_link), como el literal
+      `const R5=…;` de src/template.html (décimos de metro, en delta).
+  uv run --with pillow python traces.py vial x0 x1 y0 y1 [zoom] [nombre]
+      Panel de la Ruta 5 sobre la imagen de Esri: calzadas de OSM (rojo; amarillo en puente), ramales (ámbar), vías
+      de OSM en puente (celeste) o en túnel (magenta), el eje del mapa con 26 m (naranja) y las calles del mapa.
+      -> diagnostics/vial-<x0>_<y0>.png
+
 El río se arma con process_geometry.osm_river() (caché raw/osm/rio-<río>.json; con --osm, rio-<río>-prueba.json).
 Las cajas de `check` se bajan solas alrededor del eje (raw/osm/map-rio-<río>.json).
 """
@@ -327,7 +341,158 @@ def cmd_line(name, *args):
     if A[0][1] < A[-1][1]: A = A[::-1]
     print(json.dumps([[round(c, 5) for c in unloc(*p)] for p in A]))
 
+# ---------------------------------------------------------------- cruces / vial (the Ruta 5)
+def motorway(name='este'):
+    """The motorway ways of raw/osm/map-<name>.json (both carriageways), every other way, and a node lookup."""
+    el = json.load(open(require(RAW / 'osm' / f'map-{name}.json', 'Ejecute: python traces.py tiles 1300 5200 -4400 4900 este')))['elements']
+    N = {e['id']: e for e in el if e['type'] == 'node'}
+    P = lambda e: [loc(N[n]['lon'], N[n]['lat']) for n in e['nodes'] if n in N]
+    ways = [(e, e.get('tags') or {}, P(e)) for e in el if e['type'] == 'way']
+    ways = [w for w in ways if len(w[2]) > 1]
+    return [w for w in ways if w[1].get('highway') == 'motorway'], [w for w in ways if w[1].get('highway') != 'motorway']
+
+def crossing_kind(t, mt):
+    """What a way with tags t does where it crosses a motorway way with tags mt."""
+    up = t.get('bridge', 'no') != 'no' and t.get('layer', '1') not in ('0', '-1', '-2')
+    under = t.get('tunnel', 'no') != 'no' or t.get('layer', '0').startswith('-') or mt.get('bridge', 'no') != 'no'
+    if 'waterway' in t: return 'alcantarilla' if t.get('tunnel') == 'culvert' else 'puente (agua)' if mt.get('bridge') else 'agua bajo la autopista'
+    if 'railway' in t: return 'puente sobre la vía' if under else 'vía sobre la autopista' if up else 'vía a nivel'
+    if t.get('highway') in ('footway', 'path', 'cycleway', 'steps', 'pedestrian'):
+        return 'pasarela' if up else 'paso peatonal inferior' if under else None
+    if t.get('highway') == 'motorway_link': return None                   # a ramp leaving or joining: not a crossing
+    return 'paso superior' if up else 'paso inferior' if under else 'a nivel'
+
+def cmd_cruces(*args):
+    """Every way of OSM that crosses the Ruta 5 inside the model, grouped by structure, with its type."""
+    name = args[0] if args else 'este'
+    mw, other = motorway(name)
+    inside = lambda p: pg.XMIN < p[0] < pg.XMAX and pg.YMIN < p[1] < pg.YMAX
+    links = [(t, pts) for e, t, pts in other if t.get('highway') in ('motorway_link', 'trunk_link')]
+    found = []
+    for e, t, pts in other:
+        if not ('highway' in t or 'railway' in t or 'waterway' in t): continue
+        for m, mt, mp in mw:
+            for p in crossings(pts, mp):
+                if not inside(p): continue
+                if any(math.dist(p, q) < 0.5 for q in pts) and any(math.dist(p, q) < 0.5 for q in mp): continue   # a shared node: a junction
+                k = crossing_kind(t, mt)
+                if k is None or (k == 'a nivel' and t.get('highway') in ('service', 'track', 'unclassified') and not t.get('name')): continue
+                found.append(dict(p=p, kind=k, way=e['id'], mway=m['id'], name=t.get('name', ''), hw=t.get('highway') or t.get('railway') or t.get('waterway') or '?',
+                                  layer=t.get('layer', ''), mbridge=mt.get('bridge', '')))
+    groups = []                                        # both carriageways of one structure (or two parallel decks) together
+    for f in sorted(found, key=lambda f: -f['p'][1]):
+        g = next((g for g in groups if g['kind'] == f['kind'] and g['name'] == f['name'] and min(math.dist(f['p'], q['p']) for q in g['xs']) < 45), None)
+        if g: g['xs'].append(f)
+        else: groups.append(dict(kind=f['kind'], name=f['name'], xs=[f]))
+    print(f'{len(groups)} cruces de la Ruta 5 en la maqueta (de norte a sur):')
+    for g in groups:
+        c = (sum(f['p'][0] for f in g['xs'])/len(g['xs']), sum(f['p'][1] for f in g['xs'])/len(g['xs']))
+        ws = sorted({f['way'] for f in g['xs']}); ms = sorted({f['mway'] for f in g['xs'] if f['mbridge']})
+        en = sorted({t.get('destination', '') for t, pts in links if pld(c, pts) < 350 and t.get('destination')})
+        nl = sum(1 for t, pts in links if pld(c, pts) < 350)
+        print(f'  ({c[0]:.0f}, {c[1]:.0f})  {g["kind"]:<22} {(g["name"] or g["xs"][0]["hw"])[:28]:<28} '
+              f'vías {",".join(f"w{w}" for w in ws)}' + (f'; autopista en puente {",".join(f"w{w}" for w in ms)}' if ms else '')
+              + (f'; {nl} ramales a <350 m' + (f' ({"; ".join(en)})' if en else '') if nl else ''))
+    print('\ntramos de la autopista (de norte a sur): pistas, iluminación, puentes')
+    for m, mt, mp in sorted(mw, key=lambda w: -max(p[1] for p in w[2])):
+        if not any(inside(p) for p in mp): continue
+        L = sum(math.dist(mp[i], mp[i+1]) for i in range(len(mp)-1))
+        print(f'  w{m["id"]:<11} ({mp[0][0]:.0f}, {mp[0][1]:.0f})->({mp[-1][0]:.0f}, {mp[-1][1]:.0f}) {L:5.0f} m  pistas {mt.get("lanes", "?")}'
+              f'  lit={mt.get("lit", "-")}  {mt.get("maxspeed", "")} km/h' + ('  PUENTE' if mt.get('bridge') else '') + (f'  ancho {mt["width"]}' if 'width' in mt else ''))
+
+def cmd_calzadas(*args):
+    """The Ruta 5's two carriageways and its motorway_link ramps as a JS literal (R5) for src/template.html."""
+    name = args[0] if args else 'este'
+    mw, other = motorway(name)
+    near = lambda p, m=150: pg.XMIN-m < p[0] < pg.XMAX+m and pg.YMIN-m < p[1] < pg.YMAX+m
+    mw = [w for w in mw if any(near(p, 300) for p in w[2])]
+    nid = lambda w: (w[0]['nodes'][0], w[0]['nodes'][-1])
+    st, en = {}, {}
+    for k, w in enumerate(mw): st.setdefault(nid(w)[0], []).append(k); en.setdefault(nid(w)[1], []).append(k)
+    chains, used = [], set()
+    for k in range(len(mw)):                          # chains of ways, each in its direction of travel
+        if k in used: continue
+        h = k
+        while len(en.get(nid(mw[h])[0], [])) == 1 and en[nid(mw[h])[0]][0] not in used and en[nid(mw[h])[0]][0] != k: h = en[nid(mw[h])[0]][0]
+        ch = [h]; used.add(h)
+        while len(st.get(nid(mw[ch[-1]])[1], [])) == 1 and st[nid(mw[ch[-1]])[1]][0] not in used: ch.append(st[nid(mw[ch[-1]])[1]][0]); used.add(ch[-1])
+        chains.append(ch)
+    length = lambda ch: sum(math.dist(mw[k][2][i], mw[k][2][i+1]) for k in ch for i in range(len(mw[k][2])-1))
+    chains.sort(key=length, reverse=True)
+    print(f'{len(mw)} vías de autopista -> {len(chains)} cadenas: ' + ', '.join(f'{length(c):.0f} m' for c in chains[:4]), file=sys.stderr)
+    enc = lambda pts: [v for i, p in enumerate(pts) for v in ((round(p[0]*10), round(p[1]*10)) if i == 0 else
+                       (round(p[0]*10)-round(pts[i-1][0]*10), round(p[1]*10)-round(pts[i-1][1]*10)))]
+    out = {'c': [], 'k': []}
+    for ch in chains[:2]:
+        pts, ln, lit, br, ids = [], '', '', '', []
+        for k in ch:
+            e, t, P = mw[k]; q = pg.rdp(P, 0.3)
+            if not any(near(p) for p in q): continue
+            q = q if not pts else q[1:]
+            pts += q; n = len(q) - (1 if len(pts) == len(q) else 0)
+            ln += t.get('lanes', '2')[0]*n; lit += ('1' if t.get('lit') == 'yes' else '0')*n; br += ('1' if t.get('bridge') else '0')*n; ids.append(e['id'])
+        out['c'].append({'p': enc(pts), 'l': ln, 'lit': lit, 'br': br})
+        print(f'calzada de ({pts[0][0]:.0f}, {pts[0][1]:.0f}) a ({pts[-1][0]:.0f}, {pts[-1][1]:.0f}): {len(pts)} puntos, vías '
+              + ' '.join(f'w{i}' for i in ids), file=sys.stderr)
+    for e, t, P in other:
+        if t.get('highway') != 'motorway_link' or not any(near(p, 0) for p in P): continue
+        out['k'].append([int(t.get('lanes', '1')[0])] + enc(pg.rdp(P, 0.3)))
+    print(f'{len(out["k"])} ramales (motorway_link): ' + ' '.join(f'w{e["id"]}' for e, t, P in other
+          if t.get('highway') == 'motorway_link' and any(near(p, 0) for p in P)), file=sys.stderr)
+    # the median: distance between the two lines along the first one
+    A, B = [dec(c['p']) for c in out['c']]
+    sep = [min(segd(((p[0]/10), (p[1]/10)), (B[i][0]/10, B[i][1]/10), (B[i+1][0]/10, B[i+1][1]/10)) for i in range(len(B)-1)) for p in A[::3]]
+    print(f'separación entre las líneas de las calzadas: {min(sep):.1f}–{max(sep):.1f} m (mediana {sorted(sep)[len(sep)//2]:.1f})', file=sys.stderr)
+    print('const R5=' + json.dumps(out, separators=(',', ':')) + ';')
+
+def cmd_vial(*args):
+    """Panel of the Ruta 5 over the Esri image: OSM's carriageways, ramps, crossings, and the map's axis and streets."""
+    from PIL import Image, ImageDraw
+    if len(args) < 4: raise SystemExit(__doc__)
+    x0, x1, y0, y1 = map(float, args[:4]); z = int(args[4]) if len(args) > 4 else 18; name = args[5] if len(args) > 5 else 'este'
+    g = json.load(open(require(DATA / 'geometry.json', 'Ejecute: make data')))
+    n = 2 ** z
+    def px(x, y):
+        la, lo = unloc(x, y); s = math.radians(la)
+        return (lo+180)/360*n*256, (1-math.log(math.tan(s)+1/math.cos(s))/math.pi)/2*n*256
+    cs = [px(x, y) for x in (x0, x1) for y in (y0, y1)]
+    X0, X1 = min(c[0] for c in cs), max(c[0] for c in cs); Y0, Y1 = min(c[1] for c in cs), max(c[1] for c in cs)
+    img = Image.new('RGB', (int(X1-X0), int(Y1-Y0)))
+    URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+    cache = RAW / 'satelite'; cache.mkdir(parents=True, exist_ok=True)
+    for tx in range(int(X0//256), int(X1//256)+1):
+        for ty in range(int(Y0//256), int(Y1//256)+1):
+            f = cache / f'{z}_{tx}_{ty}.jpg'
+            if not f.exists(): f.write_bytes(get(URL.format(z=z, x=tx, y=ty)))
+            img.paste(Image.open(f), (int(tx*256-X0), int(ty*256-Y0)))
+    img = img.convert('RGBA'); ov = Image.new('RGBA', img.size, (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
+    P = lambda q: tuple(a-b for a, b in zip(px(*q), (X0, Y0)))
+    mpp = math.dist(px(0, 0), px(100, 0)) / 100
+    inb = lambda pts, m=100: any(x0-m < q[0] < x1+m and y0-m < q[1] < y1+m for q in pts)
+    for s in g['streets']:
+        pts = dec(s[2])
+        if inb(pts): d.line([P(q) for q in pts], fill=(200, 200, 200, 90), width=max(1, int(SW[s[0]]*mpp)))
+    r5 = [P(q) for q in dec(g['ruta5'])]
+    d.line(r5, fill=(255, 140, 0, 60), width=max(1, int(R5W*mpp))); d.line(r5, fill=(255, 140, 0, 255), width=1)
+    mw, other = motorway(name)
+    for e, t, pts in other:
+        if not inb(pts): continue
+        if t.get('highway') in ('motorway_link', 'trunk_link'): d.line([P(q) for q in pts], fill=(255, 200, 0, 230), width=2)
+        elif t.get('bridge', 'no') != 'no' and ('highway' in t or 'railway' in t): d.line([P(q) for q in pts], fill=(0, 255, 255, 255), width=3)
+        elif t.get('tunnel', 'no') != 'no' and 'highway' in t: d.line([P(q) for q in pts], fill=(255, 0, 255, 255), width=3)
+    for e, t, pts in mw:
+        if inb(pts): d.line([P(q) for q in pts], fill=(255, 255, 0, 255) if t.get('bridge') else (255, 60, 40, 255), width=2)
+    for gx in range(int(x0//100)*100, int(x1)+1, 100):
+        for gy in range(int(y0//100)*100, int(y1)+1, 100):
+            q = P((gx, gy)); d.ellipse([q[0]-2, q[1]-2, q[0]+2, q[1]+2], fill=(255, 255, 255, 200)); d.text((q[0]+3, q[1]+2), f'{gx},{gy}', fill=(255, 255, 255, 220))
+    img = Image.alpha_composite(img, ov); dl = ImageDraw.Draw(img)
+    dl.rectangle([0, 0, 640, 34], fill=(0, 0, 0, 200))
+    dl.text((6, 4), 'Ruta 5: rojo calzadas de OSM (amarillo: en puente), naranja eje del mapa con 26 m, ámbar ramales', fill='white')
+    dl.text((6, 18), 'celeste vías de OSM en puente (pasos superiores, pasarelas), magenta en túnel; gris calles del mapa', fill='white')
+    out = ROOT / 'diagnostics' / f'vial-{x0:.0f}_{y0:.0f}.png'; out.parent.mkdir(exist_ok=True)
+    img.convert('RGB').save(out); print(out.relative_to(ROOT), img.size)
+
 if __name__ == '__main__':
-    cmds = {'check': cmd_check, 'panel': cmd_panel, 'tiles': cmd_tiles, 'line': cmd_line}
-    if len(sys.argv) < 3 or sys.argv[1] not in cmds: raise SystemExit(__doc__)
+    cmds = {'check': cmd_check, 'panel': cmd_panel, 'tiles': cmd_tiles, 'line': cmd_line, 'cruces': cmd_cruces, 'calzadas': cmd_calzadas, 'vial': cmd_vial}
+    if len(sys.argv) < 2 or sys.argv[1] not in cmds: raise SystemExit(__doc__)
     cmds[sys.argv[1]](*sys.argv[2:])
