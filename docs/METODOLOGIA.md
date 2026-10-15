@@ -190,7 +190,7 @@ En 1 Norte los impares están al lado norte. La Alameda es la 4 Norte.
 
 ## 8. Render (`src/`)
 
-La aplicación es un solo fragmento HTML con un solo script, pero se escribe en fuentes separados que `pipeline/build.py` une sin cambiarlos: `src/page.html` (el DOM), `src/style.css`, el script por secciones en `src/js/NN-<sección>.js` (unidas en el orden de su número) y los hitos en `src/js/hitos/<id>.js`, dentro de `buildModels`, en el orden de `src/js/hitos/ORDER`. Hasta octubre de 2026 era un solo archivo, `src/template.html`, de 4.500 líneas; al partirlo, el resultado de `make build` quedó idéntico byte a byte. Un error en el navegador da una línea de `dist/`: `python pipeline/build.py --where index.html:N` dice de qué archivo y línea de `src/` viene, y `make check` traduce así los errores de `node --check`.
+La aplicación es un solo fragmento HTML con un solo script, pero se escribe en fuentes separados que `pipeline/build.py` une sin cambiarlos, salvo una línea `// ---- src/js/<archivo> ----` antes de cada archivo del script: `src/page.html` (el DOM), `src/style.css`, el script por secciones en `src/js/NN-<sección>.js` (unidas en el orden de su número) y los hitos en `src/js/hitos/<id>.js`, dentro de `buildModels`, en el orden de `src/js/hitos/ORDER`. Hasta octubre de 2026 era un solo archivo, `src/template.html`, de 4.500 líneas; al partirlo, el resultado de `make build` quedó idéntico byte a byte. Un error en el navegador da una línea de `dist/`: `python pipeline/build.py --where index.html:N` dice de qué archivo y línea de `src/` viene, y `make check` traduce así los errores de `node --check`.
 
 - **Base.**
   - Una malla de terreno (sección 6) con bordes de tierra que siguen su perfil.

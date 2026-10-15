@@ -68,7 +68,7 @@ Después de cualquier cambio en la plantilla, `make check` (menos de un segundo;
 **Plantilla (`src/`, ~4500 líneas).** Es un fragmento HTML, no un documento completo: la plataforma de artifacts de Claude agrega `<!doctype>`, `<head>` y `<body>` (`build.py --standalone` hace lo mismo para uso local). `build.py` (`template()`) la arma con los fuentes:
 
 - `src/page.html`: las fuentes de Google, el DOM y las etiquetas `<script>` (three.js, los marcadores `/*DATA*/` y `/*POIS*/`); `src/style.css` va en su `/*STYLE*/` y el script en `/*SCRIPT*/`.
-- `src/js/NN-<sección>.js`: el script, unido en el orden de los nombres en un solo `<script>` y un solo ámbito (la función que abre `00-start.js` y cierra `99-boot.js`).
+- `src/js/NN-<sección>.js`: el script, unido en el orden de los nombres en un solo `<script>` y un solo ámbito (la función que abre `00-start.js` y cierra `99-boot.js`). Antes de cada archivo, `build.py` pone una línea `// ---- src/js/<archivo> ----` (con `:N` donde un archivo sigue después de los hitos): en las fuentes del navegador dice de dónde viene el código.
 - `src/js/hitos/<id>.js`: un hito por archivo, pegados dentro de `buildModels` en el marcador `/*HITOS*/` de `45-landmarks.js`, en el orden de `src/js/hitos/ORDER`.
 
 Secciones del script, en orden:

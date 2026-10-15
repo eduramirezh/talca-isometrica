@@ -44,15 +44,19 @@ def sources():
 def pieces():
     """The template as [(source file, its first line, text)], in order: src/page.html with src/style.css at /*STYLE*/
     and the script at /*SCRIPT*/, the files src/js/*.js in the order of their names; src/js/45-landmarks.js holds
-    /*HITOS*/ inside buildModels(B,S), where the landmarks src/js/hitos/<id>.js go in the order of hitos/ORDER."""
+    /*HITOS*/ inside buildModels(B,S), where the landmarks src/js/hitos/<id>.js go in the order of hitos/ORDER.
+    Each piece of the script comes after a line `// ---- src/js/<file>[:line] ----` (its first line is 0), so that the
+    browser's sources show where the code comes from."""
+    def js(f, a, text, ind=''):
+        return [(f, 0, f'{ind}// ---- {f.relative_to(ROOT)}{f":{a}" if a > 1 else ""} ----\n'), (f, a, text)]
     (a, page0), (b, page1), (c, page2) = cut(SRC / 'page.html', '/*STYLE*/', '/*SCRIPT*/')
     out = [(SRC / 'page.html', a, page0), (SRC / 'style.css', 1, (SRC / 'style.css').read_text()), (SRC / 'page.html', b, page1)]
     for f in sorted((SRC / 'js').glob('*.js')):
-        if f.name != '45-landmarks.js': out.append((f, 1, f.read_text())); continue
+        if f.name != '45-landmarks.js': out += js(f, 1, f.read_text()); continue
         (a, head), (b, tail) = cut(f, '/*HITOS*/')
-        out.append((f, a, head))
-        out += [(SRC / 'js' / 'hitos' / f'{h}.js', 1, (SRC / 'js' / 'hitos' / f'{h}.js').read_text()) for h in hito_ids()]
-        out.append((f, b, tail))
+        out += js(f, a, head)
+        for h in hito_ids(): out += js(SRC / 'js' / 'hitos' / f'{h}.js', 1, (SRC / 'js' / 'hitos' / f'{h}.js').read_text(), '  ')
+        out += js(f, b, tail, '  ')
     return out + [(SRC / 'page.html', c, page2)]
 
 def template():
@@ -61,7 +65,7 @@ def template():
 
 def where(line):
     """A line of the template, which is also a line of dist/talca.html (the JSON of /*DATA*/ and /*POIS*/ has no line
-    breaks) -> (source file relative to ROOT, its line)."""
+    breaks) -> (source file relative to ROOT, its line; 0 for the `// ---- <file> ----` line before it)."""
     n = 1
     for f, a, t in pieces():
         k = t.count('\n')
@@ -128,6 +132,7 @@ def cmd_where(arg):
     f, _, n = arg.rpartition(':'); n = int(n)
     if 'index' in f: n -= STANDALONE.count('\n')
     src, k = where(n)
+    if not k: return print(f'{src}: la línea `// ---- … ----` que build.py pone antes de un trozo de ese archivo')
     print(f'{src}:{k}'); print((ROOT / src).read_text().split('\n')[k-1][:160])
 
 def main():
