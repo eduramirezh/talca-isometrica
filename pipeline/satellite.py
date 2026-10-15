@@ -2,13 +2,17 @@
 
 Dibuja el contorno de cada manzana de data/geometry.json (rosado = con datos, celeste = sin
 información, verde = marcada como construida en config/manzanas.json) y su índice, sobre las
-teselas de Esri World Imagery. Así se decidió qué manzanas «sin información» están construidas.
+teselas de Esri World Imagery. Así se decidió qué manzanas «sin información» están construidas. Los usos de
+suelo de config/usos.json van encima en naranjo, con su número de entrada y su uso.
 
   python pipeline/satellite.py plaza-de-armas            # 900 × 900 m alrededor de un lugar (id de pois.py)
   python pipeline/satellite.py mercado-central 400       # caja de 400 m
-  python pipeline/satellite.py -450 450 -450 450 [z]     # caja libre en metros de grilla (x0 x1 y0 y1), zoom 17–19
+  python pipeline/satellite.py -450 450 -450 450 [z] [nombre]   # caja libre en metros de grilla (x0 x1 y0 y1), zoom 15–19
+  python pipeline/satellite.py punto 3755 1414 [lado] [z]       # caja de `lado` m (900) centrada en (x, y) de grilla
+  … --calles                                                    # además las calles del mapa y una cruz cada 100 m
+                                                                # (rotulada cada 200 m), para dibujar polígonos a mano
 
-Salida: diagnostics/sat-<nombre>.png. Las teselas quedan en raw/satelite/. Requiere Pillow
+Salida: diagnostics/sat-<nombre>.png (caja libre: sat-caja.png o el nombre dado; punto: sat-<x>_<y>.png). Las teselas quedan en raw/satelite/. Requiere Pillow
 (viene con matplotlib) e internet la primera vez.
 """
 import json, math, sys, urllib.request
@@ -23,8 +27,13 @@ def dec(a):
     return pts
 
 def main(argv):
-    if len(argv) >= 4:
-        (x0, x1, y0, y1), z, name = map(float, argv[:4]), int(argv[4]) if len(argv) > 4 else 18, 'caja'
+    flags = [a for a in argv if a.startswith('--')]; argv = [a for a in argv if not a.startswith('--')]
+    if argv[0] == 'punto':
+        x, y = float(argv[1]), float(argv[2]); h = float(argv[3]) / 2 if len(argv) > 3 else 450
+        x0, x1, y0, y1, z, name = x-h, x+h, y-h, y+h, int(argv[4]) if len(argv) > 4 else 18, f'{x:.0f}_{y:.0f}'
+    elif len(argv) >= 4:
+        (x0, x1, y0, y1), z = map(float, argv[:4]), int(argv[4]) if len(argv) > 4 else 18
+        name = argv[5] if len(argv) > 5 else 'caja'
     else:
         pois = {p['id']: p for p in json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois')))['pois']}
         p = pois[argv[0]]; h = float(argv[1]) / 2 if len(argv) > 1 else 450
@@ -57,6 +66,22 @@ def main(argv):
         d.polygon([P(q) for q in r], outline=col, width=2)
         c = (sum(q[0] for q in r)/len(r), sum(q[1] for q in r)/len(r))
         if pip(c, r): q = P(c); d.text((q[0]-10, q[1]-5), str(i), fill=(255, 255, 0))
+    if '--calles' in flags:                                   # calles del mapa (gris) y cruces de grilla cada 100 m
+        for s in g['streets']:
+            pts = dec(s[2])
+            if any(x0-50 < q[0] < x1+50 and y0-50 < q[1] < y1+50 for q in pts): d.line([P(q) for q in pts], fill=(170, 170, 170), width=1)
+        for gx in range(int(x0//100+1)*100, int(x1)+1, 100):
+            for gy in range(int(y0//100+1)*100, int(y1)+1, 100):
+                q = P((gx, gy)); d.line([(q[0]-4, q[1]), (q[0]+4, q[1])], fill='white'); d.line([(q[0], q[1]-4), (q[0], q[1]+4)], fill='white')
+                if gx % 200 == 0 and gy % 200 == 0: d.text((q[0]+3, q[1]+2), f'{gx},{gy}', fill='white')
+    if (ROOT / 'config' / 'usos.json').exists():              # los usos de suelo, en naranjo
+        from usos import entries
+        for k, (u, rings) in enumerate(entries(g)):
+            r = rings[0]
+            if max(q[0] for q in r) < x0 or min(q[0] for q in r) > x1 or max(q[1] for q in r) < y0 or min(q[1] for q in r) > y1: continue
+            for r in rings: d.polygon([P(q) for q in r], outline=(255, 150, 0), width=3)
+            r = rings[0]; c = (sum(q[0] for q in r)/len(r), sum(q[1] for q in r)/len(r)); q = P(c)
+            d.text((q[0]-20, q[1]+6), f"{k} {u['uso']}", fill=(255, 150, 0))
     out = ROOT / 'diagnostics' / f'sat-{name}.png'; out.parent.mkdir(exist_ok=True)
     img.save(out); print(out.relative_to(ROOT), img.size)
 

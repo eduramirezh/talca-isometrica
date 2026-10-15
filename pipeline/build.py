@@ -1,5 +1,7 @@
 """Ensambla dist/talca.html: src/template.html + data/geometry.json + data/elevation.json + config/grid_lines.json
-+ data/pois.json. config/manzanas.json reclasifica como construidas (tipo 3) manzanas «sin información» del Censo.
++ config/usos.json + data/pois.json. config/manzanas.json reclasifica como construidas (tipo 3) manzanas «sin
+información» del Censo; config/usos.json va como DATA.usos (usos de suelo; sus entradas `vivienda` agregan manzanas
+construidas donde el Censo no tiene).
 
 La plantilla tiene dos marcadores, /*DATA*/ y /*POIS*/, que se reemplazan por JSON literal.
 El resultado es un único HTML autocontenido (~670 KB) que solo carga three.js r128 desde cdnjs y
@@ -32,9 +34,37 @@ def mark_built(blocks):
         assert hit, f"manzanas.json: ninguna manzana sin información contiene «{m['nombre']}»"
         for b in hit: b[0] = 3
 
+def enc(pts):
+    out = []; px = py = 0
+    for x, y in pts:
+        xi, yi = int(round(x)), int(round(y)); out += [xi-px, yi-py]; px, py = xi, yi
+    return out
+
+USO_OPTS = {'rumbo': 'r', 'cancha': 'c', 'tipo': 't', 'arboles': 'a', 'matorral': 'm'}
+
+def land_uses(geo):
+    """config/usos.json -> DATA.usos = {k: [uso, …], u: [[uso index, ring (delta-encoded), {opts} | 0], …]}.
+    A `vivienda` entry is housing the Censo does not have: with `bi`, that block becomes built (type 3, as with
+    manzanas.json); with `poly` (ground without a census block), a new built block is appended, ~35 dwellings/ha,
+    so that cityGen lays houses along the map's streets inside it."""
+    names, out = [], []
+    for u in json.load(open(CONFIG / 'usos.json'))['usos']:
+        if u['uso'] == 'vivienda':
+            if 'poly' in u:
+                r = u['poly']; A = abs(sum(r[i-1][0]*r[i][1]-r[i][0]*r[i-1][1] for i in range(len(r))))/2
+                viv = max(1, round(A/1e4*35)); geo['blocks'].append([3, viv*3, viv, enc(r)])
+            elif geo['blocks'][u['bi']][0] == 1: geo['blocks'][u['bi']][0] = 3
+            continue
+        if u['uso'] not in names: names.append(u['uso'])
+        ring = u['poly'] if 'poly' in u else dec(geo['blocks'][u['bi']][3])
+        o = {USO_OPTS[k]: v for k, v in u.items() if k in USO_OPTS}
+        out.append([names.index(u['uso']), enc(ring), o or 0])
+    geo['usos'] = {'k': names, 'u': out}
+
 def main():
     geo = json.load(open(require(DATA / 'geometry.json', 'Ejecute: make data')))
     mark_built(geo['blocks'])
+    land_uses(geo)
     geo['elev'] = json.load(open(require(DATA / 'elevation.json', 'Ejecute: make elevation')))
     geo['lines'] = {k: v for k, v in json.load(open(CONFIG / 'grid_lines.json')).items() if not k.startswith('_')}
     pois = json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois')))
