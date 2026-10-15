@@ -6,6 +6,8 @@
   python tools/screenshot.py shots/noche.png --js "document.querySelector('#night').click()"
   python tools/screenshot.py shots/ruta.png --hash justicia          # inicia un recorrido
   python tools/screenshot.py shots/puente.png --js "__look(-1640,533,6,Math.PI/4+Math.PI)"  # cámara en (x, y) de grilla, zoom, giro
+  python tools/screenshot.py shots/ --view "plaza=__look(-60,30,14.2)" --view "giro=__look(-60,30,14.2,Math.PI/4+Math.PI/2)"
+      # varias vistas de una sola carga (shots/plaza.png, shots/giro.png): genera una vez, no una por captura
 
 Usa dist/index.html (make build) y sirve three.js r128 desde node_modules (npm install), así funciona
 sin internet. Imprime las estadísticas de generación (edificios, vértices, árboles, ms) y los
@@ -50,8 +52,16 @@ async def main(a):
         b, pg, logs = await open_page(p, a.size, a.dark, a.offline, a.hash, a.dpr)
         if a.js:
             await pg.evaluate(a.js); await pg.wait_for_timeout(3000)
-        Path(a.out).parent.mkdir(parents=True, exist_ok=True)
-        await pg.screenshot(path=a.out); print('->', a.out)
+        if a.view:
+            out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+            for v in a.view:
+                name, _, js = v.partition('=')
+                if not js: raise SystemExit(f'--view espera nombre=expresión: {v}')
+                await pg.evaluate(js); await pg.wait_for_timeout(2500)
+                f = out / f'{name}.png'; await pg.screenshot(path=str(f)); print('->', f)
+        else:
+            Path(a.out).parent.mkdir(parents=True, exist_ok=True)
+            await pg.screenshot(path=a.out); print('->', a.out)
         for l in logs: print(l)
         await b.close()
 
@@ -59,6 +69,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('out'); ap.add_argument('--size', default='1440x900'); ap.add_argument('--hash')
     ap.add_argument('--js'); ap.add_argument('--dark', action='store_true')
+    ap.add_argument('--view', action='append', help='nombre=expresión JS; varias capturas de una carga (out es un directorio)')
     ap.add_argument('--dpr', type=float, default=1, help='densidad de pantalla (2: Retina)')
     ap.add_argument('--offline', action='store_true', help='bloquea fuentes web y todo lo externo salvo three.js')
     asyncio.run(main(ap.parse_args()))

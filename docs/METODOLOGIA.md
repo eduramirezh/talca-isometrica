@@ -246,7 +246,7 @@ Con `tools/screenshot.py --hash <id>` y `--js`:
 | noche | lo anterior + `;document.querySelector('#night').click()` |
 | móvil | `--size 390x844 --dpr 3`, sin `--js` |
 
-Compare la vista girada con las fotos tomadas desde un ángulo parecido. Revise también la vista inicial (`shots/centro.png`) y que las estadísticas solo cambien donde se espera: con `NOLOTS`, el número de edificios baja un poco. Para encuadrar un punto que no es un lugar (un muelle, un puente), `--js "__look(x, y, zoom, giro)"` centra la cámara en ese punto de la grilla; `zoom` 4 es el de la ficha y `giro` es el azimut en radianes (`Math.PI/4` es la vista inicial; sumando `Math.PI` se mira desde el noroeste).
+Compare la vista girada con las fotos tomadas desde un ángulo parecido. Revise también la vista inicial (`shots/centro.png`) y que las estadísticas solo cambien donde se espera: con `NOLOTS`, el número de edificios baja un poco. Para encuadrar un punto que no es un lugar (un muelle, un puente), `--js "__look(x, y, zoom, giro)"` centra la cámara en ese punto de la grilla; `zoom` 4 es el de la ficha y `giro` es el azimut en radianes (`Math.PI/4` es la vista inicial; sumando `Math.PI` se mira desde el noroeste). Para varias vistas de una sola carga (la carga es lo que cuesta), `--view nombre=expresión`, repetido, deja una captura por vista en el directorio de salida.
 
 ### 9.6 Registro
 
