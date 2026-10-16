@@ -1,0 +1,11 @@
+{
+  "_comentario": "Edificios de OpenStreetMap en vez de los generados (pipeline/edificios.py, METODOLOGIA §14). Dentro de cada área, las manzanas construidas cuya superficie está cubierta por edificios de OSM en al menos `cobertura` (o por los que tienen pisos o altura en `cobertura_pisos`: la importación de Talca levantó manzanas enteras, y una manzana con solo algunos edificios sueltos de OSM quedaría con huecos) se dibujan con sus plantas y pisos reales: cityGen() no pone lotes en ellas. `forzar` y `quitar` son puntos [x, y] de grilla dentro de una manzana para incluirla o dejarla fuera a mano; `excluir`, edificios de OSM que no se dibujan (con el motivo).",
+  "cobertura": 0.3,
+  "cobertura_pisos": 0.15,
+  "areas": [
+    {"nombre": "centro", "caja": [-1100, -1000, 1300, 1100], "nota": "el centro, alrededor de la Plaza de Armas: la vista inicial; OSM tiene casi todos sus edificios con pisos (una importación con building:levels y height = 2,8 m por piso)"}
+  ],
+  "forzar": [],
+  "quitar": [],
+  "excluir": []
+}

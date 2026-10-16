@@ -16,6 +16,7 @@
 //    in 1 cm steps (a 0.5 cm step flickers): surfaces 0.12 (pitches, parade ground), stripes, rows and paths 0.13,
 //    lines, greens and sand 0.14; strips are cut where they meet a street; objects on S (sheds, walls, graves, stalls,
 //    bleachers: no window shader) or B (barracks, pavilions and houses, with windows); trees into TREES and PO_FIELD.
+//    A use with OSM buildings on it (edificiosPlan marks them in occ with 3: u.osm) draws no pavilions of its own.
 //    Eriazo, bosque and parcelas lay no ground (the block's sand, the terrain or the farmland stays; an eriazo on a block
 //    painted as a park gets the sand) but scrub, dirt tracks, trees or houses, and they may overlap the others: they
 //    leave out every ground-laying use (inUso). Then usosFringe() puts scrub on the bare ground of the urban fringe
@@ -61,6 +62,7 @@ function usosPlan(){const t0=performance.now();OCC0=occ.clone();
     // a ground use mostly inside a larger one it is not the kid of (two OSM pitches drawn over each other) would flicker
     const dup=USO_GROUND.has(u.k)&&(UGRID[Math.floor((S[0][1]-YMIN)/BG)*bgW+Math.floor((S[0][0]-XMIN)/BG)]||[]).some(p=>p!==u&&!p.skip&&p.A>u.A&&USO_GROUND.has(p.k)&&!p.kids.includes(u)&&S.filter(q=>pip(q,p.r)).length>S.length*.5);
     if(dup||alam>S.length*.2||pre>S.length*(u.k==='eriazo'||u.k==='bosque'?.6:.35)){u.skip=true;USTAT.skip.push(u.i);continue;}
+    u.osm=S.filter(([x,y])=>occ0At(x,y)===3).length>S.length*.08; // OSM buildings stand on it (edificiosPlan): no generic pavilions
     u.built=built>S.length*.5;u.green=S.filter(([x,y])=>{const bi=blockAt(x,y);return bi>=0&&!blocks[bi].built&&blocks[bi].A<40000;}).length>S.length*.5; // on a block painted as park
     // a ground use that overlaps a larger one without lying inside it (OSM draws pitches over pitches) lays its ground
     // 1 cm higher, or the two would flicker where they meet
@@ -97,7 +99,7 @@ function usoBand(fr,v0,v1){const A=usoSpans(fr,v0),B=usoSpans(fr,v1),o=[];for(co
 // ground in UG (boot tiles it); each draws only from what was there before the uses (OCC0, the streets) with its own
 // rng, so the order does not matter. usosDone() lets OCC0 go. The urban fringe (usosFringe) goes before, on its own.
 function usosDone(verts){USTAT.ms=Math.round(USTAT.ms);USTAT.verts=verts;window.__usos=USTAT;OCC0=null;}
-function usosBase(B,S,UG,list){const t0=performance.now(),C=hex;if(!OCC0)return;
+function usosBase(B,S,UG,list){const t0=performance.now(),C=hex;if(!OCC0)return;let cur=null; // cur: the use being drawn
   // ground pieces: split where the raster was occupied before the uses, down to ~2 m (rivers, gravel, landmarks)
   const dry=(q,off,col)=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
     let busy=false;for(let gx=Math.floor((x0-XMIN)/OC);gx<=Math.floor((x1-XMIN)/OC)&&!busy;gx++)for(let gy=Math.floor((y0-YMIN)/OC);gy<=Math.floor((y1-YMIN)/OC);gy++){
@@ -139,7 +141,7 @@ function usosBase(B,S,UG,list){const t0=performance.now(),C=hex;if(!OCC0)return;
     for(let i=0;i<n;i++){const s0=i*b,s1=s0+b;S.face([P(s0,0,h),P(s1,0,h+th),P(s1,D,h+th),P(s0,D,h)],null,i%2?shade(roof,.92):roof);
       S.face([P(s1,0,h),P(s1,D,h),P(s1,D,h+th),P(s1,0,h+th)],[ex[0],0,-ex[1]],gl);
       S.face([P(s0,0,h),P(s1,0,h),P(s1,0,h+th)],[-ey[0],0,ey[1]],wall);S.face([P(s0,D,h),P(s1,D,h+th),P(s1,D,h)],[ey[0],0,-ey[1]],wall);}};
-  const pavilion=(q,fl,wall,roof,gable)=>{B.dy=groundMin(q);const h=fl*3.2+.3,D=Math.hypot(q[3][0]-q[0][0],q[3][1]-q[0][1]);if(gable)B.gable(q,0.3,h,D*.28,wall,roof);else{B.prism(q,0.3,h,wall,roof);}};
+  const pavilion=(q,fl,wall,roof,gable)=>{if(cur.osm)return;B.dy=groundMin(q);const h=fl*3.2+.3,D=Math.hypot(q[3][0]-q[0][0],q[3][1]-q[0][1]);if(gable)B.gable(q,0.3,h,D*.28,wall,roof);else{B.prism(q,0.3,h,wall,roof);}};
   const K={yard:C('#ABA79C'),yard2:C('#9E9A90'),swalls:['#D4D0C6','#C9C6BE','#B9B5AC','#D8CDB8','#C4BFB2'].map(C),zinc:['#A9ADB0','#C2C4C3','#9CA3A6','#8F969A','#B4B0A6'].map(C),
     tank:C('#DAD7D0'),truck:C('#E8E6E0'),dust:C('#B9AC92'),timber:['#D9BE8C','#CBAA74','#E2CB9E'].map(C),logs:C('#86664A'),cab:['#B4372C','#3E6D9C','#E8E6E0','#3A3A3A'].map(C),fence:C('#BDB8AC'),
     gravel:C('#CFC5AE'),path:C('#D8C69C'),white:C('#E9E5DB'),white2:C('#D6D1C5'),grave:['#E8E4DA','#D3CFC5','#BDB8AE','#CFC2B2','#A8A49C'].map(C),stone:C('#C9C1B0'),
@@ -290,7 +292,7 @@ function usosBase(B,S,UG,list){const t0=performance.now(),C=hex;if(!OCC0)return;
       for(let k=0;k<Math.ceil(u.A/6e4);k++){let p=fr.G(fr.u0+r()*(fr.u1-fr.u0),fr.v0+r()*(fr.v1-fr.v0)),h=r()*Math.PI*2;
         for(let s=0;s<40;s++){h+=(r()-.5)*.6;const q=[p[0]+Math.cos(h)*9,p[1]+Math.sin(h)*9];if(!inUso(u,...q)||occ0At(...q)||nearStreet(...q,1))break;
           const nx=-Math.sin(h)*1.5,ny=Math.cos(h)*1.5;flatD([[p[0]+nx,p[1]+ny],[p[0]-nx,p[1]-ny],[q[0]-nx,q[1]-ny],[q[0]+nx,q[1]+ny]],0.13,K.track);p=q;}}}};
-  USTAT.tk=USTAT.tk||{};for(const u of list){if(u.skip||!draw[u.k])continue;const r=rng(1000+u.i*7919),t1=performance.now();draw[u.k](u,r,usoFrame(u));USTAT.n[u.k]=(USTAT.n[u.k]||0)+1;USTAT.tk[u.k]=Math.round((USTAT.tk[u.k]||0)+performance.now()-t1);}
+  USTAT.tk=USTAT.tk||{};for(const u of list){if(u.skip||!draw[u.k])continue;const r=rng(1000+u.i*7919),t1=performance.now();cur=u;draw[u.k](u,r,usoFrame(u));USTAT.n[u.k]=(USTAT.n[u.k]||0)+1;USTAT.tk[u.k]=Math.round((USTAT.tk[u.k]||0)+performance.now()-t1);}
   S.dy=0;B.dy=0;USTAT.ms+=performance.now()-t0;
 }
 // the urban fringe: bare ground with no census block, use or farmland parcel within ~250 m of built blocks gets scrub

@@ -26,6 +26,26 @@ def dec(a):
     for i in range(0, len(a), 2): x += a[i]; y += a[i+1]; pts.append((x, y))
     return pts
 
+def mosaic(x0, x1, y0, y1, z=18):
+    """The Esri tiles over the box x0..x1, y0..y1 (grid metres) at zoom z, as one image (cached in raw/satelite/),
+    and P((x, y)): the pixel of a grid point in it. pipeline/edificios.py uses it too."""
+    n = 2 ** z
+    def px(x, y):                                  # metros de grilla -> píxel global de la tesela
+        la, lo = unloc(x, y); s = math.radians(la)
+        return (lo+180)/360*n*256, (1-math.log(math.tan(s)+1/math.cos(s))/math.pi)/2*n*256
+    cs = [px(x, y) for x in (x0, x1) for y in (y0, y1)]
+    X0, X1 = min(c[0] for c in cs), max(c[0] for c in cs); Y0, Y1 = min(c[1] for c in cs), max(c[1] for c in cs)
+    img = Image.new('RGB', (int(X1-X0), int(Y1-Y0)))
+    cache = RAW / 'satelite'; cache.mkdir(parents=True, exist_ok=True)
+    for tx in range(int(X0//256), int(X1//256)+1):
+        for ty in range(int(Y0//256), int(Y1//256)+1):
+            f = cache / f'{z}_{tx}_{ty}.jpg'
+            if not f.exists():
+                req = urllib.request.Request(URL.format(z=z, x=tx, y=ty), headers={'User-Agent': 'talca-isometrica'})
+                f.write_bytes(urllib.request.urlopen(req).read())
+            img.paste(Image.open(f), (int(tx*256-X0), int(ty*256-Y0)))
+    return img, lambda q: tuple(a-b for a, b in zip(px(*q), (X0, Y0)))
+
 def main(argv):
     flags = [a for a in argv if a.startswith('--')]; argv = [a for a in argv if not a.startswith('--')]
     if argv[0] == 'punto':
@@ -42,23 +62,8 @@ def main(argv):
     sys.path.insert(0, str(ROOT / 'pipeline')); from build import mark_built, pip
     t0 = [b[0] for b in g['blocks']]; mark_built(g['blocks'])
 
-    n = 2 ** z
-    def px(x, y):                                  # metros de grilla -> píxel global de la tesela
-        la, lo = unloc(x, y); s = math.radians(la)
-        return (lo+180)/360*n*256, (1-math.log(math.tan(s)+1/math.cos(s))/math.pi)/2*n*256
-    cs = [px(x, y) for x in (x0, x1) for y in (y0, y1)]
-    X0, X1 = min(c[0] for c in cs), max(c[0] for c in cs); Y0, Y1 = min(c[1] for c in cs), max(c[1] for c in cs)
-    img = Image.new('RGB', (int(X1-X0), int(Y1-Y0)))
-    cache = RAW / 'satelite'; cache.mkdir(parents=True, exist_ok=True)
-    for tx in range(int(X0//256), int(X1//256)+1):
-        for ty in range(int(Y0//256), int(Y1//256)+1):
-            f = cache / f'{z}_{tx}_{ty}.jpg'
-            if not f.exists():
-                req = urllib.request.Request(URL.format(z=z, x=tx, y=ty), headers={'User-Agent': 'talca-isometrica'})
-                f.write_bytes(urllib.request.urlopen(req).read())
-            img.paste(Image.open(f), (int(tx*256-X0), int(ty*256-Y0)))
+    img, P = mosaic(x0, x1, y0, y1, z)
     d = ImageDraw.Draw(img)
-    P = lambda q: tuple(a-b for a, b in zip(px(*q), (X0, Y0)))
     for i, b in enumerate(g['blocks']):
         r = dec(b[3])
         if max(q[0] for q in r) < x0 or min(q[0] for q in r) > x1 or max(q[1] for q in r) < y0 or min(q[1] for q in r) > y1: continue

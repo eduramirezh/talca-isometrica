@@ -194,7 +194,7 @@ function cityGen(B,Y,Z,sts,bis){
         while(u<L-5){
           const pr=P(u+3,hw+7);
           const bi=blockAt(pr[0],pr[1]);
-          if(bi<0||!blocks[bi].built||NOLOTS.some(q=>inRing(pr[0],pr[1],q))){u+=5;continue;}
+          if(bi<0||!blocks[bi].built||blocks[bi].osm||NOLOTS.some(q=>inRing(pr[0],pr[1],q))){u+=5;continue;} // osm: its buildings come from OSM (edificiosBase)
           const R=recipeOf(bi),H=R.h;let st=styleFor(bi);
           if(st==='house'&&R.ind&&r()<R.ind)st='ind'; // the large, nearly empty blocks of the outskirts: sheds among the houses
           let w,d,sb,gap,fl,kind,yd=0,front=false,shop=false;

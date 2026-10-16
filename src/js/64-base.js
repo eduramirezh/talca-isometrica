@@ -1,7 +1,7 @@
 // sidewalks, curbs and crosswalks, draped straight into G (buildBase's ground); the Diagonal's median first (it
-// occupies the raster), with its shrubs and lamps on D
+// occupies the raster), with its shrubs and lamps on D, and the paseos (paseosBase)
 // (with L, the startup's lists: the strips outside STAGE wait in L.walk)
-function walkBase(G,D,L){const t0=performance.now(),B=draped(G,L&&L.walk),nv=G.nv,sw=hex('#C3C1BA'),curb=hex('#E8E5DC');diagonalBase(G,D);walkRuns();const t1=performance.now();
+function walkBase(G,D,L){const t0=performance.now(),B=draped(G,L&&L.walk),nv=G.nv,sw=hex('#C3C1BA'),curb=hex('#E8E5DC');diagonalBase(G,D);paseosBase(G,D);walkRuns();const t1=performance.now();
   for(const w of WALKS){sideRibbon(B,w.pts,w.side,w.hw-w.iw+CURB,w.iw+WALK_OUT-CURB,WALK_Y,sw);sideRibbon(B,w.pts,w.side,w.hw-w.iw,CURB,CURB_Y,curb);}
   STREET.zebras=crossings(B);Object.assign(STREET,{walks:WALKS.length,walkVerts:G.nv-nv,walkMs:Math.round(performance.now()-t0),runMs:Math.round(t1-t0)});}
 // buildBase(L): with L, the startup's lists, the triangles outside STAGE wait in L.base (of the flat layers, L.flat)
@@ -41,7 +41,7 @@ function buildBase(L){
   // streets
   const order=[7,6,5,4,3,2,1,0];
   // (a street a landmark draws as a bridge, s.bridge, stays off the ground: the Ruta K-60-J over the Río Claro)
-  for(const c of order)streets.forEach(s=>{if(s.c===c&&!s.bridge)ribbon(B,s.pts,swOf(s),0.12+(7-c)*0.004,c<=2?PAL.asphalt2:PAL.asphalt,c<=5);});
+  for(const c of order)streets.forEach(s=>{if(s.c===c&&!s.bridge&&!s.paseo)ribbon(B,s.pts,swOf(s),0.12+(7-c)*0.004,c<=2?PAL.asphalt2:PAL.asphalt,c<=5);});
   railBase(B);   // over the streets
   if(L)L.flat=B;return drape(B,L&&L.base);
 }

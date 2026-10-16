@@ -57,6 +57,8 @@ config/
   manzanas.json          manzanas «sin información» del Censo que están construidas (revisadas en imagen satelital)
   trazados.json          ríos (de OpenStreetMap), vía férrea y Ruta 5, con su procedencia
   usos.json              usos de suelo de los terrenos en blanco del Censo (industria, cementerios, colegios, canchas, eriazos…), con su fuente
+  edificios.json         dónde se dibujan los edificios reales de OpenStreetMap en vez de los generados (áreas, umbral de cobertura)
+  techos.json            la familia del techo (teja, óxido, zinc, claro…) de cada edificio de OSM, clasificada con la imagen satelital
 pipeline/
   common.py              rutas, proyección (origen en la Plaza de Armas, grilla girada 5°) y el límite de la comuna (OSM)
   fetch_sources.sh       descarga las fuentes a raw/
@@ -68,6 +70,7 @@ pipeline/
   diagnostics.py         paneles PNG para revisar trazados contra las manzanas
   satellite.py           imagen satelital con las manzanas y los usos de suelo encima (qué hay de verdad en cada una)
   usos.py                usos de suelo: importación desde OSM, revisión de lo que falta y de config/usos.json
+  edificios.py           los edificios de OSM de las manzanas donde OSM está completo -> data/edificios.json; panel de cobertura; techos
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos de Commons
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
                          la API map de OSM por cajas (tiles, tiles-comuna);

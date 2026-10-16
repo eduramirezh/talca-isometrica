@@ -13,6 +13,9 @@ const streets=DATA.streets.map(s=>({c:s[0],name:DATA.names[s[1]],pts:dec(s[2])})
 // (OSM), with a tree-lined median between them (diagonalBase); at its class width (11 m) they would cover the median.
 const STREET_W=[[/^Avenida Isidoro del Solar$/,9.5,2,[7,.75]]];
 streets.forEach(s=>{for(const [re,w,walk,rows] of STREET_W)if(re.test(s.name||'')){s.w=w;s.walk=walk;s.rows=rows;}});
+// Pedestrian streets drawn at their width (paseosBase): [name, width from facade to facade]
+const PASEOS=[[/^Paseo Peatonal/,12]];
+streets.forEach(s=>{for(const [re,w] of PASEOS)if(re.test(s.name||'')){s.w=w;s.paseo=true;}});
 const swOf=s=>s.w||SW[s.c],walkOf=s=>s.walk??WALK[s.c]; // a street's width and sidewalk (WALK: street level)
 // the water of the rivers from OpenStreetMap: RIV[k] = [[outer ring, island, ...], ...] (pipeline/process_geometry.py);
 // CLARO is the Río Claro's one polygon, [outer ring, island, ...]

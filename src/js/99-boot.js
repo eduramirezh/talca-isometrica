@@ -70,6 +70,7 @@ function boot(){
     const TT={};let tl=performance.now();const tm=k=>{const n=performance.now();TT[k]=Math.round(n-tl);tl=n;}; // ms per phase: __stats.t
     riversLevel();riversOcc();linesOcc();tm('rivers');   // level water; no lots or trees in the rivers, the Ruta 5 or the rail
     buildModels(B,S);tm('models');          // records the landmark pads...
+    edificiosPlan();tm('edPlan');           // the OSM buildings: those the landmarks leave, cut at the sidewalks, in occ (3)
     usosPlan();tm('usosPlan');              // land uses: their ground in occ, like a landmark
     applyPads();riversRelevel();terrainNormals(); // ...which level the terrain before anything is laid on it
     for(const k in MODELS)MODELS[k].h+=E(MODELS[k].x,MODELS[k].y);
@@ -109,6 +110,7 @@ function boot(){
     const ready=bi=>{const b=blocks[bi].bb;return boxIn(...b)&&Math.max(Math.hypot(b[0],b[1]),Math.hypot(b[2],b[1]),Math.hypot(b[0],b[3]),Math.hypot(b[2],b[3]))+CITY_REACH<=rho;};
     const AL=[...ALAM],[bis1,bis2]=split(blocks.map((b,bi)=>bi),ready),[al1,al2]=split(AL,ready),[wi1,wi2]=split(WALKS.map((w,i)=>i),i=>polyIn(WALKS[i].pts));
     const Y=new GB(1<<18),Z=new GB(1<<17);let nb=0;
+    edificiosBase(B,Z,Y);tm('edificios');   // ...drawn, with their blocks' ground (2.5e7: between the Cerro and the city)
     const streetsOf=(Bx,Yx,Zx,sts)=>{const c=cityGen(Bx,Yx,Zx,sts,[]);PT.yard.push(...c.TR);nb+=c.nb;};
     const blocksOf=bis=>{for(const bi of bis)blockTrees(bi,PT.blocks[bi]=[]);};
     const alamOf=(Bx,bis)=>{for(const bi of bis){Bx.k=4e7+AL.indexOf(bi);PT.alam.set(bi,alamedaPark(Bx,[bi]));}};
