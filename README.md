@@ -4,7 +4,7 @@ Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca 
 
 ![Vista del barrio judicial de la Alameda](docs/img/barrio-judicial.jpg)
 
-- **52 lugares** en 8 categorías, cada uno con dirección, coordenadas, fuente y nivel de confianza.
+- **55 lugares** en 8 categorías, cada uno con dirección, coordenadas, fuente y nivel de confianza.
 - **Dos recorridos guiados:** la Ruta de la Justicia y Talca icónica.
 - **~59.000 edificios** generados en el navegador frente a cada calle real, con alturas según la densidad del censo y 24 hitos con modelo propio, sobre su planta real.
 - **Relieve real** del modelo de elevación SRTM: los cerros del poniente y las terrazas de la ciudad hacia sus ríos, con exageración logarítmica. El lector muestra la altura sobre el nivel del mar.

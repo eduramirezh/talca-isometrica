@@ -139,6 +139,12 @@ add('colegio-abogados', 'Colegio de Abogados, Consejo Talca', 'academia', -35.42
     [['Colegio de Abogados', 'https://colegioabogados.cl/el-colegio/colegios-de-regiones/']],
     fact='Otra fuente da el número 620. Ubicación calculada por la numeración de la grilla.', pri=3)
 
+add('trifolia', 'Trifolia', 'academia', -35.426810, -71.664253, '1 Sur 865, of. 63 (Torre Talca)',
+    'Legaltech: un asistente de inteligencia artificial para investigar derecho chileno (jurisprudencia, legislación, doctrina y dictámenes) que cita la fuente de cada resultado. Su oficina está en la Torre Talca. El autor de esta maqueta es uno de sus fundadores. El letrero con su nombre en el techo de la torre es una licencia de la maqueta: no se sabe qué muestra el real.',
+    'alta', [['Trifolia', 'https://trifolia.cl/'], ['Mapa legaltech de Bredia', 'https://mapa.bredia.com.co/mapa?country=CL'], ['OpenStreetMap vía Mapcarta (la torre)', MC + 'W310246574']],
+    fact='El mapa de legaltech de Iberoamérica de Bredia lista 23 legaltech chilenas: 22 en el área de Santiago y Trifolia, la única en Talca, en «Investigación jurídica» (consultado el 15 de octubre de 2026).',
+    pri=3)
+
 # ------------------------------------------------------------------ GOBIERNO Y CONTROL
 add('contraloria', 'Contraloría Regional del Maule', 'gobierno', -35.425542, -71.667253, '1 Norte 665',
     'Controla la legalidad de los actos de los servicios públicos y municipios de la región (toma de razón, auditorías, dictámenes).', 'alta',
@@ -244,7 +250,7 @@ add('cementerio', 'Cementerio General', 'ciudad', -35.40751, -71.66412, 'Sector 
 TOURS = {
     'justicia': dict(n='Ruta de la Justicia', d='Del juramento de 1818 al barrio cívico de la Alameda, a pie en unos 3 km.',
         s=['plaza-de-armas', 'casa-independencia', 'contraloria', 'cbr-talca', 'notaria-5', 'tta-maule', 'juzgado-familia',
-           'fiscalia-regional', 'fiscalia-local', 'corte-apelaciones', 'garantia-top', 'ex-carcel', 'utalca-derecho']),
+           'fiscalia-regional', 'fiscalia-local', 'corte-apelaciones', 'garantia-top', 'ex-carcel', 'utalca-derecho', 'trifolia']),
     'iconica': dict(n='Talca icónica', d='Monumentos, ríos y estaciones: la ciudad en trece paradas.',
         s=['plaza-de-armas', 'catedral', 'servicios-publicos', 'mercado-central', 'escuelas-concentradas', 'estacion',
            'teatro-regional', 'la-victoria', 'alameda', 'estadio', 'parque-rio-claro', 'cerro-la-virgen', 'parque-piduco']),

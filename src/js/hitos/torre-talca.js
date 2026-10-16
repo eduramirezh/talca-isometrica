@@ -6,9 +6,11 @@
   // spire) and the Esri imagery: white walls; the south wing with a ribbon of windows on every floor, in panes between
   // white piers; the north part's west wall blank but for a column of small windows by the corner; grey loggias on the
   // north face; a red plant room on a red roof and a billboard frame along the east edge (the white strip on the
-  // imagery; the photo shows its back). Approximate: the height (12 floors as tagged and in the listings, 4.2 m + 11 ×
-  // 3 m, which the photo's floors against the Catedral's 39 m tower agree with), the east and south faces (no photos:
-  // the south wing's ribbons), the loggias, the billboard's size and its blank face. On the plaza's level
+  // imagery, ~18 m long; the photo shows its back). Approximate: the height (12 floors as tagged and in the listings,
+  // 4.2 m + 11 × 3 m, which the photo's floors against the Catedral's 39 m tower agree with), the east and south faces
+  // (no photos: the south wing's ribbons), the loggias and the billboard's size. Its face is unknown: it carries the
+  // name of Trifolia (office 63 of the tower; a place of its own, whose card says the sign is the model's licence),
+  // stretched along the whole east edge, with MODELS['trifolia'] on it. On the plaza's level
   // (MODELS[...].pad), with walls 10 m deep. Method: docs/METODOLOGIA.md §9.
   {const F=localFrame(0,0,Math.PI/2),{V,N3}=F,H=MODELS['plaza-de-armas'].pad;
     const K={wall:C('#ECE7DC'),white:C('#F4F0E6'),glass:C('#3B4653'),glass2:C('#2C3540'),grey:C('#9C9E9B'),roof:C('#A35C42'),
@@ -36,7 +38,16 @@
       rect(w,155.8,167,.4,3.4,K.glass2);rect(WV(-5.2,1,.12),155.2,167.6,3.7,4.2,K.white);}
     // roof: the red plant room, and the billboard on two legs along the east edge (back to the city, face to the east)
     box(158,-16,163.5,-9,TOP,42.6,K.red,K.red2);
-    for(const v of [-15.5,-8])box(166.6,v-.25,167.1,v+.25,TOP,40,K.metal,K.metal);
-    box(166.6,-18,167.1,-5.4,40,45,K.frame,K.metal);
-    rect(WU(167.1,1),-17.6,-5.8,40.4,44.6,K.board);
-    MODELS['torre-talca']={x:160.6,y:-15.5,h:45};S.dy=0;}
+    for(const v of [-23.5,-15.5,-7.5])box(166.6,v-.25,167.1,v+.25,TOP,40,K.metal,K.metal);
+    box(166.6,-25.5,167.1,-5.5,40,45,K.frame,K.metal);
+    rect(WU(167.1,1),-25.2,-5.8,40.4,44.6,K.white);
+    // the billboard's face, read from the east (s = v grows to the north, to the reader's right): TRIFOLIA in grey,
+    // one rect per run of cells in a row. Cells of 0.7 × 0.75 m: the default view sees the face at 45°, and narrower
+    // strokes fall under one art pixel (the logo's leaves did not fit beside the name)
+    {const w=WU(167.1,1,.12),cu=.7,ch=.75,G=C('#58585A');
+      const GL={T:['###','.#.','.#.','.#.','.#.'],R:['##.','#.#','##.','#.#','#.#'],I:['#','#','#','#','#'],F:['###','#..','##.','#..','#..'],
+        O:['###','#.#','#.#','#.#','###'],L:['#..','#..','#..','#..','###'],A:['.#.','#.#','###','#.#','#.#']};
+      let s=-25.2+(19.4-27*cu)/2;
+      for(const c of 'TRIFOLIA'){GL[c].forEach((r,i)=>{for(let j=0;j<r.length;){if(r[j]==='.'){j++;continue;}let e=j;while(r[e+1]==='#')e++;
+        rect(w,s+j*cu,s+(e+1)*cu,44.375-(i+1)*ch,44.375-i*ch,G);j=e+1;}});s+=(GL[c][0].length+1)*cu;}}
+    MODELS['torre-talca']={x:160.6,y:-15.5,h:45};MODELS['trifolia']={x:166.9,y:-15.2,h:45};S.dy=0;}
