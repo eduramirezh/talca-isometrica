@@ -15,6 +15,9 @@ function renderCard(p){
   card.style.setProperty('--cc',`var(--c-${p.c})`);
   const cats=[p.c,...p.cs].map(c=>CATS[c].n).join(' · ');
   const osm=`https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lon}#map=18/${p.lat}/${p.lon}`;
+  // an issue on the repository, already titled and with the place, for corrections from people who are not developers
+  const issue='https://github.com/eduramirezh/talca-isometrica/issues/new?title='+encodeURIComponent(`Corrección: ${p.n}`)+'&body='+
+    encodeURIComponent(`Lugar: ${p.n} (#${p.id})\nDirección en el mapa: ${p.a}\n\nQué está mal:\n\n\nFuente (una página oficial, una foto fechada o el objeto de OpenStreetMap):\n`);
   let tn='';
   if(tour){const T0=PD.tours[tour.k];const n=T0.s.length;tn=`<div class="tournav"><button class="btn ghost" id="tprev" ${tour.i===0?'disabled':''}>Anterior</button><div class="prog"><i style="width:${((tour.i+1)/n*100).toFixed(1)}%"></i></div><span>${tour.i+1}/${n}</span><button class="btn" id="tnext">${tour.i===n-1?'Terminar':'Siguiente'}</button></div>`;}
   card.innerHTML=`<div class="in">
@@ -25,6 +28,7 @@ function renderCard(p){
     ${p.f?`<div class="fact">${esc(p.f)}</div>`:''}
     <div class="meta"><span class="conf ${p.conf}">Ubicación ${p.conf}</span><span class="src">${p.src.map(s=>`<a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join('')}</span></div>
     <div class="actions"><button class="btn ghost" id="cz">Acercar</button><a class="btn ghost" href="${osm}" target="_blank" rel="noopener">Ver en OpenStreetMap</a></div>
+    <a class="report" href="${issue}" target="_blank" rel="noopener">Reportar un error en este lugar</a>
     ${tn}</div>`;
   card.hidden=false;
   $('#cx').onclick=closeCard;$('#cz').onclick=()=>{const m=MODELS[p.id];const t=lift(m?m.x:p.x,m?m.y:p.y);flyTo(t[0],t[1],Math.max(view.zoom*1.6,6));};

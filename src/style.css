@@ -118,6 +118,7 @@ button{font:inherit;color:inherit}
 .conf.alta{color:var(--green)} .conf.media{color:var(--c-notarial)} .conf.baja{color:var(--c-fiscalia)}
 #card .src{font-size:12.5px;display:flex;flex-wrap:wrap;gap:4px 10px}
 #card .actions{display:flex;gap:8px;flex-wrap:wrap}
+#card a.report{font-size:13px;color:var(--ink-3);justify-self:start}
 #card .tournav{display:flex;align-items:center;gap:8px;border-top:1px solid var(--rule);padding-top:10px}
 #card .tournav .prog{flex:1;height:4px;background:var(--paper-2);border-radius:2px;overflow:hidden}
 #card .tournav .prog i{display:block;height:100%;background:var(--cc);transition:width .4s}
