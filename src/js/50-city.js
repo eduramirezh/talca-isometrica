@@ -264,7 +264,7 @@ function cityGen(B,Y){
     }
   });
   B.dy=0;Z.dy=0;
-  const zm=new T.Mesh(Z.geo(),matFlat);zm.castShadow=zm.receiveShadow=true;scene.add(zm);CITY.zVerts=Z.nv;
+  const zm=tiled(Z,matFlat);zm.traverse(o=>o.castShadow=o.receiveShadow=true);scene.add(zm);CITY.zVerts=Z.nv;
   // trees: parks first, then backyards thinned to what is left of the budget (in block order the backyards used it
   // all up and the last blocks, the Alameda among them, got none). The Alameda's rows come from alamedaPark().
   let ntree=0;const MAXT=36000;

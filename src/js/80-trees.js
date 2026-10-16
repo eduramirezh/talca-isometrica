@@ -14,11 +14,8 @@ function treeGeo(kind){
   const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(P,3));g.setAttribute('normal',new T.BufferAttribute(N,3));g.setAttribute('color',new T.BufferAttribute(C,3));return g;
 }
 function instTrees(list,kind,yfn){list=list.filter(t=>inTerrain(t[0],t[1])); // only in the commune
-  const mesh=new T.InstancedMesh(treeGeo(kind),new T.MeshLambertMaterial({vertexColors:true}),list.length);
-  const m=new T.Matrix4(),q=new T.Quaternion(),s=new T.Vector3(),p=new T.Vector3(),col=new T.Color();
-  list.forEach((t,i)=>{const sc=t[2];s.set(sc,sc*(0.9+t[3]*0.3),sc);p.set(t[0],E(t[0],t[1])+0.1,-t[1]);q.setFromAxisAngle(new T.Vector3(0,1,0),t[3]*6);m.compose(p,q,s);mesh.setMatrixAt(i,m);
-    const v=0.82+t[3]*0.36;col.setRGB(v*(0.96+0.08*Math.sin(t[3]*40)),v,v*(0.9+0.1*Math.cos(t[3]*23)));mesh.setColorAt(i,col);});
-  mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
-  return mesh;
+  const q=new T.Quaternion(),s=new T.Vector3(),p=new T.Vector3(),Y=new T.Vector3(0,1,0);
+  return instTiled(treeGeo(kind),new T.MeshLambertMaterial({vertexColors:true}),list,(t,m,col)=>{const sc=t[2];s.set(sc,sc*(0.9+t[3]*0.3),sc);p.set(t[0],E(t[0],t[1])+0.1,-t[1]);q.setFromAxisAngle(Y,t[3]*6);m.compose(p,q,s);
+    const v=0.82+t[3]*0.36;col.setRGB(v*(0.96+0.08*Math.sin(t[3]*40)),v,v*(0.9+0.1*Math.cos(t[3]*23)));});
 }
 

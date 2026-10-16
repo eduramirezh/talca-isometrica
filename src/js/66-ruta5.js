@@ -89,13 +89,11 @@ function ruta5Objects(){const K=R5K,G=new GB(1<<15),A=R5C[0];
     const truck=r()<.2,o=truck||r()<.55?-1.75:1.75,c=r5off(p,p.e>.9&&r()<.3?-5.25:o),len=truck?2.4+r()*.4:(4.1+r()*.6)/4.5;
     let cc=r()*colW,col=CAR_COLS[0];for(const q of CAR_COLS){if((cc-=q[3])<0){col=q;break;}}
     list.push([c[0],c[1],p.tx,p.ty,len,truck?2.1:1,col,r(),(H(k,d-2)+H(k,d+2))/2,Math.atan2(H(k,d+2)-H(k,d-2),4)]);}
-  const cars=new T.InstancedMesh(carGeo(),new T.MeshLambertMaterial({vertexColors:true}),list.length);
-  {const m=new T.Matrix4(),q=new T.Quaternion(),e=new T.Euler(0,0,0,'YZX'),s=new T.Vector3(),pp=new T.Vector3(),col=new T.Color();
-    list.forEach(([x,y,dx,dy,len,hs,c,k,h,sl],i)=>{e.set(0,Math.atan2(dy,dx),sl);q.setFromEuler(e);s.set(len,hs,1);pp.set(x,h,-y);m.compose(pp,q,s);cars.setMatrixAt(i,m);
-      const v=.96+k*.08;col.setRGB(c[0]*v,c[1]*v,c[2]*v);cars.setColorAt(i,col);});
-    cars.instanceMatrix.needsUpdate=true;if(cars.instanceColor)cars.instanceColor.needsUpdate=true;}
+  const q=new T.Quaternion(),e=new T.Euler(0,0,0,'YZX'),s=new T.Vector3(),pp=new T.Vector3();
+  const cars=instTiled(carGeo(),new T.MeshLambertMaterial({vertexColors:true}),list,([x,y,dx,dy,len,hs,c,k,h,sl],m,col)=>{e.set(0,Math.atan2(dy,dx),sl);q.setFromEuler(e);s.set(len,hs,1);pp.set(x,h,-y);m.compose(pp,q,s);
+    const v=.96+k*.08;col.setRGB(c[0]*v,c[1]*v,c[2]*v);});
   Object.assign(STREET,{r5posts:posts,r5cars:list.length,r5gaps:R5C.map(c=>c.gaps.length)});
-  const mesh=new T.Mesh(G.geo(),matFlat);for(const o of [mesh,cars])o.castShadow=true;
+  const mesh=tiled(G,matFlat);for(const o of [mesh,cars])o.traverse(c=>c.castShadow=true);
   window.__r5cars=on=>{cars.visible=on;dirty=true;};
   return [mesh,cars];}
 // Carriageway k on a bridge or an embankment from d0 to d1 (landmarks, from buildModels): the deck (deckBridge: its

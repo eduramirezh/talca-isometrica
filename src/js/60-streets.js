@@ -146,10 +146,7 @@ function carGeo(){const P=[],N=[],C=[],I=[],W=[1,1,1],G=[.2,.23,.28];
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(P,3));g.setAttribute('normal',new T.Float32BufferAttribute(N,3));
   g.setAttribute('color',new T.Float32BufferAttribute(C,3));g.setIndex(I);return g;}
 function instCars(list){list=list.filter(c=>inTerrain(c[0],c[1]));
-  const mesh=new T.InstancedMesh(carGeo(),new T.MeshLambertMaterial({vertexColors:true}),list.length);
-  const m=new T.Matrix4(),q=new T.Quaternion(),e=new T.Euler(0,0,0,'YZX'),s=new T.Vector3(),p=new T.Vector3(),col=new T.Color();
-  list.forEach(([x,y,dx,dy,len,hs,c,k],i)=>{const h=2.25*len,f=E(x+dx*h,y+dy*h),b=E(x-dx*h,y-dy*h);
-    e.set(0,Math.atan2(dy,dx),Math.atan2(f-b,2*h));q.setFromEuler(e);s.set(len,hs,1);p.set(x,(f+b)/2+.13,-y);m.compose(p,q,s);mesh.setMatrixAt(i,m);
-    const v=.96+k*.08;col.setRGB(c[0]*v,c[1]*v,c[2]*v);mesh.setColorAt(i,col);});
-  mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
-  return mesh;}
+  const q=new T.Quaternion(),e=new T.Euler(0,0,0,'YZX'),s=new T.Vector3(),p=new T.Vector3();
+  return instTiled(carGeo(),new T.MeshLambertMaterial({vertexColors:true}),list,([x,y,dx,dy,len,hs,c,k],m,col)=>{const h=2.25*len,f=E(x+dx*h,y+dy*h),b=E(x-dx*h,y-dy*h);
+    e.set(0,Math.atan2(dy,dx),Math.atan2(f-b,2*h));q.setFromEuler(e);s.set(len,hs,1);p.set(x,(f+b)/2+.13,-y);m.compose(p,q,s);
+    const v=.96+k*.08;col.setRGB(c[0]*v,c[1]*v,c[2]*v);});}

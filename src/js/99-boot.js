@@ -20,7 +20,7 @@ function boot(){
     for(const k in MODELS)MODELS[k].h+=E(MODELS[k].x,MODELS[k].y);
     for(let k=0;k<EN_;k++){EHI=Math.max(EHI,EH[k]);ELO=Math.min(ELO,EH[k]);}
     tm('pads');scene.add(terrainMesh());tm('terrain');
-    const base=buildBase();tm('base');const D=new GB(1<<14);walkBase(base,D);tm('walk');scene.add(new T.Mesh(base.geo(),matFlat));if(riverWater.nv)scene.add(new T.Mesh(riverWater.geo(),matWater));
+    const base=buildBase();tm('base');const D=new GB(1<<14);walkBase(base,D);tm('walk');scene.add(tiled(base,matFlat));if(riverWater.nv)scene.add(tiled(riverWater,matWater));
     for(const m of ruta5Objects())scene.add(m); // the Ruta 5's barrier, lamp posts and cars
     tm('r5obj');trainsInit();                           // the trains, on the paths railBase left in RAILP
     usosBase(B,S);tm('usosBase');           // land uses: ground, objects and trees
@@ -38,18 +38,18 @@ function boot(){
     for(const k in DATA.water){const [w,,canal]=DATA.widths[k],runs=RIV[k]?riverRuns(k):[chaikin(dec(DATA.water[k]),3)];
       for(const pts of runs)for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const nx=-(b[1]-a[1])/L,ny=(b[0]-a[0])/L;
         for(let u=0;u<L;u+=11){for(const sd of [1,-1]){if(r()<(canal?.85:.35))continue;const off=w/2+(w<30?5:18)+r()*14;const x=a[0]+(b[0]-a[0])*u/L+nx*off*sd,y=a[1]+(b[1]-a[1])*u/L+ny*off*sd;if(occAt(x,y)||nearStreet(x,y,1))continue;(r()<.5?PO:TR).push([x,y,0.8+r()*.6,r()]);}}}}
-    tm('riparian');const bgeo=B.geo(),cast=[new T.Mesh(bgeo,matBld),new T.Mesh(S.geo(),matFlat),instTrees(TR.concat(hillTrees,TREES),'round'),instTrees(PO.concat(PO_FIELD),'poplar'),new T.Mesh(D.geo(),matFlat),cars];
-    scene.add(new T.Mesh(Y.geo(),matFlat));
+    tm('riparian');const bverts=B.nv,trees=[instTrees(TR.concat(hillTrees,TREES),'round'),instTrees(PO.concat(PO_FIELD),'poplar')],cast=[tiled(B,matBld),tiled(S,matFlat),...trees,tiled(D,matFlat),cars];
+    scene.add(tiled(Y,matFlat));
     // shadows: everything receives them; the buildings, the landmarks (and the Cerro's sanctuary) and the trees cast them
     scene.traverse(o=>{if(o.isMesh&&o!==ring)o.receiveShadow=true;});
     if(cerroMesh)cast.push(cerroMesh);
-    for(const m of cast){m.castShadow=m.receiveShadow=true;if(!m.parent)scene.add(m);}
+    for(const m of cast){m.traverse(o=>o.castShadow=o.receiveShadow=true);if(!m.parent)scene.add(m);}
     tm('meshes');lampPts=lamps();scene.add(lampPts);tm('lamps');
-    window.__stats={buildings:nb,lots:LOTS.length,verts:bgeo.attributes.position.count,yards:Y.nv,ground:base.nv+riverWater.nv,street:STREET,trees:TR.length+hillTrees.length+TREES.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0),t:TT};
+    window.__stats={buildings:nb,lots:LOTS.length,verts:bverts,yards:Y.nv,ground:base.nv+riverWater.nv,street:STREET,trees:TR.length+hillTrees.length+TREES.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0),t:TT};
     window.__stats.city=CITY; // cityGen: barrios, house types, the Z mesh (procedural city)
     // for tools/screenshot.py --js: centre the camera on a ground point (grid metres), at a zoom (4 = the card's) and azimuth
     window.__look=(x,y,zoom=4,az=view.az)=>{view.az=az;view.zoom=zoom;[view.tx,view.ty]=lift(x,y,az);placeCam();};
-    window.__trees=on=>{for(const m of cast)if(m.isInstancedMesh&&m!==cars)m.visible=on;dirty=true;}; // hide the trees to see the ground under them (tools/variants.py)
+    window.__trees=on=>{for(const m of trees)m.visible=on;dirty=true;}; // hide the trees to see the ground under them (tools/variants.py)
     window.__cars=on=>{cars.visible=on;dirty=true;}; // the parked cars, likewise
     window.__pads=PADS; // the landmark pads [x0,y0,x1,y1,h], for pipeline/traces.py check --pads
     buildPanel();resize();

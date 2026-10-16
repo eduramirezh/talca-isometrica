@@ -288,7 +288,7 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
           const nx=-Math.sin(h)*1.5,ny=Math.cos(h)*1.5;flatD([[p[0]+nx,p[1]+ny],[p[0]-nx,p[1]-ny],[q[0]-nx,q[1]-ny],[q[0]+nx,q[1]+ny]],0.13,K.track);p=q;}}}};
   USTAT.tk={};for(const u of USOS){if(u.skip||!draw[u.k])continue;const r=rng(1000+u.i*7919),t1=performance.now();draw[u.k](u,r,usoFrame(u));USTAT.n[u.k]=(USTAT.n[u.k]||0)+1;USTAT.tk[u.k]=Math.round((USTAT.tk[u.k]||0)+performance.now()-t1);}
   usosFringe();
-  S.dy=0;B.dy=0;if(UG.nv)scene.add(new T.Mesh(UG.geo(),matFlat));USTAT.verts=UG.nv;
+  S.dy=0;B.dy=0;if(UG.nv)scene.add(tiled(UG,matFlat));USTAT.verts=UG.nv;
   USTAT.ms=Math.round(performance.now()-t0);window.__usos=USTAT;OCC0=null;
 }
 // the urban fringe: bare ground with no census block, use or farmland parcel within ~250 m of built blocks gets scrub

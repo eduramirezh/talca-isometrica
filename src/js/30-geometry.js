@@ -44,6 +44,49 @@ class GB{
   // fix orientation of null-normal faces: ensure outward (up-ish) facing
   geo(){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(this.P.slice(0,this.nv*3),3));g.setAttribute('normal',new T.BufferAttribute(this.N.slice(0,this.nv*3),3,true));g.setAttribute('color',new T.BufferAttribute(this.C.slice(0,this.nv*3),3,true));g.setIndex(new T.BufferAttribute(this.I.slice(0,this.ni),1));g.computeBoundingSphere();return g;}
 }
+// Tiles. A mesh over the whole commune is drawn whole in every pass (colour, normals, shadows): its bounding sphere
+// is always in view. tiled(src, mat) cuts a GB (or an indexed BufferGeometry) into one mesh per TILE x TILE metres,
+// each triangle in the tile of its centroid, so three.js leaves out the tiles the camera (or the shadow camera) does
+// not see. A GB is consumed: its arrays are dropped. The copies in the JS heap are dropped too once uploaded (free):
+// nothing reads them after the boot, and they doubled the memory a phone has to hold.
+const TILE=1000,TILE_N=64; // tile keys: (tx+TILE_N)*2*TILE_N+(tz+TILE_N), the box of the commune is ±25 km at most
+function dropArray(){this.array=null;}
+function free(g){for(const k in g.attributes)g.attributes[k].onUpload(dropArray);if(g.index)g.index.onUpload(dropArray);return g;}
+function tiled(src,mat){
+  const isGB=src instanceof GB,A=src.attributes,P=isGB?src.P:A.position.array,N=isGB?src.N:A.normal.array,C=isGB?src.C:A.color.array,
+    I=isGB?src.I:src.index.array,nt=(isGB?src.ni:I.length)/3,nv=isGB?src.nv:P.length/3,norm=a=>!(a instanceof Float32Array);
+  const NK=4*TILE_N*TILE_N,cnt=new Int32Array(NK),tid=new Int32Array(nt);
+  for(let t=0;t<nt;t++){const a=I[3*t]*3,b=I[3*t+1]*3,c=I[3*t+2]*3;
+    const k=(Math.floor((P[a]+P[b]+P[c])/(3*TILE))+TILE_N)*2*TILE_N+Math.floor((P[a+2]+P[b+2]+P[c+2])/(3*TILE))+TILE_N;tid[t]=k;cnt[k]++;}
+  const off=new Int32Array(NK+1);for(let k=0;k<NK;k++)off[k+1]=off[k]+cnt[k];
+  const ord=new Int32Array(nt),at=off.slice(0,NK);for(let t=0;t<nt;t++)ord[at[tid[t]]++]=t;
+  const grp=new T.Group(),stamp=new Int32Array(nv).fill(-1),idx=new Int32Array(nv);
+  for(let k=0;k<NK;k++){if(!cnt[k])continue;let m=0;
+    for(let i=off[k];i<off[k+1];i++)for(let j=0;j<3;j++){const v=I[3*ord[i]+j];if(stamp[v]!==k){stamp[v]=k;idx[v]=m++;}}
+    const P2=new P.constructor(m*3),N2=new N.constructor(m*3),C2=new C.constructor(m*3),I2=new (m<65536?Uint16Array:Uint32Array)(cnt[k]*3);
+    for(let i=off[k],o=0;i<off[k+1];i++)for(let j=0;j<3;j++){const v=I[3*ord[i]+j],w=idx[v];I2[o++]=w;
+      if(stamp[v]===k){stamp[v]=-2-k;for(let c=0;c<3;c++){P2[w*3+c]=P[v*3+c];N2[w*3+c]=N[v*3+c];C2[w*3+c]=C[v*3+c];}}} // each vertex copied once
+    const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(P2,3));g.setAttribute('normal',new T.BufferAttribute(N2,3,norm(N)));
+    g.setAttribute('color',new T.BufferAttribute(C2,3,norm(C)));g.setIndex(new T.BufferAttribute(I2,1));g.computeBoundingSphere();grp.add(new T.Mesh(free(g),mat));}
+  if(isGB)src.P=src.N=src.C=src.I=null;
+  return grp;}
+// instTiled(geo, mat, list, set): an InstancedMesh per tile (trees, cars); set(item, m, col) writes an instance's
+// matrix and colour. r128 never culls an InstancedMesh (frustumCulled false: it would test the sphere of a single
+// tree at the grid origin), so the 215 thousand trees were drawn whole in every pass. Each tile's geometry shares
+// geo's attributes and carries a bounding sphere around its own instances, and culling is turned back on.
+function instTiled(geo,mat,list,set){
+  const n=list.length,M=new Float32Array(n*16),Cl=new Float32Array(n*3),key=new Int32Array(n),m=new T.Matrix4(),col=new T.Color(),by=new Map();
+  list.forEach((it,i)=>{set(it,m,col);m.toArray(M,i*16);col.toArray(Cl,i*3);const e=m.elements;
+    key[i]=(Math.floor(e[12]/TILE)+TILE_N)*2*TILE_N+Math.floor(e[14]/TILE)+TILE_N;if(!by.has(key[i]))by.set(key[i],[]);by.get(key[i]).push(i);});
+  if(!geo.boundingSphere)geo.computeBoundingSphere();const r0=geo.boundingSphere.center.length()+geo.boundingSphere.radius;
+  const grp=new T.Group(),box=new T.Box3(),v=new T.Vector3();
+  for(const ids of by.values()){const g=new T.BufferGeometry();for(const k in geo.attributes)g.setAttribute(k,geo.attributes[k]);if(geo.index)g.setIndex(geo.index);
+    const mesh=new T.InstancedMesh(g,mat,ids.length),IM=mesh.instanceMatrix.array,IC=new Float32Array(ids.length*3);let sc=1;box.makeEmpty();
+    ids.forEach((i,j)=>{IM.set(M.subarray(i*16,i*16+16),j*16);IC.set(Cl.subarray(i*3,i*3+3),j*3);const e=M.subarray(i*16);
+      box.expandByPoint(v.set(e[12],e[13],e[14]));sc=Math.max(sc,Math.hypot(e[0],e[1],e[2]),Math.hypot(e[4],e[5],e[6]),Math.hypot(e[8],e[9],e[10]));});
+    mesh.instanceColor=new T.InstancedBufferAttribute(IC,3);g.boundingSphere=box.getBoundingSphere(new T.Sphere());g.boundingSphere.radius+=r0*sc;
+    mesh.frustumCulled=true;mesh.instanceMatrix.onUpload(dropArray);mesh.instanceColor.onUpload(dropArray);grp.add(mesh);}
+  return grp;}
 // for gable faces built with n=null the computed normal must point outward & up; enforce upward y for roofs
 const _face=GB.prototype.face;
 GB.prototype.face=function(pts,n,col){

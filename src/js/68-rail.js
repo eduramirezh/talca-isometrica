@@ -132,7 +132,7 @@ function railBase(B){const t0=performance.now(),R=new GB(1<<16),RX=DATA.railx||[
       for(let k=0;k<10;k++)R.prism(rotRect(bx,by,.3,.3,a),e+1.1+k*.6,e+1.7+k*.6,k%2?K.post:K.red,K.post);}}
   // the station's yard tracks, draped
   for(const y of RAIL_YARD){const P=railSample(y.pts,RS);flatTrack(P,0,P.length-1,{...LINES[0],g:y.g||1.676});}
-  if(R.nv){const m=new T.Mesh(R.geo(),matFlat);m.castShadow=m.receiveShadow=true;scene.add(m);}
+  if(R.nv){const m=tiled(R,matFlat);m.traverse(o=>o.castShadow=o.receiveShadow=true);scene.add(m);}
   STREET.railVerts=R.nv;STREET.railMs=Math.round(performance.now()-t0);window.__rail=RAILP;}
 // The girders of a rail bridge from a to b (grid metres), hw its half width, hAt(p) its deck's height, in palette K
 // (steel, steel2): o.plates, the depth of plate girders under the deck, whose faces get stiffener panels in two tones;
