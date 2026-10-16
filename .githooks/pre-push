@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-push: mantiene el sitio (Cloudflare Pages, talca.eduramirez.com) al día con main.
-# Cuando un push a origin (Codeberg) actualiza refs/heads/main, corre scripts/deploy-cloudflare.sh.
+# Cuando un push a origin (GitHub) actualiza refs/heads/main, corre scripts/deploy-cloudflare.sh.
 #
 # NUNCA BLOQUEA EL PUSH. Si la publicación falla, avisa y termina con 0: el sitio puede quedar atrasado, el push sigue.
 # Tampoco publica si el árbol de trabajo tiene cambios sin commit o HEAD no es el main que se empuja: así el sitio

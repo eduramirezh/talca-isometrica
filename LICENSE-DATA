@@ -35,7 +35,7 @@ pipeline/pois.py, data/pois.json y data/pois.csv) y la
 documentación de docs/ son obra de Edu Ramírez, © 2026, y no están bajo la
 licencia MIT ni la ODbL. Se pueden citar con atribución y enlace al proyecto;
 para reproducirlos de otra forma, pida permiso abriendo un issue en
-https://codeberg.org/eduramirezh/talca-isometrica/issues.
+https://github.com/eduramirezh/talca-isometrica/issues.
 
 3. Otras fuentes
 ----------------

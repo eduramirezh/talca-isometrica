@@ -2,7 +2,7 @@
 
 Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca los lugares del ámbito jurídico (tribunales, fiscalías, defensorías, notarías, registros, academia y la historia legal de la ciudad) junto a sus hitos urbanos. Cubre toda la comuna de Talca (232 km²), recortada por su límite: la ciudad y el campo que la rodea. Está hecha sobre datos reales: las manzanas del Censo 2017 de la comuna y la red vial de OpenStreetMap.
 
-**Verla en línea: [talca.eduramirez.com](https://talca.eduramirez.com/)** · Código: [codeberg.org/eduramirezh/talca-isometrica](https://codeberg.org/eduramirezh/talca-isometrica) · Un proyecto de [Edu Ramírez](https://eduramirez.com/).
+**Verla en línea: [talca.eduramirez.com](https://talca.eduramirez.com/)** · Código: [github.com/eduramirezh/talca-isometrica](https://github.com/eduramirezh/talca-isometrica) · Un proyecto de [Edu Ramírez](https://eduramirez.com/).
 
 ![Vista del barrio judicial de la Alameda](docs/img/barrio-judicial.jpg)
 
@@ -48,7 +48,7 @@ make deploy DRY_RUN=1   # arma dist/ y lista lo que se subiría, sin subir nada
 make deploy             # make build + npx wrangler pages deploy (requiere npx wrangler login una vez)
 ```
 
-Con `make hooks`, un `git push` que actualiza `main` en `origin` (Codeberg) publica solo (`.githooks/pre-push`). Nunca bloquea el push: si la publicación falla, avisa y el push sigue; tampoco publica si hay cambios sin commit. Para saltarlo: `git push --no-verify` o `TALCA_SKIP_DEPLOY=1 git push`.
+Con `make hooks`, un `git push` que actualiza `main` en `origin` (GitHub) publica solo (`.githooks/pre-push`). Nunca bloquea el push: si la publicación falla, avisa y el push sigue; tampoco publica si hay cambios sin commit. Para saltarlo: `git push --no-verify` o `TALCA_SKIP_DEPLOY=1 git push`.
 
 ## Estructura
 
@@ -94,9 +94,9 @@ docs/                    metodología, fuentes, investigación de proyectos simi
 
 ## Correcciones y contribuciones
 
-¿Un lugar mal ubicado, una dirección vieja, un dato que no calza? Abra un [issue en Codeberg](https://codeberg.org/eduramirezh/talca-isometrica/issues) con el lugar (su nombre o el `#id` de su enlace), qué está mal y una fuente: una página oficial, una foto fechada o el objeto de OpenStreetMap. Las correcciones de OSM conviene hacerlas también en [OpenStreetMap](https://www.openstreetmap.org), de donde salen calles, ríos y plantas.
+¿Un lugar mal ubicado, una dirección vieja, un dato que no calza? Abra un [issue en GitHub](https://github.com/eduramirezh/talca-isometrica/issues) con el lugar (su nombre o el `#id` de su enlace), qué está mal y una fuente: una página oficial, una foto fechada o el objeto de OpenStreetMap. Las correcciones de OSM conviene hacerlas también en [OpenStreetMap](https://www.openstreetmap.org), de donde salen calles, ríos y plantas.
 
-Los cambios de código o de datos se reciben como pull request en Codeberg (GitHub es solo un espejo). Antes de enviarlo: `make hooks` una vez (deja `make check` antes de cada commit) y, si el cambio se ve, una captura con `tools/screenshot.py`. Los lugares van en `pipeline/pois.py` con fuente y confianza honesta, y los textos en español de Chile; las convenciones y las trampas conocidas están en [CLAUDE.md](CLAUDE.md) y [docs/METODOLOGIA.md](docs/METODOLOGIA.md).
+Los cambios de código o de datos se reciben como pull request en GitHub. Antes de enviarlo: `make hooks` una vez (deja `make check` antes de cada commit) y, si el cambio se ve, una captura con `tools/screenshot.py`. Los lugares van en `pipeline/pois.py` con fuente y confianza honesta, y los textos en español de Chile; las convenciones y las trampas conocidas están en [CLAUDE.md](CLAUDE.md) y [docs/METODOLOGIA.md](docs/METODOLOGIA.md).
 
 ## Documentación
 
