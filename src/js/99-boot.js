@@ -33,6 +33,7 @@ function boot(){
     usosPlan();tm('usosPlan');              // land uses: their ground in occ, like a landmark
     applyPads();riversRelevel();terrainNormals(); // ...which level the terrain before anything is laid on it
     for(const k in MODELS)MODELS[k].h+=E(MODELS[k].x,MODELS[k].y);
+    homeView(); // the initial view, on the levelled terrain
     for(let k=0;k<EN_;k++){EHI=Math.max(EHI,EH[k]);ELO=Math.min(ELO,EH[k]);}SH=null; // the shadow box, with the terrain's heights
     tm('pads');scene.add(terrainMesh());tm('terrain');
     const base=buildBase();tm('base');const D=new GB(1<<14);walkBase(base,D);tm('walk');scene.add(tiled(base,matFlat));if(riverWater.nv)scene.add(tiled(riverWater,matWater));
@@ -65,6 +66,7 @@ function boot(){
     window.__stats={buildings:nb,lots:LOTS.length,verts:bverts,yards:Y.nv,ground:base.nv+riverWater.nv,street:STREET,trees:TR.length+hillTrees.length+TREES.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0),t:TT};
     window.__stats.city=CITY;Object.defineProperty(window.__stats,'load',{get:loadTimes,enumerable:true}); // cityGen: barrios, house types, the Z mesh (procedural city)
     // for tools/screenshot.py --js: centre the camera on a ground point (grid metres), at a zoom (4 = the card's) and azimuth
+    window.__home=z=>homeView(z); // the initial view, at another zoom (to choose one: tools/screenshot.py --view)
     window.__look=(x,y,zoom=4,az=view.az)=>{view.az=az;view.zoom=zoom;[view.tx,view.ty]=lift(x,y,az);placeCam();};
     window.__trees=on=>{for(const m of trees)m.visible=on;shDirty=dirty=true;}; // hide the trees to see the ground under them (tools/variants.py)
     window.__cars=on=>{cars.visible=on;shDirty=dirty=true;}; // the parked cars, likewise

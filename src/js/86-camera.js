@@ -1,7 +1,12 @@
 /* =============== camera =============== */
 const EL=Math.PI/6;
 const MOB=matchMedia('(max-width:760px)').matches;
-const view=MOB?{tx:250,ty:-150,zoom:0.8,az:Math.PI/4}:{tx:420,ty:260,zoom:0.62,az:Math.PI/4};
+// The initial view: the Plaza de Armas at the default rotation, close enough for the Cathedral to be recognisable
+// (Edu chose the zooms from captures, October 2026: the plaza's blocks on a phone, about four blocks around it on a
+// desktop). On a desktop the plaza goes to the middle of the map right of the panel. homeView() sets it in boot(),
+// once the pads have levelled the terrain (lift); until then the loading screen covers the map.
+const HOME_ZOOM=MOB?5:6;
+const view={tx:0,ty:0,zoom:HOME_ZOOM,az:Math.PI/4};
 // camT, camMoved: when the camera last moved, and whether it did since the last frame (loop: moving); ART: metres per
 // art pixel of the last frame
 let W=1,H=1,dirty=true,camT=0,camMoved=false,paLite=false,ART=0.5;const MOVE_MS=160;
@@ -81,6 +86,9 @@ function framed(x,y,z){ // shift target so (x,y) lands in the free area between 
   const wx=-ox*k*rx+d*ux,wz=-ox*k*rz+d*uz;
   return [x+wx,y-wz];
 }
+function homeView(z=HOME_ZOOM){view.az=Math.PI/4;view.zoom=z;const [x,y]=lift(0,0),k=BASEH/z/H;
+  const ox=MOB?0:$('#panel').getBoundingClientRect().right/2; // the plaza ox px right of the centre: the target moves left
+  view.tx=x-ox*k*Math.cos(view.az);view.ty=y-ox*k*Math.sin(view.az);placeCam();}
 function flyTo(x,y,z,az){const s={tx:view.tx,ty:view.ty,zoom:view.zoom,az:view.az},e={tx:x,ty:y,zoom:z??view.zoom,az:az??view.az};const t0=performance.now();
   const dur=matchMedia('(prefers-reduced-motion: reduce)').matches?1:1100;
   anim=now=>{let t=Math.min(1,(now-t0)/dur);const k=ease(t);const lz=Math.log(s.zoom)+(Math.log(e.zoom)-Math.log(s.zoom))*k;
