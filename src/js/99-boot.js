@@ -110,7 +110,8 @@ function boot(){
     const ready=bi=>{const b=blocks[bi].bb;return boxIn(...b)&&Math.max(Math.hypot(b[0],b[1]),Math.hypot(b[2],b[1]),Math.hypot(b[0],b[3]),Math.hypot(b[2],b[3]))+CITY_REACH<=rho;};
     const AL=[...ALAM],[bis1,bis2]=split(blocks.map((b,bi)=>bi),ready),[al1,al2]=split(AL,ready),[wi1,wi2]=split(WALKS.map((w,i)=>i),i=>polyIn(WALKS[i].pts));
     const Y=new GB(1<<18),Z=new GB(1<<17);let nb=0;
-    edificiosBase(B,Z,Y);tm('edificios');   // ...drawn, with their blocks' ground (2.5e7: between the Cerro and the city)
+    const [ed1,ed2]=split(ED.bks,bk=>boxIn(...bk.bb));
+    edificiosBase(B,Z,Y,ed1);tm('edificios'); // ...drawn, with their blocks' ground (2.5e7 + the block: between the Cerro and the city)
     const streetsOf=(Bx,Yx,Zx,sts)=>{const c=cityGen(Bx,Yx,Zx,sts,[]);PT.yard.push(...c.TR);nb+=c.nb;};
     const blocksOf=bis=>{for(const bi of bis)blockTrees(bi,PT.blocks[bi]=[]);};
     const alamOf=(Bx,bis)=>{for(const bi of bis){Bx.k=4e7+AL.indexOf(bi);PT.alam.set(bi,alamedaPark(Bx,[bi]));}};
@@ -157,6 +158,7 @@ function boot(){
       STREET.walkVerts=walkV+G2.nv-g0;
       for(const u of us2){drawUses(B2,S2,UG2,[u]);yield;}
       usosDone(uv[0]+UG2.nv);
+      for(let i=0;i<ed2.length;i+=6){edificiosBase(B2,Z2,Y2,ed2.slice(i,i+6));yield;}
       for(let i=0;i<sts2.length;i+=4){streetsOf(B2,Y2,Z2,sts2.slice(i,i+4));yield;}
       for(let i=0;i<bis2.length;i+=40){blocksOf(bis2.slice(i,i+40));yield;}
       alamOf(B2,al2);yield;
@@ -175,7 +177,7 @@ function boot(){
       lampPts=lamps();lampPts.visible=night;scene.add(lampPts);STAGE=null;$('#more').hidden=true;shDirty=dirty=true;
       LOAD.full=Math.round(performance.now());
       const sum=a=>a.reduce((s,v)=>s+v,0);CITY.zVerts=sum(zv);
-      window.__stats={buildings:nb,lots:LOTS.length,verts:sum(bv),yards:sum(yv),ground:sum(gnd),street:STREET,trees:C.round.length,poplars:C.poplar.length,ms:Math.round(performance.now()-t0),t:TT};
+      window.__stats={buildings:nb,lots:LOTS.length-EDS.hulls,verts:sum(bv),yards:sum(yv),ground:sum(gnd),street:STREET,trees:C.round.length,poplars:C.poplar.length,ms:Math.round(performance.now()-t0),t:TT};
       window.__stats.city=CITY;Object.defineProperty(window.__stats,'load',{get:loadTimes,enumerable:true}); // cityGen: barrios, house types, the Z mesh (procedural city)
     }),0);
   },30);

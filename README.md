@@ -8,7 +8,7 @@ Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca 
 
 - **55 lugares** en 8 categorías, cada uno con dirección y fuente; en los datos (`data/pois.csv`), también sus coordenadas y el nivel de confianza de la ubicación.
 - **Dos recorridos guiados:** la Ruta de la Justicia y Talca icónica.
-- **~59.000 edificios** generados en el navegador frente a cada calle real, con alturas según la densidad del censo y 24 hitos con modelo propio, sobre su planta real.
+- **~54.000 edificios** generados en el navegador frente a cada calle real, con alturas según la densidad del censo, ~3.900 de OpenStreetMap con su planta (todo el centro, y supermercados, colegios, torres y villas en el resto de la comuna) y 24 hitos con modelo propio, sobre su planta real.
 - **Relieve real** del modelo de elevación SRTM: los cerros del poniente y las terrazas de la ciudad hacia sus ríos, con exageración logarítmica.
 - **Vistas:** pixel art (píxeles de 0,5 m con contorno), modo noche, giro de la vista en 90°, tema claro y oscuro, y diseño para móvil.
 - **Un solo archivo HTML** autocontenido (~820 KB). Solo carga three.js desde cdnjs y las fuentes de Google Fonts.
@@ -57,7 +57,7 @@ config/
   manzanas.json          manzanas «sin información» del Censo que están construidas (revisadas en imagen satelital)
   trazados.json          ríos (de OpenStreetMap), vía férrea y Ruta 5, con su procedencia
   usos.json              usos de suelo de los terrenos en blanco del Censo (industria, cementerios, colegios, canchas, eriazos…), con su fuente
-  edificios.json         dónde se dibujan los edificios reales de OpenStreetMap en vez de los generados (áreas, umbral de cobertura)
+  edificios.json         dónde se dibujan los edificios reales de OpenStreetMap en vez de los generados o junto a ellos (áreas, umbrales de cobertura, correcciones)
   techos.json            la familia del techo (teja, óxido, zinc, claro…) de cada edificio de OSM, clasificada con la imagen satelital
 pipeline/
   common.py              rutas, proyección (origen en la Plaza de Armas, grilla girada 5°) y el límite de la comuna (OSM)
@@ -70,7 +70,7 @@ pipeline/
   diagnostics.py         paneles PNG para revisar trazados contra las manzanas
   satellite.py           imagen satelital con las manzanas y los usos de suelo encima (qué hay de verdad en cada una)
   usos.py                usos de suelo: importación desde OSM, revisión de lo que falta y de config/usos.json
-  edificios.py           los edificios de OSM de las manzanas donde OSM está completo -> data/edificios.json; panel de cobertura; techos
+  edificios.py           los edificios de OSM (manzanas enteras y mixtas) -> data/edificios.json; panel de cobertura; techos
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos de Commons
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
                          la API map de OSM por cajas (tiles, tiles-comuna);
@@ -116,7 +116,7 @@ Los cambios de código o de datos se reciben como pull request en GitHub. Antes 
 ## Licencia
 
 - **Código y modelos de los hitos** (`pipeline/`, `tools/`, `src/`, incluidos los hitos hechos a mano de `src/js/hitos/`): licencia MIT, en [LICENSE](LICENSE).
-- **Datos derivados de OpenStreetMap** (`data/geometry.json`, `data/ruta5.json` y las partes de OSM de `config/trazados.json`, `config/usos.json` y las coordenadas de los lugares): ODbL 1.0, © colaboradores de OpenStreetMap, en [LICENSE-DATA](LICENSE-DATA). Toda publicación debe mantener la atribución (está en la pestaña «Acerca»).
+- **Datos derivados de OpenStreetMap** (`data/geometry.json`, `data/ruta5.json`, `data/edificios.json` y las partes de OSM de `config/trazados.json`, `config/usos.json` y las coordenadas de los lugares): ODbL 1.0, © colaboradores de OpenStreetMap, en [LICENSE-DATA](LICENSE-DATA). Toda publicación debe mantener la atribución (está en la pestaña «Acerca»).
 - **Textos de las fichas y de `docs/`:** obra propia de Edu Ramírez; se pueden citar con atribución (ver [LICENSE-DATA](LICENSE-DATA)).
 - **Manzanas:** Censo de Población y Vivienda 2017, Instituto Nacional de Estadísticas de Chile.
 - **Imagen satelital:** las teselas de Esri World Imagery que baja `pipeline/satellite.py` se usan solo para revisar a mano; nada de ellas se redistribuye.

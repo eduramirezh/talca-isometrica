@@ -20,7 +20,10 @@ function sepAxes(P,A,B){for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.len
 function lotCells(q,f){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
   for(let gx=Math.floor((x0-XMIN)/LG);gx<=Math.floor((x1-XMIN)/LG);gx++)for(let gy=Math.floor((y0-YMIN)/LG);gy<=Math.floor((y1-YMIN)/LG);gy++)if(f(gy*lgW+gx)===false)return false;return true;}
 function lotFree(q){lstamp++;return lotCells(q,k=>{const c=lgrid.get(k);if(c)for(const id of c){if(lseen[id]===lstamp)continue;lseen[id]=lstamp;if(!sepQuad(q,LOTS[id]))return false;}});}
-function lotAdd(q){const id=LOTS.length;LOTS.push(q);lotCells(q,k=>{const c=lgrid.get(k);if(c)c.push(id);else lgrid.set(k,[id]);});occMark(q,2);}
+// lotBlock(q): the convex polygon q is closed to the lots without a mark in occ (an OSM building of a mixed block and
+// its margin, edificiosPlan); lotAdd(q): a lot of cityGen
+function lotBlock(q){const id=LOTS.length;LOTS.push(q);lotCells(q,k=>{const c=lgrid.get(k);if(c)c.push(id);else lgrid.set(k,[id]);});}
+function lotAdd(q){lotBlock(q);occMark(q,2);}
 // The city's palettes. Roofs come by family, each in two tones (a row of identical houses alternates them, ESTETICA §3).
 // From pipeline/satellite.py on five neighbourhoods (diagnostics/sat-*.png): the barrios are a field of galvanized zinc,
 // bright or weathered grey, with rusted, red, green and blue painted sheets; the old centre is dark weathered tile and
@@ -194,7 +197,7 @@ function cityGen(B,Y,Z,sts,bis){
         while(u<L-5){
           const pr=P(u+3,hw+7);
           const bi=blockAt(pr[0],pr[1]);
-          if(bi<0||!blocks[bi].built||blocks[bi].osm||NOLOTS.some(q=>inRing(pr[0],pr[1],q))){u+=5;continue;} // osm: its buildings come from OSM (edificiosBase)
+          if(bi<0||!blocks[bi].built||blocks[bi].osm||NOLOTS.some(q=>inRing(pr[0],pr[1],q))){u+=5;continue;} // osm: its buildings come from OSM (edificiosBase); in a mixed block (mixto) lotFree keeps the lots off them
           const R=recipeOf(bi),H=R.h;let st=styleFor(bi);
           if(st==='house'&&R.ind&&r()<R.ind)st='ind'; // the large, nearly empty blocks of the outskirts: sheds among the houses
           let w,d,sb,gap,fl,kind,yd=0,front=false,shop=false;

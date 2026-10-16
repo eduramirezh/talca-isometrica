@@ -1,18 +1,22 @@
-"""Edificios de OpenStreetMap donde OSM los tiene todos: data/edificios.json (METODOLOGIA §14).
+"""Edificios de OpenStreetMap, donde OSM los tiene todos o algunos: data/edificios.json (METODOLOGIA §14).
 
 La ciudad de la maqueta es generada (cityGen, en la plantilla): casas sobre lotes a lo largo de las calles, con
 recetas por barrio. En el centro OSM tiene casi todos los edificios con sus pisos, y ahí la planta real se ve mejor
 que cualquier receta: las torres donde están, las galerías, los patios y los estacionamientos de verdad. Este script
-elige las manzanas construidas cuya superficie cubren los edificios de OSM (en `cobertura`, o en `cobertura_pisos`
-contando solo los que tienen pisos o altura, que en Talca vienen de una importación que levantó manzanas enteras),
-dentro de las `areas` de config/edificios.json, y escribe sus edificios, con su planta, su altura y su tipo, y las superficies que OSM dibuja
-dentro de ellas (estacionamientos, pasto, jardines, piscinas, juegos). build.py lo inyecta como DATA.ed y la sección
-«edificios de OSM» de la plantilla (src/js/52-edificios.js) los dibuja; cityGen() no pone lotes en esas manzanas.
+clasifica las manzanas construidas de las `areas` de config/edificios.json: enteras, cuya superficie cubren los
+edificios de OSM (en `cobertura`, o en `cobertura_pisos` contando solo los que tienen pisos o altura, que en el centro
+vienen de una importación que levantó manzanas enteras; cada área puede tener sus umbrales, y null apaga el segundo),
+y mixtas, con al menos un edificio de `mixto.m2` o más. Escribe sus edificios, con su planta, su altura y su tipo
+(en las mixtas, los de `mixto.m2` o más), y las superficies que OSM dibuja dentro de ellas (estacionamientos, pasto,
+jardines, piscinas, juegos). build.py lo inyecta como DATA.ed y la sección «edificios de OSM» de la plantilla
+(src/js/52-edificios.js) los dibuja; cityGen() no pone lotes en las enteras y en las mixtas llena los frentes libres.
+`forzar` (entera), `quitar` (mixta) y `generar` (sin OSM) son puntos dentro de una manzana, para corregir a mano.
 
   python pipeline/edificios.py                 # escribe data/edificios.json e imprime las manzanas elegidas (make edificios)
   python pipeline/edificios.py manzanas [n]    # las n manzanas más cercanas al umbral, con su cobertura y un punto
   uv run --with pillow python pipeline/edificios.py panel [x0 x1 y0 y1] [z]
-      diagnostics/edificios.png: la imagen satelital con las manzanas (verde: elegida, rojo: no, con su cobertura) y
+      diagnostics/edificios.png: la imagen satelital con las manzanas (verde: entera, amarillo: mixta, rojo: sin
+      OSM, con su cobertura) y
       los edificios de OSM coloreados por pisos (verde 1, amarillo 2, naranjo 3–5, rojo 6 o más, magenta sin dato);
       en cada manzana, su cobertura y la de los edificios con pisos
   uv run --with pillow python pipeline/edificios.py techos [z]
@@ -30,10 +34,10 @@ Lo que hace con OSM:
     y plantas de OSM»): la plantilla las recorta a la línea de las veredas.
 
 Formato de data/edificios.json (enteros en decímetros, anillos codificados en delta como geometry.json):
-  {"m": [[x, y], …] un punto dentro de cada manzana elegida (metros de grilla, con un decimal),
-   "e": [[id, [anillo, hueco, …], alto, tipo, pisos, techo, estimada], …],
-   "s": [[anillo, superficie], …], "tipos": [...], "superficies": [...], "techos": [...]}
-techo es el índice en "techos" de la familia de config/techos.json, o -1 sin dato.
+  {"m": [[x, y], …] un punto dentro de cada manzana entera (metros de grilla, con un decimal), "x": lo mismo, mixtas,
+   "e": [[id, [anillo, hueco, …], alto, tipo, pisos, techo, estimada, manzana], …],
+   "s": [[anillo, superficie, manzana], …], "tipos": [...], "superficies": [...], "techos": [...]}
+techo es el índice en "techos" de la familia de config/techos.json, o -1 sin dato; manzana, su lugar en m y luego x.
 """
 import json, math, sys
 from common import ROOT, RAW, DATA, CONFIG, loc, require
@@ -187,14 +191,19 @@ def analyse():
     for s in srf:
         b = block_of(centroid(s[0]))
         if b: b['srf'].append(s)
-    in_area = lambda b: any(a['caja'][0] <= c[0] <= a['caja'][2] and a['caja'][1] <= c[1] <= a['caja'][3] for a in cfg['areas'] for c in [point_in(b)])
+    def area_of(b):
+        c = point_in(b)
+        return next((a for a in cfg['areas'] if a['caja'][0] <= c[0] <= a['caja'][2] and a['caja'][1] <= c[1] <= a['caja'][3]), None)
+    mn = cfg['mixto']['m2']
     for b in B:
-        b['cov'] /= b['A']; b['covp'] /= b['A']
-        b['sel'] = b['built'] and in_area(b) and (b['cov'] >= cfg['cobertura'] or b['covp'] >= cfg['cobertura_pisos'])
-    for p in cfg['forzar']:
-        b = block_of(p); assert b, f'edificios.json: forzar {p} no cae en una manzana'; b['sel'] = True
-    for p in cfg['quitar']:
-        b = block_of(p); assert b, f'edificios.json: quitar {p} no cae en una manzana'; b['sel'] = False
+        b['cov'] /= b['A']; b['covp'] /= b['A']; a = area_of(b) if b['built'] and b['eds'] else None
+        th, thp = (a.get('cobertura', cfg['cobertura']), a.get('cobertura_pisos', cfg['cobertura_pisos'])) if a else (0, 0)
+        b['sel'] = bool(a) and (b['cov'] >= th or (thp is not None and b['covp'] >= thp))
+        b['mix'] = bool(a) and not b['sel'] and any(abs(area(e[1][0])) >= mn for e in b['eds'])
+    for k, sel, mix in (('forzar', True, False), ('quitar', False, None), ('generar', False, False)):
+        for p in cfg[k]:
+            b = block_of(p); assert b, f'edificios.json: {k} {p} no cae en una manzana'
+            b['sel'] = sel; b['mix'] = (b['built'] and any(abs(area(e[1][0])) >= mn for e in b['eds'])) if mix is None else mix
     return cfg, B, excl
 
 def techos():
@@ -202,30 +211,30 @@ def techos():
     return json.load(open(f))['techos'] if f.exists() else {}
 
 def main():
-    cfg, B, excl = analyse(); T = techos()
-    sel = [b for b in B if b['sel']]
-    out = {'tipos': TIPOS, 'superficies': SUPERFICIES, 'techos': TECHOS, 'm': [], 'e': [], 's': []}
-    nt = ne = 0
-    for b in sel:
-        out['m'].append([round(c, 1) for c in point_in(b)])
+    cfg, B, excl = analyse(); T = techos(); mn = cfg['mixto']['m2']
+    sel, mix = [b for b in B if b['sel']], [b for b in B if b['mix']]
+    out = {'tipos': TIPOS, 'superficies': SUPERFICIES, 'techos': TECHOS, 'm': [], 'x': [], 'e': [], 's': []}
+    nt = ne = nm = 0
+    for k, b in enumerate(sel + mix):
+        out['m' if b['sel'] else 'x'].append([round(c, 1) for c in point_in(b)])
         for oid, rings, t in b['eds']:
-            if oid in excl: continue
+            if oid in excl or (b['mix'] and abs(area(rings[0])) < mn): continue
             h, lv, est = height(t)
-            fam = T.get(oid); nt += fam is not None
-            out['e'].append([oid, [enc(r) for r in rings], int(round(h*10)), TIPO.get(t['building'], 0), int(lv), TECHOS.index(fam) if fam in TECHOS else -1, int(est)])
+            fam = T.get(oid); nt += fam is not None; nm += b['mix']
+            out['e'].append([oid, [enc(r) for r in rings], int(round(h*10)), TIPO.get(t['building'], 0), int(lv), TECHOS.index(fam) if fam in TECHOS else -1, int(est), k])
             ne += est
-        for r, k in b['srf']: out['s'].append([enc(r), k])
+        for r, s in b['srf']: out['s'].append([enc(r), s, k])
     (DATA / 'edificios.json').write_text(json.dumps(out, separators=(',', ':')))
     kb = (DATA / 'edificios.json').stat().st_size / 1024
-    print(f"data/edificios.json: {len(sel)} manzanas, {len(out['e'])} edificios ({ne} sin altura, {nt} con color de techo), "
-          f"{len(out['s'])} superficies, {kb:.0f} KB")
+    print(f"data/edificios.json: {len(sel)} manzanas enteras y {len(mix)} mixtas, {len(out['e'])} edificios ({nm} en las mixtas, "
+          f"{ne} sin altura, {nt} con color de techo), {len(out['s'])} superficies, {kb:.0f} KB")
 
 def cmd_manzanas(n='20'):
     cfg, B, _ = analyse(); th = cfg['cobertura']
     near = sorted((b for b in B if b['built'] and len(b['eds'])), key=lambda b: abs(b['cov']-th))[:int(n)]
     for b in sorted(near, key=lambda b: -b['cov']):
         p = point_in(b)
-        print(f"{'✓' if b['sel'] else '·'} manzana {b['i']:5d}  cobertura {b['cov']:.2f} (con pisos {b['covp']:.2f})  "
+        print(f"{'✓' if b['sel'] else '½' if b['mix'] else '·'} manzana {b['i']:5d}  cobertura {b['cov']:.2f} (con pisos {b['covp']:.2f})  "
               f"{len(b['eds']):3d} edificios  punto [{p[0]:.0f}, {p[1]:.0f}]")
 
 def cmd_panel(*args):
@@ -245,7 +254,7 @@ def cmd_panel(*args):
             d.polygon([P(p) for p in rings[0]], fill=col, outline=(255, 255, 255, 200))
     for b in B:
         if not vis(b['bb']) or not b['built']: continue
-        d.polygon([P(p) for p in b['r']], outline=(60, 255, 60, 255) if b['sel'] else (255, 60, 60, 255), width=3)
+        d.polygon([P(p) for p in b['r']], outline=(60, 255, 60, 255) if b['sel'] else (255, 200, 0, 255) if b['mix'] else (255, 60, 60, 255), width=3)
         q = P(point_in(b)); d.text((q[0]-12, q[1]-10), f"{b['cov']:.2f}\n{b['covp']:.2f}", fill=(255, 255, 255, 255))
     img = Image.alpha_composite(img, ov).convert('RGB')
     out = ROOT / 'diagnostics' / 'edificios.png'; out.parent.mkdir(exist_ok=True); img.save(out)
