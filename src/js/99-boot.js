@@ -8,12 +8,22 @@ function loop(now){
   // nothing and stay); the first frame after it stops draws them again
   const moving=!!anim||camMoved||now-camT<MOVE_MS;camMoved=false;if(paLite&&!moving)dirty=true;
   if(dirty){const t0=performance.now();ART=PA?paFit(PA):wpp()/DPR;setLod(ART);stripLod(cam);renderer.shadowMap.needsUpdate=shDirty;shDirty=false;
-    if(PA){paRender(moving);paLite=moving&&PA.ol>1&&PA.crease==='normals';}else renderer.render(scene,cam);layout();dirty=false;if(tr)trainFrame(now,performance.now()-t0);}
+    if(PA){paRender(moving);paLite=moving&&PA.ol>1&&PA.crease==='normals';}else renderer.render(scene,cam);layout();dirty=false;if(tr)trainFrame(now,performance.now()-t0);
+    if(!LOAD.frame){LOAD.frame=Math.round(performance.now());LOAD.frameMs=Math.round(LOAD.frame-t0);requestAnimationFrame(t=>{LOAD.shown=Math.round(performance.now());});}}
   updateReadout();
   requestAnimationFrame(loop);
 }
+// startup times, ms since navigation start (__stats.load): the script runs, the generation starts and ends, the first
+// frame is drawn (frameMs of it in loop(), with the shader compiles and the first shadow map) and the frame after it
+// starts (the first one is on screen); plus the navigation's own (the HTML's response, DOMContentLoaded) and three.js
+const LOAD={script:Math.round(T_SCRIPT)};
+function loadTimes(){const n=performance.getEntriesByType?.('navigation')[0],r=performance.getEntriesByType?.('resource')||[];
+  if(n){LOAD.html=Math.round(n.responseEnd);LOAD.htmlKB=Math.round((n.transferSize||0)/1024);LOAD.dcl=Math.round(n.domContentLoadedEventEnd);}
+  const t=r.find(e=>/three/.test(e.name));if(t){LOAD.three=Math.round(t.responseEnd);LOAD.threeKB=Math.round((t.transferSize||0)/1024);}
+  const f=r.filter(e=>/fonts\.(googleapis|gstatic)/.test(e.name));if(f.length)LOAD.fonts=Math.round(Math.max(...f.map(e=>e.responseEnd)));
+  return LOAD;}
 function boot(){
-  const t0=performance.now();
+  const t0=performance.now();LOAD.boot=Math.round(t0);
   loadMsg('Levantando hitos y edificios…');
   setTimeout(()=>{
     const B=new GB(1<<19),S=new GB(1<<16);
@@ -51,8 +61,9 @@ function boot(){
     for(const m of cast){m.traverse(o=>o.castShadow=o.receiveShadow=true);if(!m.parent)scene.add(m);}
     scene.traverse(o=>{if(o.castShadow)CASTERS.push(o);});SH=null;shOff=false; // what casts shadows, switched off together by fitShadow when far
     tm('meshes');lampPts=lamps();scene.add(lampPts);tm('lamps');
+    LOAD.gen=Math.round(performance.now());
     window.__stats={buildings:nb,lots:LOTS.length,verts:bverts,yards:Y.nv,ground:base.nv+riverWater.nv,street:STREET,trees:TR.length+hillTrees.length+TREES.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0),t:TT};
-    window.__stats.city=CITY; // cityGen: barrios, house types, the Z mesh (procedural city)
+    window.__stats.city=CITY;Object.defineProperty(window.__stats,'load',{get:loadTimes,enumerable:true}); // cityGen: barrios, house types, the Z mesh (procedural city)
     // for tools/screenshot.py --js: centre the camera on a ground point (grid metres), at a zoom (4 = the card's) and azimuth
     window.__look=(x,y,zoom=4,az=view.az)=>{view.az=az;view.zoom=zoom;[view.tx,view.ty]=lift(x,y,az);placeCam();};
     window.__trees=on=>{for(const m of trees)m.visible=on;shDirty=dirty=true;}; // hide the trees to see the ground under them (tools/variants.py)
