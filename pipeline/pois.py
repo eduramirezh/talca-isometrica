@@ -231,6 +231,11 @@ add('ramal-constitucion', 'Ramal Talca–Constitución', 'ciudad', -35.44022, -7
 add('terminal-buses', 'Terminal de Buses', 'ciudad', -35.43027, -71.64733, '2 Sur, al oriente de la vía férrea',
     'Terminal interurbano Lorenzo Varoli, a 200 m de la estación de trenes.', 'alta',
     [['OpenStreetMap vía Mapcarta', MC + 'W110962821']], model='terminal', pri=3)
+add('cecinas-pf', 'Planta de Cecinas PF', 'ciudad', -35.415289, -71.628998, 'Calle de Servicio Ruta 5, costado oriente de la Ruta 5 Sur',
+    'Sede industrial de PF Alimentos (Productos Fernández), la empresa de cecinas nacida en Talca a comienzos del siglo XX.', 'media',
+    [['OpenStreetMap vía Mapcarta', MC + 'W297781219'], ['The Clinic, 2025', 'https://www.theclinic.cl/2025/07/28/la-reinvencion-de-pf-la-centenaria-firma-de-cecinas-que-nacio-en-talca-y-se-transformo-en-un-imperio-que-factura-us600-millones-al-ano/'],
+     ['Amunategui Barreau: PF/Talca Industrial Complex', 'https://www.abarchitec.com/?p=83748']],
+    fact='Según The Clinic, la producción de PF se reparte en seis plantas, todas en Talca.', model='cecinas', pri=3)
 add('talca-country-club', 'Talca Country Club', 'ciudad', -35.421908, -71.623100, 'Calle Talca Country Club, nororiente de la ciudad',
     'Club de golf de nueve hoyos, con canchas de tenis y piscina, al nororiente de la ciudad.', 'media',
     [['OpenStreetMap vía Mapcarta', MC + 'W101587762'], ['GolfAdvisor', 'https://www.golfadvisor.com/courses/30115-talca-country-club']],
