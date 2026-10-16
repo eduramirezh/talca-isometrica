@@ -2,6 +2,8 @@
 
 Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca los lugares del ámbito jurídico (tribunales, fiscalías, defensorías, notarías, registros, academia y la historia legal de la ciudad) junto a sus hitos urbanos. Cubre toda la comuna de Talca (232 km²), recortada por su límite: la ciudad y el campo que la rodea. Está hecha sobre datos reales: las manzanas del Censo 2017 de la comuna y la red vial de OpenStreetMap.
 
+**Verla en línea: [talca.eduramirez.com](https://talca.eduramirez.com/)** · Código: [codeberg.org/eduramirezh/talca-isometrica](https://codeberg.org/eduramirezh/talca-isometrica) · Un proyecto de [Edu Ramírez](https://eduramirez.com/).
+
 ![Vista del barrio judicial de la Alameda](docs/img/barrio-judicial.jpg)
 
 - **55 lugares** en 8 categorías, cada uno con dirección, coordenadas, fuente y nivel de confianza.
@@ -75,6 +77,12 @@ tools/probe.py           evalúa expresiones JS en el mapa cargado (window.__rai
 tools/check.py           revisión rápida del repo (make check); .githooks/pre-commit la corre antes de cada commit (make hooks)
 docs/                    metodología, fuentes, investigación de proyectos similares
 ```
+
+## Correcciones y contribuciones
+
+¿Un lugar mal ubicado, una dirección vieja, un dato que no calza? Abra un [issue en Codeberg](https://codeberg.org/eduramirezh/talca-isometrica/issues) con el lugar (su nombre o el `#id` de su enlace), qué está mal y una fuente: una página oficial, una foto fechada o el objeto de OpenStreetMap. Las correcciones de OSM conviene hacerlas también en [OpenStreetMap](https://www.openstreetmap.org), de donde salen calles, ríos y plantas.
+
+Los cambios de código o de datos se reciben como pull request en Codeberg (GitHub es solo un espejo). Antes de enviarlo: `make hooks` una vez (deja `make check` antes de cada commit) y, si el cambio se ve, una captura con `tools/screenshot.py`. Los lugares van en `pipeline/pois.py` con fuente y confianza honesta, y los textos en español de Chile; las convenciones y las trampas conocidas están en [CLAUDE.md](CLAUDE.md) y [docs/METODOLOGIA.md](docs/METODOLOGIA.md).
 
 ## Documentación
 
