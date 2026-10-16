@@ -243,5 +243,5 @@ Se publica con `make deploy` (`scripts/deploy-cloudflare.sh`: `make build` y `np
   - Probarlo en un teléfono de verdad (depuración remota de Safari o Chrome): SwiftShader no es una GPU de teléfono. Ver si las ~1.500 llamadas de dibujo de la comuna entera pesan en la CPU.
   - De lejos, menos llamadas: teselas más grandes, o juntar las capas planas de la comuna (suelo, terreno, usos) en una tesela por zona, para la vista de la comuna entera (~1.500 llamadas por pasada).
   - No dibujar más fino que un píxel CSS en pantallas de densidad 2–3 (`k` mínimo = densidad): de lejos el teléfono dibuja hoy a k = 1, 1,3 Mpx; serían cuatro veces menos píxeles, con un pixel art más grueso. Es una decisión de estética.
-  - La generación tarda ~0,4 s más por cortar en teselas (`tiled`): `GB` podría escribir cada tesela directamente.
+  - Cortar en teselas (`tiled`) cuesta ~0,33 s de la generación (antes ~0,46), 0,16 s de ellos en el suelo: ahí cada tesela junta triángulos de toda la comuna (cada capa recorre la comuna entera) y la copia es de accesos a memoria al azar. Lo que queda es que `GB` escriba cada tesela mientras emite; recorrer la fuente en orden y repartir a las teselas (probado) fue tres veces más lento.
 - Exportar una postal PNG de la vista actual. Dentro de un artifact se necesita la capacidad de descargas.

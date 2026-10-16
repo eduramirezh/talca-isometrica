@@ -48,7 +48,11 @@ class GB{
 // is always in view. tiled(src, mat) cuts a GB (or an indexed BufferGeometry) into one mesh per TILE x TILE metres,
 // each triangle in the tile of its centroid, so three.js leaves out the tiles the camera (or the shadow camera) does
 // not see. A GB is consumed: its arrays are dropped. The copies in the JS heap are dropped too once uploaded (free):
-// nothing reads them after the boot, and they doubled the memory a phone has to hold.
+// nothing reads them after the boot, and they doubled the memory a phone has to hold. Each tile takes one pass over its
+// triangles: a vertex is copied the first time one of them uses it (stamp), into scratch arrays sized for the largest
+// tile and reused, which are then sliced to the tile's size (a copy at memory speed); the bounding box grows during
+// that pass and the sphere is three's computeBoundingSphere() over the same floats (centre of the box, farthest
+// vertex), without a Vector3 per vertex. The cutting took ~0.45 s of the boot, now ~0.3 s.
 const TILE=1000,TILE_N=64; // tile keys: (tx+TILE_N)*2*TILE_N+(tz+TILE_N), the box of the commune is ±25 km at most
 function dropArray(){this.array=null;}
 function free(g){for(const k in g.attributes)g.attributes[k].onUpload(dropArray);if(g.index)g.index.onUpload(dropArray);return g;}
@@ -60,14 +64,22 @@ function tiled(src,mat){
     const k=(Math.floor((P[a]+P[b]+P[c])/(3*TILE))+TILE_N)*2*TILE_N+Math.floor((P[a+2]+P[b+2]+P[c+2])/(3*TILE))+TILE_N;tid[t]=k;cnt[k]++;}
   const off=new Int32Array(NK+1);for(let k=0;k<NK;k++)off[k+1]=off[k]+cnt[k];
   const ord=new Int32Array(nt),at=off.slice(0,NK);for(let t=0;t<nt;t++)ord[at[tid[t]]++]=t;
-  const grp=new T.Group(),stamp=new Int32Array(nv).fill(-1),idx=new Int32Array(nv);
-  for(let k=0;k<NK;k++){if(!cnt[k])continue;let m=0;
-    for(let i=off[k];i<off[k+1];i++)for(let j=0;j<3;j++){const v=I[3*ord[i]+j];if(stamp[v]!==k){stamp[v]=k;idx[v]=m++;}}
-    const P2=new P.constructor(m*3),N2=new N.constructor(m*3),C2=new C.constructor(m*3),I2=new (m<65536?Uint16Array:Uint32Array)(cnt[k]*3);
-    for(let i=off[k],o=0;i<off[k+1];i++)for(let j=0;j<3;j++){const v=I[3*ord[i]+j],w=idx[v];I2[o++]=w;
-      if(stamp[v]===k){stamp[v]=-2-k;for(let c=0;c<3;c++){P2[w*3+c]=P[v*3+c];N2[w*3+c]=N[v*3+c];C2[w*3+c]=C[v*3+c];}}} // each vertex copied once
-    const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(P2,3));g.setAttribute('normal',new T.BufferAttribute(N2,3,norm(N)));
-    g.setAttribute('color',new T.BufferAttribute(C2,3,norm(C)));g.setIndex(new T.BufferAttribute(I2,1));g.computeBoundingSphere();grp.add(new T.Mesh(free(g),mat));}
+  let mx=0;for(let k=0;k<NK;k++)if(cnt[k]>mx)mx=cnt[k];
+  const grp=new T.Group(),stamp=new Int32Array(nv).fill(-1),idx=new Int32Array(nv),
+    SP=new P.constructor(mx*9),SN=new N.constructor(mx*9),SC=new C.constructor(mx*9),SI=new Uint32Array(mx*3);
+  for(let k=0;k<NK;k++){if(!cnt[k])continue;let m=0,o=0,x0=Infinity,y0=Infinity,z0=Infinity,x1=-Infinity,y1=-Infinity,z1=-Infinity;
+    for(let i=off[k],e=off[k+1];i<e;i++){const t3=3*ord[i];
+      for(let j=0;j<3;j++){const v=I[t3+j];
+        if(stamp[v]!==k){stamp[v]=k;idx[v]=m;const a=v*3,b=m*3;m++;
+          const x=SP[b]=P[a],y=SP[b+1]=P[a+1],z=SP[b+2]=P[a+2];SN[b]=N[a];SN[b+1]=N[a+1];SN[b+2]=N[a+2];SC[b]=C[a];SC[b+1]=C[a+1];SC[b+2]=C[a+2];
+          if(x<x0)x0=x;if(y<y0)y0=y;if(z<z0)z0=z;if(x>x1)x1=x;if(y>y1)y1=y;if(z>z1)z1=z;}
+        SI[o++]=idx[v];}}
+    const cx=(x0+x1)*0.5,cy=(y0+y1)*0.5,cz=(z0+z1)*0.5;let r2=0;
+    for(let b=0;b<m*3;b+=3){const dx=cx-SP[b],dy=cy-SP[b+1],dz=cz-SP[b+2];r2=Math.max(r2,dx*dx+dy*dy+dz*dz);}
+    let I2;if(m<65536){I2=new Uint16Array(o);I2.set(SI.subarray(0,o));}else I2=SI.slice(0,o);
+    const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(SP.slice(0,m*3),3));g.setAttribute('normal',new T.BufferAttribute(SN.slice(0,m*3),3,norm(N)));
+    g.setAttribute('color',new T.BufferAttribute(SC.slice(0,m*3),3,norm(C)));g.setIndex(new T.BufferAttribute(I2,1));
+    g.boundingSphere=new T.Sphere(new T.Vector3(cx,cy,cz),Math.sqrt(r2));grp.add(new T.Mesh(free(g),mat));}
   if(isGB)src.P=src.N=src.C=src.I=null;
   return grp;}
 // instTiled(geo, mat, list, set): an InstancedMesh per tile (trees, cars); set(item, m, col) writes an instance's
