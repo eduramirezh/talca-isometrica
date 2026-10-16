@@ -146,11 +146,33 @@ function lotGable(G,P,F,v0,v1,y1,rh,segs,cl,cr){const vm=(v0+v1)/2,t=y1+rh,V=(u,
 // along the avenues near the centre, shops. Industrial blocks get sheds (gable, saw-tooth, barrel, flat) in paved yards
 // with a front wall and some tanks. A tree in some yards and patios. What has no windows (sheds, tanks, parapets, signs,
 // shopfronts, walls) goes on Z, a mesh of its own that casts shadows.
+// The streets in the order cityGen lays their lots: by their distance from the Plaza de Armas (their nearest segment),
+// then by index. Lots compete only with lots near them (lotFree), and each street has its own rng, so the city around
+// the plaza out to any distance d depends only on the streets nearer than d plus the lots' reach: it can be generated
+// first and the rest after it with the same result. Before October 2026 the order was the index, which has no
+// relation to the place: the streets near the plaza depended, through chains of streets competing for corner lots, on
+// a third of the city.
+const CITY_ORDER=streets.map((s,si)=>{let d=1e18;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];d=Math.min(d,segDist2(0,0,a[0],a[1],b[0],b[1]));}return [Math.sqrt(d),si];})
+  .sort((a,b)=>a[0]-b[0]||a[1]-b[1]).map(e=>e[1]);
+// Trees in the parks and the backyards: each block its own number, from the census alone, so that a block's trees
+// depend only on what stands in and around it. The budget MAXT holds the most the parks can take (their count before
+// the occupied points are skipped) plus the backyards, thinned all alike to what is left (YARD_K). Until October 2026
+// the parks went first and the backyards got what the parks had left, so every block's trees depended on all the
+// parks of the commune. The Alameda's rows come from alamedaPark().
+const MAXT=36000,isPark=bi=>!blocks[bi].built||bi===PLAZA_BI;
+const parkTrees=b=>Math.min(b.A<40000?b.A/150:b.A/900,1400);
+let YARD_K=-1; // set on the first blockTrees(): PLAZA_BI and ALAM come later in the script
+function blockTrees(bi,TR){const b=blocks[bi];if(isPark(bi)&&ALAM.has(bi))return;
+  if(YARD_K<0){let np=0,ny=0;blocks.forEach((c,ci)=>{if(!isPark(ci))ny+=c.A/1100;else if(!ALAM.has(ci))np+=Math.ceil(parkTrees(c));});YARD_K=Math.max(0,Math.min(1,(MAXT-np)/ny));}
+  const r=rng(bi*31+5);let n=isPark(bi)?parkTrees(b):b.A/1100*YARD_K,tries=n*3;
+  while(n>0&&tries-->0){const x=b.bb[0]+r()*(b.bb[2]-b.bb[0]),y=b.bb[1]+r()*(b.bb[3]-b.bb[1]);
+    if(!pip([x,y],b.r))continue;if(occAt(x,y))continue;if(nearStreet(x,y,1.2))continue;
+    TR.push([x,y,0.8+r()*0.6,r()]);n--;}}
 function cityGen(B,Y){
   const TR=[],PO=[]; // tree instances [x,y,s], poplars
   const Z=new GB(1<<17);const cnt=k=>{CITY[k]=(CITY[k]||0)+1;};
   let nb=0;
-  streets.forEach((s,si)=>{
+  CITY_ORDER.forEach(si=>{const s=streets[si];
     if(s.c===0||s.c===7)return;
     const hw=swOf(s)/2;const r=rng(si*9973+17),ave=s.c<=3,last=s.pts.length-2;
     for(let i=0;i<s.pts.length-1;i++){
@@ -266,26 +288,7 @@ function cityGen(B,Y){
   });
   B.dy=0;Z.dy=0;
   const zm=tiled(Z,matFlat);zm.traverse(o=>o.castShadow=o.receiveShadow=true);scene.add(zm);CITY.zVerts=Z.nv;
-  // trees: parks first, then backyards thinned to what is left of the budget (in block order the backyards used it
-  // all up and the last blocks, the Alameda among them, got none). The Alameda's rows come from alamedaPark().
-  let ntree=0;const MAXT=36000;
-  const isPark=bi=>!blocks[bi].built||bi===PLAZA_BI;
-  const yards=blocks.reduce((s,b,bi)=>isPark(bi)?s:s+b.A/1100,0);let kYard=1;
-  const scatter=bi=>{const b=blocks[bi];
-    const r=rng(bi*31+5);let n;
-    if(isPark(bi)){ // parks / open
-      n=b.A<40000?b.A/150:b.A/900;n=Math.min(n,1400);
-    }else n=b.A/1100*kYard;
-    let tries=n*3;
-    while(n>0&&tries-->0&&ntree<MAXT){
-      const x=b.bb[0]+r()*(b.bb[2]-b.bb[0]),y=b.bb[1]+r()*(b.bb[3]-b.bb[1]);
-      if(!pip([x,y],b.r))continue;if(occAt(x,y))continue;if(nearStreet(x,y,1.2))continue;
-      TR.push([x,y,0.8+r()*0.6,r()]);n--;ntree++;
-    }
-  };
-  blocks.forEach((b,bi)=>{if(isPark(bi)&&!ALAM.has(bi))scatter(bi);});
-  kYard=Math.min(1,(MAXT-ntree)/yards);
-  blocks.forEach((b,bi)=>{if(!isPark(bi))scatter(bi);});
+  blocks.forEach((b,bi)=>blockTrees(bi,TR));
   return {TR,PO,nb};
 }
 
