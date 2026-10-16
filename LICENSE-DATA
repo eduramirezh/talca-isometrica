@@ -1,0 +1,51 @@
+Talca Isométrica: licencias de los datos y los textos
+=====================================================
+
+El código y los modelos de los hitos hechos a mano están bajo la licencia MIT (LICENSE).
+Este archivo cubre lo que no es código.
+
+1. Bases de datos derivadas de OpenStreetMap: ODbL 1.0
+------------------------------------------------------
+
+Los archivos siguientes contienen datos derivados de OpenStreetMap
+© colaboradores de OpenStreetMap (https://www.openstreetmap.org/copyright):
+
+- data/geometry.json: calles y caminos, el límite de la comuna, los ríos, esteros
+  y canales, y la vía férrea con sus cruces, postes y señales (las manzanas que
+  también contiene son del Censo 2017 del INE: ver el punto 3);
+- data/ruta5.json: las calzadas y los ramales de la Ruta 5;
+- config/trazados.json: las partes tomadas de OSM (las que dicen OSM en `fuente`
+  o llevan ids `osm`: ríos, Ruta 5, vía férrea y ramal);
+- config/usos.json: las entradas importadas de OSM (fuente OSM, con su id);
+- las coordenadas de los lugares tomadas de OSM (vía Mapcarta) en
+  pipeline/pois.py, data/pois.json y data/pois.csv.
+
+Estas bases de datos derivadas se ponen a disposición bajo la Open Database
+License 1.0 (ODbL): https://opendatacommons.org/licenses/odbl/1-0/
+Quien las use o publique una base de datos derivada de ellas debe atribuir a
+OpenStreetMap y compartirla bajo la misma licencia. Una obra producida con ellas
+(una imagen, la página del mapa) debe llevar la atribución
+«© colaboradores de OpenStreetMap», como la pestaña «Acerca» del mapa.
+
+2. Textos de las fichas y de la documentación
+---------------------------------------------
+
+Los textos de las fichas de los lugares (descripción, dato e instituciones en
+pipeline/pois.py, data/pois.json y data/pois.csv) y la
+documentación de docs/ son obra de Edu Ramírez, © 2026, y no están bajo la
+licencia MIT ni la ODbL. Se pueden citar con atribución y enlace al proyecto;
+para reproducirlos de otra forma, pida permiso abriendo un issue en
+https://codeberg.org/eduramirezh/talca-isometrica/issues.
+
+3. Otras fuentes
+----------------
+
+- Manzanas: Censo de Población y Vivienda 2017, Instituto Nacional de
+  Estadísticas de Chile (datos públicos; citar la fuente).
+- Elevación: SRTM, NASA/USGS (dominio público).
+- Imagen satelital: las teselas de Esri World Imagery que baja
+  pipeline/satellite.py se usan solo para revisar a mano; nada de ellas se
+  redistribuye (ni las teselas ni imágenes hechas con ellas están en el
+  repositorio ni en la página).
+
+El detalle de cada fuente, su licencia y para qué se usó está en docs/FUENTES.md.

@@ -86,10 +86,12 @@ docs/                    metodología, fuentes, investigación de proyectos simi
 - [CLAUDE.md](CLAUDE.md): guía para seguir trabajando con Claude Code (arquitectura, convenciones, trampas conocidas).
 - [CHANGELOG.md](CHANGELOG.md): cambios.
 
-## Licencias y atribución
+## Licencia
 
-- **Datos de calles:** © colaboradores de OpenStreetMap, bajo licencia ODbL. Cualquier publicación debe mantener la atribución (ya incluida en la pestaña «Acerca»).
+- **Código y modelos de los hitos** (`pipeline/`, `tools/`, `src/`, incluidos los hitos hechos a mano de `src/js/hitos/`): licencia MIT, en [LICENSE](LICENSE).
+- **Datos derivados de OpenStreetMap** (`data/geometry.json`, `data/ruta5.json` y las partes de OSM de `config/trazados.json`, `config/usos.json` y las coordenadas de los lugares): ODbL 1.0, © colaboradores de OpenStreetMap, en [LICENSE-DATA](LICENSE-DATA). Toda publicación debe mantener la atribución (está en la pestaña «Acerca»).
+- **Textos de las fichas y de `docs/`:** obra propia de Edu Ramírez; se pueden citar con atribución (ver [LICENSE-DATA](LICENSE-DATA)).
 - **Manzanas:** Censo de Población y Vivienda 2017, Instituto Nacional de Estadísticas de Chile.
-- **Fichas:** los textos son resúmenes propios; cada ficha enlaza su fuente.
+- **Imagen satelital:** las teselas de Esri World Imagery que baja `pipeline/satellite.py` se usan solo para revisar a mano; nada de ellas se redistribuye.
 
-Ver [docs/FUENTES.md](docs/FUENTES.md).
+Cada fuente, su licencia y para qué se usó: [docs/FUENTES.md](docs/FUENTES.md).
