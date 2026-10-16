@@ -2,7 +2,8 @@
 PY ?= python3
 PW ?= uv run --with "playwright==1.63" python   # Python con Playwright, para las capturas (el del sistema no lo tiene)
 PORT ?= 8765
-.PHONY: all fetch osm data elevation ruta5 pois build check smoke hooks validate diagnostics shots site-assets serve clean
+DRY_RUN ?= 0
+.PHONY: all fetch osm data elevation ruta5 pois build check smoke hooks validate diagnostics shots site-assets deploy serve clean
 
 all: data elevation pois build          ## pipeline completo (requiere raw/: make fetch)
 
@@ -33,8 +34,11 @@ check: build                  ## revisión rápida (<1 s): JSON, marcadores, res
 smoke: build                  ## carga la página en Chromium y falla si hay errores de consola o la generación sale vacía (~1 min)
 	$(PW) tools/screenshot.py shots/smoke.png --strict
 
-hooks:                        ## instala .githooks/ (pre-commit = make check)
+hooks:                        ## instala .githooks/ (pre-commit = make check; pre-push = make deploy al empujar main a origin, sin bloquear)
 	git config core.hooksPath .githooks
+
+deploy:                       ## make build y sube dist/ a Cloudflare Pages (talca.eduramirez.com); DRY_RUN=1 arma sin subir
+	DRY_RUN=$(DRY_RUN) ./scripts/deploy-cloudflare.sh
 
 validate:                     ## compara cada lugar con su dirección en la grilla (requiere raw/)
 	cd pipeline && $(PY) geocode.py validate

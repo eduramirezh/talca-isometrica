@@ -39,6 +39,17 @@ Requisitos: Python 3.9+ (el pipeline usa solo la biblioteca estándar). Opcional
 - `pip install -r requirements.txt` para los paneles de diagnóstico y las capturas.
 - `python -m playwright install chromium` y `npm install` para las capturas sin conexión.
 
+## Publicar
+
+El sitio [talca.eduramirez.com](https://talca.eduramirez.com/) es `dist/index.html` en Cloudflare Pages (proyecto `talca-isometrica`):
+
+```bash
+make deploy DRY_RUN=1   # arma dist/ y lista lo que se subiría, sin subir nada
+make deploy             # make build + npx wrangler pages deploy (requiere npx wrangler login una vez)
+```
+
+Con `make hooks`, un `git push` que actualiza `main` en `origin` (Codeberg) publica solo (`.githooks/pre-push`). Nunca bloquea el push: si la publicación falla, avisa y el push sigue; tampoco publica si hay cambios sin commit. Para saltarlo: `git push --no-verify` o `TALCA_SKIP_DEPLOY=1 git push`.
+
 ## Estructura
 
 ```
@@ -76,6 +87,7 @@ tools/screenshot.py      capturas con Chromium sin interfaz
 tools/variants.py        hoja de comparación: varias vistas por varias variantes de render
 tools/site_assets.py     la imagen de Open Graph y el ícono de src/site/, desde el mapa (make site-assets)
 tools/probe.py           evalúa expresiones JS en el mapa cargado (window.__rail, __trains…) e imprime el resultado
+scripts/deploy-cloudflare.sh  publica dist/ en Cloudflare Pages (make deploy); .githooks/pre-push lo corre al empujar main
 tools/check.py           revisión rápida del repo (make check); .githooks/pre-commit la corre antes de cada commit (make hooks)
 docs/                    metodología, fuentes, investigación de proyectos similares
 ```

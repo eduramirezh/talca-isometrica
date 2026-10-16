@@ -10,6 +10,7 @@ python pipeline/build.py --where index.html:4026   # el archivo de src/ y la lí
 make check                      # revisión rápida (<1 s): JSON, marcadores, restricciones de artifact, node --check de dist/; la corre el hook de pre-commit (make hooks)
 make smoke                      # carga dist/ en Chromium y falla si hay errores de consola o la generación sale vacía (~1 min; tools/screenshot.py --strict)
 make serve                      # http://localhost:8765
+make deploy [DRY_RUN=1]         # make build y publica dist/ (sin talca.html) en Cloudflare Pages: talca.eduramirez.com (scripts/deploy-cloudflare.sh)
 make site-assets                # src/site/og.jpg (Open Graph, 1200 × 630, desde el mapa) y apple-touch-icon.png (tools/site_assets.py)
 make pois build                 # tras editar pipeline/pois.py
 make data build                 # tras editar config/trazados.json o process_geometry.py (requiere raw/)
@@ -151,6 +152,8 @@ Para publicar: `make build` y sube `dist/talca.html`, el fragmento, no `index.ht
 ## El sitio publicado (talca.eduramirez.com)
 
 `dist/index.html` es el sitio: `build.py --standalone` le pone el `<head>` que el fragmento no puede llevar (`STANDALONE`: `lang="es-CL"`, título, descripción, canónica `https://talca.eduramirez.com/`, Open Graph y tarjeta de Twitter con `og.jpg`, ícono), vacía las líneas del `<title>` y la descripción del fragmento (vacías, no borradas, para que `--where` siga contando bien) y copia `src/site/` a `dist/`. Las constantes `SITE`, `TITLE`, `DESC` y `OG_ALT` están en `pipeline/build.py`. `og.jpg` y `apple-touch-icon.png` se rehacen con `make site-assets` (la vista de la imagen es `OG_VIEW` en `tools/site_assets.py`) y van en git. La pestaña «Acerca» enlaza a eduramirez.com y al repositorio de Codeberg.
+
+Se publica con `make deploy` (`scripts/deploy-cloudflare.sh`: `make build` y `npx wrangler pages deploy` al proyecto `talca-isometrica`, rama `main` = producción; `DRY_RUN=1` arma y lista sin subir; `CF_PAGES_PROJECT` cambia el proyecto). Sube una copia de `dist/` sin `talca.html`, para que el fragmento sin `<head>` no quede publicado como segunda página. `.githooks/pre-push` (`make hooks`) publica cuando un push a `origin` (Codeberg, el repositorio canónico; GitHub es un espejo que Codeberg empuja) actualiza `main`, y nunca bloquea el push: si falla, avisa; si el árbol tiene cambios sin commit o HEAD no es el main empujado, no publica. Para saltarlo: `git push --no-verify` o `TALCA_SKIP_DEPLOY=1`.
 
 ## Trampas conocidas
 

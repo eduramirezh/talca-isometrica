@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Pre-push: mantiene el sitio (Cloudflare Pages, talca.eduramirez.com) al día con main.
+# Cuando un push a origin (Codeberg) actualiza refs/heads/main, corre scripts/deploy-cloudflare.sh.
+#
+# NUNCA BLOQUEA EL PUSH. Si la publicación falla, avisa y termina con 0: el sitio puede quedar atrasado, el push sigue.
+# Tampoco publica si el árbol de trabajo tiene cambios sin commit o HEAD no es el main que se empuja: así el sitio
+# es siempre un commit de main (publíquelo a mano con `make deploy` si hace falta).
+#
+# Se instala con `make hooks` (core.hooksPath = .githooks, junto al pre-commit).
+# Saltarlo una vez: git push --no-verify   (o: TALCA_SKIP_DEPLOY=1 git push)
+# Otro remoto canónico: TALCA_DEPLOY_REMOTE=<nombre> (por omisión, origin).
+
+set -uo pipefail
+
+remote_name="${1:-}"
+[ "${TALCA_SKIP_DEPLOY:-0}" = "0" ] || exit 0
+[ "$remote_name" = "${TALCA_DEPLOY_REMOTE:-origin}" ] || exit 0
+
+# Git entrega «<ref local> <oid local> <ref remota> <oid remota>» por cada ref. Publica si main se crea o se
+# actualiza, no si se borra (oid local en ceros).
+oid=
+while read -r _local_ref local_oid remote_ref _remote_oid; do
+  case "$remote_ref" in
+    refs/heads/main) case "$local_oid" in *[!0]*) oid=$local_oid ;; esac ;;
+  esac
+done
+[ -n "$oid" ] || exit 0
+
+root=$(git rev-parse --show-toplevel) || exit 0
+cd "$root" || exit 0
+
+if [ "$(git rev-parse HEAD)" != "$oid" ] || [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  echo "pre-push: no publico: el árbol de trabajo no es el main que se empuja (cambios sin commit u otra rama)." >&2
+  echo "  El push sigue. Para publicar: git switch main, limpie el árbol y corra make deploy." >&2
+  exit 0
+fi
+
+echo "pre-push: main → publicando en Cloudflare Pages…"
+"$root/scripts/deploy-cloudflare.sh" && exit 0
+rc=$?
+echo >&2
+echo "pre-push: AVISO: la publicación falló (código $rc); el push sigue." >&2
+echo "  El sitio puede quedar atrasado. Vuelva a intentarlo con: make deploy" >&2
+exit 0
