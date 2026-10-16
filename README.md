@@ -87,7 +87,7 @@ tools/screenshot.py      capturas con Chromium sin interfaz
 tools/variants.py        hoja de comparación: varias vistas por varias variantes de render (--diff: píxeles distintos)
 tools/site_assets.py     la imagen de Open Graph y el ícono de src/site/, desde el mapa (make site-assets)
 tools/probe.py           evalúa expresiones JS en el mapa cargado (window.__rail, __trains…) e imprime el resultado
-tools/perf.py            lo que cuesta un cuadro (ms, llamadas de dibujo, triángulos, mapas de sombra, ms de CPU) en varias vistas
+tools/perf.py            lo que cuesta un cuadro (ms, llamadas de dibujo, triángulos, mapas de sombra, ms de CPU, ms entre cuadros al arrastrar) en varias vistas; --android en un teléfono por USB
 scripts/deploy-cloudflare.sh  publica dist/ en Cloudflare Pages (make deploy); .githooks/pre-push lo corre al empujar main
 tools/check.py           revisión rápida del repo (make check); .githooks/pre-commit la corre antes de cada commit (make hooks)
 docs/                    metodología, fuentes, investigación de proyectos similares
