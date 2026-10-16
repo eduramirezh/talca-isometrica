@@ -163,6 +163,7 @@ def main():
     geo['elev'] = json.load(open(require(DATA / 'elevation.json', 'Ejecute: make elevation')))
     geo['r5'] = json.load(open(require(DATA / 'ruta5.json', 'Ejecute: make ruta5')))   # las calzadas y ramales de la Ruta 5 (R5)
     geo['ed'] = json.load(open(require(DATA / 'edificios.json', 'Ejecute: make edificios')))   # los edificios de OSM (ED)
+    geo['golf'] = json.load(open(require(DATA / 'golf.json', 'Ejecute: make golf')))   # el pasto y las copas del Talca Country Club (pipeline/golf.py)
     pois = json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois')))
     t = template()
     assert '/*DATA*/' in t and '/*POIS*/' in t, 'faltan los marcadores en la plantilla'

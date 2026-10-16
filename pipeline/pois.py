@@ -231,6 +231,10 @@ add('ramal-constitucion', 'Ramal Talca–Constitución', 'ciudad', -35.44022, -7
 add('terminal-buses', 'Terminal de Buses', 'ciudad', -35.43027, -71.64733, '2 Sur, al oriente de la vía férrea',
     'Terminal interurbano Lorenzo Varoli, a 200 m de la estación de trenes.', 'alta',
     [['OpenStreetMap vía Mapcarta', MC + 'W110962821']], model='terminal', pri=3)
+add('talca-country-club', 'Talca Country Club', 'ciudad', -35.421908, -71.623100, 'Calle Talca Country Club, nororiente de la ciudad',
+    'Club de golf de nueve hoyos, con canchas de tenis y piscina, al nororiente de la ciudad.', 'media',
+    [['OpenStreetMap vía Mapcarta', MC + 'W101587762'], ['GolfAdvisor', 'https://www.golfadvisor.com/courses/30115-talca-country-club']],
+    model='golf', pri=3)
 add('hospital-regional', 'Hospital Regional de Talca', 'ciudad', -35.42660, -71.64638, '1 Norte 1990',
     'Hospital de alta complejidad y cabecera de la red de salud del Maule.', 'alta',
     [['OpenStreetMap vía Mapcarta', MC + 'W618536526']], model='hospital', pri=2)

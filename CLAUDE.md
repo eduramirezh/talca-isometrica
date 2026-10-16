@@ -15,6 +15,7 @@ make site-assets                # src/site/og.jpg (Open Graph, 1200 × 630, desd
 make pois build                 # tras editar pipeline/pois.py
 make data build                 # tras editar config/trazados.json o process_geometry.py (requiere raw/)
 make elevation build            # tras editar elevation.py (requiere raw/dem/; no necesita las otras fuentes)
+make golf build                 # data/golf.json: el pasto y las copas del club de golf, de la imagen de Esri (pipeline/golf.py; requiere internet la primera vez)
 make edificios build            # tras editar config/edificios.json o con OSM nuevo (make osm): los edificios de OSM (manzanas enteras donde OSM está completo, mixtas donde tiene algunos) -> data/edificios.json
 make osm                        # la API map de OSM sobre toda la comuna -> raw/osm/map-comuna.json (caminos rurales, Ruta 5, vía; la usa make data)
 make ruta5 build                # raw/osm/map-comuna.json -> data/ruta5.json (las dos calzadas y los ramales de la Ruta 5)
@@ -41,6 +42,7 @@ python pipeline/satellite.py marco -4 2120 75.3 -135 105 -250 -70 19 sur   # la 
 uv run --with pillow python pipeline/edificios.py panel -900 1100 -900 900 17   # qué manzanas toman todos sus edificios de OSM (verde), cuáles se mezclan con cityGen (amarillo) y cuáles no (rojo), con su cobertura, sobre la imagen satelital
 python pipeline/edificios.py manzanas 20       # las manzanas cerca del umbral de cobertura, con un punto para forzar, quitar o generar
 uv run --with pillow python pipeline/edificios.py techos 19   # la familia del techo de cada edificio de OSM, de la imagen de Esri -> config/techos.json (luego make edificios build)
+uv run --with pillow python pipeline/golf.py [panel]   # el pasto cortado y las copas del Talca Country Club desde la imagen de Esri -> data/golf.json (make golf; `panel`: diagnostics/golf-clases.png)
 python pipeline/usos.py importar comuna      # rehace las entradas de OSM de config/usos.json (requiere raw/osm/map-comuna.json, make osm)
 python pipeline/usos.py blancos 0.5 --osm comuna   # manzanas «sin información» que ningún uso cubre todavía
 python pipeline/usos.py check                # revisa config/usos.json (fuente, confianza, hitos, superposiciones, cobertura)
@@ -75,7 +77,7 @@ Después de cualquier cambio en la plantilla, `make check` (menos de un segundo;
 `pois.py` → `data/pois.json`, `data/pois.csv`
 `raw/osm/map-comuna.json` (`make osm`) → `usos.py importar comuna` → `config/usos.json` (+ entradas a mano)
 `raw/osm/map-comuna.json` + `config/edificios.json` + `config/techos.json` (`edificios.py techos`, de la imagen de Esri) → `edificios.py` → `data/edificios.json` (los edificios de OSM: manzanas enteras, donde OSM está completo, y mixtas, donde tiene algunos)
-`build.py` marca como construidas (tipo 3) las manzanas de `config/manzanas.json` y las `vivienda` de `config/usos.json` (las que no tienen manzana se agregan), inyecta `config/usos.json` (como `DATA.usos`) e inyecta geometry + elevation (como `DATA.elev`) + `data/ruta5.json` (como `DATA.r5`, el `R5` de la plantilla) + `data/edificios.json` (como `DATA.ed`, el `ED` de la plantilla) + pois en la plantilla, que arma con los fuentes de `src/` (`template()`), reemplazando los marcadores `/*DATA*/` y `/*POIS*/`.
+`build.py` marca como construidas (tipo 3) las manzanas de `config/manzanas.json` y las `vivienda` de `config/usos.json` (las que no tienen manzana se agregan), inyecta `config/usos.json` (como `DATA.usos`) e inyecta geometry + elevation (como `DATA.elev`) + `data/ruta5.json` (como `DATA.r5`, el `R5` de la plantilla) + `data/edificios.json` (como `DATA.ed`, el `ED` de la plantilla) + `data/golf.json` (como `DATA.golf`: el pasto y las copas del Talca Country Club, que lee su hito; `golf.py`, de la imagen de Esri) + pois en la plantilla, que arma con los fuentes de `src/` (`template()`), reemplazando los marcadores `/*DATA*/` y `/*POIS*/`.
 
 **Coordenadas.** Todo usa «metros de grilla» (`common.loc` / `common.unloc`):
 - El origen es la Plaza de Armas.
@@ -256,7 +258,7 @@ Se publica con `make deploy` (`scripts/deploy-cloudflare.sh`: `make build` y `np
 - El tren: el empalme del ramal con la Línea Central (hoy el Buscarril sale del andén y no se junta con la principal), un tren que use las vías de patio, luces de cola, y la trinchera del tren bajo las calles si el relieve llega a tener una malla más fina.
 - Los otros restaurantes de la ribera poniente (Los Olivares, OSM n1024052077) y el mirador del bosque; el parque de noche, si se confirma que está iluminado.
 - Lo que falta para parecerse a Isopolis e Isometric NYC (docs/PROYECTOS-SIMILARES.md, puntos 4 a 6): veredas, autos, árboles de vereda y objetos de techo, textura del agua, un poco más de color.
-- Hitos que hoy dibuja la capa de usos de suelo de forma genérica (METODOLOGIA §13): el Talca Country Club (w101587762) y la planta de Cecinas PF (w297781219).
+- Hitos que hoy dibuja la capa de usos de suelo de forma genérica (METODOLOGIA §13): la planta de Cecinas PF (w297781219).
 - Usos de suelo: revisar en la imagen las ~620 entradas importadas de OSM (confianza media; en el campo se revisaron solo las seis más grandes) y seguir con `usos.py blancos` (quedan manzanas «sin información» de 0,5–3 ha sin uso, entre ellas el patio de la Estación, que es de la vía férrea).
 - El campo de la comuna (octubre de 2026): los otros esteros y canales (Sandoval, Baeza, Caiván, Los Molinos), como `rios` sin `agua` en `config/trazados.json`.
 - **Rendimiento** (lo que sigue después de las teselas, el caché de sombras y los árboles de lejos, octubre de 2026; medir antes y después con `tools/perf.py`, y comparar las imágenes con `tools/variants.py`):

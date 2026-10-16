@@ -71,6 +71,7 @@ pipeline/
   satellite.py           imagen satelital con las manzanas y los usos de suelo encima (qué hay de verdad en cada una); `marco`: la imagen girada al marco local de un hito
   usos.py                usos de suelo: importación desde OSM, revisión de lo que falta y de config/usos.json
   edificios.py           los edificios de OSM (manzanas enteras y mixtas) -> data/edificios.json; panel de cobertura; techos
+  golf.py                la imagen de Esri sobre el Talca Country Club -> data/golf.json (pasto cortado y copas)
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos de Commons
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
                          la API map de OSM por cajas (tiles, tiles-comuna);

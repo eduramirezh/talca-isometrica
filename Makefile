@@ -3,9 +3,9 @@ PY ?= python3
 PW ?= uv run --with "playwright==1.63" python   # Python con Playwright, para las capturas (el del sistema no lo tiene)
 PORT ?= 8765
 DRY_RUN ?= 0
-.PHONY: all fetch osm data elevation ruta5 edificios pois build check smoke hooks validate diagnostics shots site-assets deploy serve clean
+.PHONY: all fetch osm data elevation ruta5 edificios golf pois build check smoke hooks validate diagnostics shots site-assets deploy serve clean
 
-all: data elevation edificios pois build          ## pipeline completo (requiere raw/: make fetch)
+all: data elevation edificios golf pois build         ## pipeline completo (requiere raw/: make fetch)
 
 fetch:                        ## descarga las fuentes a raw/ (~72 MB)
 	./pipeline/fetch_sources.sh
@@ -24,6 +24,9 @@ ruta5:                        ## raw/osm/map-comuna.json -> data/ruta5.json (cal
 
 edificios:                    ## raw/osm/map-comuna.json + config/edificios.json (+ config/techos.json) -> data/edificios.json (los edificios de OSM donde OSM está completo)
 	cd pipeline && $(PY) edificios.py
+
+golf:                         ## la imagen de Esri sobre el Talca Country Club (su contorno, en config/usos.json) -> data/golf.json (pasto cortado y copas)
+	cd pipeline && $(PY) golf.py
 
 pois:                         ## pipeline/pois.py -> data/pois.json + data/pois.csv
 	cd pipeline && $(PY) pois.py
