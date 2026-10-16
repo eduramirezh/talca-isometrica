@@ -1,7 +1,11 @@
 /* =============== geometry builder =============== */
 class GB{
-  constructor(cap=1<<15){this.cap=cap;this.P=new Float32Array(cap*3);this.N=new Int8Array(cap*3);this.C=new Uint8Array(cap*3);this.icap=cap*2;this.I=new Uint32Array(this.icap);this.nv=0;this.ni=0;this.dy=0;}
-  grow(v,i){if(this.nv+v>this.cap){let c=this.cap;while(this.nv+v>c)c*=2;const P=new Float32Array(c*3);P.set(this.P);this.P=P;const N=new Int8Array(c*3);N.set(this.N);this.N=N;const C=new Uint8Array(c*3);C.set(this.C);this.C=C;this.cap=c;}
+  constructor(cap=1<<15){this.cap=cap;this.P=new Float32Array(cap*3);this.N=new Int8Array(cap*3);this.C=new Uint8Array(cap*3);this.icap=cap*2;this.I=new Uint32Array(this.icap);this.nv=0;this.ni=0;this.dy=0;this.lk=NaN;}
+  // the run log (startup): k is the key of what is being emitted, in the order of a startup at once; each change of
+  // k starts a run [k, first vertex, first index] in log, so that two builders filled in two stages can be tiled
+  // together in that order (tiledParts)
+  grow(v,i){if(this.k!==this.lk){(this.log||(this.log=[])).push(this.k||0,this.nv,this.ni);this.lk=this.k;}
+    if(this.nv+v>this.cap){let c=this.cap;while(this.nv+v>c)c*=2;const P=new Float32Array(c*3);P.set(this.P);this.P=P;const N=new Int8Array(c*3);N.set(this.N);this.N=N;const C=new Uint8Array(c*3);C.set(this.C);this.C=C;this.cap=c;}
     if(this.ni+i>this.icap){let c=this.icap;while(this.ni+i>c)c*=2;const I=new Uint32Array(c);I.set(this.I);this.I=I;this.icap=c;}}
   face(pts,n,col){
     const a=pts[0],b=pts[1],c=pts[2];const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
@@ -63,17 +67,32 @@ class GB{
 const TILE=1000,TILE_N=64,STRIP=4,STRIPS=[]; // tile keys: (tx+TILE_N)*2*TILE_N+(tz+TILE_N), the box of the commune is ±25 km at most
 function dropArray(){this.array=null;}
 function free(g){for(const k in g.attributes)g.attributes[k].onUpload(dropArray);if(g.index)g.index.onUpload(dropArray);return g;}
-function tiled(src,mat){
-  const isGB=src instanceof GB,A=src.attributes,P=isGB?src.P:A.position.array,N=isGB?src.N:A.normal.array,C=isGB?src.C:A.color.array,
-    I=isGB?src.I:src.index.array,nt=(isGB?src.ni:I.length)/3,nv=isGB?src.nv:P.length/3,norm=a=>!(a instanceof Float32Array);
+function tiled(src,mat,keep){
+  const isGB=src instanceof GB,A=src.attributes;
+  const grp=tileCore([isGB?src:{P:A.position.array,N:A.normal.array,C:A.color.array,I:src.index.array,nv:A.position.array.length/3,ni:src.index.array.length}],null,null,mat);
+  if(isGB&&!keep)src.P=src.N=src.C=src.I=null; // (keep: boot tiles it again with the rest, tiledParts)
+  return grp;}
+// tiledParts(gbs, mat): builders filled in two stages of the startup, tiled together with their triangles in the order
+// of their runs' keys (GB.grow), which is the order of a startup at once: the same meshes, triangle for triangle
+function tiledParts(gbs,mat){const runs=[];
+  gbs.forEach((g,p)=>{const L=g.log||[];for(let r=0;r<L.length;r+=3){const t0=L[r+2]/3,t1=(r+5<L.length?L[r+5]:g.ni)/3;if(t1>t0)runs.push([L[r],p,t0,t1]);}});
+  runs.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]);
+  let n=0;for(const r of runs)n+=r[3]-r[2];const sp=new Uint8Array(n),st=new Int32Array(n);n=0;
+  for(const [,p,t0,t1] of runs)for(let t=t0;t<t1;t++){sp[n]=p;st[n++]=t;}
+  const grp=tileCore(gbs,sp,st,mat);for(const g of gbs)g.P=g.N=g.C=g.I=null;return grp;}
+// the tiles of parts ({P, N, C, I, nv, ni}): their triangles in the order sp/sq (part, triangle), or those of the one
+// part in its order
+function tileCore(parts,sp,sq,mat){
+  const nt=sp?sp.length:parts[0].ni/3,np=parts.length,vo=new Int32Array(np+1);for(let p=0;p<np;p++)vo[p+1]=vo[p]+parts[p].nv;
+  const P0=parts[0].P,N0=parts[0].N,C0=parts[0].C,nv=vo[np],norm=a=>!(a instanceof Float32Array);
   const NK=4*TILE_N*TILE_N,cnt=new Int32Array(NK),tid=new Int32Array(nt);
-  for(let t=0;t<nt;t++){const a=I[3*t]*3,b=I[3*t+1]*3,c=I[3*t+2]*3;
-    const k=(Math.floor((P[a]+P[b]+P[c])/(3*TILE))+TILE_N)*2*TILE_N+Math.floor((P[a+2]+P[b+2]+P[c+2])/(3*TILE))+TILE_N;tid[t]=k;cnt[k]++;}
+  for(let x=0;x<nt;x++){const Q=sp?parts[sp[x]]:parts[0],t=sp?sq[x]:x,P=Q.P,I=Q.I,a=I[3*t]*3,b=I[3*t+1]*3,c=I[3*t+2]*3;
+    const k=(Math.floor((P[a]+P[b]+P[c])/(3*TILE))+TILE_N)*2*TILE_N+Math.floor((P[a+2]+P[b+2]+P[c+2])/(3*TILE))+TILE_N;tid[x]=k;cnt[k]++;}
   const off=new Int32Array(NK+1);for(let k=0;k<NK;k++)off[k+1]=off[k]+cnt[k];
   const ord=new Int32Array(nt),at=off.slice(0,NK);for(let t=0;t<nt;t++)ord[at[tid[t]]++]=t;
   let mx=0;for(let k=0;k<NK;k++)if(cnt[k]>mx)mx=cnt[k];
   const VC=Math.max(65536,3*mx)+3*mx,grp=new T.Group(),stamp=new Int32Array(nv).fill(-1),idx=new Int32Array(nv),
-    SP=new P.constructor(VC*3),SN=new N.constructor(VC*3),SC=new C.constructor(VC*3),SI=new Uint32Array(STRIP*3*mx);
+    SP=new P0.constructor(VC*3),SN=new N0.constructor(VC*3),SC=new C0.constructor(VC*3),SI=new Uint32Array(STRIP*3*mx);
   // the strip being filled: sv vertices and si indices in the scratch arrays, st its tiles [start, count, sphere],
   // bx its box; the sphere of vertices b0..b1 around the centre of their box (x0..z1), as three computes it
   let sv=0,si=0,col=-1,st=[];const bx=new Float64Array(6),bxReset=()=>bx.set([Infinity,Infinity,Infinity,-Infinity,-Infinity,-Infinity]);bxReset();
@@ -82,7 +101,7 @@ function tiled(src,mat){
     return new T.Sphere(new T.Vector3(cx,cy,cz),Math.sqrt(r2));};
   const flush=()=>{if(!st.length)return;
     let I2;if(sv<65536){I2=new Uint16Array(si);I2.set(SI.subarray(0,si));}else I2=SI.slice(0,si);
-    const pa=new T.BufferAttribute(SP.slice(0,sv*3),3),na=new T.BufferAttribute(SN.slice(0,sv*3),3,norm(N)),ca=new T.BufferAttribute(SC.slice(0,sv*3),3,norm(C)),ia=new T.BufferAttribute(I2,1);
+    const pa=new T.BufferAttribute(SP.slice(0,sv*3),3),na=new T.BufferAttribute(SN.slice(0,sv*3),3,norm(N0)),ca=new T.BufferAttribute(SC.slice(0,sv*3),3,norm(C0)),ia=new T.BufferAttribute(I2,1);
     for(const a of [pa,na,ca,ia])a.onUpload(dropArray);
     const mesh=(s,n,sph)=>{const g=new T.BufferGeometry();g.setAttribute('position',pa);g.setAttribute('normal',na);g.setAttribute('color',ca);g.setIndex(ia);
       g.setDrawRange(s,n);g.boundingSphere=sph;const m=new T.Mesh(g,mat);grp.add(m);return m;};
@@ -92,19 +111,18 @@ function tiled(src,mat){
   for(let k=0;k<NK;k++){if(!cnt[k])continue;
     const kc=Math.floor(k/(2*TILE_N));if(st.length&&(kc!==col||st.length>=STRIP))flush();col=kc;
     let base=sv,m=0,o=0,x0=Infinity,y0=Infinity,z0=Infinity,x1=-Infinity,y1=-Infinity,z1=-Infinity;
-    for(let i=off[k],e=off[k+1];i<e;i++){const t3=3*ord[i];
-      for(let j=0;j<3;j++){const v=I[t3+j];
-        if(stamp[v]!==k){stamp[v]=k;idx[v]=m;const a=v*3,b=(base+m)*3;m++;
+    for(let i=off[k],e=off[k+1];i<e;i++){const x=ord[i],Q=sp?parts[sp[x]]:parts[0],t3=3*(sp?sq[x]:x),I=Q.I,P=Q.P,N=Q.N,C=Q.C,o0=sp?vo[sp[x]]:0;
+      for(let j=0;j<3;j++){const v=I[t3+j],g=o0+v;
+        if(stamp[g]!==k){stamp[g]=k;idx[g]=m;const a=v*3,b=(base+m)*3;m++;
           const x=SP[b]=P[a],y=SP[b+1]=P[a+1],z=SP[b+2]=P[a+2];SN[b]=N[a];SN[b+1]=N[a+1];SN[b+2]=N[a+2];SC[b]=C[a];SC[b+1]=C[a+1];SC[b+2]=C[a+2];
           if(x<x0)x0=x;if(y<y0)y0=y;if(z<z0)z0=z;if(x>x1)x1=x;if(y>y1)y1=y;if(z>z1)z1=z;}
-        SI[si+o++]=idx[v];}}
+        SI[si+o++]=idx[g];}}
     if(base&&base+m>65535){const s0=si;flush(); // it does not fit: the strip so far is done, this tile starts the next
       SP.copyWithin(0,base*3,(base+m)*3);SN.copyWithin(0,base*3,(base+m)*3);SC.copyWithin(0,base*3,(base+m)*3);SI.copyWithin(0,s0,s0+o);base=0;}
     if(base)for(let i=si;i<si+o;i++)SI[i]+=base;
     st.push([si,o,sphere(base,base+m,x0,y0,z0,x1,y1,z1)]);sv=base+m;si+=o;
     bx[0]=Math.min(bx[0],x0);bx[1]=Math.min(bx[1],y0);bx[2]=Math.min(bx[2],z0);bx[3]=Math.max(bx[3],x1);bx[4]=Math.max(bx[4],y1);bx[5]=Math.max(bx[5],z1);}
   flush();
-  if(isGB)src.P=src.N=src.C=src.I=null;
   return grp;}
 // before a frame: a strip entirely inside the camera's view replaces its tiles (Strips, above); __strips(false) keeps
 // the tiles, to compare (tools/perf.py, tools/variants.py --diff)
@@ -180,12 +198,29 @@ function drapeQ(G,q,off,col){let polys=[q];
   for(const q of polys){let cx=0,cy=0;for(const p of q){cx+=p[0];cy+=p[1];}
     const c=cellOf(cx/q.length,cy/q.length);if(c<0||!CM[c])continue;
     if(CM[c]===1)G.onGround(q,off,col);else for(const t of LIMT.get(c)){const r=clipTo(q,t);if(r.length>2)G.onGround(r,off,col);}}}
-function drape(src){
-  const out=new GB(src.nv*2);const P=src.P,C=src.C,I=src.I;
-  for(let t=0;t<src.ni;t+=3){const a=I[t]*3,b=I[t+1]*3,c=I[t+2]*3;
-    drapeQ(out,[[P[a],-P[a+2]],[P[b],-P[b+2]],[P[c],-P[c+2]]],P[a+1],[C[a],C[a+1],C[a+2]]);}
-  return out;
+// Progressive startup (boot): STAGE is the box of grid metres [x0, y0, x1, y1] the first view needs; what lies outside
+// it (a triangle of a ground layer, a land use, a sidewalk's trees) waits in a list for the rest of the generation,
+// after the first frame. null: everything at once (outside the startup, or window.__STAGE=0 before the page loads).
+let STAGE=null;
+const boxIn=(x0,y0,x1,y1)=>!STAGE||(x1>=STAGE[0]&&x0<=STAGE[2]&&y1>=STAGE[1]&&y0<=STAGE[3]);
+const polyIn=q=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<y0)y0=p[1];if(p[1]>y1)y1=p[1];}return boxIn(x0,y0,x1,y1);};
+// drape(src, later): the triangles of src outside STAGE go to later (their index and run), for drapeRest(src, later,
+// out). The output's runs (GB.grow) count the switches between the two stages, in src's order: tiledParts puts the
+// two halves back in that order. out.run and out.prev carry the count on to the strips draped into it (draped)
+function drape(src,later){
+  const out=new GB(later&&STAGE?1<<16:src.nv*2);const P=src.P,C=src.C,I=src.I;let run=0,prev=-1;
+  for(let t=0;t<src.ni;t+=3){const a=I[t]*3,b=I[t+1]*3,c=I[t+2]*3,q=[[P[a],-P[a+2]],[P[b],-P[b+2]],[P[c],-P[c+2]]],d=later&&!polyIn(q)?1:0;
+    if(d!==prev){run++;prev=d;}
+    if(d){later.push(t,run);continue;}
+    out.k=run;drapeQ(out,q,P[a+1],[C[a],C[a+1],C[a+2]]);}
+  out.run=run;out.prev=-1;return out;
 }
-// a stand-in for a GB that drapes each quad straight into G: flat strips (sideRibbon) cut as quads, not as two triangles
-const draped=G=>({quadXY(q,y,col){let A=0;for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length];A+=p[0]*r[1]-r[0]*p[1];}drapeQ(G,A<0?q.slice().reverse():q,y,col);}});
+// later's pairs i0..i1 into out
+function drapeRest(src,later,out,i0,i1){const P=src.P,C=src.C,I=src.I;
+  for(let i=i0;i<i1;i++){const t=later[2*i],a=I[t]*3,b=I[t+1]*3,c=I[t+2]*3;out.k=later[2*i+1];drapeQ(out,[[P[a],-P[a+2]],[P[b],-P[b+2]],[P[c],-P[c+2]]],P[a+1],[C[a],C[a+1],C[a+2]]);}}
+// a stand-in for a GB that drapes each quad straight into G: flat strips (sideRibbon) cut as quads, not as two triangles;
+// with later, the quads outside STAGE wait there as [q, y, col, run] (drapeQ(G2, ...) after the first frame)
+const draped=(G,later)=>({quadXY(q,y,col){let A=0;for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length];A+=p[0]*r[1]-r[0]*p[1];}
+  const o=A<0?q.slice().reverse():q,d=later&&!polyIn(o)?1:0;if(G.run===undefined){G.run=0;G.prev=-1;}if(d!==G.prev){G.run++;G.prev=d;}
+  if(d)later.push([o,y,col,G.run]);else{G.k=G.run;drapeQ(G,o,y,col);}}});
 

@@ -93,7 +93,11 @@ function usoSpans(fr,v){let I=[];const s=crossAt(fr.lr,v);for(let i=0;i+1<s.leng
   for(const kl of fr.kl){const t=crossAt(kl,v);for(let i=0;i+1<t.length;i+=2){const a=t[i],b=t[i+1],J=[];for(const [p,q] of I){if(q<=a||p>=b)J.push([p,q]);else{if(p<a)J.push([p,a]);if(q>b)J.push([b,q]);}}I=J;}}
   return I;}
 function usoBand(fr,v0,v1){const A=usoSpans(fr,v0),B=usoSpans(fr,v1),o=[];for(const [a,b] of A)for(const [c,d] of B){const p=Math.max(a,c),q=Math.min(b,d);if(q-p>.5)o.push([p,q]);}return o;}
-function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC0)return;
+// usosBase(B, S, UG, list): draws the uses of list (boot: those in the first view, then the rest in pieces), their
+// ground in UG (boot tiles it); each draws only from what was there before the uses (OCC0, the streets) with its own
+// rng, so the order does not matter. usosDone() lets OCC0 go. The urban fringe (usosFringe) goes before, on its own.
+function usosDone(verts){USTAT.ms=Math.round(USTAT.ms);USTAT.verts=verts;window.__usos=USTAT;OCC0=null;}
+function usosBase(B,S,UG,list){const t0=performance.now(),C=hex;if(!OCC0)return;
   // ground pieces: split where the raster was occupied before the uses, down to ~2 m (rivers, gravel, landmarks)
   const dry=(q,off,col)=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
     let busy=false;for(let gx=Math.floor((x0-XMIN)/OC);gx<=Math.floor((x1-XMIN)/OC)&&!busy;gx++)for(let gy=Math.floor((y0-YMIN)/OC);gy<=Math.floor((y1-YMIN)/OC);gy++){
@@ -286,10 +290,8 @@ function usosBase(B,S){const t0=performance.now(),UG=new GB(1<<16),C=hex;if(!OCC
       for(let k=0;k<Math.ceil(u.A/6e4);k++){let p=fr.G(fr.u0+r()*(fr.u1-fr.u0),fr.v0+r()*(fr.v1-fr.v0)),h=r()*Math.PI*2;
         for(let s=0;s<40;s++){h+=(r()-.5)*.6;const q=[p[0]+Math.cos(h)*9,p[1]+Math.sin(h)*9];if(!inUso(u,...q)||occ0At(...q)||nearStreet(...q,1))break;
           const nx=-Math.sin(h)*1.5,ny=Math.cos(h)*1.5;flatD([[p[0]+nx,p[1]+ny],[p[0]-nx,p[1]-ny],[q[0]-nx,q[1]-ny],[q[0]+nx,q[1]+ny]],0.13,K.track);p=q;}}}};
-  USTAT.tk={};for(const u of USOS){if(u.skip||!draw[u.k])continue;const r=rng(1000+u.i*7919),t1=performance.now();draw[u.k](u,r,usoFrame(u));USTAT.n[u.k]=(USTAT.n[u.k]||0)+1;USTAT.tk[u.k]=Math.round((USTAT.tk[u.k]||0)+performance.now()-t1);}
-  usosFringe();
-  S.dy=0;B.dy=0;if(UG.nv)scene.add(tiled(UG,matFlat));USTAT.verts=UG.nv;
-  USTAT.ms=Math.round(performance.now()-t0);window.__usos=USTAT;OCC0=null;
+  USTAT.tk=USTAT.tk||{};for(const u of list){if(u.skip||!draw[u.k])continue;const r=rng(1000+u.i*7919),t1=performance.now();draw[u.k](u,r,usoFrame(u));USTAT.n[u.k]=(USTAT.n[u.k]||0)+1;USTAT.tk[u.k]=Math.round((USTAT.tk[u.k]||0)+performance.now()-t1);}
+  S.dy=0;B.dy=0;USTAT.ms+=performance.now()-t0;
 }
 // the urban fringe: bare ground with no census block, use or farmland parcel within ~250 m of built blocks gets scrub
 // (the farmland of buildBase() only takes whole 160 x 130 m cells free of blocks, so the cells it skips are tested the

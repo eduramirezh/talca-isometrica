@@ -3,6 +3,7 @@
   uv run --with "playwright==1.63" --with pillow python tools/regress.py --save shots/ref          # antes del cambio
   uv run --with "playwright==1.63" --with pillow python tools/regress.py --against shots/ref       # después
   uv run --with "playwright==1.63" --with pillow python tools/regress.py --against shots/ref --only telefono
+  uv run --with "playwright==1.63" --with pillow python tools/regress.py --save shots/once --init "window.__STAGE=0"   # sin arranque progresivo
 
 Carga el mapa en Chromium sin interfaz (SwiftShader, open_page() de screenshot.py) en dos tamaños, teléfono (390x844,
 densidad 2) y escritorio (1440x900), una carga por tamaño (~1 min cada una), deja quieto un tren (__train('main',
@@ -33,12 +34,12 @@ def flat(o, pre=''):
         for k, v in o.items(): yield from flat(v, f'{pre}{k}.')
     else: yield pre[:-1], o
 
-async def capture(out, only):
+async def capture(out, only, init=None):
     out.mkdir(parents=True, exist_ok=True); stats = {}
     async with async_playwright() as p:
         for name, (size, dpr) in SIZES.items():
             if only and name not in only: continue
-            b, pg, logs = await open_page(p, size, dpr=dpr)
+            b, pg, logs = await open_page(p, size, dpr=dpr, init=init)
             stats[name] = clean(json.loads(await pg.evaluate('JSON.stringify(window.__stats)')))
             await pg.evaluate(SETUP)
             for v in VIEWS:
@@ -82,8 +83,9 @@ if __name__ == '__main__':
     g.add_argument('--against', help='compara con la referencia de este directorio')
     ap.add_argument('--out', default=str(ROOT / 'shots' / 'regress'), help='dónde quedan las capturas nuevas con --against')
     ap.add_argument('--only', action='append', choices=list(SIZES), help='solo este tamaño (repetible)')
+    ap.add_argument('--init', help='JS que corre antes que la página (window.__STAGE=0: la generación de una vez)')
     a = ap.parse_args()
-    if a.save: asyncio.run(capture(Path(a.save), a.only))
+    if a.save: asyncio.run(capture(Path(a.save), a.only, a.init))
     else:
-        out = Path(a.out); asyncio.run(capture(out, a.only))
+        out = Path(a.out); asyncio.run(capture(out, a.only, a.init))
         sys.exit(0 if compare(Path(a.against), out) else 1)

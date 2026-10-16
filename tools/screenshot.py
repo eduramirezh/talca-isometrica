@@ -21,7 +21,7 @@ from playwright.async_api import async_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 
-async def open_page(p, size='1440x900', dark=False, offline=False, hash=None, dpr=1):
+async def open_page(p, size='1440x900', dark=False, offline=False, hash=None, dpr=1, init=None):
     """Abre el mapa en Chromium (SwiftShader) y espera la generación. Devuelve (navegador, página, logs).
     También la usa tools/variants.py."""
     three = (ROOT / 'node_modules/three/build/three.min.js')
@@ -43,6 +43,7 @@ async def open_page(p, size='1440x900', dark=False, offline=False, hash=None, dp
         elif offline: await r.abort()
         else: await r.continue_()
     await pg.route('**/*', route)
+    if init: await pg.add_init_script(init)  # JS that runs before the page's (window.__STAGE=0: tools/regress.py --init)
     await pg.goto(page_file.as_uri() + (f'#{hash}' if hash else ''))
     await pg.wait_for_function('window.__stats', timeout=180000)
     await pg.wait_for_timeout(2500)

@@ -19,8 +19,10 @@ function alamedaGround(B){
     B.quadXY(box(x0,cy-6.5,x1,cy+6.5),0.107,PAL.edging);B.quadXY(box(px-4.5,a.y0,px+4.5,a.y1),0.107,PAL.edging);B.flat(ngon(px,cy,pr+2,20),0.107,PAL.edging);
     B.quadXY(box(x0,cy-4.5,x1,cy+4.5),0.114,PAL.gravel);B.quadXY(box(px-2.5,a.y0,px+2.5,a.y1),0.114,PAL.gravel);B.flat(ngon(px,cy,pr,20),0.114,PAL.gravel);});
 }
-function alamedaPark(B){const TR=[],C=hex,stone=C('#D2CAB8'),iron=C('#3B4240'),wood=C('#7A5A3E');
-  ALAM.forEach(bi=>{const b=blocks[bi],a=alamedaPlan(bi),r=rng(bi*53+11);if(a.x1-a.x0<20)return;const {x0,x1,cy,px,pr}=a;
+// alamedaPark(B, bis): the stretches of the Alameda in bis (blocks of ALAM; their trees test the city's lots, so boot
+// calls it once the lots around each stretch are laid)
+function alamedaPark(B,bis){const TR=[],C=hex,stone=C('#D2CAB8'),iron=C('#3B4240'),wood=C('#7A5A3E');
+  bis.forEach(bi=>{const b=blocks[bi],a=alamedaPlan(bi),r=rng(bi*53+11);if(a.x1-a.x0<20)return;const {x0,x1,cy,px,pr}=a;
     if(!a.lm){B.dy=groundMin(ngon(px,cy,6,8));
       if(r()<.5){B.prism(ngon(px,cy,5.5,16),0.3,0.95,stone,PAL.water2);B.prism(ngon(px,cy,1.1,8),0.95,2.6,stone,C('#E6E0D2'));}
       else{B.prism(rotRect(px,cy,3.2,3.2),0.3,3.4,stone,stone);B.prism(ngon(px,cy,.7,8),3.4,5.6,C('#56614F'),C('#56614F'));}}

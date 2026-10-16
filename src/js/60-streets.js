@@ -81,8 +81,8 @@ function crossings(B){const seen=new Set(),zeb=hex('#E4E0D6');let n=0;
 // centre and the industrial blocks. A run of sidewalk gets trees or not as a whole, all of one kind (one shade), with
 // the trunk 0.7 m behind the curb; none within 6 m of its ends (the corners), on parks (they have their own) or where
 // the canopy would reach a landmark. Their own rng, so the city stays as it was. Round trees, into cityGen's TR.
-function streetTrees(){const out=[];
-  for(const w of WALKS){const bi=w.bi;if(bi<0||!blocks[bi].built||bi===PLAZA_BI||ALAM.has(bi))continue;
+function streetTrees(ws){const out=[]; // the trees along the sidewalks of ws (a part of WALKS: boot splits them by STAGE)
+  for(const w of ws){const bi=w.bi;if(bi<0||!blocks[bi].built||bi===PLAZA_BI||ALAM.has(bi))continue;
     const s=streets[w.si],st=styleFor(bi),ave=s.c<=2||/^Avenida/.test(s.name||'');
     const [p,gap,slot,sc]=s.rows?[1,s.rows[0],.95,s.rows[1]]:ave?[.75,8.5,.9,.62]:st==='core'?[.3,8.5,.8,.5]:st==='house'||st==='apt'?[s.c>=5?.4:.55,11,.7,.5]:[.25,10,.7,.55];
     const r=rng(w.si*7919+(w.side>0?1:2)*104729+Math.round(w.pts[0][0]*7+w.pts[0][1]*3));if(r()>=p)continue;
@@ -96,7 +96,7 @@ function streetTrees(){const out=[];
       const x=a[0]+tx*v+nx*off,y=a[1]+ty*v+ny*off;
       if(occAt(x,y)===1||occAt(x+nx*2.5,y+ny*2.5)===1||occAt(x-nx*2,y-ny*2)===1||inMedian(x,y))continue;
       out.push([x,y,size*(0.9+r()*.2),(kind+r()*.12)%1]);}}
-  STREET.trees=out.length;return out;}
+  STREET.trees=(STREET.trees||0)+out.length;return out;}
 // Parked cars along the curbs, as the satellite shows them (pipeline/satellite.py at zoom 19 on the plaza, 3 Sur with
 // 3 Oriente, a neighbourhood at (1300,-700) and the Diagonal): nearly unbroken rows on both sides of the streets around
 // the plaza and along the Diagonal's outer curbs, long rows on one side or both in the rest of the centre, a car here
@@ -109,12 +109,13 @@ function streetTrees(){const out=[];
 // on one side only. Their own rng, so the city stays as it was. One InstancedMesh (carGeo), coloured per instance.
 const ZEB=[]; // the crosswalks (crossings()): [x, y of the centre, tx, ty along the street, cw half the carriageway]
 const CAR_COLS=[[.93,.93,.91,30],[.72,.74,.76,22],[.45,.47,.49,18],[.13,.13,.14,14],[.68,.13,.11,8],[.16,.23,.43,8]]; // white, silver, grey, black, red, dark blue; % of cars
-function parkedCars(){const t0=performance.now(),out=[],zg=new Map(),ZC=50;
-  for(const z of ZEB){const k=Math.floor(z[0]/ZC)+','+Math.floor(z[1]/ZC);(zg.get(k)||zg.set(k,[]).get(k)).push(z);}
+let ZEB_G=null; // the crosswalks by 50 m cell, made on the first call (ZEB is complete after walkBase)
+function parkedCars(ws){const t0=performance.now(),out=[],ZC=50;
+  if(!ZEB_G){ZEB_G=new Map();for(const z of ZEB){const k=Math.floor(z[0]/ZC)+','+Math.floor(z[1]/ZC);(ZEB_G.get(k)||ZEB_G.set(k,[]).get(k)).push(z);}}const zg=ZEB_G;
   const onZebra=(x,y)=>{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)for(const [zx,zy,tx,ty,cw] of zg.get((Math.floor(x/ZC)+i)+','+(Math.floor(y/ZC)+j))||[]){
       const dx=x-zx,dy=y-zy;if(Math.abs(dx*tx+dy*ty)<4.2&&Math.abs(-dx*ty+dy*tx)<cw+1)return true;}return false;};
   const colW=CAR_COLS.reduce((a,c)=>a+c[3],0);
-  for(const w of WALKS){const bi=w.bi;if(bi<0||ALAM.has(bi))continue;const s=streets[w.si],cw=w.hw-w.iw;
+  for(const w of ws){const bi=w.bi;if(bi<0||ALAM.has(bi))continue;const s=streets[w.si],cw=w.hw-w.iw;
     if(cw*2<4.5)continue;
     const r=rng(w.si*6271+(w.side>0?1:2)*92821+Math.round(w.pts[0][0]*5+w.pts[0][1]*11)+31337);
     if(cw*2<7&&!s.rows&&(w.si%2?1:-1)!==w.side)continue; // narrow: one side
@@ -134,7 +135,7 @@ function parkedCars(){const t0=performance.now(),out=[],zg=new Map(),ZC=50;
       if(q.some(c=>occAt(c[0],c[1])===1||inMedian(c[0],c[1]))||onZebra(x,y))continue;
       let c=r()*colW,col=CAR_COLS[0];for(const cc of CAR_COLS){if((c-=cc[3])<0){col=cc;break;}}
       out.push([x,y,-tx*w.side,-ty*w.side,len,van?1.3:1,col,r()]);}}
-  Object.assign(STREET,{cars:out.length,carMs:Math.round(performance.now()-t0)});return out;}
+  STREET.cars=(STREET.cars||0)+out.length;STREET.carMs=(STREET.carMs||0)+Math.round(performance.now()-t0);return out;}
 // a car, 4.5 x 1.8 m, in local x (forward), y (up), z: a body 0.8 m tall, and over it the cabin, its windows a band of
 // one art pixel (0.5 m) in a dark tone and its roof in the body's colour (instanceColor multiplies the vertex colour)
 function carGeo(){const P=[],N=[],C=[],I=[],W=[1,1,1],G=[.2,.23,.28];

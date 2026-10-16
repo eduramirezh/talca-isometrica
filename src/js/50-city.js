@@ -154,6 +154,10 @@ function lotGable(G,P,F,v0,v1,y1,rh,segs,cl,cr){const vm=(v0+v1)/2,t=y1+rh,V=(u,
 // a third of the city.
 const CITY_ORDER=streets.map((s,si)=>{let d=1e18;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];d=Math.min(d,segDist2(0,0,a[0],a[1],b[0],b[1]));}return [Math.sqrt(d),si];})
   .sort((a,b)=>a[0]-b[0]||a[1]-b[1]).map(e=>e[1]);
+// CITY_DIST[si]: that distance; CITY_REACH, how far a lot of cityGen can reach from its street's axis (half the widest
+// carriageway, setback, depth and yard: ~105 m) and a margin: the lots at a point come from streets nearer than that
+const CITY_DIST=new Float64Array(streets.length),CITY_REACH=130,CITY_POS=new Int32Array(streets.length);CITY_ORDER.forEach((si,p)=>CITY_POS[si]=p);
+streets.forEach((s,si)=>{let d=1e18;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];d=Math.min(d,segDist2(0,0,a[0],a[1],b[0],b[1]));}CITY_DIST[si]=Math.sqrt(d);});
 // Trees in the parks and the backyards: each block its own number, from the census alone, so that a block's trees
 // depend only on what stands in and around it. The budget MAXT holds the most the parks can take (their count before
 // the occupied points are skipped) plus the backyards, thinned all alike to what is left (YARD_K). Until October 2026
@@ -168,12 +172,15 @@ function blockTrees(bi,TR){const b=blocks[bi];if(isPark(bi)&&ALAM.has(bi))return
   while(n>0&&tries-->0){const x=b.bb[0]+r()*(b.bb[2]-b.bb[0]),y=b.bb[1]+r()*(b.bb[3]-b.bb[1]);
     if(!pip([x,y],b.r))continue;if(occAt(x,y))continue;if(nearStreet(x,y,1.2))continue;
     TR.push([x,y,0.8+r()*0.6,r()]);n--;}}
-function cityGen(B,Y){
+// cityGen(B, Y, Z, sts, bis): the lots of the streets sts (indices, a stretch of CITY_ORDER, in its order), then the
+// trees of the blocks bis; boot calls it for the streets near the first view and again, in pieces, for the rest
+function cityGen(B,Y,Z,sts,bis){
   const TR=[],PO=[]; // tree instances [x,y,s], poplars
-  const Z=new GB(1<<17);const cnt=k=>{CITY[k]=(CITY[k]||0)+1;};
+  const cnt=k=>{CITY[k]=(CITY[k]||0)+1;};
   let nb=0;
-  CITY_ORDER.forEach(si=>{const s=streets[si];
+  sts.forEach(si=>{const s=streets[si];
     if(s.c===0||s.c===7)return;
+    B.k=Y.k=Z.k=3e7+CITY_POS[si]; // its run in the builders: the startup puts the stages back in CITY_ORDER (GB.grow)
     const hw=swOf(s)/2;const r=rng(si*9973+17),ave=s.c<=3,last=s.pts.length-2;
     for(let i=0;i<s.pts.length-1;i++){
       const a=s.pts[i],b=s.pts[i+1];const dx=b[0]-a[0],dy=b[1]-a[1];const L=Math.hypot(dx,dy);if(L<7)continue;
@@ -287,8 +294,7 @@ function cityGen(B,Y){
     }
   });
   B.dy=0;Z.dy=0;
-  const zm=tiled(Z,matFlat);zm.traverse(o=>o.castShadow=o.receiveShadow=true);scene.add(zm);CITY.zVerts=Z.nv;
-  blocks.forEach((b,bi)=>blockTrees(bi,TR));
+  for(const bi of bis)blockTrees(bi,TR);
   return {TR,PO,nb};
 }
 

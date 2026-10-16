@@ -21,9 +21,9 @@ Además da gesto: [mediana, percentil 90] del intervalo entre cuadros (ms) duran
 sin esperar a la GPU en cada pasada: lo que se siente al arrastrar (16,7 = 60 cuadros por segundo).
 Antes de las vistas imprime el arranque (window.__stats.load, ms desde el comienzo de la navegación): html (llega
 el HTML), three (llega three.js), dcl (DOMContentLoaded), script (empieza el script), boot (empieza la generación),
-gen (termina), frame (termina de dibujarse el primer cuadro, que tarda frameMs: compila los sombreadores y dibuja el
-primer mapa de sombras) y shown (empieza el cuadro siguiente: el primero ya está en la pantalla), más la fase de la
-generación que corre (t, como __stats.t). Con --arranque N carga la página N veces, imprime cada arranque y la
+gen (termina la parte de la primera vista), frame (termina de dibujarse el primer cuadro, que tarda frameMs:
+compila los sombreadores y dibuja el primer mapa de sombras), shown (empieza el cuadro siguiente: el primero ya está en
+la pantalla) y full (termina el resto de la generación, en tajadas después del primer cuadro). Con --arranque N carga la página N veces, imprime cada arranque y la
 mediana, y no mide las vistas.
 Usa window.__three (99-boot.js) y abre la página con open_page() de screenshot.py (una carga, ~1 min).
 

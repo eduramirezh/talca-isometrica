@@ -1,9 +1,12 @@
 // sidewalks, curbs and crosswalks, draped straight into G (buildBase's ground); the Diagonal's median first (it
 // occupies the raster), with its shrubs and lamps on D
-function walkBase(G,D){const t0=performance.now(),B=draped(G),nv=G.nv,sw=hex('#C3C1BA'),curb=hex('#E8E5DC');diagonalBase(G,D);walkRuns();const t1=performance.now();
+// (with L, the startup's lists: the strips outside STAGE wait in L.walk)
+function walkBase(G,D,L){const t0=performance.now(),B=draped(G,L&&L.walk),nv=G.nv,sw=hex('#C3C1BA'),curb=hex('#E8E5DC');diagonalBase(G,D);walkRuns();const t1=performance.now();
   for(const w of WALKS){sideRibbon(B,w.pts,w.side,w.hw-w.iw+CURB,w.iw+WALK_OUT-CURB,WALK_Y,sw);sideRibbon(B,w.pts,w.side,w.hw-w.iw,CURB,CURB_Y,curb);}
   STREET.zebras=crossings(B);Object.assign(STREET,{walks:WALKS.length,walkVerts:G.nv-nv,walkMs:Math.round(performance.now()-t0),runMs:Math.round(t1-t0)});}
-function buildBase(){
+// buildBase(L): with L, the startup's lists, the triangles outside STAGE wait in L.base (of the flat layers, L.flat)
+// and L.water (L.flatW)
+function buildBase(L){
   const B=new GB(1<<17);
   // farmland parcels outside urban area, but where a land use of OSM says what the ground is (usoAt: a real field,
   // orchard, vineyard, wood or vacant lot)
@@ -33,12 +36,12 @@ function buildBase(){
   for(const k in DATA.water){const pts=chaikin(dec(DATA.water[k]),3);if(!W[k][2])ribbon(B,pts,W[k][0]+W[k][1]*2+(W[k][0]<30?40:150),0.03,hex('#A7B472'));
     if(RIV[k]){riverBase(B,BW,k,W[k]);continue;}
     ribbon(B,pts,W[k][0]+W[k][1]*2,0.05,PAL.bank);ribbon(B,pts,W[k][0],0.07,PAL.water);}
-  riverWater=drape(BW);
+  riverWater=drape(BW,L&&L.water);if(L)L.flatW=BW;
   ruta5Base(B);  // under the streets
   // streets
   const order=[7,6,5,4,3,2,1,0];
   // (a street a landmark draws as a bridge, s.bridge, stays off the ground: the Ruta K-60-J over the Río Claro)
   for(const c of order)streets.forEach(s=>{if(s.c===c&&!s.bridge)ribbon(B,s.pts,swOf(s),0.12+(7-c)*0.004,c<=2?PAL.asphalt2:PAL.asphalt,c<=5);});
   railBase(B);   // over the streets
-  return drape(B);
+  if(L)L.flat=B;return drape(B,L&&L.base);
 }
