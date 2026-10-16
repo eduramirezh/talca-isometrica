@@ -53,7 +53,14 @@ class GB{
 // tile and reused, which are then sliced to the tile's size (a copy at memory speed); the bounding box grows during
 // that pass and the sphere is three's computeBoundingSphere() over the same floats (centre of the box, farthest
 // vertex), without a Vector3 per vertex. The cutting took ~0.45 s of the boot, now ~0.3 s.
-const TILE=1000,TILE_N=64; // tile keys: (tx+TILE_N)*2*TILE_N+(tz+TILE_N), the box of the commune is ±25 km at most
+// Strips. With the whole commune in view, 1 km tiles made ~1,500 draw calls per pass. Consecutive tiles of a column
+// (up to STRIP, while they hold fewer than 65,536 vertices, so the indices stay 16-bit) share one vertex and one index
+// buffer: each tile is a drawRange of it, and a strip mesh draws the whole run. stripLod() shows the strip instead
+// of its tiles when its box lies entirely inside the view, where every one of them would be drawn anyway: the same
+// triangles in the same order (a strip comes before its tiles and after the previous ones, and three.js draws the
+// meshes of a material in the order they were made), so the image is the same, with no extra memory. Zoomed in, a
+// strip is never entirely in view and nothing changes.
+const TILE=1000,TILE_N=64,STRIP=4,STRIPS=[]; // tile keys: (tx+TILE_N)*2*TILE_N+(tz+TILE_N), the box of the commune is ±25 km at most
 function dropArray(){this.array=null;}
 function free(g){for(const k in g.attributes)g.attributes[k].onUpload(dropArray);if(g.index)g.index.onUpload(dropArray);return g;}
 function tiled(src,mat){
@@ -65,23 +72,48 @@ function tiled(src,mat){
   const off=new Int32Array(NK+1);for(let k=0;k<NK;k++)off[k+1]=off[k]+cnt[k];
   const ord=new Int32Array(nt),at=off.slice(0,NK);for(let t=0;t<nt;t++)ord[at[tid[t]]++]=t;
   let mx=0;for(let k=0;k<NK;k++)if(cnt[k]>mx)mx=cnt[k];
-  const grp=new T.Group(),stamp=new Int32Array(nv).fill(-1),idx=new Int32Array(nv),
-    SP=new P.constructor(mx*9),SN=new N.constructor(mx*9),SC=new C.constructor(mx*9),SI=new Uint32Array(mx*3);
-  for(let k=0;k<NK;k++){if(!cnt[k])continue;let m=0,o=0,x0=Infinity,y0=Infinity,z0=Infinity,x1=-Infinity,y1=-Infinity,z1=-Infinity;
+  const VC=Math.max(65536,3*mx)+3*mx,grp=new T.Group(),stamp=new Int32Array(nv).fill(-1),idx=new Int32Array(nv),
+    SP=new P.constructor(VC*3),SN=new N.constructor(VC*3),SC=new C.constructor(VC*3),SI=new Uint32Array(STRIP*3*mx);
+  // the strip being filled: sv vertices and si indices in the scratch arrays, st its tiles [start, count, sphere],
+  // bx its box; the sphere of vertices b0..b1 around the centre of their box (x0..z1), as three computes it
+  let sv=0,si=0,col=-1,st=[];const bx=new Float64Array(6),bxReset=()=>bx.set([Infinity,Infinity,Infinity,-Infinity,-Infinity,-Infinity]);bxReset();
+  const sphere=(b0,b1,x0,y0,z0,x1,y1,z1)=>{const cx=(x0+x1)*0.5,cy=(y0+y1)*0.5,cz=(z0+z1)*0.5;let r2=0;
+    for(let b=b0*3;b<b1*3;b+=3){const dx=cx-SP[b],dy=cy-SP[b+1],dz=cz-SP[b+2];r2=Math.max(r2,dx*dx+dy*dy+dz*dz);}
+    return new T.Sphere(new T.Vector3(cx,cy,cz),Math.sqrt(r2));};
+  const flush=()=>{if(!st.length)return;
+    let I2;if(sv<65536){I2=new Uint16Array(si);I2.set(SI.subarray(0,si));}else I2=SI.slice(0,si);
+    const pa=new T.BufferAttribute(SP.slice(0,sv*3),3),na=new T.BufferAttribute(SN.slice(0,sv*3),3,norm(N)),ca=new T.BufferAttribute(SC.slice(0,sv*3),3,norm(C)),ia=new T.BufferAttribute(I2,1);
+    for(const a of [pa,na,ca,ia])a.onUpload(dropArray);
+    const mesh=(s,n,sph)=>{const g=new T.BufferGeometry();g.setAttribute('position',pa);g.setAttribute('normal',na);g.setAttribute('color',ca);g.setIndex(ia);
+      g.setDrawRange(s,n);g.boundingSphere=sph;const m=new T.Mesh(g,mat);grp.add(m);return m;};
+    const c=st.length>1?mesh(0,si,sphere(0,sv,...bx)):null,f=st.map(t=>mesh(...t)); // the strip first: it draws before its tiles
+    if(c){c.visible=false;STRIPS.push({c,f,box:new T.Box3(new T.Vector3(bx[0],bx[1],bx[2]),new T.Vector3(bx[3],bx[4],bx[5])),on:false});}
+    sv=si=0;st=[];bxReset();};
+  for(let k=0;k<NK;k++){if(!cnt[k])continue;
+    const kc=Math.floor(k/(2*TILE_N));if(st.length&&(kc!==col||st.length>=STRIP))flush();col=kc;
+    let base=sv,m=0,o=0,x0=Infinity,y0=Infinity,z0=Infinity,x1=-Infinity,y1=-Infinity,z1=-Infinity;
     for(let i=off[k],e=off[k+1];i<e;i++){const t3=3*ord[i];
       for(let j=0;j<3;j++){const v=I[t3+j];
-        if(stamp[v]!==k){stamp[v]=k;idx[v]=m;const a=v*3,b=m*3;m++;
+        if(stamp[v]!==k){stamp[v]=k;idx[v]=m;const a=v*3,b=(base+m)*3;m++;
           const x=SP[b]=P[a],y=SP[b+1]=P[a+1],z=SP[b+2]=P[a+2];SN[b]=N[a];SN[b+1]=N[a+1];SN[b+2]=N[a+2];SC[b]=C[a];SC[b+1]=C[a+1];SC[b+2]=C[a+2];
           if(x<x0)x0=x;if(y<y0)y0=y;if(z<z0)z0=z;if(x>x1)x1=x;if(y>y1)y1=y;if(z>z1)z1=z;}
-        SI[o++]=idx[v];}}
-    const cx=(x0+x1)*0.5,cy=(y0+y1)*0.5,cz=(z0+z1)*0.5;let r2=0;
-    for(let b=0;b<m*3;b+=3){const dx=cx-SP[b],dy=cy-SP[b+1],dz=cz-SP[b+2];r2=Math.max(r2,dx*dx+dy*dy+dz*dz);}
-    let I2;if(m<65536){I2=new Uint16Array(o);I2.set(SI.subarray(0,o));}else I2=SI.slice(0,o);
-    const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(SP.slice(0,m*3),3));g.setAttribute('normal',new T.BufferAttribute(SN.slice(0,m*3),3,norm(N)));
-    g.setAttribute('color',new T.BufferAttribute(SC.slice(0,m*3),3,norm(C)));g.setIndex(new T.BufferAttribute(I2,1));
-    g.boundingSphere=new T.Sphere(new T.Vector3(cx,cy,cz),Math.sqrt(r2));grp.add(new T.Mesh(free(g),mat));}
+        SI[si+o++]=idx[v];}}
+    if(base&&base+m>65535){const s0=si;flush(); // it does not fit: the strip so far is done, this tile starts the next
+      SP.copyWithin(0,base*3,(base+m)*3);SN.copyWithin(0,base*3,(base+m)*3);SC.copyWithin(0,base*3,(base+m)*3);SI.copyWithin(0,s0,s0+o);base=0;}
+    if(base)for(let i=si;i<si+o;i++)SI[i]+=base;
+    st.push([si,o,sphere(base,base+m,x0,y0,z0,x1,y1,z1)]);sv=base+m;si+=o;
+    bx[0]=Math.min(bx[0],x0);bx[1]=Math.min(bx[1],y0);bx[2]=Math.min(bx[2],z0);bx[3]=Math.max(bx[3],x1);bx[4]=Math.max(bx[4],y1);bx[5]=Math.max(bx[5],z1);}
+  flush();
   if(isGB)src.P=src.N=src.C=src.I=null;
   return grp;}
+// before a frame: a strip entirely inside the camera's view replaces its tiles (Strips, above); __strips(false) keeps
+// the tiles, to compare (tools/perf.py, tools/variants.py --diff)
+const stripFr=new T.Frustum(),stripM=new T.Matrix4(),stripV=new T.Vector3();let stripsOn=true;
+function stripLod(c){stripFr.setFromProjectionMatrix(stripM.multiplyMatrices(c.projectionMatrix,c.matrixWorldInverse));
+  for(const S of STRIPS){const b=S.box;let on=stripsOn;
+    for(const p of stripFr.planes){const n=p.normal;stripV.set(n.x>0?b.min.x:b.max.x,n.y>0?b.min.y:b.max.y,n.z>0?b.min.z:b.max.z);if(p.distanceToPoint(stripV)<0){on=false;break;}}
+    if(on!==S.on){S.on=on;S.c.visible=on;for(const m of S.f)m.visible=!on;}}}
+window.__strips=on=>{stripsOn=on!==false;dirty=true;};
 // instTiled(geo, mat, list, set): an InstancedMesh per tile (trees, cars); set(item, m, col) writes an instance's
 // matrix and colour. r128 never culls an InstancedMesh (frustumCulled false: it would test the sphere of a single
 // tree at the grid origin), so the 215 thousand trees were drawn whole in every pass. Each tile's geometry shares

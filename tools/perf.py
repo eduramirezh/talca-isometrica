@@ -9,9 +9,12 @@ Para cada vista (JS que mueve la cámara, como en screenshot.py) da tres cuadros
   pan     la mediana de seis desplazamientos de 6 px, uno por cuadro: sin sombras si la caja alcanza
   settle  el cuadro siguiente a que la cámara se detiene: solo con __pixelArt({crease:'normals'}), que salta la
           pasada de normales mientras la cámara se mueve (0: no hace falta un cuadro más)
-cada uno como [ms, llamadas de dibujo, triángulos, veces que se dibujó el mapa de sombras], sumados sobre las pasadas
-del cuadro (los triángulos no cuentan los del mapa de sombras), con la k y el contorno (ol) del pixel art. Cada medida
-espera a la GPU (readPixels), así que los ms son de SwiftShader: sirven para comparar, no son los de un teléfono.
+cada uno como [ms, llamadas de dibujo, triángulos, veces que se dibujó el mapa de sombras, ms de CPU], sumados sobre
+las pasadas del cuadro (los triángulos no cuentan los del mapa de sombras), con la k y el contorno (ol) del pixel art.
+Cada medida espera a la GPU (readPixels), así que los ms son de SwiftShader: sirven para comparar, no son los de un
+teléfono. Los ms de CPU son lo que tarda renderer.render() en volver, sin esperar a la GPU: el trabajo de three.js y
+del navegador por cada llamada (recorrer la escena, recortar, ordenar, mandar los comandos), que en un teléfono pesa
+aunque SwiftShader lo esconda tras los triángulos.
 Usa window.__three (99-boot.js) y abre la página con open_page() de screenshot.py (una carga, ~1 min).
 """
 import argparse, asyncio, json
@@ -19,11 +22,11 @@ from playwright.async_api import async_playwright
 from screenshot import open_page
 
 FRAME = r"""(async (look)=>{const {renderer}=__three;const gl=renderer.getContext(),px=new Uint8Array(4),SM=renderer.shadowMap;
- const render=renderer.render.bind(renderer),smr=SM.render.bind(SM);let ms=0,calls=0,tri=0,shadow=0;
+ const render=renderer.render.bind(renderer),smr=SM.render.bind(SM);let ms=0,calls=0,tri=0,shadow=0,cpu=0;
  SM.render=(...a)=>{if(SM.needsUpdate)shadow++;smr(...a);};
- renderer.render=(s,c)=>{const t=performance.now();render(s,c);gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);ms+=performance.now()-t;calls+=renderer.info.render.calls;tri+=renderer.info.render.triangles;};
+ renderer.render=(s,c)=>{const t=performance.now();render(s,c);cpu+=performance.now()-t;gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);ms+=performance.now()-t;calls+=renderer.info.render.calls;tri+=renderer.info.render.triangles;};
  const frame=()=>new Promise(r=>requestAnimationFrame(r)),rest=()=>new Promise(r=>setTimeout(r,400));
- const take=()=>{const r=[Math.round(ms),calls,tri,shadow];ms=calls=tri=shadow=0;return r;};
+ const take=()=>{const r=[Math.round(ms),calls,tri,shadow,Math.round(cpu*10)/10];ms=calls=tri=shadow=cpu=0;return r;};
  try{eval(look);await frame();await frame();await rest();await frame();await frame();take(); // new tiles uploaded, settled
   __three.fitShadow(true);__three.placeCam();await frame();const refit=take();await rest();await frame();take();
   const pans=[];for(let i=0;i<6;i++){__three.pan(6,0);await frame();pans.push(take());}
@@ -36,7 +39,7 @@ VIEWS = ['inicial=0', 'comuna=__look(3000,1000,0.12)', 'ciudad=__look(-60,30,1.5
 async def main(a):
     async with async_playwright() as p:
         b, pg, logs = await open_page(p, a.size, dpr=a.dpr)
-        print('[ms, llamadas, triángulos, mapas de sombra] por cuadro')
+        print('[ms, llamadas, triángulos, mapas de sombra, ms de CPU] por cuadro')
         for v in a.view or VIEWS:
             name, _, js = v.partition('=')
             print(name, json.dumps(await pg.evaluate(FRAME, js or '0')))
