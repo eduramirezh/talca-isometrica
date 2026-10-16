@@ -1,7 +1,8 @@
 const PO_FIELD=[];
 const PLAZA_BI=blockAt(BYID['plaza-de-armas'].x,BYID['plaza-de-armas'].y);
 // La Alameda: the park strips down the middle of the avenue (no census data, under 80 m deep, centroid on the avenue).
-// Blocks with census data inside the strip keep their buildings.
+// Blocks with census data inside the strip keep their buildings; the ones that are park all the same (the census gives
+// three of them people) are turned back into no-data blocks by config/manzanas.json `parques`.
 const ALAM=(()=>{const g=[];streets.forEach(s=>{if(/Alameda/.test(s.name||''))for(let i=0;i<s.pts.length-1;i++)g.push([...s.pts[i],...s.pts[i+1]]);});
   const o=new Set();blocks.forEach((b,bi)=>{if(!b.built&&b.bb[3]-b.bb[1]<80&&g.some(s=>segDist2(b.cx,b.cy,...s)<38*38))o.add(bi);});return o;})();
 // Each strip is a linear park: a gravel paseo down the middle with lawn edging, a cross walk and a round plaza at

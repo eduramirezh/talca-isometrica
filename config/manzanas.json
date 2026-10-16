@@ -1,5 +1,5 @@
 {
-  "_comentario": "Manzanas que el Censo 2017 marca «sin información» (tipo 1, sin viviendas) pero que están construidas. La maqueta pinta como parque toda manzana tipo 1, así que build.py reclasifica como tipo 3 («sin información, construida») la manzana que contiene cada punto [lat, lon]; la plantilla la trata como una manzana con datos. Revisadas contra la imagen satelital de Esri World Imagery (octubre de 2026). Las demás manzanas tipo 1 del centro son parques, plazas o bandejones y quedan como están.",
+  "_comentario": "Manzanas que el Censo 2017 marca «sin información» (tipo 1, sin viviendas) pero que están construidas. La maqueta pinta como parque toda manzana tipo 1, así que build.py reclasifica como tipo 3 («sin información, construida») la manzana que contiene cada punto [lat, lon]; la plantilla la trata como una manzana con datos. Revisadas contra la imagen satelital de Esri World Imagery (octubre de 2026). Las demás manzanas tipo 1 del centro son parques, plazas o bandejones y quedan como están. `parques` es lo contrario: manzanas con datos del Censo (tipo 0, con personas) que son parques en la imagen; build.py las deja en tipo 1, sin lotes. Las del bandejón de la Alameda pasan así a ser franjas del parque (ALAM, src/js/72-alameda.js).",
   "construidas": [
     {"nombre": "1 Sur–2 Sur, 1 Poniente–1 Oriente", "punto": [-35.42768, -71.66594],
      "nota": "Frente a la Plaza de Armas, al oriente del CDE: comercio y galerías."},
@@ -19,5 +19,13 @@
      "nota": "Bodegas y comercio."},
     {"nombre": "Camino El Guindo Grande con Los Robles (Panguilemo)", "punto": [-35.36506, -71.59262],
      "nota": "Casas y galpones en la esquina oriente; el resto es la cancha de fútbol de OSM (w1135758137), un uso de suelo."}
+  ],
+  "parques": [
+    {"nombre": "Bandejón de la Alameda, 3 Oriente–4 Oriente", "punto": [-35.42224, -71.66138],
+     "nota": "Árboles y senderos, como el resto del bandejón; el Censo le asigna 74 personas y 32 viviendas (las mismas cifras que el tramo de 5 a 6 Oriente)."},
+    {"nombre": "Bandejón de la Alameda, 5 Oriente–6 Oriente", "punto": [-35.42243, -71.65872],
+     "nota": "Frente al Liceo Abate Molina: árboles y prado. El Censo le asigna 74 personas y 32 viviendas."},
+    {"nombre": "Bandejón de la Alameda, 7 Oriente–8 Oriente", "punto": [-35.42263, -71.65595],
+     "nota": "Árboles y prado. El Censo le asigna una vivienda sin personas."}
   ]
 }

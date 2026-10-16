@@ -54,7 +54,7 @@ Con `make hooks`, un `git push` que actualiza `main` en `origin` (GitHub) public
 ```
 config/
   grid_lines.json        posición de cada calle numerada (revisada a mano; el mapa ya no la usa)
-  manzanas.json          manzanas «sin información» del Censo que están construidas (revisadas en imagen satelital)
+  manzanas.json          manzanas «sin información» del Censo que están construidas, y manzanas con datos que son parques (revisadas en imagen satelital)
   trazados.json          ríos (de OpenStreetMap), vía férrea y Ruta 5, con su procedencia
   usos.json              usos de suelo de los terrenos en blanco del Censo (industria, cementerios, colegios, canchas, eriazos…), con su fuente
   edificios.json         dónde se dibujan los edificios reales de OpenStreetMap en vez de los generados o junto a ellos (áreas, umbrales de cobertura, correcciones)

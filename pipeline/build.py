@@ -87,12 +87,15 @@ def pip(p, r):
     return inside
 
 def mark_built(blocks):
-    """Manzanas tipo 1 (sin información) que config/manzanas.json señala como construidas -> tipo 3."""
-    for m in json.load(open(CONFIG / 'manzanas.json'))['construidas']:
-        p = loc(m['punto'][1], m['punto'][0])
-        hit = [b for b in blocks if b[0] in (1, 3) and pip(p, dec(b[3]))]
-        assert hit, f"manzanas.json: ninguna manzana sin información contiene «{m['nombre']}»"
-        for b in hit: b[0] = 3
+    """Manzanas tipo 1 (sin información) que config/manzanas.json señala como construidas -> tipo 3; y al revés, las
+    manzanas con datos (tipo 0) que señala como parques (el bandejón de la Alameda) -> tipo 1, sin lotes."""
+    cfg = json.load(open(CONFIG / 'manzanas.json'))
+    for key, src, dst in (('construidas', (1, 3), 3), ('parques', (0, 1), 1)):
+        for m in cfg.get(key, []):
+            p = loc(m['punto'][1], m['punto'][0])
+            hit = [b for b in blocks if b[0] in src and pip(p, dec(b[3]))]
+            assert hit, f"manzanas.json ({key}): ninguna manzana {'sin información' if dst == 3 else 'con datos'} contiene «{m['nombre']}»"
+            for b in hit: b[0] = dst
 
 def enc(pts):
     out = []; px = py = 0
