@@ -18,9 +18,10 @@
 // art pixel: creases up to 1 m, silhouettes up to 2 m, none beyond (in the initial
 // view every distant tree turned into a dark dot). The low-resolution
 // image is anchored to the world (the grid origin falls on a whole art pixel), so panning moves it in whole art
-// pixels instead of making them crawl. For tools and comparisons: __pixelArt({m, k, outline, palette, edge, dark,
+// pixels instead of making them crawl. For tools and comparisons: __pixelArt({m, k, kmin, outline, palette, edge, dark,
 // fold, crease, span}) changes it and returns the metres per art pixel (crease:'normals' draws the creases with the
-// normals pass, span:false keeps the camera's own near and far); __pixelArt(null) turns it off (a plain render).
+// normals pass, span:false keeps the camera's own near and far, kmin is the smallest k: with 2 on a screen of density 2,
+// the art pixel is never finer than a CSS pixel); __pixelArt(null) turns it off (a plain render).
 // paRender(lite), while the camera moves (loop), leaves out the normals pass and its creases; the creases from depth
 // cost nothing and stay.
 let PA=null;
@@ -62,7 +63,7 @@ function paPalette(rt,n){const w=rt.width,h=rt.height,buf=new Uint8Array(w*h*4);
     sum.forEach((s,c)=>{if(s[3])C[c]=[s[0]/s[3],s[1]/s[3],s[2]/s[3]];});}
   return C;}
 function paFit(o){const sz=renderer.getDrawingBufferSize(new T.Vector2()),mpp=(cam.top-cam.bottom)/sz.y;
-  if(o.m)o.k=Math.max(1,Math.round(o.m/mpp));const a=o.k*mpp;
+  if(o.m)o.k=Math.max(o.kmin||1,Math.round(o.m/mpp));const a=o.k*mpp;
   // a surface seen at 30 degrees changes depth by ~1.7 m per metre of screen: the edge is above that
   if(o.edgeAuto)o.edge=Math.max(1.2,3*a);o.ol=o.outline==null?(a<=1?2:a<=2?1:0):o.outline;return a;}
 // near and far of the camera around what the view can hold: the frustum's corners at the lowest point of the scene
