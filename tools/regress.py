@@ -4,7 +4,7 @@
   uv run --with "playwright==1.63" --with pillow python tools/regress.py --against shots/ref       # después
   uv run --with "playwright==1.63" --with pillow python tools/regress.py --against shots/ref --only telefono
   uv run --with "playwright==1.63" --with pillow python tools/regress.py --save shots/once --init "window.__STAGE=0"   # sin arranque progresivo
-  uv run --with "playwright==1.63" --with pillow python tools/regress.py --save shots/ref --view "cementerio=__look(-4,2120,3)"   # una vista más (repetible)
+  uv run --with "playwright==1.63" --with pillow python tools/regress.py --save shots/ref --view "terminal=__look(1722,-262,16)"   # más vistas (repetible), p. ej. las de un hito nuevo
 
 Carga el mapa en Chromium sin interfaz (SwiftShader, open_page() de screenshot.py) en dos tamaños, teléfono (390x844,
 densidad 2) y escritorio (1440x900), una carga por tamaño (~1 min cada una), deja quieto un tren (__train('main',
@@ -35,7 +35,7 @@ def flat(o, pre=''):
         for k, v in o.items(): yield from flat(v, f'{pre}{k}.')
     else: yield pre[:-1], o
 
-async def capture(out, only, init=None):
+async def capture(out, only, init=None, extra=()):
     out.mkdir(parents=True, exist_ok=True); stats = {}
     async with async_playwright() as p:
         for name, (size, dpr) in SIZES.items():
@@ -43,7 +43,7 @@ async def capture(out, only, init=None):
             b, pg, logs = await open_page(p, size, dpr=dpr, init=init)
             stats[name] = clean(json.loads(await pg.evaluate('JSON.stringify(window.__stats)')))
             await pg.evaluate(SETUP)
-            for v in VIEWS:
+            for v in [*VIEWS, *extra]:
                 vn, _, js = v.partition('=')
                 await pg.evaluate(js); await pg.wait_for_timeout(2500)
                 await pg.screenshot(path=str(out / f'{name}-{vn}.png'))
@@ -85,10 +85,9 @@ if __name__ == '__main__':
     ap.add_argument('--out', default=str(ROOT / 'shots' / 'regress'), help='dónde quedan las capturas nuevas con --against')
     ap.add_argument('--only', action='append', choices=list(SIZES), help='solo este tamaño (repetible)')
     ap.add_argument('--init', help='JS que corre antes que la página (window.__STAGE=0: la generación de una vez)')
-    ap.add_argument('--view', action='append', default=[], help='una vista más, nombre=expresión (repetible), además de VIEWS: un hito fuera de ellas')
+    ap.add_argument('--view', action='append', default=[], help='una vista más, nombre=expresión (repetible); va igual con --save y --against')
     a = ap.parse_args()
-    VIEWS += a.view
-    if a.save: asyncio.run(capture(Path(a.save), a.only, a.init))
+    if a.save: asyncio.run(capture(Path(a.save), a.only, a.init, a.view))
     else:
-        out = Path(a.out); asyncio.run(capture(out, a.only, a.init))
+        out = Path(a.out); asyncio.run(capture(out, a.only, a.init, a.view))
         sys.exit(0 if compare(Path(a.against), out) else 1)

@@ -34,7 +34,7 @@ uv run --with "playwright==1.63" python tools/profile.py --android [--under city
 python tools/profile.py --from x.cpuprofile --callers blockAt   # lo mismo sobre un perfil guardado, sin cargar la página
 uv run --with "playwright==1.63" --with pillow python tools/regress.py --save shots/ref   # antes de un cambio que no debe cambiar el mapa: capturas fijas (teléfono y escritorio) y __stats
 uv run --with "playwright==1.63" --with pillow python tools/regress.py --against shots/ref   # después: % de píxeles distintos por vista, imagen de la diferencia y estadísticas que cambiaron (sale con 1)
-uv run --with "playwright==1.63" --with pillow python tools/regress.py --save shots/ref --view "cementerio=__look(-4,2120,3)"   # una vista más (repetible), para un hito que las fijas no encuadran; también con --against
+uv run --with "playwright==1.63" --with pillow python tools/regress.py --save shots/ref --view "terminal=__look(1722,-262,16)"   # más vistas (repetible: --save y --against las llevan igual), p. ej. las de un hito nuevo; con --init "window.__STAGE=0" comprueba el arranque en dos etapas
 python pipeline/satellite.py plaza-de-armas [500]   # manzanas sobre imagen satelital, en diagnostics/
 python pipeline/satellite.py punto 3755 1414 [900] [17] --calles   # caja en (x, y) de grilla, con calles, cruces cada 100 m y usos
 python pipeline/satellite.py marco -4 2120 75.3 -135 105 -250 -70 19 sur   # la imagen en el marco local de un hito (X Y A u0 u1 v0 v1 [z] [nombre]: landmark.py frame), girada, con cruces cada 10 m en (u,v): así se leyó el Cementerio; `punto … --rejilla[=N]` pone cruces de grilla cada N m
@@ -256,7 +256,7 @@ Se publica con `make deploy` (`scripts/deploy-cloudflare.sh`: `make build` y `np
 - El tren: el empalme del ramal con la Línea Central (hoy el Buscarril sale del andén y no se junta con la principal), un tren que use las vías de patio, luces de cola, y la trinchera del tren bajo las calles si el relieve llega a tener una malla más fina.
 - Los otros restaurantes de la ribera poniente (Los Olivares, OSM n1024052077) y el mirador del bosque; el parque de noche, si se confirma que está iluminado.
 - Lo que falta para parecerse a Isopolis e Isometric NYC (docs/PROYECTOS-SIMILARES.md, puntos 4 a 6): veredas, autos, árboles de vereda y objetos de techo, textura del agua, un poco más de color.
-- Hitos que hoy dibuja la capa de usos de suelo de forma genérica (METODOLOGIA §13): el Terminal de Buses (w110962821), el Talca Country Club (w101587762) y la planta de Cecinas PF (w297781219).
+- Hitos que hoy dibuja la capa de usos de suelo de forma genérica (METODOLOGIA §13): el Talca Country Club (w101587762) y la planta de Cecinas PF (w297781219).
 - Usos de suelo: revisar en la imagen las ~620 entradas importadas de OSM (confianza media; en el campo se revisaron solo las seis más grandes) y seguir con `usos.py blancos` (quedan manzanas «sin información» de 0,5–3 ha sin uso, entre ellas el patio de la Estación, que es de la vía férrea).
 - El campo de la comuna (octubre de 2026): los otros esteros y canales (Sandoval, Baeza, Caiván, Los Molinos), como `rios` sin `agua` en `config/trazados.json`.
 - **Rendimiento** (lo que sigue después de las teselas, el caché de sombras y los árboles de lejos, octubre de 2026; medir antes y después con `tools/perf.py`, y comparar las imágenes con `tools/variants.py`):

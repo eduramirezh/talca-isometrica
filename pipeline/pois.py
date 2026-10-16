@@ -230,7 +230,7 @@ add('ramal-constitucion', 'Ramal Talca–Constitución', 'ciudad', -35.44022, -7
     'media', [['Consejo de Monumentos Nacionales', CMN + 'monumentos-historicos/ramal-ferroviario-talca-constitucion']], pri=3)
 add('terminal-buses', 'Terminal de Buses', 'ciudad', -35.43027, -71.64733, '2 Sur, al oriente de la vía férrea',
     'Terminal interurbano Lorenzo Varoli, a 200 m de la estación de trenes.', 'alta',
-    [['OpenStreetMap vía Mapcarta', MC + 'W110962821']], pri=3)
+    [['OpenStreetMap vía Mapcarta', MC + 'W110962821']], model='terminal', pri=3)
 add('hospital-regional', 'Hospital Regional de Talca', 'ciudad', -35.42660, -71.64638, '1 Norte 1990',
     'Hospital de alta complejidad y cabecera de la red de salud del Maule.', 'alta',
     [['OpenStreetMap vía Mapcarta', MC + 'W618536526']], model='hospital', pri=2)
