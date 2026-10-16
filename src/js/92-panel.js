@@ -13,20 +13,23 @@ function select(id,fly){const p=BYID[id];if(!p)return;selId=id;
 function closeCard(){selId=null;tour=null;card.hidden=true;ring.visible=false;dirty=true;try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}document.querySelectorAll('#list li button.sel').forEach(b=>b.classList.remove('sel'));}
 function renderCard(p){
   card.style.setProperty('--cc',`var(--c-${p.c})`);
-  const cats=[p.c,...p.cs].map(c=>CATS[c].n).join(' · ');
-  const osm=`https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lon}#map=18/${p.lat}/${p.lon}`;
+  // the category says what kind of institution a place is; «Hitos de la ciudad» says nothing the name and the map don't
+  const lab=[tour&&PD.tours[tour.k].n,[p.c,...p.cs].filter(c=>c!=='ciudad').map(c=>CATS[c].n).join(' · ')].filter(Boolean).map(esc).join(' · ');
+  // a Mapcarta source is an OSM object (mapcarta.com/W123 is way 123): the OSM button opens it and the source is not listed
+  const mc=p.src.find(s=>/mapcarta\.com\/(es\/)?[NWR]\d+$/.test(s[1])),oid=mc&&mc[1].split('/').pop(),srcs=p.src.filter(s=>s!==mc);
+  const osm=oid?`https://www.openstreetmap.org/${{N:'node',W:'way',R:'relation'}[oid[0]]}/${oid.slice(1)}`:`https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lon}#map=18/${p.lat}/${p.lon}`;
   // an issue on the repository, already titled and with the place, for corrections from people who are not developers
   const issue='https://github.com/eduramirezh/talca-isometrica/issues/new?title='+encodeURIComponent(`Corrección: ${p.n}`)+'&body='+
     encodeURIComponent(`Lugar: ${p.n} (#${p.id})\nDirección en el mapa: ${p.a}\n\nQué está mal:\n\n\nFuente (una página oficial, una foto fechada o el objeto de OpenStreetMap):\n`);
   let tn='';
   if(tour){const T0=PD.tours[tour.k];const n=T0.s.length;tn=`<div class="tournav"><button class="btn ghost" id="tprev" ${tour.i===0?'disabled':''}>Anterior</button><div class="prog"><i style="width:${((tour.i+1)/n*100).toFixed(1)}%"></i></div><span>${tour.i+1}/${n}</span><button class="btn" id="tnext">${tour.i===n-1?'Terminar':'Siguiente'}</button></div>`;}
   card.innerHTML=`<div class="in">
-    <div class="top"><div><div class="cat">${tour?esc(PD.tours[tour.k].n)+' · ':''}${esc(cats)}</div><h2>${esc(p.n)}</h2></div><button class="x" id="cx" aria-label="Cerrar ficha">×</button></div>
-    <div class="addr"><span>${esc(p.a)}</span><small>${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</small></div>
+    <div class="top"><div>${lab?`<div class="cat">${lab}</div>`:''}<h2>${esc(p.n)}</h2></div><button class="x" id="cx" aria-label="Cerrar ficha">×</button></div>
+    <div class="addr">${esc(p.a)}</div>
     <p>${esc(p.d)}</p>
     ${p.sub?`<ul class="sub">${p.sub.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`:''}
     ${p.f?`<div class="fact">${esc(p.f)}</div>`:''}
-    <div class="meta"><span class="src">${p.src.map(s=>`<a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join('')}</span></div>
+    ${srcs.length?`<div class="src">Fuentes: ${srcs.map(s=>`<a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join(' · ')}</div>`:''}
     <div class="actions"><button class="btn ghost" id="cz">Acercar</button><a class="btn ghost" href="${osm}" target="_blank" rel="noopener">Ver en OpenStreetMap</a></div>
     <a class="report" href="${issue}" target="_blank" rel="noopener">Reportar un error en este lugar</a>
     ${tn}</div>`;

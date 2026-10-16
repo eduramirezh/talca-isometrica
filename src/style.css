@@ -108,13 +108,12 @@ button{font:inherit;color:inherit}
 #card .cat{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--cc)}
 #card h2{margin:2px 0 0;font-family:var(--serif);font-weight:800;font-size:23px;line-height:1.1;text-wrap:balance}
 #card .x{margin-left:auto;border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--ink-3);padding:2px 4px}
-#card .addr{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--paper-2);border-radius:3px;padding:6px 8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-#card .addr small{color:var(--ink-3)}
+#card .addr{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--paper-2);border-radius:3px;padding:6px 8px}
 #card p{margin:0;font-size:14.5px}
 #card .fact{border-left:3px solid var(--cc);padding:4px 0 4px 10px;font-size:14px;color:var(--ink-2)}
 #card .sub{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2)}
-#card .meta{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;color:var(--ink-3);align-items:center}
-#card .src{font-size:12.5px;display:flex;flex-wrap:wrap;gap:4px 10px}
+#card .src{font-size:13px;color:var(--ink-3)}
+#card .src a{color:inherit}
 #card .actions{display:flex;gap:8px;flex-wrap:wrap}
 #card a.report{font-size:13px;color:var(--ink-3);justify-self:start}
 #card .tournav{display:flex;align-items:center;gap:8px;border-top:1px solid var(--rule);padding-top:10px}
