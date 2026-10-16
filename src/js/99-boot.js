@@ -3,7 +3,12 @@ function loop(now){
   if(anim){anim(now);}
   if(ring.visible){const t=((now-(ring.userData.t0||0))%1800)/1800;const s=18+t*38;ring.scale.set(s,s,s);ring.material.opacity=0.85*(1-t);dirty=true;}
   const tr=trainsTick(now);if(tr)dirty=true; // the trains: a frame at TRAIN_FPS while one moves in the view
-  if(dirty){const t0=performance.now();if(PA)paRender();else renderer.render(scene,cam);layout();dirty=false;if(tr)trainFrame(now,performance.now()-t0);}
+  // while the camera moves (a gesture, a flight: it moved since the last frame or less than MOVE_MS ago, which on a
+  // slow phone is shorter than a frame) the frames leave out the creases, whose pass costs a third of a frame up close;
+  // the first frame after it stops draws them again
+  const moving=!!anim||camMoved||now-camT<MOVE_MS;camMoved=false;if(paLite&&!moving)dirty=true;
+  if(dirty){const t0=performance.now();ART=PA?paFit(PA):wpp()/DPR;setLod(ART);renderer.shadowMap.needsUpdate=shDirty;shDirty=false;
+    if(PA){paRender(moving);paLite=moving&&PA.ol>1;}else renderer.render(scene,cam);layout();dirty=false;if(tr)trainFrame(now,performance.now()-t0);}
   updateReadout();
   requestAnimationFrame(loop);
 }
@@ -18,7 +23,7 @@ function boot(){
     usosPlan();tm('usosPlan');              // land uses: their ground in occ, like a landmark
     applyPads();riversRelevel();terrainNormals(); // ...which level the terrain before anything is laid on it
     for(const k in MODELS)MODELS[k].h+=E(MODELS[k].x,MODELS[k].y);
-    for(let k=0;k<EN_;k++){EHI=Math.max(EHI,EH[k]);ELO=Math.min(ELO,EH[k]);}
+    for(let k=0;k<EN_;k++){EHI=Math.max(EHI,EH[k]);ELO=Math.min(ELO,EH[k]);}SH=null; // the shadow box, with the terrain's heights
     tm('pads');scene.add(terrainMesh());tm('terrain');
     const base=buildBase();tm('base');const D=new GB(1<<14);walkBase(base,D);tm('walk');scene.add(tiled(base,matFlat));if(riverWater.nv)scene.add(tiled(riverWater,matWater));
     for(const m of ruta5Objects())scene.add(m); // the Ruta 5's barrier, lamp posts and cars
@@ -44,13 +49,16 @@ function boot(){
     scene.traverse(o=>{if(o.isMesh&&o!==ring)o.receiveShadow=true;});
     if(cerroMesh)cast.push(cerroMesh);
     for(const m of cast){m.traverse(o=>o.castShadow=o.receiveShadow=true);if(!m.parent)scene.add(m);}
+    scene.traverse(o=>{if(o.castShadow)CASTERS.push(o);});SH=null;shOff=false; // what casts shadows, switched off together by fitShadow when far
     tm('meshes');lampPts=lamps();scene.add(lampPts);tm('lamps');
     window.__stats={buildings:nb,lots:LOTS.length,verts:bverts,yards:Y.nv,ground:base.nv+riverWater.nv,street:STREET,trees:TR.length+hillTrees.length+TREES.length,poplars:PO.length+PO_FIELD.length,ms:Math.round(performance.now()-t0),t:TT};
     window.__stats.city=CITY; // cityGen: barrios, house types, the Z mesh (procedural city)
     // for tools/screenshot.py --js: centre the camera on a ground point (grid metres), at a zoom (4 = the card's) and azimuth
     window.__look=(x,y,zoom=4,az=view.az)=>{view.az=az;view.zoom=zoom;[view.tx,view.ty]=lift(x,y,az);placeCam();};
-    window.__trees=on=>{for(const m of trees)m.visible=on;dirty=true;}; // hide the trees to see the ground under them (tools/variants.py)
-    window.__cars=on=>{cars.visible=on;dirty=true;}; // the parked cars, likewise
+    window.__trees=on=>{for(const m of trees)m.visible=on;shDirty=dirty=true;}; // hide the trees to see the ground under them (tools/variants.py)
+    window.__cars=on=>{cars.visible=on;shDirty=dirty=true;}; // the parked cars, likewise
+    // for tools/perf.py: the renderer and what a frame depends on (timing each pass, panning, forcing a shadow refit)
+    window.__three={renderer,scene,cam,sun,pan,placeCam,fitShadow,get PA(){return PA;}};
     window.__pads=PADS; // the landmark pads [x0,y0,x1,y1,h], for pipeline/traces.py check --pads
     buildPanel();resize();
     const h=decodeURIComponent(location.hash.slice(1));

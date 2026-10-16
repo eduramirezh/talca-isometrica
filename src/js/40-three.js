@@ -21,6 +21,7 @@ const SUND=new T.Vector3(0.36,0.707,-0.61).normalize();
 const SMAP=Math.min(matchMedia('(max-width:760px)').matches?2048:4096,renderer.capabilities.maxTextureSize); // 64 MB at 4096
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;
 sun.castShadow=true;sun.shadow.mapSize.set(SMAP,SMAP);
+renderer.shadowMap.autoUpdate=false;let shDirty=true; // drawn again only when shDirty (fitShadow, in the camera)
 const uni={uNight:{value:0},uWin:{value:0}};
 function winMat(){const m=new T.MeshLambertMaterial({vertexColors:true});
   m.onBeforeCompile=sh=>{sh.uniforms.uNight=uni.uNight;sh.uniforms.uWin=uni.uWin;

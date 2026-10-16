@@ -68,7 +68,7 @@ function renderList(){
 let night=false,lampPts=null;
 function setNight(v){night=v;$('#night').setAttribute('aria-pressed',v);$('#stage').classList.toggle('night',v);
   uni.uNight.value=v?1:0;hemi.intensity=v?0.55:HEMI_I;hemi.color.set(v?0x8C9CD0:0xF4F1E6);hemi.groundColor.set(v?0x2A3048:0x8E8A70);sun.intensity=v?0.22:SUN_I;sun.color.set(v?0x9DB0E0:0xFFF3DD);sun.castShadow=!v;
-  if(lampPts)lampPts.visible=v;trainsNight(v);dirty=true;}
+  if(lampPts)lampPts.visible=v;trainsNight(v);shDirty=dirty=true;}
 $('#night').onclick=()=>setNight(!night);
 $('#streets').onclick=()=>{showStreets=!showStreets;$('#streets').setAttribute('aria-pressed',showStreets);dirty=true;};
 

@@ -13,6 +13,7 @@
 // image is anchored to the world (the grid origin falls on a whole art pixel), so panning moves it in whole art
 // pixels instead of making them crawl. For tools and comparisons: __pixelArt({m, k, outline, palette, edge, dark})
 // changes it and returns the metres per art pixel; __pixelArt(null) turns it off (a plain render, as before).
+// paRender(lite), while the camera moves (loop), leaves out the creases and their pass.
 let PA=null;
 const paQuad=(()=>{const g=new T.PlaneGeometry(2,2);const m=new T.ShaderMaterial({
   uniforms:{tC:{value:null},tD:{value:null},tN:{value:null},res:{value:new T.Vector2()},off:{value:new T.Vector2()},k:{value:2},range:{value:1},edge:{value:1},
@@ -50,7 +51,7 @@ function paFit(o){const sz=renderer.getDrawingBufferSize(new T.Vector2()),mpp=(c
   if(o.m)o.k=Math.max(1,Math.round(o.m/mpp));const a=o.k*mpp;
   // a surface seen at 30 degrees changes depth by ~1.7 m per metre of screen: the edge is above that
   if(o.edgeAuto)o.edge=Math.max(1.2,3*a);o.ol=o.outline==null?(a<=1?2:a<=2?1:0):o.outline;return a;}
-function paRender(){const o=PA,a=paFit(o),sz=renderer.getDrawingBufferSize(new T.Vector2()),w=Math.ceil(sz.x/o.k)+1,h=Math.ceil(sz.y/o.k)+1;
+function paRender(lite){const o=PA,a=paFit(o),sz=renderer.getDrawingBufferSize(new T.Vector2()),w=Math.ceil(sz.x/o.k)+1,h=Math.ceil(sz.y/o.k)+1;
   if(!o.rt||o.rt.width!==w||o.rt.height!==h){if(o.rt){o.rt.dispose();o.nt.dispose();}
     const opt={minFilter:T.NearestFilter,magFilter:T.NearestFilter};o.rt=new T.WebGLRenderTarget(w,h,opt);o.rt.depthTexture=new T.DepthTexture(w,h);o.rt.depthTexture.type=T.UnsignedIntType;
     o.nt=new T.WebGLRenderTarget(w,h,opt);}
@@ -61,12 +62,12 @@ function paRender(){const o=PA,a=paFit(o),sz=renderer.getDrawingBufferSize(new T
   cam.left=l+fx*a;cam.right=cam.left+w*a;cam.bottom=b+fy*a;cam.top=cam.bottom+h*a;cam.updateProjectionMatrix();
   for(const p of GLOWPTS)p.material.size=9/o.k; // the glows keep their size on screen
   renderer.setRenderTarget(o.rt);renderer.render(scene,cam);
-  if(o.ol>1){const au=renderer.shadowMap.autoUpdate,lv=GLOWPTS.map(p=>p.visible),rv=ring.visible;renderer.shadowMap.autoUpdate=false;for(const p of GLOWPTS)p.visible=false;ring.visible=false;
+  if(o.ol>1&&!lite){const lv=GLOWPTS.map(p=>p.visible),rv=ring.visible;for(const p of GLOWPTS)p.visible=false;ring.visible=false; // (the colour pass drew the shadow map, if due)
     scene.overrideMaterial=paNorm;renderer.setRenderTarget(o.nt);renderer.render(scene,cam);scene.overrideMaterial=null;
-    renderer.shadowMap.autoUpdate=au;GLOWPTS.forEach((p,i)=>p.visible=lv[i]);ring.visible=rv;}
+    GLOWPTS.forEach((p,i)=>p.visible=lv[i]);ring.visible=rv;}
   cam.left=l;cam.right=rr;cam.top=t;cam.bottom=b;cam.updateProjectionMatrix();
   const U=paQuad.m.uniforms;U.tC.value=o.rt.texture;U.tD.value=o.rt.depthTexture;U.tN.value=o.nt.texture;U.res.value.set(w,h);U.k.value=o.k;
-  U.range.value=cam.far-cam.near;U.edge.value=o.edge;U.dark.value=o.dark;U.uOut.value=o.ol;U.off.value.set(fx*o.k,fy*o.k);
+  U.range.value=cam.far-cam.near;U.edge.value=o.edge;U.dark.value=o.dark;U.uOut.value=lite?Math.min(o.ol,1):o.ol;U.off.value.set(fx*o.k,fy*o.k);
   const P=o.palette?paPalette(o.rt,Math.min(64,o.palette)):[];U.npal.value=P.length;P.forEach((c,i)=>U.pal.value[i].set(c[0],c[1],c[2]));
   renderer.setRenderTarget(null);renderer.render(paQuad.sc,paQuad.cam);}
 window.__pixelArt=o=>{if(!o){PA=null;for(const p of GLOWPTS)p.material.size=9;dirty=true;return 0;}

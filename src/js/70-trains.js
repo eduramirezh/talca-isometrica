@@ -99,11 +99,11 @@ function trainPlace(t){const P=RAILP[t.line],L=P.s[P.s.length-1];let any=false,m
   for(const c of t.cars){const sc=t.s-t.dir*(c.off+c.len/2),a=railAt(P,sc-c.bd/2),b=railAt(P,sc+c.bd/2),dx=b.x-a.x,dy=b.y-a.y,D=Math.hypot(dx,dy)||1;
     const x=(a.x+b.x)/2,y=(a.y+b.y)/2;c.obj.position.set(x,(a.h+b.h)/2,-y);c.obj.rotation.set(0,Math.atan2(dy,dx),Math.atan2(b.h-a.h,D),'YZX');
     c.obj.visible=sc>=0&&sc<=L&&inTerrain(x,y);any=any||c.obj.visible;mx+=x/t.cars.length;my+=y/t.cars.length;}
-  t.grp.visible=any;t.mid=[mx,my];trainLight(t);}
+  const o=t.mid,r=t.len/2+30;t.grp.visible=any;t.mid=[mx,my];trainLight(t);shadowTouch(mx,my,r);if(o)shadowTouch(o[0],o[1],r);} // where it was and where it is
 function trainLight(t){if(!TRAIN.pts)return;const i=TRAIN.list.indexOf(t),A=TRAIN.pts.geometry.attributes.position,c=t.cars[0];
   if(t.grp.visible&&c.obj.visible){const h=railAt(RAILP[t.line],t.s+t.dir*.3);A.setXYZ(i,h.x,h.h+(c.kind==='adm'?2:c.kind==='loco'?3.3:1.9),-h.y);}
   else A.setXYZ(i,0,-500,0);A.needsUpdate=true;}
-function trainHide(t){t.grp.visible=false;trainLight(t);}
+function trainHide(t){t.grp.visible=false;trainLight(t);if(t.mid)shadowTouch(t.mid[0],t.mid[1],t.len/2+30);}
 // the trains and each line's timetable: runs {t, dir, from: the head's s on entry or 'park' (turn where it stands),
 // stops [[the head's s, seconds]], to: the head's s on exit (hidden) or, with park, where it stays; after: seconds
 // since the line was cleared, or since the previous run started when it goes the same way}
@@ -152,12 +152,14 @@ function trainsTick(now){const dt=Math.min(.5,(now-TRAIN.last)/1000);TRAIN.last=
       if(r.si<r.stops.length){r.wait=r.stops[r.si][1];r.si++;}
       else{t.run=null;Ln.live--;if(!Ln.live)Ln.clearAt=Ln.t;}}
     t.s+=t.dir*ds;trainPlace(t);if(!t.run&&!r.park)trainHide(t);}
-  // draw while a moving train is in the view (or just left it, or just appeared or vanished), at TRAIN_FPS
+  // draw while a moving train is in the view (or just left it, or just appeared or vanished), at TRAIN_FPS and once it
+  // has moved an art pixel (ART) since the last frame: zoomed out, where a train is a few pixels long, that is 1–2 frames
+  // a second instead of 18 of the whole commune
   TR_M.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse);TR_FR.setFromProjectionMatrix(TR_M);let draw=false;
   for(const t of TRAIN.list){let v=false;
     if(t.grp.visible&&t.run)for(const c of t.cars){if(!c.obj.visible)continue;TR_SPH.set(c.obj.position,c.len/2+4);if(TR_FR.intersectsSphere(TR_SPH)){v=true;break;}}
-    if(v||t.inView)draw=true;t.inView=v;if(t.shown!==t.grp.visible){t.shown=t.grp.visible;if(t.inView||v)draw=true;}}
-  if(draw&&now-TRAIN.drawn>=1000/TRAIN_FPS-2){TRAIN.drawn=now;return true;}return false;}
+    if((v&&Math.abs(t.s-(t.ds??-1e9))>=ART)||(t.inView&&!v))draw=true;t.inView=v;if(t.shown!==t.grp.visible){t.shown=t.grp.visible;if(t.inView||v)draw=true;}}
+  if(draw&&now-TRAIN.drawn>=1000/TRAIN_FPS-2){TRAIN.drawn=now;for(const t of TRAIN.list)t.ds=t.s;return true;}return false;}
 function trainsNight(v){matTrainWin.emissive.set(v?0x8C6A2E:0x000000);if(TRAIN.pts)TRAIN.pts.visible=v;}
 // the frames the trains asked for: window.__trainFps() gives their rate over the last 2 s and the CPU time of one
 // (the render calls; the GPU's time shows up as a lower rate), to measure on a real GPU with a train in the view

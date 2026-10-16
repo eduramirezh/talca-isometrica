@@ -2,13 +2,15 @@
 const EL=Math.PI/6;
 const MOB=matchMedia('(max-width:760px)').matches;
 const view=MOB?{tx:250,ty:-150,zoom:0.8,az:Math.PI/4}:{tx:420,ty:260,zoom:0.62,az:Math.PI/4};
-let W=1,H=1,dirty=true;
+// camT, camMoved: when the camera last moved, and whether it did since the last frame (loop: moving); ART: metres per
+// art pixel of the last frame
+let W=1,H=1,dirty=true,camT=0,camMoved=false,paLite=false,ART=0.5;const MOVE_MS=160;
 const BASEH=3200;
 function placeCam(){
   const h=BASEH/view.zoom, a=W/H;cam.left=-h*a/2;cam.right=h*a/2;cam.top=h/2;cam.bottom=-h/2;
   const D=8000;cam.position.set(view.tx+Math.sin(view.az)*Math.cos(EL)*D,Math.sin(EL)*D,-view.ty+Math.cos(view.az)*Math.cos(EL)*D);
   cam.up.set(0,1,0);cam.lookAt(view.tx,0,-view.ty);cam.updateProjectionMatrix();cam.updateMatrixWorld();
-  readoutDirty=true;
+  readoutDirty=true;camT=performance.now();camMoved=true;
   const ppm=H/h; uni.uWin.value=Math.max(0,Math.min(1,(ppm-1.2)/1.6));
   fitShadow();dirty=true;
 }
@@ -16,19 +18,36 @@ function placeCam(){
 // the light's frame a caster and its shadow share x and y, so those bounds are enough across; along the light it
 // reaches 400 m toward the sun for what stands outside the view. Its centre moves in whole texels, so the edges of the
 // shadows do not shimmer while panning. The bias is a normal offset of about a texel and a half (world metres).
+// The shadow map is drawn again only when it must (shDirty, read by loop()): it stays valid while the camera moves
+// inside it, so the shadow camera covers SH_M times what the view needs and is refitted only when the view leaves it
+// or zooms in to under 1/SH_COARSE of it (its texels would grow too large). Before, every frame drew it again, also
+// for a pan or for the selection ring's pulse. Whatever moves a caster (a train: shadowTouch) or shows or hides one
+// sets shDirty itself. Where a texel of the map is more than SH_FAR metres (zoomed out: 23 m with the whole commune;
+// 6.6 m in the initial view on a phone, whose shadows still show),
+// a shadow is a blur no larger than a texel, invisible in the image: nothing casts (CASTERS, from the boot) and the
+// pass only clears the map. Switching castShadow, unlike sun.castShadow, recompiles nothing.
 const SLX=new T.Vector3().crossVectors(new T.Vector3(0,1,0),SUND).normalize(),SLY=new T.Vector3().crossVectors(SUND,SLX);
-function fitShadow(){
+const SH_M=1.5,SH_COARSE=1.6,SH_FAR=8,CASTERS=[];let SH=null,shOff=false; // the shadow camera's box in the light's frame: {x0,x1,y0,y1,z0,z1}
+function fitShadow(force){
   const o=new T.Vector3(),d=new T.Vector3(),v=new T.Vector3();let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,z0=1e9,z1=-1e9;
   for(const sx of [-1,1])for(const sy of [-1,1]){o.set(sx,sy,-1).unproject(cam);d.set(sx,sy,1).unproject(cam).sub(o).normalize();
     for(const h of [ELO-5,EHI+60]){v.copy(d).multiplyScalar((h-o.y)/d.y).add(o);
       const px=v.dot(SLX),py=v.dot(SLY),pz=v.dot(SUND);x0=Math.min(x0,px);x1=Math.max(x1,px);y0=Math.min(y0,py);y1=Math.max(y1,py);z0=Math.min(z0,pz);z1=Math.max(z1,pz);}}
-  const hx=Math.ceil((x1-x0)/2/8)*8,hy=Math.ceil((y1-y0)/2/8)*8,tx=2*hx/SMAP,ty=2*hy/SMAP;
-  const cx=Math.round((x0+x1)/2/tx)*tx,cy=Math.round((y0+y1)/2/ty)*ty;
+  const s=SH;if(!force&&s&&x0>=s.x0&&x1<=s.x1&&y0>=s.y0&&y1<=s.y1&&z0>=s.z0&&z1<=s.z1&&
+    s.x1-s.x0<=SH_M*SH_COARSE*(x1-x0)&&s.y1-s.y0<=SH_M*SH_COARSE*(y1-y0))return;
+  const hx=Math.ceil(SH_M*(x1-x0)/2/8)*8,hy=Math.ceil(SH_M*(y1-y0)/2/8)*8,tx=2*hx/SMAP,ty=2*hy/SMAP,hz=SH_M*(z1-z0)/2,zc=(z0+z1)/2;
+  const cx=Math.round((x0+x1)/2/tx)*tx,cy=Math.round((y0+y1)/2/ty)*ty;z0=zc-hz;z1=zc+hz;
+  SH={x0:cx-hx,x1:cx+hx,y0:cy-hy,y1:cy+hy,z0,z1};shDirty=true;
+  const off=Math.max(tx,ty)>SH_FAR;if(off!==shOff){shOff=off;for(const o of CASTERS)o.castShadow=!off;}
   sun.target.position.copy(SLX).multiplyScalar(cx).addScaledVector(SLY,cy).addScaledVector(SUND,z0);
   sun.position.copy(sun.target.position).addScaledVector(SUND,z1-z0+400);sun.target.updateMatrixWorld();
   const c=sun.shadow.camera;c.left=-hx;c.right=hx;c.bottom=-hy;c.top=hy;c.near=1;c.far=z1-z0+420;c.updateProjectionMatrix();
   sun.shadow.normalBias=1.5*Math.max(tx,ty);sun.shadow.bias=-0.0002;
 }
+// a caster moved at (x, y) grid metres, within r: the shadow map is drawn again if that is inside it
+function shadowTouch(x,y,r){if(!SH||shOff)return;v3.set(x,E(x,y),-y);const px=v3.dot(SLX),py=v3.dot(SLY);
+  if(px>SH.x0-r&&px<SH.x1+r&&py>SH.y0-r&&py<SH.y1+r)shDirty=true;}
+const v3=new T.Vector3();
 function resize(){W=canvas.clientWidth;H=canvas.clientHeight;renderer.setSize(W,H,false);placeCam();}
 function wpp(){return (BASEH/view.zoom)/H;}
 function pan(dx,dy){const R=new T.Vector3().setFromMatrixColumn(cam.matrixWorld,0);const U=new T.Vector3().setFromMatrixColumn(cam.matrixWorld,1);U.y=0;U.normalize();const k=wpp();
