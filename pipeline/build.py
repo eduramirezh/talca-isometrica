@@ -9,14 +9,15 @@ El resultado es un único HTML autocontenido (~670 KB) que solo carga three.js r
 las fuentes de Google Fonts.
 
   python pipeline/build.py             -> dist/talca.html (fragmento, como se publica en Claude)
-  python pipeline/build.py --standalone -> además dist/index.html con <!doctype>, <head> y <body>,
-                                           para abrir directo en el navegador o servir con un hosting estático.
+  python pipeline/build.py --standalone -> además dist/index.html con <!doctype>, <head> (título, descripción,
+                                           canónica, Open Graph, ícono) y <body>, más los archivos de src/site/: el sitio
+                                           que se publica en talca.eduramirez.com (make deploy) o se abre directo.
   python pipeline/build.py --where index.html:4026
                                         -> el archivo de src/ y la línea que dan esa línea de dist/ (index.html:N o
                                            (index):N como en la consola del navegador; talca.html:N o N para
                                            dist/talca.html y los errores de make check)
 """
-import json, re, sys
+import json, re, shutil, sys
 from common import ROOT, DATA, CONFIG, require, loc
 
 SRC = ROOT / 'src'
@@ -123,9 +124,25 @@ def land_uses(geo):
         out.append([names.index(u['uso']), enc(ring), o or 0])
     geo['usos'] = {'k': names, 'u': out}
 
+# The published site (talca.eduramirez.com, Cloudflare Pages): its <head>, which the fragment cannot carry (the artifact
+# platform supplies its own), and the files of src/site/ (favicon, og.jpg: tools/site_assets.py) copied next to it.
+SITE = 'https://talca.eduramirez.com/'
+TITLE = 'Talca Isométrica'
+DESC = ('Maqueta isométrica interactiva de Talca, Chile: sus tribunales, notarías e historia legal junto a los hitos '
+        'de la ciudad, sobre datos reales del Censo 2017 y OpenStreetMap.')
+OG_ALT = 'La Plaza de Armas y el barrio cívico de la Alameda de Talca en la maqueta isométrica, con los marcadores de los lugares.'
 # What --standalone puts before the fragment in dist/index.html: its lines are this many lines further down.
-STANDALONE = ('<!doctype html>\n<html lang="es"><head><meta charset="utf-8">\n'
+STANDALONE = ('<!doctype html>\n<html lang="es-CL"><head><meta charset="utf-8">\n'
               '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
+              f'<title>{TITLE}</title><meta name="description" content="{DESC}"><meta name="author" content="Edu Ramírez">\n'
+              f'<link rel="canonical" href="{SITE}"><link rel="icon" href="favicon.svg" type="image/svg+xml">'
+              '<link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="theme-color" content="#F3F4EF">\n'
+              f'<meta property="og:type" content="website"><meta property="og:site_name" content="{TITLE}"><meta property="og:locale" content="es_CL">'
+              f'<meta property="og:url" content="{SITE}"><meta property="og:title" content="{TITLE}"><meta property="og:description" content="{DESC}">\n'
+              f'<meta property="og:image" content="{SITE}og.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
+              f'<meta property="og:image:alt" content="{OG_ALT}">\n'
+              f'<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{TITLE}"><meta name="twitter:description" content="{DESC}">'
+              f'<meta name="twitter:image" content="{SITE}og.jpg"><meta name="twitter:image:alt" content="{OG_ALT}">\n'
               '<style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>\n'
               '</head><body>\n')
 
@@ -155,8 +172,12 @@ def main():
     (ROOT / 'dist' / 'talca.html').write_text(out)
     print('dist/talca.html:', len(out.encode()), 'bytes')
     if '--standalone' in sys.argv:
-        page = STANDALONE + out + '\n</body></html>\n'
+        # the fragment's own <title> and description stay in it for the artifact; here the <head> has them: the lines
+        # are emptied, not removed, so --where still counts right
+        body = re.sub(r'^<title>.*</title>$|^<meta name="description"[^\n]*>$', '', out, count=2, flags=re.M)
+        page = STANDALONE + body + '\n</body></html>\n'
         (ROOT / 'dist' / 'index.html').write_text(page); print('dist/index.html:', len(page.encode()), 'bytes')
+        for f in sorted((SRC / 'site').iterdir()): shutil.copy(f, ROOT / 'dist' / f.name)
 
 if __name__ == '__main__':
     main()

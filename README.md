@@ -69,10 +69,12 @@ src/                     toda la aplicación (CSS, UI y motor three.js r128), en
   js/NN-<sección>.js     el script por secciones (terreno, ciudad, Ruta 5, vía, trenes, usos…), unidas en orden de número
   js/hitos/<id>.js       un hito por archivo, dentro de buildModels (marcador /*HITOS*/ de js/45-landmarks.js)
   js/hitos/ORDER         el orden de los hitos (importa: explanadas vecinas, ayudantes de la plaza)
+  site/                  lo que el sitio publicado lleva junto a index.html: favicon.svg, apple-touch-icon.png y og.jpg
 data/                    datos procesados (versionados)
-dist/                    resultado (no versionado: `make build`): talca.html (fragmento) e index.html (página completa)
+dist/                    resultado (no versionado: `make build`): talca.html (fragmento) e index.html (página completa, con su <head> y los archivos de src/site/)
 tools/screenshot.py      capturas con Chromium sin interfaz
 tools/variants.py        hoja de comparación: varias vistas por varias variantes de render
+tools/site_assets.py     la imagen de Open Graph y el ícono de src/site/, desde el mapa (make site-assets)
 tools/probe.py           evalúa expresiones JS en el mapa cargado (window.__rail, __trains…) e imprime el resultado
 tools/check.py           revisión rápida del repo (make check); .githooks/pre-commit la corre antes de cada commit (make hooks)
 docs/                    metodología, fuentes, investigación de proyectos similares

@@ -2,7 +2,7 @@
 PY ?= python3
 PW ?= uv run --with "playwright==1.63" python   # Python con Playwright, para las capturas (el del sistema no lo tiene)
 PORT ?= 8765
-.PHONY: all fetch osm data elevation ruta5 pois build check smoke hooks validate diagnostics shots serve clean
+.PHONY: all fetch osm data elevation ruta5 pois build check smoke hooks validate diagnostics shots site-assets serve clean
 
 all: data elevation pois build          ## pipeline completo (requiere raw/: make fetch)
 
@@ -46,6 +46,9 @@ shots: build                  ## capturas de referencia en shots/ (requiere npm 
 	$(PW) tools/screenshot.py shots/vista-inicial.png
 	$(PW) tools/screenshot.py shots/corte.png --hash corte-apelaciones
 	$(PW) tools/screenshot.py shots/movil-oscuro.png --size 390x844 --dark
+
+site-assets: build            ## src/site/og.jpg (Open Graph, 1200 × 630) y apple-touch-icon.png, desde el mapa y el favicon
+	$(PW) tools/site_assets.py
 
 serve: build                  ## sirve dist/ en http://localhost:$(PORT) y lo abre en el navegador (otro puerto: make serve PORT=9000)
 	(sleep 1 && $(PY) -m webbrowser -t http://localhost:$(PORT)/ >/dev/null) & \

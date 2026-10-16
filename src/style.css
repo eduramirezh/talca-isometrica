@@ -99,6 +99,7 @@ button{font:inherit;color:inherit}
 .about p,.about li{font-size:14px;color:var(--ink-2);margin:0}
 .about ul{margin:0;padding-left:18px;display:grid;gap:5px}
 .about a,.card a{color:var(--wine)}
+.about .credit{margin-top:6px;padding-top:12px;border-top:1px solid var(--rule);color:var(--ink)}
 
 /* ---------- card ---------- */
 #card{position:absolute;z-index:7;right:72px;top:16px;width:360px;max-height:calc(100% - 32px);overflow:auto;background:var(--paper);border:1px solid var(--rule);border-radius:4px;box-shadow:var(--shadow);border-top:5px solid var(--cc)}

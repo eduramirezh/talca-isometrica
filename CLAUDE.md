@@ -10,6 +10,7 @@ python pipeline/build.py --where index.html:4026   # el archivo de src/ y la lí
 make check                      # revisión rápida (<1 s): JSON, marcadores, restricciones de artifact, node --check de dist/; la corre el hook de pre-commit (make hooks)
 make smoke                      # carga dist/ en Chromium y falla si hay errores de consola o la generación sale vacía (~1 min; tools/screenshot.py --strict)
 make serve                      # http://localhost:8765
+make site-assets                # src/site/og.jpg (Open Graph, 1200 × 630, desde el mapa) y apple-touch-icon.png (tools/site_assets.py)
 make pois build                 # tras editar pipeline/pois.py
 make data build                 # tras editar config/trazados.json o process_geometry.py (requiere raw/)
 make elevation build            # tras editar elevation.py (requiere raw/dem/; no necesita las otras fuentes)
@@ -146,6 +147,10 @@ Los hitos se rehacen uno por uno sobre su planta real y con estética de pixel a
 - Máximo 16 MB.
 
 Para publicar: `make build` y sube `dist/talca.html`, el fragmento, no `index.html`. `dist/` no está en git: es un resultado de la plantilla y los datos.
+
+## El sitio publicado (talca.eduramirez.com)
+
+`dist/index.html` es el sitio: `build.py --standalone` le pone el `<head>` que el fragmento no puede llevar (`STANDALONE`: `lang="es-CL"`, título, descripción, canónica `https://talca.eduramirez.com/`, Open Graph y tarjeta de Twitter con `og.jpg`, ícono), vacía las líneas del `<title>` y la descripción del fragmento (vacías, no borradas, para que `--where` siga contando bien) y copia `src/site/` a `dist/`. Las constantes `SITE`, `TITLE`, `DESC` y `OG_ALT` están en `pipeline/build.py`. `og.jpg` y `apple-touch-icon.png` se rehacen con `make site-assets` (la vista de la imagen es `OG_VIEW` en `tools/site_assets.py`) y van en git. La pestaña «Acerca» enlaza a eduramirez.com y al repositorio de Codeberg.
 
 ## Trampas conocidas
 

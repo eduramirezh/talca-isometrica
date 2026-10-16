@@ -364,3 +364,10 @@ Lo que se encontró en las 14 manzanas grandes: casi todas son eriazos (rastrojo
 **Render.** Cada uso tiene un dibujador genérico en `src/js/76-usos.js` (sección `// ==== usos de suelo ====`), con el vocabulario de ESTETICA §3 (dos tonos, líneas de 0,5 m, blanco como contorno) y números aleatorios con semilla por entrada. Los usos reservan su suelo en `occ` antes de la ciudad, como un hito, pero dejan libres 2,5 m junto a las calles para que sigan las veredas, los árboles de vereda y los autos. El suelo va a 0,11 en su propia malla, recortado donde hay ríos, hitos, la Ruta 5 o la vía; los detalles a 0,12–0,14, de a 1 cm. Las industrias sobre manzanas con datos conservan los galpones de `cityGen` y solo reciben el patio.
 
 **Lo aproximado.** Todo lo que está sobre el suelo es genérico: los galpones, las tumbas y las cuadras no son los reales; las canchas de OSM llevan las líneas de su deporte, y los recintos sin canchas en OSM reciben una cancha de fútbol al centro si cabe. Las entradas importadas de OSM no se revisaron una por una en la imagen. Las villas posteriores al Censo tienen ~35 viviendas por hectárea supuestas.
+
+## 14. Publicación
+
+La maqueta se publica de dos formas, desde la misma plantilla:
+
+- **Como artifact de Claude:** `dist/talca.html`, el fragmento, con las restricciones de CLAUDE.md (`make check` las revisa).
+- **Como sitio:** `dist/index.html` en [talca.eduramirez.com](https://talca.eduramirez.com/). `build.py --standalone` le agrega el `<head>` que la plataforma de artifacts pone por su cuenta: idioma `es-CL`, título, descripción, dirección canónica, Open Graph y tarjeta de Twitter con una imagen del mapa, e ícono. Los archivos de `src/site/` se copian a su lado. La imagen de Open Graph (`og.jpg`, 1200 × 630, en JPEG para que la vista previa de WhatsApp no la descarte) y el ícono para iOS salen de `tools/site_assets.py` (`make site-assets`): la imagen es una captura del mapa sin el panel ni los controles, con el encabezado y los marcadores.
