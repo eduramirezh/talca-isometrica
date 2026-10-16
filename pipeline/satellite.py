@@ -11,6 +11,9 @@ suelo de config/usos.json van encima en naranjo, con su número de entrada y su 
   python pipeline/satellite.py punto 3755 1414 [lado] [z]       # caja de `lado` m (900) centrada en (x, y) de grilla
   … --calles                                                    # además las calles del mapa y una cruz cada 100 m
                                                                 # (rotulada cada 200 m), para dibujar polígonos a mano
+  python pipeline/satellite.py marco X Y A u0 u1 v0 v1 [z] [nombre]   # la imagen en el marco local de un hito (landmark.py frame),
+                                                                # girada para que v apunte arriba, con cruces cada 10 m en (u,v)
+  … --rejilla[=N]                                             # una cruz cada N m (10), rotulada cada 5 cruces (coordenadas de grilla)
 
 Salida: diagnostics/sat-<nombre>.png (caja libre: sat-caja.png o el nombre dado; punto: sat-<x>_<y>.png). Las teselas quedan en raw/satelite/. Requiere Pillow
 (viene con matplotlib) e internet la primera vez.
@@ -46,8 +49,30 @@ def mosaic(x0, x1, y0, y1, z=18):
             img.paste(Image.open(f), (int(tx*256-X0), int(ty*256-Y0)))
     return img, lambda q: tuple(a-b for a, b in zip(px(*q), (X0, Y0)))
 
+def marco(argv):
+    """satellite.py marco X Y A u0 u1 v0 v1 [z] [nombre]: la imagen en el marco local de un hito (landmark.py frame:
+    origen (X, Y) de grilla, v hacia el ángulo A en grados desde +x, u a la derecha de v), girada para que v apunte
+    hacia arriba, con una cruz cada 10 m rotulada cada 50 (u,v). Sirve para leer las medidas de un recinto tal como
+    lo escribe el modelo (G(u,v) = [X+u·sinA+v·cosA, Y−u·cosA+v·sinA]). Salida: diagnostics/marco-<nombre>.png."""
+    X, Y, A = float(argv[0]), float(argv[1]), math.radians(float(argv[2])); u0, u1, v0, v1 = map(float, argv[3:7])
+    z = int(argv[7]) if len(argv) > 7 else 19; name = argv[8] if len(argv) > 8 else 'caja'; sa, ca = math.sin(A), math.cos(A)
+    G = lambda u, v: (X + u*sa + v*ca, Y - u*ca + v*sa)
+    cs = [G(u, v) for u in (u0, u1) for v in (v0, v1)]
+    img, P = mosaic(min(c[0] for c in cs), max(c[0] for c in cs), min(c[1] for c in cs), max(c[1] for c in cs), z)
+    s = 4; W, H = int((u1-u0)*s), int((v1-v0)*s)              # 4 px per metre: P is affine to well under a pixel over a few hundred metres
+    o, pu, pv = P(G(u0, v1)), P(G(u0+1, v1)), P(G(u0, v1-1))   # source pixel of the output's top-left, one metre along u, one metre down
+    a, b, c, d = (pu[0]-o[0])/s, (pv[0]-o[0])/s, (pu[1]-o[1])/s, (pv[1]-o[1])/s
+    out = img.transform((W, H), Image.AFFINE, (a, b, o[0], c, d, o[1]), Image.BICUBIC); dr = ImageDraw.Draw(out)
+    for u in range(int(u0//10+1)*10, int(u1)+1, 10):
+        for v in range(int(v0//10+1)*10, int(v1)+1, 10):
+            x, y = (u-u0)*s, (v1-v)*s; big = u % 50 == 0 and v % 50 == 0
+            dr.line([(x-2, y), (x+2, y)], fill=(255, 255, 0) if big else 'white'); dr.line([(x, y-2), (x, y+2)], fill=(255, 255, 0) if big else 'white')
+            if big: dr.text((x+3, y+2), f'{u},{v}', fill=(255, 255, 0))
+    f = ROOT / 'diagnostics' / f'marco-{name}.png'; f.parent.mkdir(exist_ok=True); out.save(f); print(f.relative_to(ROOT), out.size)
+
 def main(argv):
     flags = [a for a in argv if a.startswith('--')]; argv = [a for a in argv if not a.startswith('--')]
+    if argv[0] == 'marco': return marco(argv[1:])
     if argv[0] == 'punto':
         x, y = float(argv[1]), float(argv[2]); h = float(argv[3]) / 2 if len(argv) > 3 else 450
         x0, x1, y0, y1, z, name = x-h, x+h, y-h, y+h, int(argv[4]) if len(argv) > 4 else 18, f'{x:.0f}_{y:.0f}'
@@ -79,6 +104,14 @@ def main(argv):
             for gy in range(int(y0//100+1)*100, int(y1)+1, 100):
                 q = P((gx, gy)); d.line([(q[0]-4, q[1]), (q[0]+4, q[1])], fill='white'); d.line([(q[0], q[1]-4), (q[0], q[1]+4)], fill='white')
                 if gx % 200 == 0 and gy % 200 == 0: d.text((q[0]+3, q[1]+2), f'{gx},{gy}', fill='white')
+    for fl in flags:                                          # --rejilla[=N]: una cruz cada N m (10), rotulada cada 5, para leer coordenadas
+        if not fl.startswith('--rejilla'): continue
+        n = int(fl.split('=')[1]) if '=' in fl else 10
+        for gx in range(int(x0//n+1)*n, int(x1)+1, n):
+            for gy in range(int(y0//n+1)*n, int(y1)+1, n):
+                q = P((gx, gy)); big = gx % (5*n) == 0 and gy % (5*n) == 0
+                d.line([(q[0]-2, q[1]), (q[0]+2, q[1])], fill=(255, 255, 0) if big else 'white'); d.line([(q[0], q[1]-2), (q[0], q[1]+2)], fill=(255, 255, 0) if big else 'white')
+                if big: d.text((q[0]+3, q[1]+2), f'{gx},{gy}', fill=(255, 255, 0))
     if (ROOT / 'config' / 'usos.json').exists():              # los usos de suelo, en naranjo
         from usos import entries
         for k, (u, rings) in enumerate(entries(g)):

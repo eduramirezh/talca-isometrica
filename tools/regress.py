@@ -4,6 +4,7 @@
   uv run --with "playwright==1.63" --with pillow python tools/regress.py --against shots/ref       # después
   uv run --with "playwright==1.63" --with pillow python tools/regress.py --against shots/ref --only telefono
   uv run --with "playwright==1.63" --with pillow python tools/regress.py --save shots/once --init "window.__STAGE=0"   # sin arranque progresivo
+  uv run --with "playwright==1.63" --with pillow python tools/regress.py --save shots/ref --view "cementerio=__look(-4,2120,3)"   # una vista más (repetible)
 
 Carga el mapa en Chromium sin interfaz (SwiftShader, open_page() de screenshot.py) en dos tamaños, teléfono (390x844,
 densidad 2) y escritorio (1440x900), una carga por tamaño (~1 min cada una), deja quieto un tren (__train('main',
@@ -84,7 +85,9 @@ if __name__ == '__main__':
     ap.add_argument('--out', default=str(ROOT / 'shots' / 'regress'), help='dónde quedan las capturas nuevas con --against')
     ap.add_argument('--only', action='append', choices=list(SIZES), help='solo este tamaño (repetible)')
     ap.add_argument('--init', help='JS que corre antes que la página (window.__STAGE=0: la generación de una vez)')
+    ap.add_argument('--view', action='append', default=[], help='una vista más, nombre=expresión (repetible), además de VIEWS: un hito fuera de ellas')
     a = ap.parse_args()
+    VIEWS += a.view
     if a.save: asyncio.run(capture(Path(a.save), a.only, a.init))
     else:
         out = Path(a.out); asyncio.run(capture(out, a.only, a.init))

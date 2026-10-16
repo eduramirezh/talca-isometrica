@@ -245,7 +245,7 @@ add('plaza-las-heras', 'Plaza Las Heras', 'ciudad', -35.41774, -71.65838, 'Barri
     [['OpenStreetMap vía Mapcarta', 'https://mapcarta.com/es/W89069033']], pri=3)
 add('cementerio', 'Cementerio General', 'ciudad', -35.40751, -71.66412, 'Sector norte',
     'Cementerio histórico de la ciudad, con un memorial a los detenidos desaparecidos.', 'alta',
-    [['OpenStreetMap vía Mapcarta', 'https://mapcarta.com/es/W86933822']], pri=3)
+    [['OpenStreetMap vía Mapcarta', 'https://mapcarta.com/es/W86933822']], model='cementerio', pri=3)
 
 TOURS = {
     'justicia': dict(n='Ruta de la Justicia', d='Del juramento de 1818 al barrio cívico de la Alameda, a pie en unos 3 km.',

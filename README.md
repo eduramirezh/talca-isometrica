@@ -68,7 +68,7 @@ pipeline/
   geocode.py             geocodificador de la numeración de Talca y validador
   build.py               plantilla + datos -> dist/; --where traduce una línea de dist/ a su archivo de src/
   diagnostics.py         paneles PNG para revisar trazados contra las manzanas
-  satellite.py           imagen satelital con las manzanas y los usos de suelo encima (qué hay de verdad en cada una)
+  satellite.py           imagen satelital con las manzanas y los usos de suelo encima (qué hay de verdad en cada una); `marco`: la imagen girada al marco local de un hito
   usos.py                usos de suelo: importación desde OSM, revisión de lo que falta y de config/usos.json
   edificios.py           los edificios de OSM (manzanas enteras y mixtas) -> data/edificios.json; panel de cobertura; techos
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos de Commons

@@ -261,7 +261,7 @@ G(u,v) = [X + u·sin A + v·cos A,  Y − u·cos A + v·sin A]
 
 En el estadio, la cancha (vía 815575960) da X = −780,8, Y = 684,8 y A = 64,8°. Las medidas salen de ahí: cancha de 105 × 67 m; pista con radio interior de 36,2 m, exterior de 46,4 m y rectas de 85,8 m; gradería de 20 m de fondo en la curva sur y el lado oriente, y de 8 m en la cabecera norte.
 
-En la Catedral, el edificio (vía 114237041) da X = −102,9, Y = 32,3 y A = 179,3°: v corre por la nave hacia el ábside, al poniente, y u hacia 1 Norte. La fachada queda en v = −29, la torre (vía 798980080) en la esquina de 1 Norte y la escalinata (vía 799225255) delante. En la plantilla, `localFrame(X, Y, A)` devuelve `G`, `V`, `N3` y `R` para cualquier hito.
+En la Catedral, el edificio (vía 114237041) da X = −102,9, Y = 32,3 y A = 179,3°: v corre por la nave hacia el ábside, al poniente, y u hacia 1 Norte. La fachada queda en v = −29, la torre (vía 798980080) en la esquina de 1 Norte y la escalinata (vía 799225255) delante. En la plantilla, `localFrame(X, Y, A)` devuelve `G`, `V`, `N3` y `R` para cualquier hito. Para un recinto grande, `python pipeline/satellite.py marco X Y A u0 u1 v0 v1 [z] [nombre]` baja la imagen de Esri girada a ese marco (v hacia arriba, cruces cada 10 m rotuladas en (u,v)): las medidas se leen tal como las escribe el modelo (así se trazó el Cementerio General, con A = 75,3° a lo largo de su eje mayor).
 
 ### 9.3 Fotos y fuentes: el estado actual
 
