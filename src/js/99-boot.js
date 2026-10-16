@@ -4,11 +4,11 @@ function loop(now){
   if(ring.visible){const t=((now-(ring.userData.t0||0))%1800)/1800;const s=18+t*38;ring.scale.set(s,s,s);ring.material.opacity=0.85*(1-t);dirty=true;}
   const tr=trainsTick(now);if(tr)dirty=true; // the trains: a frame at TRAIN_FPS while one moves in the view
   // while the camera moves (a gesture, a flight: it moved since the last frame or less than MOVE_MS ago, which on a
-  // slow phone is shorter than a frame) the frames leave out the creases, whose pass costs a third of a frame up close;
-  // the first frame after it stops draws them again
+  // slow phone is shorter than a frame) the frames leave out the normals pass of crease:'normals' (the creases from depth cost
+  // nothing and stay); the first frame after it stops draws them again
   const moving=!!anim||camMoved||now-camT<MOVE_MS;camMoved=false;if(paLite&&!moving)dirty=true;
   if(dirty){const t0=performance.now();ART=PA?paFit(PA):wpp()/DPR;setLod(ART);renderer.shadowMap.needsUpdate=shDirty;shDirty=false;
-    if(PA){paRender(moving);paLite=moving&&PA.ol>1;}else renderer.render(scene,cam);layout();dirty=false;if(tr)trainFrame(now,performance.now()-t0);}
+    if(PA){paRender(moving);paLite=moving&&PA.ol>1&&PA.crease==='normals';}else renderer.render(scene,cam);layout();dirty=false;if(tr)trainFrame(now,performance.now()-t0);}
   updateReadout();
   requestAnimationFrame(loop);
 }

@@ -6,8 +6,9 @@
 
 Para cada vista (JS que mueve la cámara, como en screenshot.py) da tres cuadros que pasan por el loop() real:
   refit   el mapa de sombras rehecho (fitShadow(true)): lo que cuesta un salto o un zoom grande
-  pan     la mediana de seis desplazamientos de 6 px, uno por cuadro: sin sombras ni pliegues si la caja alcanza
-  settle  el cuadro siguiente a que la cámara se detiene: los pliegues otra vez (0 si a ese zoom no hay)
+  pan     la mediana de seis desplazamientos de 6 px, uno por cuadro: sin sombras si la caja alcanza
+  settle  el cuadro siguiente a que la cámara se detiene: solo con __pixelArt({crease:'normals'}), que salta la
+          pasada de normales mientras la cámara se mueve (0: no hace falta un cuadro más)
 cada uno como [ms, llamadas de dibujo, triángulos, veces que se dibujó el mapa de sombras], sumados sobre las pasadas
 del cuadro (los triángulos no cuentan los del mapa de sombras), con la k y el contorno (ol) del pixel art. Cada medida
 espera a la GPU (readPixels), así que los ms son de SwiftShader: sirven para comparar, no son los de un teléfono.

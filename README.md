@@ -84,7 +84,7 @@ src/                     toda la aplicación (CSS, UI y motor three.js r128), en
 data/                    datos procesados (versionados)
 dist/                    resultado (no versionado: `make build`): talca.html (fragmento) e index.html (página completa, con su <head> y los archivos de src/site/)
 tools/screenshot.py      capturas con Chromium sin interfaz
-tools/variants.py        hoja de comparación: varias vistas por varias variantes de render
+tools/variants.py        hoja de comparación: varias vistas por varias variantes de render (--diff: píxeles distintos)
 tools/site_assets.py     la imagen de Open Graph y el ícono de src/site/, desde el mapa (make site-assets)
 tools/probe.py           evalúa expresiones JS en el mapa cargado (window.__rail, __trains…) e imprime el resultado
 tools/perf.py            lo que cuesta un cuadro (ms, llamadas de dibujo, triángulos, mapas de sombra) en varias vistas
