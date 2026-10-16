@@ -1,5 +1,5 @@
 """Ensambla dist/talca.html: la plantilla (src/, ver template()) + data/geometry.json + data/elevation.json + data/ruta5.json
-+ config/grid_lines.json + config/usos.json + data/pois.json. config/manzanas.json reclasifica como construidas (tipo 3) manzanas «sin
++ config/usos.json + data/pois.json. config/manzanas.json reclasifica como construidas (tipo 3) manzanas «sin
 información» del Censo; config/usos.json va como DATA.usos (usos de suelo; sus entradas `vivienda` agregan manzanas
 construidas donde el Censo no tiene).
 
@@ -162,7 +162,6 @@ def main():
     land_uses(geo)
     geo['elev'] = json.load(open(require(DATA / 'elevation.json', 'Ejecute: make elevation')))
     geo['r5'] = json.load(open(require(DATA / 'ruta5.json', 'Ejecute: make ruta5')))   # las calzadas y ramales de la Ruta 5 (R5)
-    geo['lines'] = {k: v for k, v in json.load(open(CONFIG / 'grid_lines.json')).items() if not k.startswith('_')}
     pois = json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois')))
     t = template()
     assert '/*DATA*/' in t and '/*POIS*/' in t, 'faltan los marcadores en la plantilla'

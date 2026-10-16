@@ -6,11 +6,10 @@ Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca 
 
 ![Vista del barrio judicial de la Alameda](docs/img/barrio-judicial.jpg)
 
-- **55 lugares** en 8 categorías, cada uno con dirección, coordenadas, fuente y nivel de confianza.
+- **55 lugares** en 8 categorías, cada uno con dirección, coordenadas y fuente; el nivel de confianza de la ubicación queda en los datos (`data/pois.csv`), no en la ficha.
 - **Dos recorridos guiados:** la Ruta de la Justicia y Talca icónica.
 - **~59.000 edificios** generados en el navegador frente a cada calle real, con alturas según la densidad del censo y 24 hitos con modelo propio, sobre su planta real.
-- **Relieve real** del modelo de elevación SRTM: los cerros del poniente y las terrazas de la ciudad hacia sus ríos, con exageración logarítmica. El lector muestra la altura sobre el nivel del mar.
-- **Lector de direcciones:** al pasar el cursor muestra la dirección aproximada según la grilla numerada («1 Norte ≈ 850, entre 1 y 2 Oriente»).
+- **Relieve real** del modelo de elevación SRTM: los cerros del poniente y las terrazas de la ciudad hacia sus ríos, con exageración logarítmica.
 - **Vistas:** pixel art (píxeles de 0,5 m con contorno), modo noche, giro de la vista en 90°, tema claro y oscuro, y diseño para móvil.
 - **Un solo archivo HTML** autocontenido (~820 KB). Solo carga three.js desde cdnjs y las fuentes de Google Fonts.
 
@@ -54,7 +53,7 @@ Con `make hooks`, un `git push` que actualiza `main` en `origin` (GitHub) public
 
 ```
 config/
-  grid_lines.json        posición de cada calle numerada (lector de direcciones)
+  grid_lines.json        posición de cada calle numerada (revisada a mano; el mapa ya no la usa)
   manzanas.json          manzanas «sin información» del Censo que están construidas (revisadas en imagen satelital)
   trazados.json          ríos (de OpenStreetMap), vía férrea y Ruta 5, con su procedencia
   usos.json              usos de suelo de los terrenos en blanco del Censo (industria, cementerios, colegios, canchas, eriazos…), con su fuente

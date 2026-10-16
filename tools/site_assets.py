@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / 'src' / 'site'
 # la vista de la imagen: la Plaza de Armas y el barrio cívico de la Alameda, sin nombres de calles; con el encabezado y los marcadores, sin panel
 OG_VIEW = "document.querySelector('#streets').click(),__look(-40,230,5.5)"
-HIDE = "for(const s of ['#panel','.ctrls','#readout','#scale','#card'])for(const e of document.querySelectorAll(s))e.style.display='none'"
+HIDE = "for(const s of ['#panel','.ctrls','#more','#scale','#card'])for(const e of document.querySelectorAll(s))e.style.display='none'"
 
 async def og(p):
     b, pg, logs = await open_page(p, '1200x630')

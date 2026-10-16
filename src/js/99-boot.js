@@ -10,7 +10,6 @@ function loop(now){
   if(dirty){const t0=performance.now();ART=PA?paFit(PA):wpp()/DPR;setLod(ART);stripLod(cam);renderer.shadowMap.needsUpdate=shDirty;shDirty=false;
     if(PA){paRender(moving);paLite=moving&&PA.ol>1&&PA.crease==='normals';}else renderer.render(scene,cam);layout();dirty=false;if(tr)trainFrame(now,performance.now()-t0);
     if(!LOAD.frame){LOAD.frame=Math.round(performance.now());LOAD.frameMs=Math.round(LOAD.frame-t0);requestAnimationFrame(t=>{LOAD.shown=Math.round(performance.now());});}}
-  updateReadout();
   requestAnimationFrame(loop);
 }
 // startup times, ms since navigation start (__stats.load): the script runs, the generation starts (boot), the first
@@ -141,7 +140,7 @@ function boot(){
     window.__pads=PADS; // the landmark pads [x0,y0,x1,y1,h], for pipeline/traces.py check --pads
     $('#loading').style.opacity=0;setTimeout(()=>$('#loading').hidden=true,500);
     requestAnimationFrame(loop);
-    if(STAGE)$('#ro-more').hidden=false;
+    if(STAGE)$('#more').hidden=false;
     // the rest: the same work, outside the box, into builders of its own
     const B2=new GB(1<<19),S2=new GB(1<<15),Y2=new GB(1<<18),Z2=new GB(1<<17),UG2=new GB(1<<16),G2=new GB(1<<20),W2=new GB(1<<14),CH=400;
     // the first view's meshes leave the scene (and CASTERS, LODS, STRIPS); own: their materials go too (trees, cars)
@@ -171,7 +170,7 @@ function boot(){
       trees.length=cars.length=0;trees.push(...fin.t);cars.push(fin.c);
       addMeshes([fin.g,fin.w,fin.u,fin.y].filter(Boolean),[fin.z,fin.c,...fin.t,fin.b,fin.s,fin.d]);lodFar=null;return C;}
     setTimeout(()=>sliced(rest(),(ms,C)=>{TT.rest=ms;
-      lampPts=lamps();lampPts.visible=night;scene.add(lampPts);STAGE=null;$('#ro-more').hidden=true;shDirty=dirty=true;
+      lampPts=lamps();lampPts.visible=night;scene.add(lampPts);STAGE=null;$('#more').hidden=true;shDirty=dirty=true;
       LOAD.full=Math.round(performance.now());
       const sum=a=>a.reduce((s,v)=>s+v,0);CITY.zVerts=sum(zv);
       window.__stats={buildings:nb,lots:LOTS.length,verts:sum(bv),yards:sum(yv),ground:sum(gnd),street:STREET,trees:C.round.length,poplars:C.poplar.length,ms:Math.round(performance.now()-t0),t:TT};

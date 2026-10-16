@@ -26,7 +26,7 @@ function renderCard(p){
     <p>${esc(p.d)}</p>
     ${p.sub?`<ul class="sub">${p.sub.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`:''}
     ${p.f?`<div class="fact">${esc(p.f)}</div>`:''}
-    <div class="meta"><span class="conf ${p.conf}">Ubicación ${p.conf}</span><span class="src">${p.src.map(s=>`<a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join('')}</span></div>
+    <div class="meta"><span class="src">${p.src.map(s=>`<a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join('')}</span></div>
     <div class="actions"><button class="btn ghost" id="cz">Acercar</button><a class="btn ghost" href="${osm}" target="_blank" rel="noopener">Ver en OpenStreetMap</a></div>
     <a class="report" href="${issue}" target="_blank" rel="noopener">Reportar un error en este lugar</a>
     ${tn}</div>`;

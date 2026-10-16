@@ -1,6 +1,6 @@
 /* =============== terrain =============== */
 // DATA.elev: nodes every ES m, real heights in dm relative to the plaza (pipeline/elevation.py).
-// ER keeps the real relief (altitude readout). EH is the model's relief: ~3× on the plain, less on the hills
+// ER keeps the real relief (vegetation, slopes). EH is the model's relief: ~3× on the plain, less on the hills
 // (relief()), with flat pads under the landmarks. The whole scene stands on EH through E(x,y).
 const EV=DATA.elev,[EX0,EY0]=EV.o,ES=EV.s,[ENX,ENY]=EV.n,EN_=ENX*ENY;
 const ER=new Float32Array(EN_),EH=new Float32Array(EN_);

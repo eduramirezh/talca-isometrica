@@ -15,7 +15,7 @@ function placeCam(){
   const h=BASEH/view.zoom, a=W/H;cam.left=-h*a/2;cam.right=h*a/2;cam.top=h/2;cam.bottom=-h/2;
   const D=8000;cam.position.set(view.tx+Math.sin(view.az)*Math.cos(EL)*D,Math.sin(EL)*D,-view.ty+Math.cos(view.az)*Math.cos(EL)*D);
   cam.up.set(0,1,0);cam.lookAt(view.tx,0,-view.ty);cam.updateProjectionMatrix();cam.updateMatrixWorld();
-  readoutDirty=true;camT=performance.now();camMoved=true;
+  camT=performance.now();camMoved=true;
   const ppm=H/h; uni.uWin.value=Math.max(0,Math.min(1,(ppm-1.2)/1.6));
   fitShadow();dirty=true;
 }
@@ -61,7 +61,7 @@ function pan(dx,dy){const R=new T.Vector3().setFromMatrixColumn(cam.matrixWorld,
 function clampView(){view.tx=Math.max(XMIN,Math.min(XMAX,view.tx));view.ty=Math.max(YMIN,Math.min(YMAX,view.ty));view.zoom=Math.max(0.12,Math.min(26,view.zoom));}
 const ray=new T.Raycaster(),plane=new T.Plane(new T.Vector3(0,1,0),0);
 // the camera aims at the y=0 plane; planeAt() is where a screen point meets it (zoom anchoring, which only needs
-// a stable reference), ground() is where it meets the terrain (readout, rotation centre)
+// a stable reference), ground() is where it meets the terrain (rotation centre)
 function planeAt(px,py){const v=new T.Vector2(px/W*2-1,-(py/H)*2+1);ray.setFromCamera(v,cam);const o=new T.Vector3();return ray.ray.intersectPlane(plane,o)?[o.x,-o.z]:null;}
 let EHI=0,ELO=0,cerroMesh=null;
 function ground(px,py){const v=new T.Vector2(px/W*2-1,-(py/H)*2+1);ray.setFromCamera(v,cam);const o=ray.ray.origin,d=ray.ray.direction;if(d.y>=0)return null;
@@ -74,10 +74,10 @@ function lift(x,y,az=view.az){const h=E(x,y)/Math.tan(EL);return [x-Math.sin(az)
 function zoomAt(f,px,py){const g0=px!=null?planeAt(px,py):null;view.zoom*=f;clampView();placeCam();if(g0){const g1=planeAt(px,py);if(g1){view.tx+=g0[0]-g1[0];view.ty+=g0[1]-g1[1];clampView();placeCam();}}}
 let anim=null;
 function ease(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
-function framed(x,y,z){ // shift target so (x,y) lands in the free area between panel and card (mobile: between readout and card)
+function framed(x,y,z){ // shift target so (x,y) lands in the free area between panel and card (mobile: between the title and card)
   const mob=matchMedia('(max-width:760px)').matches;const h=BASEH/z;const k=h/H;
   let ox=0,oy=0;
-  if(mob){const top=$('#readout').getBoundingClientRect().bottom,bot=card.hidden?$('#panel').getBoundingClientRect().top:card.getBoundingClientRect().top;
+  if(mob){const top=$('.brand').getBoundingClientRect().bottom,bot=card.hidden?$('#panel').getBoundingClientRect().top:card.getBoundingClientRect().top;
     oy=(bot-top>60?(top+bot)/2:top+30)-H/2;}
   else{const pan=$('#panel');const L=pan.classList.contains('folded')?0:pan.getBoundingClientRect().right;const Rr=W-450;ox=(L+Rr)/2-W/2;}
   const c=Math.cos(view.az),s=Math.sin(view.az);
@@ -98,8 +98,8 @@ function flyTo(x,y,z,az){const s={tx:view.tx,ty:view.ty,zoom:view.zoom,az:view.a
 /* =============== input =============== */
 const ptrs=new Map();let lastPinch=0,moved=0;
 canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);moved=0;anim=null;canvas.classList.add('drag');if(ptrs.size===2){const [a,b]=[...ptrs.values()];lastPinch=Math.hypot(a[0]-b[0],a[1]-b[1]);}});
-canvas.addEventListener('pointermove',e=>{const rect=canvas.getBoundingClientRect();hoverPt=[e.clientX-rect.left,e.clientY-rect.top];readoutDirty=true;
-  if(!ptrs.has(e.pointerId))return;const p=ptrs.get(e.pointerId);const dx=e.clientX-p[0],dy=e.clientY-p[1];ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+canvas.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;const rect=canvas.getBoundingClientRect();
+  const p=ptrs.get(e.pointerId);const dx=e.clientX-p[0],dy=e.clientY-p[1];ptrs.set(e.pointerId,[e.clientX,e.clientY]);
   if(ptrs.size===1){pan(dx,dy);moved+=Math.abs(dx)+Math.abs(dy);}
   else if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(lastPinch){zoomAt(d/lastPinch,(a[0]+b[0])/2-rect.left,(a[1]+b[1])/2-rect.top);}lastPinch=d;moved+=10;}});
 const up=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)lastPinch=0;if(!ptrs.size)canvas.classList.remove('drag');};

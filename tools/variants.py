@@ -20,7 +20,7 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 from screenshot import open_page
 
-HIDE = '#panel,#card,#readout,#scale,.ctrls{display:none!important}'
+HIDE = '#panel,#card,#more,#scale,.ctrls{display:none!important}'
 
 def diff_tile(a, b, name):
     """The pixels where b differs from a (a channel by more than 8), in magenta over a in grey; prints their share."""

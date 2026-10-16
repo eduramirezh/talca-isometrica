@@ -1,6 +1,6 @@
 :root{
   --paper:#F3F4EF; --paper-2:#E8EAE2; --ink:#1F2A44; --ink-2:#4A5470; --ink-3:#7A8196;
-  --rule:#CDD1C6; --wine:#7A1F3D; --wine-soft:#F1DDE3; --green:#2F6F62; --focus:#2E5E8C;
+  --rule:#CDD1C6; --wine:#7A1F3D; --wine-soft:#F1DDE3; --focus:#2E5E8C;
   --stage-a:#DCDFD2; --stage-b:#C9CDBE; --shadow:0 1px 2px rgba(31,42,68,.10),0 8px 28px rgba(31,42,68,.14);
   --c-tribunales:#7A1F3D; --c-fiscalia:#B4532A; --c-notarial:#8A6D12; --c-academia:#2E5E8C;
   --c-gobierno:#5E4B8B; --c-penitenciario:#505A66; --c-historia:#1F2A44; --c-ciudad:#2F6F62;
@@ -13,7 +13,7 @@
   :root:not([data-theme="light"]){
     color-scheme:dark;
     --paper:#161A24; --paper-2:#1F2431; --ink:#E7E5DC; --ink-2:#B9BBC4; --ink-3:#8A8E9C;
-    --rule:#2E3444; --wine:#E07A98; --wine-soft:#3A2230; --green:#6FC0AC; --focus:#8FB6E0;
+    --rule:#2E3444; --wine:#E07A98; --wine-soft:#3A2230; --focus:#8FB6E0;
     --stage-a:#1B2030; --stage-b:#10131C; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
     --c-historia:#3B4A74; --pin-ring:#E9E7DE;
   }
@@ -21,7 +21,7 @@
 :root[data-theme="dark"]{
   color-scheme:dark;
   --paper:#161A24; --paper-2:#1F2431; --ink:#E7E5DC; --ink-2:#B9BBC4; --ink-3:#8A8E9C;
-  --rule:#2E3444; --wine:#E07A98; --wine-soft:#3A2230; --green:#6FC0AC; --focus:#8FB6E0;
+  --rule:#2E3444; --wine:#E07A98; --wine-soft:#3A2230; --focus:#8FB6E0;
   --stage-a:#1B2030; --stage-b:#10131C; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
   --c-historia:#3B4A74; --pin-ring:#E9E7DE;
 }
@@ -114,8 +114,6 @@ button{font:inherit;color:inherit}
 #card .fact{border-left:3px solid var(--cc);padding:4px 0 4px 10px;font-size:14px;color:var(--ink-2)}
 #card .sub{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2)}
 #card .meta{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;color:var(--ink-3);align-items:center}
-.conf{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;border-radius:3px;padding:2px 6px;border:1px solid currentColor}
-.conf.alta{color:var(--green)} .conf.media{color:var(--c-notarial)} .conf.baja{color:var(--c-fiscalia)}
 #card .src{font-size:12.5px;display:flex;flex-wrap:wrap;gap:4px 10px}
 #card .actions{display:flex;gap:8px;flex-wrap:wrap}
 #card a.report{font-size:13px;color:var(--ink-3);justify-self:start}
@@ -132,10 +130,8 @@ button{font:inherit;color:inherit}
 .ctrls hr{border:0;height:4px;margin:0}
 #compass{width:42px;height:42px;border-radius:50%!important}
 #compass svg{transition:transform .5s}
-#readout{position:absolute;z-index:5;left:372px;bottom:16px;background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:7px 12px 8px;box-shadow:0 1px 3px rgba(0,0,0,.12);min-width:250px;pointer-events:none}
-#readout .a{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
-#readout .b{font-family:var(--mono);font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
-#readout .c{font-family:var(--mono);font-size:11px;color:var(--ink-3);font-style:italic}
+#more{position:absolute;z-index:5;left:372px;bottom:16px;background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:5px 10px;box-shadow:0 1px 3px rgba(0,0,0,.12);pointer-events:none;font-family:var(--mono);font-size:11px;color:var(--ink-3);font-style:italic}
+#more[hidden]{display:none}
 #scale{position:absolute;z-index:5;right:16px;bottom:16px;font-family:var(--mono);font-size:11px;color:var(--ink-2);display:flex;flex-direction:column;align-items:flex-end;gap:3px;pointer-events:none}
 #scale i{display:block;height:6px;border:1.5px solid var(--ink-2);border-top:0}
 #loading{position:absolute;inset:0;z-index:20;display:grid;place-items:center;background:var(--paper);transition:opacity .5s}
@@ -155,9 +151,7 @@ button{font:inherit;color:inherit}
   #panel.folded .pane{display:none!important}
   #card{left:16px;right:16px;width:auto;top:auto;bottom:calc(46% + 10px);max-height:44%}
   #panel.folded ~ #card{bottom:58px}
-  #readout{left:16px;right:auto;bottom:auto;top:84px;min-width:0;padding:5px 9px}
-  #readout .a{font-size:13px}
-  #readout .b{display:none}
+  #more{left:16px;bottom:auto;top:84px}
   #scale{display:none}
   .ctrls{top:84px;right:16px}
   .ctrls button{width:38px;height:38px}
