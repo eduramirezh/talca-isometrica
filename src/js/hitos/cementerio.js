@@ -12,7 +12,7 @@
   // w925249831, the 21 m square the plaza fills): a round plaza with a stone wall and steps, a ring of red pillars and
   // the four tall columns with copper plaques in the middle, from the photos by StefiValenzuela (Commons, 2019-09-25,
   // CC BY-SA 4.0: Frontis, Memorial, Plazoleta, Estructuras de piedra… en Memorial de Detenidos Desaparecidos y Ejecutados
-  // de Talca). Approximate: every grave (a field of identical rows, not the real tombs: ~2 m × 1 m, in two heights and a few
+  // de Talca). The big white vault at u 72..80, v -156..-144 takes the look of the Regimiento de Infantería 16's mausoleum of 1903 (pyramid tower with a cross, a door between two columns; File:Mausoleo Regimiento de Infanteria.jpg, Commons 2019, CC BY-SA 4.0, Gonzalo Orellana Hidalgo); where the real one stands is unknown. Approximate: every grave (a field of identical rows, not the real tombs: ~2 m × 1 m, in two heights and a few
   // gabled vaults), the number and place of the mausoleums and trees (read from the imagery), the heights (no dated photo
   // of the interior), the roofs' colours, the pavilion and the dome (only seen from above), the yard's sheds and the
   // rubble. No lights: nothing says the cemetery is lit.
@@ -103,7 +103,13 @@
     for(const [u0,u1] of [[-111,-105],[-102.5,-96.5],[-89,-81],[-79,-71],[-70,-62]])maus(u0,-160,u1,-143,K.white2,K.tile2);
     for(const [u0,u1] of [[65,72],[74,81],[82,88],[90,95.5]])maus(u0,-136,u1,-115,K.white2,K.tile);
     {const q=R(36,-157,50,-144);S.dy=groundMin(q);S.gable(q,.3,3.4,1.6,K.white2,K.tile2);ob(35,-158,51,-143);}
-    {const q=R(72,-156,80,-144);S.dy=groundMin(q);S.prism(q,.3,3.6,K.white2,K.white);ob(71,-157,81,-143);}
+    // a white mausoleum with a pyramid-roofed tower, a cross and a door between two columns, as the Regimiento de Infantería 16's
+    // of 1903 in the cemetery (File:Mausoleo Regimiento de Infanteria.jpg, Commons 2019, CC BY-SA 4.0, Gonzalo Orellana Hidalgo);
+    // where that one stands is unknown: it takes the place of the big white vault seen on the imagery
+    {const q=R(72,-156,80,-144);S.dy=groundMin(q);S.prism(q,.3,4.2,K.white,K.white);box(72.4,-156,79.6,-144.4,4.2,4.5,K.white2,K.white);
+      box(73.6,-150,78.4,-145.2,4.5,6.4,K.white,K.white,false);pyramid(S,R(73.3,-150.3,78.7,-144.9),6.4,2.4,K.white2);
+      box(75.7,-147.9,76.3,-147.3,8.8,10.8,K.white,K.white);box(75.1,-147.9,76.9,-147.3,9.7,10.3,K.white,K.white);
+      const w=WV(-144,1,.06);rect(w,75,77,.3,3.2,K.dark);for(const c of [74.4,77.6])box(c-.35,-143.9,c+.35,-143.2,.3,3.4,K.white,K.white);ob(71,-157,81,-142);}
     // the dense field's frame: rows of graves along u. A run of up to five graves is one prism, each with its own top
     const tomb=(u0,v0,u1,v1,seed,pv,dens)=>{const r=rng(seed),pu=1.5,tw=1.1,tl=2.3;let row=0;
       for(let v=v0;v+tl<=v1;v+=pv,row++){const h=row%2?.6:.85;let run=[],u=u0;
