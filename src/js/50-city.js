@@ -13,8 +13,9 @@ function styleFor(bi){
 // strip between neighbours or let two lots overlap, and two slabs at the same height flicker. occ marks them with 2,
 // which lotFits skips: there the raster only stands for what was there before (landmarks, rivers, the Ruta 5, the rail).
 const LG=40,lgW=Math.ceil((XMAX-XMIN)/LG),LOTS=[],lgrid=new Map(),lseen=[];let lstamp=0;
-function sepQuad(A,B){for(const P of [A,B])for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],nx=b[1]-a[1],ny=a[0]-b[0],L=Math.hypot(nx,ny)||1;
-    let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9;for(const p of A){const d=(p[0]*nx+p[1]*ny)/L;if(d<a0)a0=d;if(d>a1)a1=d;}for(const p of B){const d=(p[0]*nx+p[1]*ny)/L;if(d<b0)b0=d;if(d>b1)b1=d;}
+function sepQuad(A,B){return sepAxes(A,A,B)||sepAxes(B,A,B);}
+function sepAxes(P,A,B){for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],nx=b[1]-a[1],ny=a[0]-b[0],L=Math.hypot(nx,ny)||1;
+    let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9;for(let j=0;j<A.length;j++){const p=A[j],d=(p[0]*nx+p[1]*ny)/L;if(d<a0)a0=d;if(d>a1)a1=d;}for(let j=0;j<B.length;j++){const p=B[j],d=(p[0]*nx+p[1]*ny)/L;if(d<b0)b0=d;if(d>b1)b1=d;}
     if(a1<=b0+.05||b1<=a0+.05)return true;}return false;}
 function lotCells(q,f){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
   for(let gx=Math.floor((x0-XMIN)/LG);gx<=Math.floor((x1-XMIN)/LG);gx++)for(let gy=Math.floor((y0-YMIN)/LG);gy<=Math.floor((y1-YMIN)/LG);gy++)if(f(gy*lgW+gx)===false)return false;return true;}
@@ -164,7 +165,7 @@ function cityGen(B,Y){
         while(u<L-5){
           const pr=P(u+3,hw+7);
           const bi=blockAt(pr[0],pr[1]);
-          if(bi<0||!blocks[bi].built||NOLOTS.some(q=>pip(pr,q))){u+=5;continue;}
+          if(bi<0||!blocks[bi].built||NOLOTS.some(q=>inRing(pr[0],pr[1],q))){u+=5;continue;}
           const R=recipeOf(bi),H=R.h;let st=styleFor(bi);
           if(st==='house'&&R.ind&&r()<R.ind)st='ind'; // the large, nearly empty blocks of the outskirts: sheds among the houses
           let w,d,sb,gap,fl,kind,yd=0,front=false,shop=false;
@@ -187,13 +188,13 @@ function cityGen(B,Y){
           if(u+w>L-1.5){w=L-1.5-u;if(w<6)break;if(kind==='pair'&&w<1.6*H.wu)kind='gable';}
           const o0=hw+sb,wl=Math.min(w+(yd?gap:0),L-1.5-u);
           // where the block ends straight behind the lot: the yards of both sides reach its middle and meet there
-          const back=()=>{let v=o0;for(;v<o0+120;v+=3){const p=P(u+w/2,v+3);if(blockAt(p[0],p[1])!==bi)break;}return (hw+v)/2;};
+          const back=()=>{let v=o0;for(;v<o0+120;v+=3){const p=P(u+w/2,v+3);if(!blockIs(p[0],p[1],bi))break;}return (hw+v)/2;};
           // a rectangle free of other lots, of what occupied the raster before, of streets, and inside block bi
           const fits=(u0,u1,v0,v1)=>{const q=Q(u0,u1,v0,v1);if(!q.every(p=>inTerrain(p[0],p[1]))||!lotFree(q))return false;
             const nu=Math.max(1,Math.ceil((u1-u0)/2.5)),nv=Math.max(1,Math.ceil((v1-v0)/2.5));
             for(let i=0;i<=nu;i++)for(let j=0;j<=nv;j++){const p=P(u0+(u1-u0)*i/nu,v0+(v1-v0)*j/nv);if(occAt(p[0],p[1])===1)return false;
               if((i===0||j===0||i===nu||j===nv)&&nearStreet(p[0],p[1],0.6))return false;}
-            for(const p of [P(u0,v1),P(u1,v1),P((u0+u1)/2,(v0+v1)/2)])if(blockAt(p[0],p[1])!==bi)return false;
+            for(const p of [P(u0,v1),P(u1,v1),P((u0+u1)/2,(v0+v1)/2)])if(!blockIs(p[0],p[1],bi))return false;
             return true;};
           let ok=false;
           for(const dd of [d,d*.65]){

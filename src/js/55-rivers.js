@@ -12,7 +12,7 @@ function ribbon(B,pts,w,y,col,joins=true){
 // bridges cross it. Water and the gravel strip on every shore share 0.11 (blocks 0.10, streets from 0.12) and never
 // overlap: the strip runs just outside the water. A 7 mm step under the water flickers (the depth buffer spans
 // ±30 km). All the rivers' water is one mesh (riverWater).
-const inRiver=(k,x,y)=>!!RIV[k]&&RIV[k].some(p=>pip([x,y],p[0])&&!p.slice(1).some(r=>pip([x,y],r)));
+const inRiver=(k,x,y)=>!!RIV[k]&&RIV[k].some(p=>inRing(x,y,p[0])&&!p.slice(1).some(r=>inRing(x,y,r)));
 const inClaro=(x,y)=>inRiver('claro',x,y);
 const _runs={};
 // the river's lines, smoothed: its axis and its side branches (DATA.branch: the Piduco Norte)
@@ -66,9 +66,11 @@ function riversLevel(){const ks=Object.keys(RIV);if(!ks.length)return;const ch=n
   // the nodes inside each area's outer ring, or within w/2 of the ribbon, each tested only within its box
   const nodes=(x0,y0,x1,y1,f)=>{for(let j=Math.max(0,Math.ceil((y0-EY0)/ES));j<=Math.min(ENY-1,Math.floor((y1-EY0)/ES));j++)
     for(let i=Math.max(0,Math.ceil((x0-EX0)/ES));i<=Math.min(ENX-1,Math.floor((x1-EX0)/ES));i++)if(f(EX0+i*ES,EY0+j*ES))ch[j*ENX+i]=1;};
+  const xs=[];
   for(const k of ks){const [w]=DATA.widths[k];
     for(const [o] of RIV[k]){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of o){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
-      nodes(x0,y0,x1,y1,(x,y)=>pip([x,y],o));}
+      for(let j=Math.max(0,Math.ceil((y0-EY0)/ES));j<=Math.min(ENY-1,Math.floor((y1-EY0)/ES));j++){pipRow(o,EY0+j*ES,xs);if(!xs.length)continue;let n=0; // pipXY, a row at a time
+        for(let i=Math.max(0,Math.ceil((x0-EX0)/ES));i<=Math.min(ENX-1,Math.floor((x1-EX0)/ES));i++){const x=EX0+i*ES;while(n<xs.length&&xs[n]<=x)n++;if((xs.length-n)&1)ch[j*ENX+i]=1;}}}
     for(const run of riverRuns(k))for(let i=0;i<run.length-1;i++){const a=run[i],b=run[i+1],r=w/2;
       nodes(Math.min(a[0],b[0])-r,Math.min(a[1],b[1])-r,Math.max(a[0],b[0])+r,Math.max(a[1],b[1])+r,(x,y)=>segDist2(x,y,a[0],a[1],b[0],b[1])<r*r);}}
   for(let j=0;j<ENY;j++)for(let i=0;i<ENX;i++){const k=j*ENX+i;if(!ch[k])continue;let s=0,n=0;

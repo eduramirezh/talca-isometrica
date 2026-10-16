@@ -6,7 +6,11 @@ blocks.forEach((b,i)=>{for(let gx=Math.max(0,Math.floor((b.bb[0]-XMIN)/BG));gx<=
 const URB=new Uint8Array(bgW*bgH);
 blocks.forEach(b=>{if(!b.built)return;for(let gx=Math.max(0,Math.floor((b.bb[0]-XMIN)/BG)-1);gx<=Math.min(bgW-1,Math.floor((b.bb[2]-XMIN)/BG)+1);gx++)for(let gy=Math.max(0,Math.floor((b.bb[1]-YMIN)/BG)-1);gy<=Math.min(bgH-1,Math.floor((b.bb[3]-YMIN)/BG)+1);gy++)URB[gy*bgW+gx]=1;});
 const urbanAt=(x,y)=>{const gx=Math.floor((x-XMIN)/BG),gy=Math.floor((y-YMIN)/BG);return gx>=0&&gy>=0&&gx<bgW&&gy<bgH&&URB[gy*bgW+gx]===1;};
-function blockAt(x,y){const gx=Math.floor((x-XMIN)/BG),gy=Math.floor((y-YMIN)/BG);if(gx<0||gy<0||gx>=bgW||gy>=bgH)return -1;for(const i of bgrid[gy*bgW+gx]){const b=blocks[i];if(x<b.bb[0]||x>b.bb[2]||y<b.bb[1]||y>b.bb[3])continue;if(pip([x,y],b.r))return i;}return -1;}
+function blockAt(x,y){const gx=Math.floor((x-XMIN)/BG),gy=Math.floor((y-YMIN)/BG);if(gx<0||gy<0||gx>=bgW||gy>=bgH)return -1;for(const i of bgrid[gy*bgW+gx]){const b=blocks[i];if(x<b.bb[0]||x>b.bb[2]||y<b.bb[1]||y>b.bb[3])continue;if(pipXY(x,y,b.r))return i;}return -1;}
+// blockIs(x, y, bi): blockAt(x, y) === bi, testing bi first (the city asks it of points that are mostly in bi)
+function blockIs(x,y,bi){const b=blocks[bi];if(x<b.bb[0]||x>b.bb[2]||y<b.bb[1]||y>b.bb[3]||!pipXY(x,y,b.r))return false;
+  const gx=Math.floor((x-XMIN)/BG),gy=Math.floor((y-YMIN)/BG);if(gx<0||gy<0||gx>=bgW||gy>=bgH)return false;
+  for(const i of bgrid[gy*bgW+gx]){if(i===bi)return true;const c=blocks[i];if(x<c.bb[0]||x>c.bb[2]||y<c.bb[1]||y>c.bb[3])continue;if(pipXY(x,y,c.r))return false;}return false;}
 const SG=40, sgW=Math.ceil((XMAX-XMIN)/SG), sgH=Math.ceil((YMAX-YMIN)/SG);
 const NOSEG=[],sgrid=new Array(sgW*sgH).fill(NOSEG); // most cells of the commune have no street: they share one empty list
 const segs=[]; // [ax,ay,bx,by,hw,street index,point index]
@@ -28,7 +32,10 @@ const occ=new Grid();
 const occAt=(x,y)=>{const gx=Math.floor((x-XMIN)/OC),gy=Math.floor((y-YMIN)/OC);return (gx<0||gy<0||gx>=ocW||gy>=ocH)?1:occ.get(gx,gy);};
 function occMark(q,v=1){ // q: 4 corners [[x,y]..]; v=2: a lot of cityGen (lotFits skips those cells)
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
-  for(let gx=Math.floor((x0-XMIN)/OC);gx<=Math.floor((x1-XMIN)/OC);gx++)for(let gy=Math.floor((y0-YMIN)/OC);gy<=Math.floor((y1-YMIN)/OC);gy++){
-    if(gx<0||gy<0||gx>=ocW||gy>=ocH)continue;const cx=XMIN+(gx+.5)*OC,cy=YMIN+(gy+.5)*OC;if(pip([cx,cy],q)&&(v===1||!occ.get(gx,gy)))occ.set(gx,gy,v);}}
+  const xs=OM_XS; // the cells whose centre is in q (pip), a row at a time (pipRow)
+  for(let gy=Math.max(0,Math.floor((y0-YMIN)/OC));gy<=Math.min(ocH-1,Math.floor((y1-YMIN)/OC));gy++){pipRow(q,YMIN+(gy+.5)*OC,xs);if(!xs.length)continue;let n=0;
+    for(let gx=Math.max(0,Math.floor((x0-XMIN)/OC));gx<=Math.min(ocW-1,Math.floor((x1-XMIN)/OC));gx++){const cx=XMIN+(gx+.5)*OC;while(n<xs.length&&xs[n]<=cx)n++;
+      if((xs.length-n)&1&&(v===1||!occ.get(gx,gy)))occ.set(gx,gy,v);}}}
+const OM_XS=[];
 function rectOcc(cx,cy,w,d){const q=[[cx-w/2,cy-d/2],[cx+w/2,cy-d/2],[cx+w/2,cy+d/2],[cx-w/2,cy+d/2]];occMark(q);}
 

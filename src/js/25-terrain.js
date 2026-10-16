@@ -76,8 +76,8 @@ function terrainNormals(){for(let j=0;j<ENY;j++)for(let i=0;i<ENX;i++){
   ENRM[k]=-hx/L;ENRM[k+1]=1/L;ENRM[k+2]=hy/L;}} // surface Y=h(x,-Z): normal (-hx, 1, hy)
 const _n=[0,0,0];
 function EN(x,y){let u=(x-EX0)/ES,v=(y-EY0)/ES;u=u<0?0:u>ENX-1.0001?ENX-1.0001:u;v=v<0?0:v>ENY-1.0001?ENY-1.0001:v;
-  const i=Math.floor(u),j=Math.floor(v);u-=i;v-=j;const k=(j*ENX+i)*3,w=[(1-u)*(1-v),u*(1-v),(1-u)*v,u*v],o=[0,3,ENX*3,ENX*3+3];
-  let a=0,b=0,c=0;for(let q=0;q<4;q++){a+=ENRM[k+o[q]]*w[q];b+=ENRM[k+o[q]+1]*w[q];c+=ENRM[k+o[q]+2]*w[q];}
+  const i=Math.floor(u),j=Math.floor(v);u-=i;v-=j;const k=(j*ENX+i)*3,k2=k+ENX*3,w0=(1-u)*(1-v),w1=u*(1-v),w2=(1-u)*v,w3=u*v; // the 4 nodes, in this order (same sums)
+  const a=ENRM[k]*w0+ENRM[k+3]*w1+ENRM[k2]*w2+ENRM[k2+3]*w3,b=ENRM[k+1]*w0+ENRM[k+4]*w1+ENRM[k2+1]*w2+ENRM[k2+4]*w3,c=ENRM[k+2]*w0+ENRM[k+5]*w1+ENRM[k2+2]*w2+ENRM[k2+5]*w3;
   const L=Math.hypot(a,b,c);_n[0]=a/L;_n[1]=b/L;_n[2]=c/L;return _n;}
 // land cover: real slope above ~6 % is scrub and wood, not farmland (the hills west of the Río Claro, the river scarps)
 const EW=new Float32Array(EN_);

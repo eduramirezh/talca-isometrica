@@ -160,16 +160,21 @@ GB.prototype.onGround=function(q,off,col){
 // E(), stays coplanar with it: the layer offsets of a few centimetres keep working on any slope. A piece in a cell
 // outside the commune is dropped (rivers and roads that run past the diorama's edge), and one in a cell the limit
 // crosses is cut to the commune's part of the cell (LIMT).
-const CUTS=[p=>(p[0]-EX0)/ES,p=>(p[1]-EY0)/ES,p=>(p[0]-EX0+p[1]-EY0)/ES];
 function cutAt(q,f,k){const A=[],B=[];for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length],fp=f(p),fr=f(r);
     if(fp<=k)A.push(p);if(fp>=k)B.push(p);
     if((fp<k&&fr>k)||(fp>k&&fr<k)){const t=(k-fp)/(fr-fp),m=[p[0]+(r[0]-p[0])*t,p[1]+(r[1]-p[1])*t];A.push(m);B.push(m);}}
   return [A,B];}
+// the three cuts of drapeQ: x, y and the diagonal lines of the terrain mesh, in node units (cut 0, 1, 2)
+const cutF=(c,p)=>c===0?(p[0]-EX0)/ES:c===1?(p[1]-EY0)/ES:(p[0]-EX0+p[1]-EY0)/ES;
+// cutAt for cut c, with its values at q's points in fq (cutF), into A and B: q's part below k and above it
+function cutAtF(q,fq,c,k,A,B){for(let i=0;i<q.length;i++){const i1=i+1<q.length?i+1:0,p=q[i],r=q[i1],fp=fq[i],fr=fq[i1];
+    if(fp<=k)A.push(p);if(fp>=k)B.push(p);
+    if((fp<k&&fr>k)||(fp>k&&fr<k)){const t=(k-fp)/(fr-fp),m=[p[0]+(r[0]-p[0])*t,p[1]+(r[1]-p[1])*t];A.push(m);B.push(m);}}}
 // drapeQ(G, q, off, col): one convex polygon q (grid metres, counter-clockwise), cut the same way, into G
 function drapeQ(G,q,off,col){let polys=[q];
-  for(const f of CUTS){const nxt=[];
-    for(let q of polys){let lo=1e9,hi=-1e9;for(const p of q){const v=f(p);if(v<lo)lo=v;if(v>hi)hi=v;}
-      for(let k=Math.floor(lo)+1;k<hi;k++){const [A,B]=cutAt(q,f,k);if(A.length>2)nxt.push(A);q=B;}
+  for(let c=0;c<3;c++){const nxt=[];
+    for(let q of polys){let lo=1e9,hi=-1e9;for(const p of q){const v=cutF(c,p);if(v<lo)lo=v;if(v>hi)hi=v;}
+      for(let k=Math.floor(lo)+1;k<hi;k++){const fq=q.map(p=>cutF(c,p)),A=[],B=[];cutAtF(q,fq,c,k,A,B);if(A.length>2)nxt.push(A);q=B;}
       if(q.length>2)nxt.push(q);}
     polys=nxt;}
   for(const q of polys){let cx=0,cy=0;for(const p of q){cx+=p[0];cy+=p[1];}
