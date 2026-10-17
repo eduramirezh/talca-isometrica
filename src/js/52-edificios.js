@@ -185,8 +185,15 @@ function edRaster(Y,bk,bb){const C=1,FRONT=3.2,{bi,mix,surf}=bk,xs=ED_XS,eds=bk.
   const HN=NOLOTS.filter(q=>{const r=ringBox(q);return r[2]>=bx0&&r[0]<=bx1&&r[3]>=by0&&r[1]<=by1;}),UN=new Set();
   if(mix)for(let gx=Math.floor((bx0-XMIN)/BG);gx<=Math.floor((bx1-XMIN)/BG);gx++)for(let gy=Math.floor((by0-YMIN)/BG);gy<=Math.floor((by1-YMIN)/BG);gy++)
     for(const u of UGRID[gy*bgW+gx]||[])if(!u.skip&&u.k!=='parcelas')UN.add(u);
-  const inU=(x,y)=>{for(const u of UN)if(x>=u.bb[0]&&x<=u.bb[2]&&y>=u.bb[1]&&y<=u.bb[3]&&pipXY(x,y,u.r))return true;return false;};
-  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const c=j*nx+i;if(own[c]<=0)continue;const x=X0+(i+.5)*C,y=Y0+(j+.5)*C;if(occAt(x,y)===1||(HN.length&&HN.some(q=>inRing(x,y,q)))||(UN.size&&inU(x,y)))own[c]=-3;}
+  // a row at a time: the crossings of each ring that reaches the row (pipRow), with the box tests of inRing() for NOLOTS
+  // and of the land uses: the same answers as inRing() and pipXY() cell by cell, which took ~0.2 s of the startup
+  const RS=[...HN.map(q=>{const rb=ringBox(q);return [q,rb[0]-1,rb[1]-1,rb[2]+1,rb[3]+1,true];}),...[...UN].map(u=>[u.r,...u.bb,false])],
+    RX=RS.map(()=>[]),RK=new Int32Array(RS.length),on=[];
+  for(let j=0;j<ny;j++){const y=Y0+(j+.5)*C;on.length=0;
+    for(let n=0;n<RS.length;n++){const R=RS[n];if(R[5]?y>R[2]&&y<R[4]:y>=R[2]&&y<=R[4]){pipRow(R[0],y,RX[n]);if(RX[n].length){on.push(n);RK[n]=0;}}}
+    for(let i=0;i<nx;i++){const c=j*nx+i;if(own[c]<=0)continue;const x=X0+(i+.5)*C;if(occAt(x,y)===1){own[c]=-3;continue;}
+      for(const n of on){const R=RS[n],xs=RX[n];let k=RK[n];while(k<xs.length&&xs[k]<=x)k++;RK[n]=k; // x grows along the row
+        if((R[5]?x>R[1]&&x<R[3]:x>=R[1]&&x<=R[3])&&(xs.length-k)&1){own[c]=-3;break;}}}}
   surf.forEach((s,k)=>fill(s.r,10+k,v=>v>0||v===-2||v===-4));
   eds.forEach((e,k)=>fill(e.R[0],100+k,v=>v>0||v===-2||v===-4)); // under the building: its own patio colour (hidden, no seams at the walls)
   // breadth-first from the footprints: an open cell takes the patio of the nearest building
