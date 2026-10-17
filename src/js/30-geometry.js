@@ -67,27 +67,33 @@ class GB{
 const TILE=1000,TILE_N=64,STRIP=4,STRIPS=[]; // tile keys: (tx+TILE_N)*2*TILE_N+(tz+TILE_N), the box of the commune is ±25 km at most
 function dropArray(){this.array=null;}
 function free(g){for(const k in g.attributes)g.attributes[k].onUpload(dropArray);if(g.index)g.index.onUpload(dropArray);return g;}
+// The tiling of a layer is a generator that yields between tiles (tileGen, tiledPartsGen, instTiledGen): rest() runs
+// it in slices with yield* (a whole layer at once was a task of up to 255 ms, a jolt while the map moved); the first
+// stage drains it at once (drain). The same meshes either way
+const drain=g=>{let r;do r=g.next();while(!r.done);return r.value;};
 function tiled(src,mat,keep){
   const isGB=src instanceof GB,A=src.attributes;
-  const grp=tileCore([isGB?src:{P:A.position.array,N:A.normal.array,C:A.color.array,I:src.index.array,nv:A.position.array.length/3,ni:src.index.array.length}],null,null,mat);
+  const grp=drain(tileGen([isGB?src:{P:A.position.array,N:A.normal.array,C:A.color.array,I:src.index.array,nv:A.position.array.length/3,ni:src.index.array.length}],null,null,mat));
   if(isGB&&!keep)src.P=src.N=src.C=src.I=null; // (keep: boot tiles it again with the rest, tiledParts)
   return grp;}
 // tiledParts(gbs, mat): builders filled in two stages of the startup, tiled together with their triangles in the order
 // of their runs' keys (GB.grow), which is the order of a startup at once: the same meshes, triangle for triangle
-function tiledParts(gbs,mat){const runs=[];
+const tiledParts=(gbs,mat)=>drain(tiledPartsGen(gbs,mat));
+function* tiledPartsGen(gbs,mat){const runs=[];
   gbs.forEach((g,p)=>{const L=g.log||[];for(let r=0;r<L.length;r+=3){const t0=L[r+2]/3,t1=(r+5<L.length?L[r+5]:g.ni)/3;if(t1>t0)runs.push([L[r],p,t0,t1]);}});
   runs.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]);
   let n=0;for(const r of runs)n+=r[3]-r[2];const sp=new Uint8Array(n),st=new Int32Array(n);n=0;
-  for(const [,p,t0,t1] of runs)for(let t=t0;t<t1;t++){sp[n]=p;st[n++]=t;}
-  const grp=tileCore(gbs,sp,st,mat);for(const g of gbs)g.P=g.N=g.C=g.I=null;return grp;}
+  for(const [,p,t0,t1] of runs){for(let t=t0;t<t1;t++){sp[n]=p;st[n++]=t;}if(t1-t0>YIELD_T)yield;}
+  const grp=yield* tileGen(gbs,sp,st,mat);for(const g of gbs)g.P=g.N=g.C=g.I=null;return grp;}
 // the tiles of parts ({P, N, C, I, nv, ni}): their triangles in the order sp/sq (part, triangle), or those of the one
 // part in its order
-function tileCore(parts,sp,sq,mat){
+const YIELD_T=1<<16; // triangles between yields in the passes over a whole layer
+function* tileGen(parts,sp,sq,mat){
   const nt=sp?sp.length:parts[0].ni/3,np=parts.length,vo=new Int32Array(np+1);for(let p=0;p<np;p++)vo[p+1]=vo[p]+parts[p].nv;
   const P0=parts[0].P,N0=parts[0].N,C0=parts[0].C,nv=vo[np],norm=a=>!(a instanceof Float32Array);
   const NK=4*TILE_N*TILE_N,cnt=new Int32Array(NK),tid=new Int32Array(nt);
   for(let x=0;x<nt;x++){const Q=sp?parts[sp[x]]:parts[0],t=sp?sq[x]:x,P=Q.P,I=Q.I,a=I[3*t]*3,b=I[3*t+1]*3,c=I[3*t+2]*3;
-    const k=(Math.floor((P[a]+P[b]+P[c])/(3*TILE))+TILE_N)*2*TILE_N+Math.floor((P[a+2]+P[b+2]+P[c+2])/(3*TILE))+TILE_N;tid[x]=k;cnt[k]++;}
+    const k=(Math.floor((P[a]+P[b]+P[c])/(3*TILE))+TILE_N)*2*TILE_N+Math.floor((P[a+2]+P[b+2]+P[c+2])/(3*TILE))+TILE_N;tid[x]=k;cnt[k]++;if(x%YIELD_T===YIELD_T-1)yield;}
   const off=new Int32Array(NK+1);for(let k=0;k<NK;k++)off[k+1]=off[k]+cnt[k];
   const ord=new Int32Array(nt),at=off.slice(0,NK);for(let t=0;t<nt;t++)ord[at[tid[t]]++]=t;
   let mx=0;for(let k=0;k<NK;k++)if(cnt[k]>mx)mx=cnt[k];
@@ -121,7 +127,7 @@ function tileCore(parts,sp,sq,mat){
       SP.copyWithin(0,base*3,(base+m)*3);SN.copyWithin(0,base*3,(base+m)*3);SC.copyWithin(0,base*3,(base+m)*3);SI.copyWithin(0,s0,s0+o);base=0;}
     if(base)for(let i=si;i<si+o;i++)SI[i]+=base;
     st.push([si,o,sphere(base,base+m,x0,y0,z0,x1,y1,z1)]);sv=base+m;si+=o;
-    bx[0]=Math.min(bx[0],x0);bx[1]=Math.min(bx[1],y0);bx[2]=Math.min(bx[2],z0);bx[3]=Math.max(bx[3],x1);bx[4]=Math.max(bx[4],y1);bx[5]=Math.max(bx[5],z1);}
+    bx[0]=Math.min(bx[0],x0);bx[1]=Math.min(bx[1],y0);bx[2]=Math.min(bx[2],z0);bx[3]=Math.max(bx[3],x1);bx[4]=Math.max(bx[4],y1);bx[5]=Math.max(bx[5],z1);yield;}
   flush();
   return grp;}
 // before a frame: a strip entirely inside the camera's view replaces its tiles (Strips, above); __strips(false) keeps
@@ -139,10 +145,11 @@ window.__strips=on=>{stripsOn=on!==false;dirty=true;};
 // cheaper geometry for when the instances are a few pixels wide: each tile keeps both (userData.lod) and goes to LODS,
 // which setLod() switches.
 const LODS=[];
-function instTiled(geo,mat,list,set,far){
+const instTiled=(...a)=>drain(instTiledGen(...a));
+function* instTiledGen(geo,mat,list,set,far){
   const n=list.length,M=new Float32Array(n*16),Cl=new Float32Array(n*3),key=new Int32Array(n),m=new T.Matrix4(),col=new T.Color(),by=new Map();
-  list.forEach((it,i)=>{set(it,m,col);m.toArray(M,i*16);col.toArray(Cl,i*3);const e=m.elements;
-    key[i]=(Math.floor(e[12]/TILE)+TILE_N)*2*TILE_N+Math.floor(e[14]/TILE)+TILE_N;if(!by.has(key[i]))by.set(key[i],[]);by.get(key[i]).push(i);});
+  for(let i=0;i<n;i++){set(list[i],m,col);m.toArray(M,i*16);col.toArray(Cl,i*3);const e=m.elements;
+    key[i]=(Math.floor(e[12]/TILE)+TILE_N)*2*TILE_N+Math.floor(e[14]/TILE)+TILE_N;if(!by.has(key[i]))by.set(key[i],[]);by.get(key[i]).push(i);if(i%8192===8191)yield;}
   if(!geo.boundingSphere)geo.computeBoundingSphere();const r0=geo.boundingSphere.center.length()+geo.boundingSphere.radius;
   const grp=new T.Group(),box=new T.Box3(),v=new T.Vector3(),share=src=>{const g=new T.BufferGeometry();for(const k in src.attributes)g.setAttribute(k,src.attributes[k]);if(src.index)g.setIndex(src.index);return g;};
   for(const ids of by.values()){const g=share(geo);
@@ -151,7 +158,7 @@ function instTiled(geo,mat,list,set,far){
       box.expandByPoint(v.set(e[12],e[13],e[14]));sc=Math.max(sc,Math.hypot(e[0],e[1],e[2]),Math.hypot(e[4],e[5],e[6]),Math.hypot(e[8],e[9],e[10]));});
     mesh.instanceColor=new T.InstancedBufferAttribute(IC,3);g.boundingSphere=box.getBoundingSphere(new T.Sphere());g.boundingSphere.radius+=r0*sc;
     mesh.frustumCulled=true;mesh.instanceMatrix.onUpload(dropArray);mesh.instanceColor.onUpload(dropArray);grp.add(mesh);
-    if(far){const f=share(far);f.boundingSphere=g.boundingSphere;mesh.userData.lod=[g,f];LODS.push(mesh);}}
+    if(far){const f=share(far);f.boundingSphere=g.boundingSphere;mesh.userData.lod=[g,f];LODS.push(mesh);}yield;}
   return grp;}
 // for gable faces built with n=null the computed normal must point outward & up; enforce upward y for roofs
 const _face=GB.prototype.face;

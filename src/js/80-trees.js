@@ -28,9 +28,10 @@ function treeFar(kind){const P=[],C=[],cg=kind==='poplar'?[.42,.56,.28]:[.40,.54
 let lodFar=null,lodHold=null;
 function setLod(a){const far=lodHold?lodHold==='far':a>=LOD_A;if(far===lodFar)return;lodFar=far;for(const m of LODS)m.geometry=m.userData.lod[far?1:0];shDirty=true;}
 window.__lod=v=>{lodHold=v||null;lodFar=null;dirty=true;};
-function instTrees(list,kind,yfn){list=list.filter(t=>inTerrain(t[0],t[1])); // only in the commune
+const instTrees=(list,kind)=>drain(instTreesGen(list,kind));
+function* instTreesGen(list,kind){list=list.filter(t=>inTerrain(t[0],t[1])); // only in the commune (instTiledGen: rest() runs it in slices)
   const q=new T.Quaternion(),s=new T.Vector3(),p=new T.Vector3(),Y=new T.Vector3(0,1,0);
-  return instTiled(treeGeo(kind),new T.MeshLambertMaterial({vertexColors:true}),list,(t,m,col)=>{const sc=t[2];s.set(sc,sc*(0.9+t[3]*0.3),sc);p.set(t[0],E(t[0],t[1])+0.1,-t[1]);q.setFromAxisAngle(Y,t[3]*6);m.compose(p,q,s);
+  return yield* instTiledGen(treeGeo(kind),new T.MeshLambertMaterial({vertexColors:true}),list,(t,m,col)=>{const sc=t[2];s.set(sc,sc*(0.9+t[3]*0.3),sc);p.set(t[0],E(t[0],t[1])+0.1,-t[1]);q.setFromAxisAngle(Y,t[3]*6);m.compose(p,q,s);
     const v=0.82+t[3]*0.36;col.setRGB(v*(0.96+0.08*Math.sin(t[3]*40)),v,v*(0.9+0.1*Math.cos(t[3]*23)));},treeFar(kind));
 }
 

@@ -161,7 +161,7 @@ function boot(){
       STREET.walkVerts=walkV+G2.nv-g0;
       for(const u of us2){drawUses(B2,S2,UG2,[u]);yield;}
       usosDone(uv[0]+UG2.nv);
-      for(let i=0;i<ed2.length;i+=6){edificiosBase(B2,Z2,Y2,ed2.slice(i,i+6));yield;}
+      for(const bk of ed2){edificiosBase(B2,Z2,Y2,[bk]);yield;} // a block per piece: six were up to 97 ms
       for(let i=0;i<sts2.length;i+=4){streetsOf(B2,Y2,Z2,sts2.slice(i,i+4));yield;}
       for(let i=0;i<bis2.length;i+=40){blocksOf(bis2.slice(i,i+40));yield;}
       alamOf(B2,al2);yield;
@@ -169,10 +169,11 @@ function boot(){
       riparian(PT.rip,PT.ripP);yield;
       gnd.push(G2.nv,W2.nv);bv.push(B2.nv);yv.push(Y2.nv);zv.push(Z2.nv);
       // the finished meshes, in the order of a startup at once
-      const fin={g:tiledParts([base,G2],matFlat)};yield;if(riverWater.nv||W2.nv){fin.w=tiledParts([riverWater,W2],matWater);yield;}
-      if(UG.nv||UG2.nv){fin.u=tiledParts([UG,UG2],matFlat);yield;}fin.z=tiledParts([Z,Z2],matFlat);yield;
-      const C=canon();fin.c=instCars(C.cars);yield;fin.t=[instTrees(C.round,'round'),instTrees(C.poplar,'poplar')];yield;
-      fin.b=tiledParts([B,B2],matBld);yield;fin.s=tiledParts([S,S2],matFlat);yield;fin.d=tiledParts([D],matFlat);yield;fin.y=tiledParts([Y,Y2],matFlat);
+      // (each a generator that yields between tiles: tiledPartsGen, instTreesGen)
+      const fin={g:yield* tiledPartsGen([base,G2],matFlat)};if(riverWater.nv||W2.nv)fin.w=yield* tiledPartsGen([riverWater,W2],matWater);
+      if(UG.nv||UG2.nv)fin.u=yield* tiledPartsGen([UG,UG2],matFlat);fin.z=yield* tiledPartsGen([Z,Z2],matFlat);
+      const C=canon();yield;fin.c=instCars(C.cars);yield;fin.t=[yield* instTreesGen(C.round,'round'),yield* instTreesGen(C.poplar,'poplar')];
+      fin.b=yield* tiledPartsGen([B,B2],matBld);fin.s=yield* tiledPartsGen([S,S2],matFlat);fin.d=yield* tiledPartsGen([D],matFlat);fin.y=yield* tiledPartsGen([Y,Y2],matFlat);yield;
       drop([first.g,first.w,first.u,first.z,first.b,first.s,first.d,first.y]);drop([...trees,...cars],true);
       trees.length=cars.length=0;trees.push(...fin.t);cars.push(fin.c);
       addMeshes([fin.g,fin.w,fin.u,fin.y].filter(Boolean),[fin.z,fin.c,...fin.t,fin.b,fin.s,fin.d]);lodFar=null;return C;}
