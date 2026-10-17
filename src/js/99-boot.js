@@ -9,7 +9,7 @@ function loop(now){
   const moving=!!anim||camMoved||now-camT<MOVE_MS;camMoved=false;if(paLite&&!moving)dirty=true;
   if(dirty){const t0=performance.now();ART=PA?paFit(PA):wpp()/DPR;setLod(ART);stripLod(cam);renderer.shadowMap.needsUpdate=shDirty;shDirty=false;
     if(PA){paRender(moving);paLite=moving&&PA.ol>1&&PA.crease==='normals';}else renderer.render(scene,cam);layout();dirty=false;if(tr)trainFrame(now,performance.now()-t0);
-    if(!LOAD.frame){LOAD.frame=Math.round(performance.now());LOAD.frameMs=Math.round(LOAD.frame-t0);requestAnimationFrame(t=>{LOAD.shown=Math.round(performance.now());});}}
+    if(!LOAD.frame){LOAD.frame=Math.round(performance.now());LOAD.frameMs=Math.round(LOAD.frame-t0);requestAnimationFrame(t=>{LOAD.shown=Math.round(performance.now());posterOff();});}}
   requestAnimationFrame(loop);
 }
 // startup times, ms since navigation start (__stats.load): the script runs, the generation starts (boot), the first
@@ -17,7 +17,9 @@ function loop(now){
 // the first shadow map) and the frame after it starts (shown: the first one is on screen), and the rest of the
 // generation ends (full); plus the navigation's own (the HTML's response, DOMContentLoaded) and three.js
 const LOAD={script:Math.round(T_SCRIPT)};
-function loadTimes(){const n=performance.getEntriesByType?.('navigation')[0],r=performance.getEntriesByType?.('resource')||[];
+// the poster (src/page.html) gives way to the map once its first frame is on screen; poster: when it was (Chromium)
+function posterOff(){const p=$('#poster');if(!p)return;p.style.opacity=0;setTimeout(()=>p.remove(),450);}
+function loadTimes(){if(window.__posterT)LOAD.poster=window.__posterT;const n=performance.getEntriesByType?.('navigation')[0],r=performance.getEntriesByType?.('resource')||[];
   if(n){LOAD.html=Math.round(n.responseEnd);LOAD.htmlKB=Math.round((n.transferSize||0)/1024);LOAD.dcl=Math.round(n.domContentLoadedEventEnd);}
   const t=r.find(e=>/three/.test(e.name));if(t){LOAD.three=Math.round(t.responseEnd);LOAD.threeKB=Math.round((t.transferSize||0)/1024);}
   const f=r.filter(e=>/fonts\.(googleapis|gstatic)/.test(e.name));if(f.length)LOAD.fonts=Math.round(Math.max(...f.map(e=>e.responseEnd)));
@@ -65,6 +67,7 @@ function addMeshes(recv,cast){for(const m of recv){m.traverse(o=>{if(o.isMesh)o.
 function boot(){
   const t0=performance.now();LOAD.boot=Math.round(t0);
   loadMsg('Levantando hitos y edificios…');
+  buildPanel(); // the panel first: over the poster it is on screen during the generation
   setTimeout(()=>{
     const B=new GB(1<<19),S=new GB(1<<16);
     const TT={};let tl=performance.now();const tm=k=>{const n=performance.now();TT[k]=Math.round(n-tl);tl=n;}; // ms per phase: __stats.t
@@ -77,7 +80,7 @@ function boot(){
     for(let k=0;k<EN_;k++){EHI=Math.max(EHI,EH[k]);ELO=Math.min(ELO,EH[k]);}SH=null; // the shadow box, with the terrain's heights
     // the first view, on the levelled terrain: the initial one, or the place or tour of the link (the card first:
     // framed() measures it)
-    buildPanel();resize();homeView();
+    resize();homeView();
     const h=decodeURIComponent(location.hash.slice(1));
     if(h&&BYID[h]){const m=MODELS[h]||BYID[h];select(h,false);view.zoom=4;const f=framed(...lift(m.x,m.y),4);view.tx=f[0];view.ty=f[1];placeCam();}
     else if(h==='justicia'||h==='iconica'){startTour(h);}

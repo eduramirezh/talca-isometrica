@@ -5,7 +5,7 @@
 
 Comprueba:
   - que todos los JSON de config/ y data/ se lean;
-  - que la plantilla (src/, unida por pipeline/build.py) tenga los marcadores /*DATA*/ y /*POIS*/ una sola vez y que
+  - que la plantilla (src/, unida por pipeline/build.py) tenga los marcadores /*DATA*/, /*POIS*/ y <!--POSTER--> una sola vez y que
     los bloques `// ==== hito:` no repitan id; que cada archivo de src/js/hitos/ esté en su ORDER, empiece con su
     línea `// ==== hito: <id> ====` y no tenga otra, y que cada fuente termine en un salto de línea;
   - las restricciones de los artifacts de Claude: scripts solo de cdnjs, jsdelivr o unpkg; estilos solo de Google Fonts;
@@ -46,7 +46,7 @@ def main(dist=True):
                 fail(f'src/js/hitos/{f.name}: debe empezar con «  // ==== hito: {f.stem} ====» y no tener otro bloque')
     try: tpl = build.template()
     except (AssertionError, OSError) as e: fail(f'src/: no se pudo unir la plantilla: {e}'); tpl = None
-    for m in ('/*DATA*/', '/*POIS*/') if tpl is not None else ():
+    for m in ('/*DATA*/', '/*POIS*/', '<!--POSTER-->') if tpl is not None else ():
         if tpl.count(m) != 1: fail(f'src/: el marcador {m} aparece {tpl.count(m)} veces (debe ser 1)')
     hitos = re.findall(r'// ==== hito: ([\w-]+) ====', tpl or '')
     for h in sorted({h for h in hitos if hitos.count(h) > 1}): fail(f'src/: bloque de hito repetido: {h}')

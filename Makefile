@@ -57,8 +57,8 @@ shots: build                  ## capturas de referencia en shots/ (requiere npm 
 	$(PW) tools/screenshot.py shots/corte.png --hash corte-apelaciones
 	$(PW) tools/screenshot.py shots/movil-oscuro.png --size 390x844 --dark
 
-site-assets: build            ## src/site/og.jpg (Open Graph, 1200 × 630) y apple-touch-icon.png, desde el mapa y el favicon
-	$(PW) tools/site_assets.py
+site-assets: build            ## src/site/og.jpg (Open Graph, 1200 × 630), apple-touch-icon.png y los pósters del arranque (poster-*.webp), desde el mapa y el favicon
+	uv run --with "playwright==1.63" --with pillow python tools/site_assets.py
 
 serve: build                  ## sirve dist/ en http://localhost:$(PORT) y lo abre en el navegador (otro puerto: make serve PORT=9000)
 	(sleep 1 && $(PY) -m webbrowser -t http://localhost:$(PORT)/ >/dev/null) & \
