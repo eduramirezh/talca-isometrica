@@ -6,11 +6,31 @@ blocks.forEach((b,i)=>{for(let gx=Math.max(0,Math.floor((b.bb[0]-XMIN)/BG));gx<=
 const URB=new Uint8Array(bgW*bgH);
 blocks.forEach(b=>{if(!b.built)return;for(let gx=Math.max(0,Math.floor((b.bb[0]-XMIN)/BG)-1);gx<=Math.min(bgW-1,Math.floor((b.bb[2]-XMIN)/BG)+1);gx++)for(let gy=Math.max(0,Math.floor((b.bb[1]-YMIN)/BG)-1);gy<=Math.min(bgH-1,Math.floor((b.bb[3]-YMIN)/BG)+1);gy++)URB[gy*bgW+gx]=1;});
 const urbanAt=(x,y)=>{const gx=Math.floor((x-XMIN)/BG),gy=Math.floor((y-YMIN)/BG);return gx>=0&&gy>=0&&gx<bgW&&gy<bgH&&URB[gy*bgW+gx]===1;};
-function blockAt(x,y){const gx=Math.floor((x-XMIN)/BG),gy=Math.floor((y-YMIN)/BG);if(gx<0||gy<0||gx>=bgW||gy>=bgH)return -1;for(const i of bgrid[gy*bgW+gx]){const b=blocks[i];if(x<b.bb[0]||x>b.bb[2]||y<b.bb[1]||y>b.bb[3])continue;if(pipXY(x,y,b.r))return i;}return -1;}
+// inBlock(x, y, bi): pipXY(x, y, blocks[bi].r), with a raster of the block's box once it has been asked BK_N times (the
+// city asks the same block hundreds of times: back() walks 3 m at a time up to 120 m into it, fits() tests three points).
+// A cell is 0 outside, 1 inside, or 2 where an edge of the ring passes within BK_E of it: only those go to pipXY. A cell
+// no edge reaches lies all inside or all outside the ring, and its centre (pipRow, the same crossings as pipXY) says
+// which: the same answers as pipXY, point by point.
+const BK_N=16,BK_E=0.01,BKR=new Array(blocks.length).fill(null),BKQ=new Uint16Array(blocks.length),BK_XS=[];
+function bkRaster(bi){const r=blocks[bi].r,bb=blocks[bi].bb,w=bb[2]-bb[0],h=bb[3]-bb[1],c=Math.max(3,Math.sqrt(w*h/4096)),
+    nx=Math.max(1,Math.ceil(w/c)),ny=Math.max(1,Math.ceil(h/c)),x0=bb[0],y0=bb[1],a=new Uint8Array(nx*ny);
+  for(let i=0,j=r.length-1;i<r.length;j=i++){const px=r[j][0],py=r[j][1],dx=r[i][0]-px,dy=r[i][1]-py;
+    const j0=Math.max(0,Math.floor((Math.min(py,py+dy)-BK_E-y0)/c)),j1=Math.min(ny-1,Math.floor((Math.max(py,py+dy)+BK_E-y0)/c));
+    for(let gy=j0;gy<=j1;gy++){let xa=px,xb=px+dx; // the part of the edge within the row (grown by BK_E)
+      if(dy!==0){const ya=y0+gy*c-BK_E,yb=y0+(gy+1)*c+BK_E;let t0=(ya-py)/dy,t1=(yb-py)/dy;if(t0>t1){const t=t0;t0=t1;t1=t;}t0=Math.max(0,t0);t1=Math.min(1,t1);xa=px+dx*t0;xb=px+dx*t1;}
+      const i0=Math.max(0,Math.floor((Math.min(xa,xb)-BK_E-x0)/c)),i1=Math.min(nx-1,Math.floor((Math.max(xa,xb)+BK_E-x0)/c));
+      for(let gx=i0;gx<=i1;gx++)a[gy*nx+gx]=2;}}
+  for(let gy=0;gy<ny;gy++){const xs=pipRow(r,y0+(gy+.5)*c,BK_XS);let k=0;
+    for(let gx=0;gx<nx;gx++){const x=x0+(gx+.5)*c;while(k<xs.length&&xs[k]<=x)k++;const n=gy*nx+gx;if(a[n]!==2&&(xs.length-k)&1)a[n]=1;}}
+  return {x0,y0,c,nx,ny,a};}
+function inBlock(x,y,bi){let R=BKR[bi];if(!R){if(++BKQ[bi]<BK_N)return pipXY(x,y,blocks[bi].r);R=BKR[bi]=bkRaster(bi);}
+  const gx=Math.floor((x-R.x0)/R.c),gy=Math.floor((y-R.y0)/R.c);if(gx<0||gy<0||gx>=R.nx||gy>=R.ny)return pipXY(x,y,blocks[bi].r);
+  const v=R.a[gy*R.nx+gx];return v===2?pipXY(x,y,blocks[bi].r):v===1;}
+function blockAt(x,y){const gx=Math.floor((x-XMIN)/BG),gy=Math.floor((y-YMIN)/BG);if(gx<0||gy<0||gx>=bgW||gy>=bgH)return -1;for(const i of bgrid[gy*bgW+gx]){const b=blocks[i];if(x<b.bb[0]||x>b.bb[2]||y<b.bb[1]||y>b.bb[3])continue;if(inBlock(x,y,i))return i;}return -1;}
 // blockIs(x, y, bi): blockAt(x, y) === bi, testing bi first (the city asks it of points that are mostly in bi)
-function blockIs(x,y,bi){const b=blocks[bi];if(x<b.bb[0]||x>b.bb[2]||y<b.bb[1]||y>b.bb[3]||!pipXY(x,y,b.r))return false;
+function blockIs(x,y,bi){const b=blocks[bi];if(x<b.bb[0]||x>b.bb[2]||y<b.bb[1]||y>b.bb[3]||!inBlock(x,y,bi))return false;
   const gx=Math.floor((x-XMIN)/BG),gy=Math.floor((y-YMIN)/BG);if(gx<0||gy<0||gx>=bgW||gy>=bgH)return false;
-  for(const i of bgrid[gy*bgW+gx]){if(i===bi)return true;const c=blocks[i];if(x<c.bb[0]||x>c.bb[2]||y<c.bb[1]||y>c.bb[3])continue;if(pipXY(x,y,c.r))return false;}return false;}
+  for(const i of bgrid[gy*bgW+gx]){if(i===bi)return true;const c=blocks[i];if(x<c.bb[0]||x>c.bb[2]||y<c.bb[1]||y>c.bb[3])continue;if(inBlock(x,y,i))return false;}return false;}
 const SG=40, sgW=Math.ceil((XMAX-XMIN)/SG), sgH=Math.ceil((YMAX-YMIN)/SG);
 const NOSEG=[],sgrid=new Array(sgW*sgH).fill(NOSEG); // most cells of the commune have no street: they share one empty list
 const segs=[]; // [ax,ay,bx,by,hw,street index,point index]
