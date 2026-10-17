@@ -83,12 +83,12 @@ src/                     toda la aplicación (CSS, UI y motor three.js r128), en
   js/NN-<sección>.js     el script por secciones (terreno, ciudad, Ruta 5, vía, trenes, usos…), unidas en orden de número
   js/hitos/<id>.js       un hito por archivo, dentro de buildModels (marcador /*HITOS*/ de js/45-landmarks.js)
   js/hitos/ORDER         el orden de los hitos (importa: explanadas vecinas, ayudantes de la plaza)
-  site/                  lo que el sitio publicado lleva junto a index.html: favicon.svg, apple-touch-icon.png y og.jpg
+  site/                  lo que el sitio publicado lleva junto a index.html: favicon.svg, apple-touch-icon.png, og.jpg y los pósters del arranque (poster-movil.webp, poster-escritorio.webp)
 data/                    datos procesados (versionados)
 dist/                    resultado (no versionado: `make build`): talca.html (fragmento) e index.html (página completa, con su <head> y los archivos de src/site/)
 tools/screenshot.py      capturas con Chromium sin interfaz
 tools/variants.py        hoja de comparación: varias vistas por varias variantes de render (--diff: píxeles distintos)
-tools/site_assets.py     la imagen de Open Graph y el ícono de src/site/, desde el mapa (make site-assets)
+tools/site_assets.py     la imagen de Open Graph, el ícono y los pósters del arranque de src/site/, desde el mapa (make site-assets)
 tools/probe.py           evalúa expresiones JS en el mapa cargado (window.__rail, __trains…) e imprime el resultado
 tools/perf.py            lo que cuesta un cuadro (ms, llamadas de dibujo, triángulos, mapas de sombra, ms de CPU, ms entre cuadros al arrastrar) en varias vistas, y el arranque (--arranque N: ms hasta el primer cuadro); --android en un teléfono por USB
 tools/regress.py         ¿sale el mismo mapa?: capturas fijas y __stats de referencia (--save) y comparación píxel a píxel (--against)

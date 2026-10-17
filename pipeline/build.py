@@ -149,6 +149,16 @@ STANDALONE = ('<!doctype html>\n<html lang="es-CL"><head><meta charset="utf-8">\
               '<style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>\n'
               '</head><body>\n')
 
+# The poster (tools/site_assets.py poster: src/site/poster-*.webp), the initial view shown while the map is generated:
+# a <picture> at the line <!--POSTER--> of src/page.html, so that the browser fetches the phone's or the desktop's as
+# soon as it reads the HTML; the inline script after #app places it. Only in dist/index.html: in the fragment (the
+# artifact, which carries no other files) the ~1 MB of both as data: URIs would delay the map's data behind them.
+POSTER_MARK = '<!--POSTER-->'
+def poster():
+    if not all((SRC / 'site' / f'poster-{n}.webp').exists() for n in ('movil', 'escritorio')): return ''
+    return ('<picture><source media="(max-width:760px)" srcset="poster-movil.webp">'
+            '<img id="poster" src="poster-escritorio.webp" alt="" aria-hidden="true" elementtiming="poster" fetchpriority="high"></picture>')
+
 def cmd_where(arg):
     """`--where 4021`, `--where talca.html:4021` or `--where index.html:4026` (as the browser's console gives it,
     also `(index):4026`): the source file and line of that line of dist/."""
@@ -173,13 +183,13 @@ def main():
     js = lambda o: json.dumps(o, separators=(',', ':'), ensure_ascii=False).replace('</', '<\\/')
     out = t.replace('/*DATA*/', js(geo)).replace('/*POIS*/', js(pois))
     (ROOT / 'dist').mkdir(exist_ok=True)
-    (ROOT / 'dist' / 'talca.html').write_text(out)
+    (ROOT / 'dist' / 'talca.html').write_text(out.replace(POSTER_MARK, ''))
     print('dist/talca.html:', len(out.encode()), 'bytes')
     if '--standalone' in sys.argv:
         # the fragment's own <title> and description stay in it for the artifact; here the <head> has them: the lines
         # are emptied, not removed, so --where still counts right
         body = re.sub(r'^<title>.*</title>$|^<meta name="description"[^\n]*>$', '', out, count=2, flags=re.M)
-        page = STANDALONE + body + '\n</body></html>\n'
+        page = STANDALONE + body.replace(POSTER_MARK, poster()) + '\n</body></html>\n'
         (ROOT / 'dist' / 'index.html').write_text(page); print('dist/index.html:', len(page.encode()), 'bytes')
         for f in sorted((SRC / 'site').iterdir()): shutil.copy(f, ROOT / 'dist' / f.name)
 

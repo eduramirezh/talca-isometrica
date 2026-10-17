@@ -8,7 +8,9 @@
 </style>
 
 <div id="app">
-  <div id="stage"><canvas id="gl" aria-label="Maqueta isométrica de Talca. Arrastre para mover, rueda o pellizco para acercar."></canvas></div>
+  <div id="stage"><canvas id="gl" aria-label="Maqueta isométrica de Talca. Arrastre para mover, rueda o pellizco para acercar."></canvas>
+<!--POSTER-->
+  </div>
   <div id="overlay" aria-hidden="false"></div>
 
   <header class="brand">
@@ -93,6 +95,19 @@
   <div id="loading"><div class="box"><div class="seal">TALCA<br>1742</div><p id="load-msg">Levantando 2.811 manzanas del Censo 2017…</p><p id="err" hidden></p></div></div>
 </div>
 
+<script>
+// The poster (only in dist/index.html: build.py puts it in #stage; tools/site_assets.py poster): the initial
+// view as an image while the map is generated, scaled to the map's height and moved right of the panel as homeView()
+// does; the loading screen becomes a badge over it. Not for a link to a place or a tour, which opens elsewhere.
+(function(){const p=document.getElementById('poster'),L=document.getElementById('loading');if(!p)return;
+  if(location.hash.length>1){p.remove();return;}
+  const mob=matchMedia('(max-width:760px)').matches,P=document.getElementById('panel');
+  if(mob)P.classList.add('folded');else p.style.left=`calc(50% + ${P.getBoundingClientRect().right/2}px)`;
+  L.classList.add('over');p.onerror=()=>{p.remove();L.classList.remove('over');};
+  // when it is on screen (Chromium: element timing), for __stats.load.poster
+  try{new PerformanceObserver(l=>{for(const e of l.getEntries())if(e.identifier==='poster')window.__posterT=Math.round(e.renderTime||e.loadTime);}).observe({type:'element',buffered:true});}catch(e){}
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const DATA=/*DATA*/;
