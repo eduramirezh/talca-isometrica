@@ -12,17 +12,21 @@ function styleFor(bi){
 // The lots of cityGen are rectangles in LOTS, tested exactly against each other (sepQuad): the 2.5 m raster would leave a
 // strip between neighbours or let two lots overlap, and two slabs at the same height flicker. occ marks them with 2,
 // which lotFits skips: there the raster only stands for what was there before (landmarks, rivers, the Ruta 5, the rail).
-const LG=40,lgW=Math.ceil((XMAX-XMIN)/LG),LOTS=[],lgrid=new Map(),lseen=[];let lstamp=0;
+// LBB keeps each lot's box: lotFree() skips the test of two whose boxes do not touch. The lots and the hulls of
+// lotBlock are convex, so two of them apart have an edge that separates them, and sepQuad() would say so too.
+const LG=40,lgW=Math.ceil((XMAX-XMIN)/LG),LOTS=[],LBB=[],lgrid=new Map(),lseen=[];let lstamp=0;
+const lotBox=q=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<y0)y0=p[1];if(p[1]>y1)y1=p[1];}return [x0,y0,x1,y1];};
 function sepQuad(A,B){return sepAxes(A,A,B)||sepAxes(B,A,B);}
 function sepAxes(P,A,B){for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],nx=b[1]-a[1],ny=a[0]-b[0],L=Math.hypot(nx,ny)||1;
     let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9;for(let j=0;j<A.length;j++){const p=A[j],d=(p[0]*nx+p[1]*ny)/L;if(d<a0)a0=d;if(d>a1)a1=d;}for(let j=0;j<B.length;j++){const p=B[j],d=(p[0]*nx+p[1]*ny)/L;if(d<b0)b0=d;if(d>b1)b1=d;}
     if(a1<=b0+.05||b1<=a0+.05)return true;}return false;}
 function lotCells(q,f){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
   for(let gx=Math.floor((x0-XMIN)/LG);gx<=Math.floor((x1-XMIN)/LG);gx++)for(let gy=Math.floor((y0-YMIN)/LG);gy<=Math.floor((y1-YMIN)/LG);gy++)if(f(gy*lgW+gx)===false)return false;return true;}
-function lotFree(q){lstamp++;return lotCells(q,k=>{const c=lgrid.get(k);if(c)for(const id of c){if(lseen[id]===lstamp)continue;lseen[id]=lstamp;if(!sepQuad(q,LOTS[id]))return false;}});}
+function lotFree(q){lstamp++;const b=lotBox(q);return lotCells(q,k=>{const c=lgrid.get(k);if(c)for(const id of c){if(lseen[id]===lstamp)continue;lseen[id]=lstamp;
+  const o=LBB[id];if(o[0]>b[2]||o[2]<b[0]||o[1]>b[3]||o[3]<b[1])continue;if(!sepQuad(q,LOTS[id]))return false;}});}
 // lotBlock(q): the convex polygon q is closed to the lots without a mark in occ (an OSM building of a mixed block and
 // its margin, edificiosPlan); lotAdd(q): a lot of cityGen
-function lotBlock(q){const id=LOTS.length;LOTS.push(q);lotCells(q,k=>{const c=lgrid.get(k);if(c)c.push(id);else lgrid.set(k,[id]);});}
+function lotBlock(q){const id=LOTS.length;LOTS.push(q);LBB.push(lotBox(q));lotCells(q,k=>{const c=lgrid.get(k);if(c)c.push(id);else lgrid.set(k,[id]);});}
 function lotAdd(q){lotBlock(q);occMark(q,2);}
 // The city's palettes. Roofs come by family, each in two tones (a row of identical houses alternates them, ESTETICA §3).
 // From pipeline/satellite.py on five neighbourhoods (diagnostics/sat-*.png): the barrios are a field of galvanized zinc,
