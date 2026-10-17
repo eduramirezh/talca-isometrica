@@ -101,7 +101,7 @@ function boot(){
     // The trees and cars come from many places, and a tile's instances are drawn in the order of their list (ties
     // between overlapping crowns go by it): each source keeps its part here, and the lists are put together in the
     // order of a startup at once (canon())
-    const PT={uses:new Map(),blocks:[],alam:new Map(),walks:[],cars:[],yard:[],rip:[],ripP:[]},T0=TREES.length,P0=PO_FIELD.length,UI=new Map(USOS.map((u,i)=>[u,i]));
+    const PT={uses:new Map(),blocks:[],alam:new Map(),walks:new Map(),cars:new Map(),yard:[],rip:[],ripP:[]},T0=TREES.length,P0=PO_FIELD.length,UI=new Map(USOS.map((u,i)=>[u,i]));
     const drawUses=(Bx,Sx,UGx,list)=>{for(const u of list){const n=TREES.length,p=PO_FIELD.length;Bx.k=Sx.k=UGx.k=1e7+UI.get(u);usosBase(Bx,Sx,UGx,[u]);PT.uses.set(u,[TREES.slice(n),PO_FIELD.slice(p)]);}};
     const [us1,us2]=split(USOS,u=>boxIn(...u.bb)),UG=new GB(1<<16);drawUses(B,S,UG,us1);
     const F0=TREES.length;usosFringe();PT.fringe=TREES.slice(F0);const uv=[UG.nv];if(UG.nv)scene.add(first.u=tiled(UG,matFlat,true));tm('usosBase'); // land uses: ground, objects and trees
@@ -111,20 +111,20 @@ function boot(){
     // it is laid
     const k1=CITY_ORDER.findIndex(si=>CITY_DIST[si]>rho),sts1=k1<0?CITY_ORDER:CITY_ORDER.slice(0,k1),sts2=k1<0?[]:CITY_ORDER.slice(k1);
     const ready=bi=>{const b=blocks[bi].bb;return boxIn(...b)&&Math.max(Math.hypot(b[0],b[1]),Math.hypot(b[2],b[1]),Math.hypot(b[0],b[3]),Math.hypot(b[2],b[3]))+CITY_REACH<=rho;};
-    const AL=[...ALAM],[bis1,bis2]=split(blocks.map((b,bi)=>bi),ready),[al1,al2]=split(AL,ready),[wi1,wi2]=split(WALKS.map((w,i)=>i),i=>polyIn(WALKS[i].pts));
+    const AL=[...ALAM],[bis1,bis2]=split(blocks.map((b,bi)=>bi),ready),[al1,al2]=split(AL,ready),[wk1,wk2]=split(WALKS,w=>polyIn(w.pts));
     const Y=new GB(1<<18),Z=new GB(1<<17);let nb=0;
     const [ed1,ed2]=split(ED.bks,bk=>boxIn(...bk.bb));
     edificiosBase(B,Z,Y,ed1);tm('edificios'); // ...drawn, with their blocks' ground (2.5e7 + the block: between the Cerro and the city)
     const streetsOf=(Bx,Yx,Zx,sts)=>{const c=cityGen(Bx,Yx,Zx,sts,[]);PT.yard.push(...c.TR);nb+=c.nb;};
     const blocksOf=bis=>{for(const bi of bis)blockTrees(bi,PT.blocks[bi]=[]);};
     const alamOf=(Bx,bis)=>{for(const bi of bis){Bx.k=4e7+AL.indexOf(bi);PT.alam.set(bi,alamedaPark(Bx,[bi]));}};
-    const walksOf=wis=>{for(const i of wis){PT.walks[i]=streetTrees([WALKS[i]]);PT.cars[i]=parkedCars([WALKS[i]]);}};
+    const walksOf=ws=>{for(const w of ws){PT.walks.set(w,streetTrees([w]));PT.cars.set(w,parkedCars([w]));}};
     streetsOf(B,Y,Z,sts1);blocksOf(bis1);
     first.z=tiled(Z,matFlat,true);first.z.traverse(o=>o.castShadow=o.receiveShadow=true);scene.add(first.z);
-    alamOf(B,al1);walksOf(wi1);
+    alamOf(B,al1);walksOf(wk1);
     const cat=parts=>{const o=[];for(const p of parts)if(p)for(const e of p)o.push(e);return o;};
-    const canon=()=>({round:cat([PT.yard,...PT.blocks,...AL.map(bi=>PT.alam.get(bi)),...PT.walks,PT.rip,hillTrees,TREES.slice(0,T0),...USOS.map(u=>(PT.uses.get(u)||[])[0]),PT.fringe]),
-      poplar:cat([PT.ripP,PO_FIELD.slice(0,P0),...USOS.map(u=>(PT.uses.get(u)||[])[1])]),cars:cat(PT.cars)});
+    const canon=()=>({round:cat([PT.yard,...PT.blocks,...AL.map(bi=>PT.alam.get(bi)),...WALKS.map(w=>PT.walks.get(w)),PT.rip,hillTrees,TREES.slice(0,T0),...USOS.map(u=>(PT.uses.get(u)||[])[0]),PT.fringe]),
+      poplar:cat([PT.ripP,PO_FIELD.slice(0,P0),...USOS.map(u=>(PT.uses.get(u)||[])[1])]),cars:cat(WALKS.map(w=>PT.cars.get(w)))});
     const inBox=t=>boxIn(t[0],t[1],t[0],t[1]),C1=canon(),cars=[instCars(C1.cars.filter(inBox))];tm('city');
     const bv=[B.nv],yv=[Y.nv],zv=[Z.nv],trees=[instTrees(C1.round.filter(inBox),'round'),instTrees(C1.poplar.filter(inBox),'poplar')];
     first.b=tiled(B,matBld,true);first.s=tiled(S,matFlat,true);first.d=tiled(D,matFlat,true);
@@ -155,6 +155,7 @@ function boot(){
       const keep=a=>{const k=a.filter(o=>!gone.has(o));a.length=0;a.push(...k);};keep(CASTERS);keep(LODS);
       const ks=STRIPS.filter(s=>!gone.has(s.c));STRIPS.length=0;STRIPS.push(...ks);};
     function* rest(){
+      wk2.push(...yield* walkRest(base,L,40)); // the sidewalks of the streets far from the first view (walkBase)
       for(let i=0;i<L.base.length/2;i+=CH){drapeRest(L.flat,L.base,G2,i,Math.min(L.base.length/2,i+CH));yield;}
       for(let i=0;i<L.water.length/2;i+=CH){drapeRest(L.flatW,L.water,W2,i,Math.min(L.water.length/2,i+CH));yield;}
       const g0=G2.nv;for(let i=0;i<L.walk.length;i++){const [q,y,col,run]=L.walk[i];G2.k=run;drapeQ(G2,q,y,col);if(i%CH===CH-1)yield;}
@@ -165,7 +166,7 @@ function boot(){
       for(let i=0;i<sts2.length;i+=4){streetsOf(B2,Y2,Z2,sts2.slice(i,i+4));yield;}
       for(let i=0;i<bis2.length;i+=40){blocksOf(bis2.slice(i,i+40));yield;}
       alamOf(B2,al2);yield;
-      for(let i=0;i<wi2.length;i+=200){walksOf(wi2.slice(i,i+200));yield;}
+      for(let i=0;i<wk2.length;i+=200){walksOf(wk2.slice(i,i+200));yield;}
       riparian(PT.rip,PT.ripP);yield;
       gnd.push(G2.nv,W2.nv);bv.push(B2.nv);yv.push(Y2.nv);zv.push(Z2.nv);
       // the finished meshes, in the order of a startup at once

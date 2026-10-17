@@ -1,9 +1,22 @@
 // sidewalks, curbs and crosswalks, draped straight into G (buildBase's ground); the Diagonal's median first (it
 // occupies the raster), with its shrubs and lamps on D, and the paseos (paseosBase)
 // (with L, the startup's lists: the strips outside STAGE wait in L.walk)
-function walkBase(G,D,L){const t0=performance.now(),B=draped(G,L&&L.walk),nv=G.nv,sw=hex('#C3C1BA'),curb=hex('#E8E5DC');diagonalBase(G,D);paseosBase(G,D);walkRuns();const t1=performance.now();
-  for(const w of WALKS){sideRibbon(B,w.pts,w.side,w.hw-w.iw+CURB,w.iw+WALK_OUT-CURB,WALK_Y,sw);sideRibbon(B,w.pts,w.side,w.hw-w.iw,CURB,CURB_Y,curb);}
-  STREET.zebras=crossings(B);Object.assign(STREET,{walks:WALKS.length,walkVerts:G.nv-nv,walkMs:Math.round(performance.now()-t0),runMs:Math.round(t1-t0)});}
+// (with STAGE, only the streets whose sidewalks can reach it: the others wait in L.walkSts for the second stage,
+// walkRest, reading occ as it is now, occ.keep)
+function walkBase(G,D,L){const t0=performance.now(),B=draped(G,L&&L.walk),nv=G.nv;diagonalBase(G,D);paseosBase(G,D);
+  let sis=null;if(STAGE&&L){const[a,b]=split([...streets.keys()],si=>{const s=streets[si],m=swOf(s)/2+WALK_OUT+3;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+      for(const p of s.pts){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}return boxIn(x0-m,y0-m,x1+m,y1+m);});
+    sis=a;L.walkSts=b;occ.keep(true);}
+  walkRuns(sis);const t1=performance.now();walkRibbons(B,WALKS);
+  B.band=streets.length+1;STREET.zebras=crossings(B);Object.assign(STREET,{walks:WALKS.length,walkVerts:G.nv-nv,walkMs:Math.round(performance.now()-t0),runMs:Math.round(t1-t0)});}
+// the sidewalks and curbs of the runs ws, each street in its band of keys (draped)
+const WALK_K=hex('#C3C1BA'),CURB_K=hex('#E8E5DC');
+function walkRibbons(B,ws){for(const w of ws){B.band=w.si+1;sideRibbon(B,w.pts,w.side,w.hw-w.iw+CURB,w.iw+WALK_OUT-CURB,WALK_Y,WALK_K);sideRibbon(B,w.pts,w.side,w.hw-w.iw,CURB,CURB_Y,CURB_K);}}
+// the second stage's sidewalks (walkBase): the runs of L.walkSts as walkBase would have seen them, their quads to
+// L.walk (all outside STAGE), WALKS back in the order of the streets; a generator, a piece every n streets
+function* walkRest(G,L,n){const B=draped(G,L.walk),sts=L.walkSts||[],out=[];
+  for(let i=0;i<sts.length;i+=n){const w0=WALKS.length;walkRuns(sts.slice(i,i+n),occWas);const ws=WALKS.slice(w0);walkRibbons(B,ws);out.push(...ws);yield;}
+  occ.keep(false);WALKS.sort((a,b)=>a.si-b.si);STREET.walks=WALKS.length;return out;}
 // buildBase(L): with L, the startup's lists, the triangles outside STAGE wait in L.base (of the flat layers, L.flat)
 // and L.water (L.flatW)
 function buildBase(L){

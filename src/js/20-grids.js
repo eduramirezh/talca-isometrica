@@ -42,14 +42,19 @@ function nearStreet(x,y,pad){const gx=Math.floor((x-XMIN)/SG),gy=Math.floor((y-Y
 const OC=2.5, ocW=Math.ceil((XMAX-XMIN)/OC), ocH=Math.ceil((YMAX-YMIN)/OC);
 // The commune's box is ~8 300 × 9 500 cells and most of it stays empty, so a raster over it (occ, and the masks built
 // like it) is kept in chunks of 128 × 128 cells, allocated when a cell is first written: get(gx, gy) and set(gx, gy, v)
-// for cells inside the box (the caller checks), clone() copies it.
+// for cells inside the box (the caller checks), clone() copies it. keep(true): from then on the first write to a chunk
+// saves its old contents, and was(gx, gy) reads the grid as it was then (the sidewalks of the rest of the startup read
+// occ as walkBase saw it: walkRuns); keep(false) lets them go.
 class Grid{
   constructor(){this.w=Math.ceil(ocW/128);this.c=new Array(this.w*Math.ceil(ocH/128)).fill(null);}
   get(gx,gy){const c=this.c[(gy>>7)*this.w+(gx>>7)];return c?c[((gy&127)<<7)|(gx&127)]:0;}
-  set(gx,gy,v){const k=(gy>>7)*this.w+(gx>>7);let c=this.c[k];if(!c){if(!v)return;c=this.c[k]=new Uint8Array(16384);}c[((gy&127)<<7)|(gx&127)]=v;}
-  clone(){const g=Object.create(Grid.prototype);g.w=this.w;g.c=this.c.map(c=>c&&c.slice());return g;}}
+  set(gx,gy,v){const k=(gy>>7)*this.w+(gx>>7);let c=this.c[k];if(this.old&&!this.old.has(k))this.old.set(k,c&&c.slice());if(!c){if(!v)return;c=this.c[k]=new Uint8Array(16384);}c[((gy&127)<<7)|(gx&127)]=v;}
+  clone(){const g=Object.create(Grid.prototype);g.w=this.w;g.c=this.c.map(c=>c&&c.slice());return g;}
+  keep(on){this.old=on?new Map():null;}
+  was(gx,gy){const k=(gy>>7)*this.w+(gx>>7),c=this.old&&this.old.has(k)?this.old.get(k):this.c[k];return c?c[((gy&127)<<7)|(gx&127)]:0;}}
 const occ=new Grid();
 const occAt=(x,y)=>{const gx=Math.floor((x-XMIN)/OC),gy=Math.floor((y-YMIN)/OC);return (gx<0||gy<0||gx>=ocW||gy>=ocH)?1:occ.get(gx,gy);};
+const occWas=(x,y)=>{const gx=Math.floor((x-XMIN)/OC),gy=Math.floor((y-YMIN)/OC);return (gx<0||gy<0||gx>=ocW||gy>=ocH)?1:occ.was(gx,gy);}; // occ at keep(true)
 function occMark(q,v=1){ // q: 4 corners [[x,y]..]; v=2: a lot of cityGen (lotFits skips those cells)
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
   const xs=OM_XS; // the cells whose centre is in q (pip), a row at a time (pipRow)

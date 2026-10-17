@@ -226,8 +226,13 @@ function drape(src,later){
 function drapeRest(src,later,out,i0,i1){const P=src.P,C=src.C,I=src.I;
   for(let i=i0;i<i1;i++){const t=later[2*i],a=I[t]*3,b=I[t+1]*3,c=I[t+2]*3;out.k=later[2*i+1];drapeQ(out,[[P[a],-P[a+2]],[P[b],-P[b+2]],[P[c],-P[c+2]]],P[a+1],[C[a],C[a+1],C[a+2]]);}}
 // a stand-in for a GB that drapes each quad straight into G: flat strips (sideRibbon) cut as quads, not as two triangles;
-// with later, the quads outside STAGE wait there as [q, y, col, run] (drapeQ(G2, ...) after the first frame)
-const draped=(G,later)=>({quadXY(q,y,col){let A=0;for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length];A+=p[0]*r[1]-r[0]*p[1];}
-  const o=A<0?q.slice().reverse():q,d=later&&!polyIn(o)?1:0;if(G.run===undefined){G.run=0;G.prev=-1;}if(d!==G.prev){G.run++;G.prev=d;}
-  if(d)later.push([o,y,col,G.run]);else{G.k=G.run;drapeQ(G,o,y,col);}}});
+// with later, the quads outside STAGE wait there as [q, y, col, run] (drapeQ(G2, ...) after the first frame). Each band
+// (a street's sidewalks: walkBase sets .band) counts its runs on its own, after drape()'s (G.run) and before the next
+// band: the key of a quad does not depend on what was laid before it in the startup, so a street's sidewalks can wait
+// for the second stage (walkRuns) and still come out in the order of a startup at once
+const RUN_W=1e6;
+const draped=(G,later)=>({band:0,quadXY(q,y,col){let A=0;for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length];A+=p[0]*r[1]-r[0]*p[1];}
+  const o=A<0?q.slice().reverse():q,d=later&&!polyIn(o)?1:0;if(G.r0===undefined){G.r0=G.run||0;G.bands=new Map();}
+  let b=G.bands.get(this.band);if(!b)G.bands.set(this.band,b={run:0,prev:-1});if(d!==b.prev){b.run++;b.prev=d;}const k=G.r0+this.band*RUN_W+b.run;
+  if(d)later.push([o,y,col,k]);else{G.k=k;drapeQ(G,o,y,col);}}});
 

@@ -27,15 +27,20 @@ function blockMask(){BLK=new Grid();
       for(let i=0,j=r.length-1;i<r.length;j=i++){const a=r[i],c=r[j];if((a[1]>cy)!==(c[1]>cy))xs.push(a[0]+(cy-a[1])*(c[0]-a[0])/(c[1]-a[1]));}
       xs.sort((p,q)=>p-q);
       for(let i=0;i+1<xs.length;i+=2)for(let gx=Math.max(0,Math.ceil((xs[i]-XMIN)/OC-.5));gx<=Math.min(ocW-1,Math.floor((xs[i+1]-XMIN)/OC-.5));gx++)BLK.set(gx,gy,1);}}}
-function walkRuns(){blockMask();
-  let k0=0;
-  streets.forEach((s,si)=>{const n=s.pts.length-1,k1=k0;k0+=n;if(!walkOf(s)||s.bridge)return;const hw=swOf(s)/2,iw=walkOf(s),P=s.pts;
+// walkRuns(sis, occOf): the runs of the streets sis (all of them without it), in their order, appended to WALKS; occOf reads
+// occ (the startup's second stage reads it as walkBase saw it, occWas: the streets far from the first view wait, and
+// what is laid meanwhile, the Cerro's walls, must not change their runs). Each street's runs depend only on it and
+// on what was laid before the city
+let SEG0=null; // the index in segs of each street's first segment
+function walkRuns(sis,occOf=occAt){if(!BLK)blockMask();const w0=WALKS.length;
+  if(!SEG0){SEG0=[];let k0=0;for(const s of streets){SEG0.push(k0);k0+=s.pts.length-1;}}
+  for(const si of sis||streets.keys()){const s=streets[si],n=s.pts.length-1,k1=SEG0[si];if(!walkOf(s)||s.bridge)continue;const hw=swOf(s)/2,iw=walkOf(s),P=s.pts;
     for(const side of [1,-1]){let run=null;
       const at=(i,u)=>{const a=P[i],b=P[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1])||1,tx=(b[0]-a[0])/L,ty=(b[1]-a[1])/L,nx=-ty*side,ny=tx*side;
         return (v)=>[a[0]+tx*u+nx*v,a[1]+ty*u+ny*v];};
       const behind=([x,y])=>{const gx=Math.floor((x-XMIN)/OC),gy=Math.floor((y-YMIN)/OC);return gx>=0&&gy>=0&&gx<ocW&&gy<ocH&&BLK.get(gx,gy)===1;};
       const ok=(i,u)=>{const p=at(i,u),m=p(hw+(WALK_OUT-iw)/2),o=p(hw+WALK_OUT-0.2);
-        return occAt(o[0],o[1])!==1&&occAt(...p(hw-iw+0.2))!==1&&!inMedian(...p(hw-iw+0.6))&&behind(p(hw+5))&&!onCrossing(m[0],m[1],k1+i);};
+        return occOf(o[0],o[1])!==1&&occOf(...p(hw-iw+0.2))!==1&&!inMedian(...p(hw-iw+0.6))&&behind(p(hw+5))&&!onCrossing(m[0],m[1],k1+i);};
       const close=()=>{if(run&&run.pts.length>1&&Math.hypot(run.pts[0][0]-run.pts[run.pts.length-1][0],run.pts[0][1]-run.pts[run.pts.length-1][1])>2)WALKS.push(run);run=null;};
       for(let i=0;i<n;i++){const a=P[i],b=P[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<0.01)continue;
         const steps=Math.max(1,Math.ceil(L/3.5));let prev=ok(i,0);
@@ -44,8 +49,8 @@ function walkRuns(){blockMask();
           if(cur!==prev){let lo=L*(j-1)/steps,hi=u;for(let t=0;t<6;t++){const mid=(lo+hi)/2;if(ok(i,mid)===prev)lo=mid;else hi=mid;}
             const e=at(i,prev?lo:hi)(0);if(prev){run.pts.push(e);close();}else run={si,side,pts:[e],hw,iw};}
           prev=cur;}}
-      if(run)run.pts.push(P[n]);close();}});
-  for(const w of WALKS){const p=w.pts[w.pts.length>>1],q=w.pts[(w.pts.length>>1)-1]||w.pts[1];
+      if(run)run.pts.push(P[n]);close();}}
+  for(const w of WALKS.slice(w0)){const p=w.pts[w.pts.length>>1],q=w.pts[(w.pts.length>>1)-1]||w.pts[1];
     const L=Math.hypot(p[0]-q[0],p[1]-q[1])||1,m=[(p[0]+q[0])/2+(-(p[1]-q[1])/L*w.side)*(w.hw+4),(p[1]+q[1])/2+((p[0]-q[0])/L*w.side)*(w.hw+4)];
     w.bi=blockAt(m[0],m[1]);}
 }
