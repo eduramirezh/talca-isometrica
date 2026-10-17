@@ -104,6 +104,7 @@
   const mob=matchMedia('(max-width:760px)').matches,P=document.getElementById('panel');
   if(mob)P.classList.add('folded');else p.style.left=`calc(50% + ${P.getBoundingClientRect().right/2}px)`;
   L.classList.add('over');p.onerror=()=>{p.remove();L.classList.remove('over');};
+  if(p.complete&&!p.naturalWidth)p.onerror(); // it failed before this script ran
   // when it is on screen (Chromium: element timing), for __stats.load.poster
   try{new PerformanceObserver(l=>{for(const e of l.getEntries())if(e.identifier==='poster')window.__posterT=Math.round(e.renderTime||e.loadTime);}).observe({type:'element',buffered:true});}catch(e){}
 })();

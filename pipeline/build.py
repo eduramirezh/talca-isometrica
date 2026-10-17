@@ -183,8 +183,9 @@ def main():
     js = lambda o: json.dumps(o, separators=(',', ':'), ensure_ascii=False).replace('</', '<\\/')
     out = t.replace('/*DATA*/', js(geo)).replace('/*POIS*/', js(pois))
     (ROOT / 'dist').mkdir(exist_ok=True)
-    (ROOT / 'dist' / 'talca.html').write_text(out.replace(POSTER_MARK, ''))
-    print('dist/talca.html:', len(out.encode()), 'bytes')
+    frag = out.replace(POSTER_MARK, '')
+    (ROOT / 'dist' / 'talca.html').write_text(frag)
+    print('dist/talca.html:', len(frag.encode()), 'bytes')
     if '--standalone' in sys.argv:
         # the fragment's own <title> and description stay in it for the artifact; here the <head> has them: the lines
         # are emptied, not removed, so --where still counts right

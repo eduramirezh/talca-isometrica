@@ -8,8 +8,8 @@
 El póster es la imagen que la página muestra mientras genera la maqueta (trampa «El póster del arranque» en CLAUDE.md):
 la vista inicial (homeView()) sin panel, marcadores ni etiquetas, con la Plaza de Armas al centro de la imagen. La
 página lo escala a la altura del mapa (la vista inicial muestra los mismos metros de alto en cualquier pantalla) y
-lo corre a la derecha del panel como homeView(). build.py lo enlaza en dist/index.html y lo incrusta (data:) en
-dist/talca.html. Vuelva a correrlo cuando cambie lo que se ve desde la vista inicial, o la página mostrará un
+lo corre a la derecha del panel como homeView(). build.py lo enlaza en dist/index.html; dist/talca.html (el artifact)
+no lo lleva. Vuelva a correrlo cuando cambie lo que se ve desde la vista inicial, o la página mostrará un
 póster viejo durante el arranque. Necesita Pillow para el WebP: uv run --with "playwright==1.63" --with pillow …
 
 Usa dist/index.html (make build) y Playwright, como tools/screenshot.py (sin Playwright en el Python del sistema:
