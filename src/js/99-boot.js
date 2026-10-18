@@ -127,7 +127,7 @@ function boot(){
     alamOf(B,al1);walksOf(wk1);
     const cat=parts=>{const o=[];for(const p of parts)if(p)for(const e of p)o.push(e);return o;};
     const canon=()=>({round:cat([PT.yard,...PT.blocks,...AL.map(bi=>PT.alam.get(bi)),...WALKS.map(w=>PT.walks.get(w)),PT.rip,hillTrees,TREES.slice(0,T0),...USOS.map(u=>(PT.uses.get(u)||[])[0]),PT.fringe]),
-      poplar:cat([PT.ripP,PO_FIELD.slice(0,P0),...USOS.map(u=>(PT.uses.get(u)||[])[1])]),cars:cat(WALKS.map(w=>PT.cars.get(w)))});
+      poplar:cat([PT.ripP,hillTrees.p,PO_FIELD.slice(0,P0),...USOS.map(u=>(PT.uses.get(u)||[])[1])]),cars:cat(WALKS.map(w=>PT.cars.get(w)))});
     const inBox=t=>boxIn(t[0],t[1],t[0],t[1]),C1=canon(),cars=[instCars(C1.cars.filter(inBox))];tm('city');
     const bv=[B.nv],yv=[Y.nv],zv=[Z.nv],trees=[instTrees(C1.round.filter(inBox),'round'),instTrees(C1.poplar.filter(inBox),'poplar')];
     first.b=tiled(B,matBld,true);first.s=tiled(S,matFlat,true);first.d=tiled(D,matFlat,true);

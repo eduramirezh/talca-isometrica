@@ -9,6 +9,6 @@ if(!window.THREE)return fail('No se pudo cargar la librería 3D (three.js). Revi
 // the other files of data/ in it; PD the places and tours (data/pois.json)
 let L;try{L=await window.__data;}catch(e){console.error(e);
   return fail(location.protocol==='file:'?'La maqueta no se puede abrir como archivo: sírvala con make serve.':'No se pudieron cargar los datos del mapa. Revise su conexión y recargue la página.');}
-const DATA=Object.assign(L.geo,{elev:L.elev,r5:L.r5,ed:L.ed,golf:L.golf}),PD=L.pois;
+const DATA=Object.assign(L.geo,{elev:L.elev,r5:L.r5,ed:L.ed,golf:L.golf,cob:L.cob}),PD=L.pois;
 const T=THREE;
 

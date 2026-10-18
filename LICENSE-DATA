@@ -47,6 +47,31 @@ https://github.com/eduramirezh/talca-isometrica/issues.
   pipeline/satellite.py se usan solo para revisar a mano; nada de ellas se
   redistribuye (ni las teselas ni imágenes hechas con ellas están en el
   repositorio ni en la página).
+- Huertos: config/usos-ciren.json, de CIREN–ODEPA, Catastro Frutícola Región
+  del Maule 2024 (IDE Minagri; información pública del Estado, sin licencia
+  declarada; citar «CIREN–ODEPA, Catastro Frutícola Región del Maule 2024»).
+- Cobertura vegetal: data/cobertura.json, de CONAF, Catastro de los Recursos
+  Vegetacionales y Uso de la Tierra, Región del Maule, actualización 2024 (IDE
+  Minagri; información pública, sin licencia declarada; citar la fuente).
+- Plazas y parques: config/usos-minvu.json, del Catastro Nacional de Áreas
+  Verdes 2023 de MINVU–INE («información de carácter referencial»; citar la
+  fuente).
+- Nombres de rutas: config/rutas.json corrige un rol con la Red Vial de la
+  Dirección de Vialidad (MOP), consultada.
+- Colegios y centros de salud: los puntos del Directorio Oficial de
+  Establecimientos 2025 de MINEDUC y de los Establecimientos de Salud de DEIS
+  (CC0) se usaron solo como lista de revisión; los polígonos de config/usos.json
+  son de OSM o de la imagen satelital.
+
+4. Censo 2024: CC BY-SA 4.0
+---------------------------
+
+config/usos-censo2024.json contiene manzanas de la cartografía del Censo de
+Población y Vivienda 2024 (Fuente: INE, Censo de Población y Vivienda 2024),
+publicada bajo Creative Commons Atribución-CompartirIgual 4.0
+(https://creativecommons.org/licenses/by-sa/4.0/deed.es). Ese archivo es una
+adaptación y se comparte con la misma licencia; la página del mapa, que las
+dibuja, lleva la atribución en la pestaña «Acerca».
 
 4. Relieve: Copernicus DEM GLO-30
 ---------------------------------

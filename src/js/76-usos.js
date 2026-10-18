@@ -27,7 +27,7 @@
 // sports ground with a pitch and bleachers), golf, parque, huerto, vina, potrero, feria, terminal (bus platforms),
 // conjunto (rows of identical semi-detached houses where the map has no streets), parcelas, bosque, eriazo. The
 // `vivienda` entries never get here: build.py turns them into built census blocks for cityGen.
-// window.__usos: counts per use, skipped entries, trees and the time taken (tk: ms per use).
+// window.__usos: counts per use, skipped entries, trees (tt: per use) and the time taken (tk: ms per use).
 const USOS=(()=>{const D=DATA.usos||{k:[],u:[]};return D.u.map(([k,rr,o],i)=>{const r=dec(rr);let A=0,x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   for(let j=0;j<r.length;j++){const p=r[j],q=r[(j+1)%r.length];A+=p[0]*q[1]-q[0]*p[1];x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
   if(A<0)r.reverse();return {i,k:D.k[k],r,o:o||{},A:Math.abs(A)/2,bb:[x0,y0,x1,y1],kids:[],skip:false};});})();
@@ -47,6 +47,7 @@ const inUso=(u,x,y)=>x>=u.bb[0]&&x<=u.bb[2]&&y>=u.bb[1]&&y<=u.bb[3]&&pip([x,y],u
 const ccwQ=q=>{let A=0;for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length];A+=p[0]*r[1]-r[0]*p[1];}return A<0?q.slice().reverse():q;};
 function usoSamples(u,n=48){const [x0,y0,x1,y1]=u.bb,s=Math.max(4,Math.sqrt(u.A/n)),o=[];
   for(let x=x0+s/2;x<x1;x+=s)for(let y=y0+s/2;y<y1;y+=s)if(pip([x,y],u.r))o.push([x,y]);return o.length?o:[u.r[0]];}
+const inBB=(q,u)=>q[0]>=u.bb[0]&&q[0]<=u.bb[2]&&q[1]>=u.bb[1]&&q[1]<=u.bb[3]; // a cheap test before pip
 function usosPlan(){const t0=performance.now();OCC0=occ.clone();
   // nesting: a use whose polygon lies inside a larger one is its kid (a pitch in a school, a school in a park)
   const by=USOS.slice().sort((a,b)=>a.A-b.A);
@@ -60,20 +61,21 @@ function usosPlan(){const t0=performance.now();OCC0=occ.clone();
   for(const u of USOS){const S=usoSamples(u);let pre=0,built=0,alam=0;
     for(const [x,y] of S){if(occ0At(x,y)===1||inHito(x,y))pre++;const bi=blockAt(x,y);if(bi>=0){if(blocks[bi].built)built++;if(ALAM.has(bi)||bi===PLAZA_BI)alam++;}}
     // a ground use mostly inside a larger one it is not the kid of (two OSM pitches drawn over each other) would flicker
-    const dup=USO_GROUND.has(u.k)&&(UGRID[Math.floor((S[0][1]-YMIN)/BG)*bgW+Math.floor((S[0][0]-XMIN)/BG)]||[]).some(p=>p!==u&&!p.skip&&p.A>u.A&&USO_GROUND.has(p.k)&&!p.kids.includes(u)&&S.filter(q=>pip(q,p.r)).length>S.length*.5);
+    const dup=USO_GROUND.has(u.k)&&(UGRID[Math.floor((S[0][1]-YMIN)/BG)*bgW+Math.floor((S[0][0]-XMIN)/BG)]||[]).some(p=>p!==u&&!p.skip&&p.A>u.A&&USO_GROUND.has(p.k)&&!p.kids.includes(u)&&S.filter(q=>inBB(q,p)&&pip(q,p.r)).length>S.length*.5);
     if(dup||alam>S.length*.2||pre>S.length*(u.k==='eriazo'||u.k==='bosque'?.6:.35)){u.skip=true;USTAT.skip.push(u.i);continue;}
     u.osm=S.filter(([x,y])=>occ0At(x,y)===3).length>S.length*.08; // OSM buildings stand on it (edificiosPlan): no generic pavilions
     u.built=built>S.length*.5;u.green=S.filter(([x,y])=>{const bi=blockAt(x,y);return bi>=0&&!blocks[bi].built&&blocks[bi].A<40000;}).length>S.length*.5; // on a block painted as park
     // a ground use that overlaps a larger one without lying inside it (OSM draws pitches over pitches) lays its ground
     // 1 cm higher, or the two would flicker where they meet
     if(USO_GROUND.has(u.k)){const nb=new Set();for(let gx=Math.max(0,Math.floor((u.bb[0]-XMIN)/BG));gx<=Math.min(bgW-1,Math.floor((u.bb[2]-XMIN)/BG));gx++)for(let gy=Math.max(0,Math.floor((u.bb[1]-YMIN)/BG));gy<=Math.min(bgH-1,Math.floor((u.bb[3]-YMIN)/BG));gy++)for(const p of UGRID[gy*bgW+gx]||[])nb.add(p);
-      for(const p of nb)if(p!==u&&!p.skip&&p.A>u.A&&USO_GROUND.has(p.k)&&!p.kids.includes(u)&&(u.r.some(q=>pip(q,p.r))||S.some(q=>pip(q,p.r)))){u.lift=0.01;break;}}
+      for(const p of nb)if(p!==u&&!p.skip&&p.A>u.A&&USO_GROUND.has(p.k)&&p.bb[0]<=u.bb[2]&&p.bb[2]>=u.bb[0]&&p.bb[1]<=u.bb[3]&&p.bb[3]>=u.bb[1]&&!p.kids.includes(u)&&(u.r.some(q=>inBB(q,p)&&pip(q,p.r))||S.some(q=>inBB(q,p)&&pip(q,p.r)))){u.lift=0.01;break;}}
     if(u.k==='industrial'&&u.built)continue; // cityGen's sheds stay; only the yard is laid
-    // occ: a scanline fill, leaving 2.5 m past each street's edge free
-    const [x0,y0,x1,y1]=u.bb;for(let gy=Math.max(0,Math.floor((y0-YMIN)/OC));gy<=Math.min(ocH-1,Math.floor((y1-YMIN)/OC));gy++){const cy=YMIN+(gy+.5)*OC,xs=[];
+    // occ: a scanline fill, leaving 2.5 m past each street's edge free (a 40 m cell of the street grid without streets
+    // needs no test: most of the countryside)
+    const [x0,y0,x1,y1]=u.bb;for(let gy=Math.max(0,Math.floor((y0-YMIN)/OC));gy<=Math.min(ocH-1,Math.floor((y1-YMIN)/OC));gy++){const cy=YMIN+(gy+.5)*OC,xs=[],srow=Math.floor((cy-YMIN)/SG)*sgW;
       for(let i=0,j=u.r.length-1;i<u.r.length;j=i++){const a=u.r[i],c=u.r[j];if((a[1]>cy)!==(c[1]>cy))xs.push(a[0]+(cy-a[1])*(c[0]-a[0])/(c[1]-a[1]));}xs.sort((p,q)=>p-q);
       for(let i=0;i+1<xs.length;i+=2)for(let gx=Math.max(0,Math.ceil((xs[i]-XMIN)/OC-.5));gx<=Math.min(ocW-1,Math.floor((xs[i+1]-XMIN)/OC-.5));gx++){
-        if(occ.get(gx,gy)===1)continue;if(!nearStreet(XMIN+(gx+.5)*OC,cy,2.5))occ.set(gx,gy,1);}}}
+        if(occ.get(gx,gy)===1)continue;const cx=XMIN+(gx+.5)*OC;if(sgrid[srow+Math.floor((cx-XMIN)/SG)]===NOSEG||!nearStreet(cx,cy,2.5))occ.set(gx,gy,1);}}}
   USTAT.planMs=Math.round(performance.now()-t0);
 }
 // the use's frame: u along its rows (o.r, degrees from +x, or the long side of the polygon's minimum-area rectangle), v
@@ -150,6 +152,16 @@ function usosBase(B,S,UG,list){const t0=performance.now(),C=hex;if(!OCC0)return;
     play:['#C23B32','#E2B33C','#3E6D9C','#4F8A4C'].map(C),soil:C('#B4A27C'),vine:C('#6F8B47'),vine2:C('#7E9A52'),orch:C('#A3A06C'),canopy:C('#5F7D3F'),canopy2:C('#688746'),canopyS:C('#7E7D57'),
     stall:['#3E6D9C','#E9E4D8','#D9792E','#4F8A4C','#C23B32'].map(C),pave:C('#A8A49C'),track:C('#D3BE94'),patch:['#C9B58C','#C2B98E','#A8AD76','#B3A77E','#9FA86E'].map(C),
     golf:C('#86AE58'),golf2:C('#7BA44F'),green:C('#69A345'),bunker:C('#E2D4A6'),walls:['#E8DCC4','#F0E6D2','#D9C9A7','#E6D3B5','#E4E0D6'].map(C)};
+  // the orchards' tones by species (CIREN's o.e): canopy in two tones, its shade, the ground (K.orch if none), the
+  // trees' size (crown scale) and brightness (the tree's seed: 0 darker, 1 lighter)
+  const HUERTO={_:{c:K.canopy,c2:K.canopy2,cs:K.canopyS,s:.42,b:.25},
+    cerezo:{c:C('#566F3A'),c2:C('#5E783F'),cs:C('#787659'),s:.42,b:.12},
+    olivo:{c:C('#7B8A60'),c2:C('#85946A'),cs:C('#8B896B'),g:C('#B7AD86'),s:.4,b:.55},
+    ciruelo:{c:C('#5C7A43'),c2:C('#658449'),cs:K.canopyS,s:.42,b:.2},
+    nogal:{c:C('#587A3E'),c2:C('#618545'),cs:K.canopyS,s:.62,b:.3},avellano:{c:C('#5B7D40'),c2:C('#648747'),cs:K.canopyS,s:.5,b:.3},
+    kiwi:{c:C('#5F7C42'),c2:C('#506B38'),s:.42,b:.25},uva:{c:C('#68844A'),c2:C('#57723F'),s:.42,b:.3},
+    arandano:{c:C('#4F6B3E'),c2:C('#57743F'),cs:K.canopyS,s:.3,b:.2},mora:{c:C('#4F6B3E'),c2:C('#57743F'),cs:K.canopyS,s:.3,b:.2}};
+  HUERTO.manzano=HUERTO.peral=HUERTO.membrillo=HUERTO.caqui=HUERTO._;
   // a pitch on the rectangle (a0..a1, b0..b1) of frame fr: surface, mowing stripes, lines (ESTETICA: 0.5 m), goals or hoops
   // (surf: the surface's colour, laid as a layer of its own when lay; grass gets mowing stripes)
   const pitch=(fr,a0,b0,a1,b1,sport,r,surf,lay)=>{const L=a1-a0,W=b1-b0,lw=.5,ln=(p,q,s,t,y=0.14)=>flatD(fr.R(p,q,s,t),y,K.line);
@@ -246,12 +258,22 @@ function usosBase(B,S,UG,list){const t0=performance.now(),C=hex;if(!OCC0)return;
     // rows of fruit trees 6 m apart. A big orchard (the countryside's, up to 240 ha: a tree every 33 m² would be
     // hundreds of thousands) gets its trees only along its edge, 12 m deep; inside, each row is a strip of canopy in
     // two tones with its shade on the side away from the sun (south)
-    huerto(u,r,fr){ground(u,K.orch);const big=u.A>4e4,sv=fr.G(0,1)[1]>0?-1:1;let n=0;
-      for(let b=fr.v0+3;b<fr.v1-2;b+=6,n++){const nb=big?[usoSpans(fr,b-12),usoSpans(fr,b+12)]:null;
+    // An orchard of CIREN's fruit cadastre (config/usos-ciren.json) knows its species (o.e), planting year (o.y),
+    // trellis (o.d) and trees per hectare (o.n): the rows are as far apart as the trees per hectare say (3.5-8 m), a
+    // young orchard has narrower canopies and smaller trees, the species sets the tones (HUERTO), and a kiwi or table
+    // grape on a parronal is one flat canopy with its rows marked. Whatever its size, its trees stand only on its
+    // outer rows and at the rows' ends, every other row if they are closer than 5 m (half of CIREN's 1,100 ha are
+    // orchards under 4 ha: all their trees would be 90 thousand more; their borders alone, 37 thousand).
+    // Without them (OSM), 6 m, the default tones and a 12 m border of trees on the big ones.
+    huerto(u,r,fr){const o=u.o,sp=HUERTO[o.e]||HUERTO._,age=o.y?Math.max(.3,Math.min(1,(2025-o.y)/8)):1;
+      if(o.d==='parronal'){ground(u,sp.c);rows(fr,o.n?Math.max(3.5,Math.min(6,Math.sqrt(1e4/o.n))):4.5,1,0.13,sp.c2);return;}
+      ground(u,sp.g||K.orch);const big=u.A>4e4||!!o.n,sv=fr.G(0,1)[1]>0?-1:1,gap=o.n?Math.max(3.5,Math.min(8,Math.sqrt(1e4/o.n)*1.4)):6,hw=o.n?gap*.27*age:1.6,sw=age,ts=sp.s*(.45+.55*age),dep=o.n?gap+.5:12;let n=0;
+      for(let b=fr.v0+gap/2;b<fr.v1-2;b+=gap,n++){const nb=big?[usoSpans(fr,b-dep),usoSpans(fr,b+dep)]:null;
         for(const [a0,a1] of usoBand(fr,b-1,b+1)){
-          if(big){strip(fr,b-1.6,b+1.6,a0+1,a1-1,0.13,n%2?K.canopy2:K.canopy,6);strip(fr,b+sv*2.6,b+sv*1.6,a0+1,a1-1,0.13,K.canopyS,6);}
-          for(let a=a0+2.5;a<a1-2;a+=5.5){if(big&&a-a0>12&&a1-a>12&&nb.every(sp=>sp.some(([p,q])=>a>p&&a<q)))continue;
-            const p=fr.G(a,b);if(!occ0At(...p)&&!nearStreet(...p,2))tree(p[0],p[1],.42+r()*.08,.25+r()*.3);}}}},
+          if(big){strip(fr,b-hw,b+hw,a0+1,a1-1,0.13,n%2?sp.c2:sp.c,6);strip(fr,b+sv*(hw+sw),b+sv*hw,a0+1,a1-1,0.13,sp.cs,6);}
+          for(let a=a0+2.5;a<a1-2;a+=5.5){if(big){const inner=nb.every(ss=>ss.some(([p,q])=>a>p&&a<q)),end=a-a0<=dep||a1-a<=dep;
+              if(inner&&(!end||(o.n&&gap<5&&n%2)))continue;} // a CIREN orchard's rows closer than 5 m: a tree at every other row's end
+            const p=fr.G(a,b);if(!occ0At(...p)&&!nearStreet(...p,2))tree(p[0],p[1],ts+r()*.08,sp.b+r()*.3);}}}},
     vina(u,r,fr){ground(u,K.soil);rows(fr,2.8,1.2,0.13,K.vine,K.vine2);},
     potrero(u,r,fr){const c=pick(r,PAL.fields);ground(u,c);rows(fr,18,9,0.13,shade(c,.93));},
     // a bus terminal: paved yard, platforms under long canopies, buses at the bays
@@ -276,7 +298,7 @@ function usosBase(B,S,UG,list){const t0=performance.now(),C=hex;if(!OCC0)return;
             const q=ccwQ([P(0,0),P(w,0),P(w,d),P(0,d)]);if(!fits(u,q,3,objs))continue;objs.push(q);B.dy=groundMin(q);B.gable(q,0.3,r()<.8?3.1:6,d*.25,pick(r,PAL.walls),r()<.7?pick(r,PAL.tile):pick(r,PAL.zinc));
             for(let k=0,n=2+Math.floor(r()*4);k<n;k++){const p=P(r()*w*1.6-w*.3,d+3+r()*14);if(inUso(u,...p)&&!occ0At(...p)&&!nearStreet(...p,2))tree(p[0],p[1],.8+r()*.5,r(),r()<.2);}}}},
     bosque(u,r,fr){const d=(u.o.a||110)/1e4,n=Math.round(u.A*d),[x0,y0,x1,y1]=u.bb;for(let k=0,t=0;k<n&&t<n*3;t++){const x=x0+r()*(x1-x0),y=y0+r()*(y1-y0);
-      if(!inUso(u,x,y)||occ0At(x,y)||nearStreet(x,y,2)||(wildAt(x,y)>.35&&blockAt(x,y)<0))continue;k++;tree(x,y,.9+r()*.6,r(),r()<.25);}}, // (wildTrees() covers steep ground outside the blocks)
+      if(!inUso(u,x,y)||occ0At(x,y)||nearStreet(x,y,2))continue;k++;tree(x,y,.9+r()*.6,r(),r()<(cobTall(x,y)?.75:.25));}}, // (wildTrees() skips the ground usosPlan took: the wood's trees are all here; a plantation of eucalyptus or pine, mostly columns)
     eriazo(u,r,fr){if(u.green)ground(u,PAL.open); // a vacant lot on a small block "sin información" (painted as a park): its sand
       const m=u.o.m??.35,ta=(u.o.a??4)/1e4,[x0,y0,x1,y1]=u.bb,nz=(x,y)=>.5+.5*Math.sin(x*.023+u.i)*Math.cos(y*.019-u.i*.7);
       for(let x=x0+r()*9;x<x1;x+=9)for(let y=y0+r()*9;y<y1;y+=9){const px=x+(r()-.5)*7,py=y+(r()-.5)*7;if(r()>m*1.6*nz(px,py)||!inUso(u,px,py)||occ0At(px,py)||nearStreet(px,py,2))continue;
@@ -292,7 +314,7 @@ function usosBase(B,S,UG,list){const t0=performance.now(),C=hex;if(!OCC0)return;
       for(let k=0;k<Math.ceil(u.A/6e4);k++){let p=fr.G(fr.u0+r()*(fr.u1-fr.u0),fr.v0+r()*(fr.v1-fr.v0)),h=r()*Math.PI*2;
         for(let s=0;s<40;s++){h+=(r()-.5)*.6;const q=[p[0]+Math.cos(h)*9,p[1]+Math.sin(h)*9];if(!inUso(u,...q)||occ0At(...q)||nearStreet(...q,1))break;
           const nx=-Math.sin(h)*1.5,ny=Math.cos(h)*1.5;flatD([[p[0]+nx,p[1]+ny],[p[0]-nx,p[1]-ny],[q[0]-nx,q[1]-ny],[q[0]+nx,q[1]+ny]],0.13,K.track);p=q;}}}};
-  USTAT.tk=USTAT.tk||{};for(const u of list){if(u.skip||!draw[u.k])continue;const r=rng(1000+u.i*7919),t1=performance.now();cur=u;draw[u.k](u,r,usoFrame(u));USTAT.n[u.k]=(USTAT.n[u.k]||0)+1;USTAT.tk[u.k]=Math.round((USTAT.tk[u.k]||0)+performance.now()-t1);}
+  USTAT.tk=USTAT.tk||{};USTAT.tt=USTAT.tt||{};for(const u of list){if(u.skip||!draw[u.k])continue;const r=rng(1000+u.i*7919),t1=performance.now(),n0=USTAT.trees;cur=u;draw[u.k](u,r,usoFrame(u));USTAT.n[u.k]=(USTAT.n[u.k]||0)+1;USTAT.tk[u.k]=Math.round((USTAT.tk[u.k]||0)+performance.now()-t1);USTAT.tt[u.k]=(USTAT.tt[u.k]||0)+USTAT.trees-n0;}
   S.dy=0;B.dy=0;USTAT.ms+=performance.now()-t0;
 }
 // the urban fringe: bare ground with no census block, use or farmland parcel within ~250 m of built blocks gets scrub

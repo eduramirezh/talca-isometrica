@@ -3,7 +3,8 @@
 Dibuja el contorno de cada manzana de data/geometry.json (rosado = con datos, celeste = sin
 información, verde = marcada como construida en config/manzanas.json) y su índice, sobre las
 teselas de Esri World Imagery. Así se decidió qué manzanas «sin información» están construidas. Los usos de
-suelo de config/usos.json van encima en naranjo, con su número de entrada y su uso.
+suelo (config/usos.json y los archivos de las fuentes chilenas, usos.entries()) van encima en naranjo, con su número
+de entrada y su uso.
 
   python pipeline/satellite.py plaza-de-armas            # 900 × 900 m alrededor de un lugar (id de pois.py)
   python pipeline/satellite.py mercado-central 400       # caja de 400 m

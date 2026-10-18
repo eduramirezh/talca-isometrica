@@ -58,6 +58,10 @@ config/
   manzanas.json          manzanas «sin información» del Censo que están construidas, y manzanas con datos que son parques (revisadas en imagen satelital)
   trazados.json          ríos (de OpenStreetMap), vía férrea y Ruta 5, con su procedencia
   usos.json              usos de suelo de los terrenos en blanco del Censo (industria, cementerios, colegios, canchas, eriazos…), con su fuente
+  usos-ciren.json        huertos del Catastro Frutícola 2024 de CIREN–ODEPA (especie, año de plantación, conducción)
+  usos-censo2024.json    manzanas del Censo 2024 construidas desde 2017 (CC BY-SA 4.0, INE)
+  usos-minvu.json        plazas y parques del Catastro Nacional de Áreas Verdes 2023 (MINVU–INE)
+  rutas.json             nombres de rutas de OSM que corrige el rol de la Dirección de Vialidad (MOP)
   edificios.json         dónde se dibujan los edificios reales de OpenStreetMap en vez de los generados o junto a ellos (áreas, umbrales de cobertura, correcciones)
   techos.json            la familia del techo (teja, óxido, zinc, claro…) de cada edificio de OSM, clasificada con la imagen satelital
 pipeline/
@@ -76,6 +80,9 @@ pipeline/
   usos.py                usos de suelo: importación desde OSM, revisión de lo que falta y de config/usos.json
   edificios.py           los edificios de OSM (manzanas enteras y mixtas) -> data/edificios.json; panel de cobertura; techos
   golf.py                la imagen de Esri sobre el Talca Country Club -> data/golf.json (pasto cortado y copas)
+  fuentes_cl.py          fuentes públicas chilenas (CIREN, CONAF, INE Censo 2024, MINVU, MINEDUC, DEIS): descarga a raw/cl/, lectura y paneles sobre la imagen satelital
+  cobertura.py           la cobertura vegetal de CONAF 2024 -> data/cobertura.json (una clase cada 40 m)
+  rutas.py               los nombres de las rutas del mapa contra los roles de la Red Vial del MOP
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos (Commons por nombre, ubicación o
                          categoría; Panoramax; Mapillary y Flickr con clave)
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
@@ -127,8 +134,9 @@ Los cambios de código o de datos se reciben como pull request en GitHub. Antes 
 - **Código y modelos de los hitos** (`pipeline/`, `tools/`, `src/`, incluidos los hitos hechos a mano de `src/js/hitos/`): licencia MIT, en [LICENSE](LICENSE).
 - **Datos derivados de OpenStreetMap** (`data/geometry.json`, `data/ruta5.json`, `data/edificios.json` y las partes de OSM de `config/trazados.json`, `config/usos.json` y las coordenadas de los lugares): ODbL 1.0, © colaboradores de OpenStreetMap, en [LICENSE-DATA](LICENSE-DATA). Toda publicación debe mantener la atribución (está en la pestaña «Acerca»).
 - **Textos de las fichas y de `docs/`:** obra propia de Edu Ramírez; se pueden citar con atribución (ver [LICENSE-DATA](LICENSE-DATA)).
-- **Manzanas:** Censo de Población y Vivienda 2017, Instituto Nacional de Estadísticas de Chile.
+- **Manzanas:** Censo de Población y Vivienda 2017, Instituto Nacional de Estadísticas de Chile; las construidas desde 2017 (`config/usos-censo2024.json`), del Censo 2024 del INE, bajo CC BY-SA 4.0.
 - **Relieve** (`data/elevation.json`): producido con Copernicus WorldDEM-30 © DLR e.V. 2010-2014 y © Airbus Defence and Space GmbH 2014-2018, provisto bajo COPERNICUS por la Unión Europea y la ESA; aviso y frase de responsabilidad en [LICENSE-DATA](LICENSE-DATA).
+- **Huertos, cobertura vegetal y plazas:** CIREN–ODEPA (`config/usos-ciren.json`), CONAF (`data/cobertura.json`) y MINVU–INE (`config/usos-minvu.json`), información pública del Estado; ver [LICENSE-DATA](LICENSE-DATA).
 - **Imagen satelital:** las teselas de Esri World Imagery que baja `pipeline/satellite.py` se usan solo para revisar a mano; nada de ellas se redistribuye.
 
 Cada fuente, su licencia y para qué se usó: [docs/FUENTES.md](docs/FUENTES.md).

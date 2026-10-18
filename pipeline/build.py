@@ -2,9 +2,10 @@
 (src/js/, ver script_pieces()) en su propio archivo, three.js y los datos, con un hash de su contenido en el nombre
 (dist/assets/), y los archivos de src/site/ (ícono, imagen de Open Graph, pósters, _headers).
 
-Los datos son data/geometry.json (más config/usos.json como `usos`; config/manzanas.json reclasifica como construidas,
-tipo 3, manzanas «sin información» del Censo, y las entradas `vivienda` de los usos agregan manzanas construidas donde el
-Censo no tiene), data/elevation.json, data/ruta5.json, data/edificios.json, data/golf.json y data/pois.json: un archivo
+Los datos son data/geometry.json (más los usos de config/usos.json y de los archivos de las fuentes chilenas, USOS_FILES,
+como `usos`; config/manzanas.json reclasifica como construidas, tipo 3, manzanas «sin información» del Censo, y las
+entradas `vivienda` de los usos agregan manzanas construidas donde el Censo no tiene), data/elevation.json,
+data/ruta5.json, data/edificios.json, data/golf.json, data/cobertura.json (si está) y data/pois.json: un archivo
 cada uno, que la página pide con fetch apenas empieza (src/page.html, el marcador /*DATA*/) y el script espera
 (src/js/00-start.js). Con el hash en el nombre se guardan en la caché del navegador sin fecha de vencimiento
 (src/site/_headers): un cambio del código no vuelve a bajar los datos, ni al revés.
@@ -109,22 +110,32 @@ def enc(pts):
         xi, yi = int(round(x)), int(round(y)); out += [xi-px, yi-py]; px, py = xi, yi
     return out
 
-USO_OPTS = {'rumbo': 'r', 'cancha': 'c', 'tipo': 't', 'arboles': 'a', 'matorral': 'm'}
+USO_OPTS = {'rumbo': 'r', 'cancha': 'c', 'tipo': 't', 'arboles': 'a', 'matorral': 'm',
+            'especie': 'e', 'plantacion': 'y', 'conduccion': 'd', 'arboles_ha': 'n'}   # (los cuatro últimos: los huertos de CIREN)
+# The land-use files, in the order DATA.usos takes them (an entry's place there seeds its drawing, so a new file goes
+# last): config/usos.json (OSM, ODbL, and the hand entries), then one file per Chilean source with a licence of its own
+# (docs/FUENTES.md, LICENSE-DATA). A missing file is skipped.
+USOS_FILES = ['usos.json', 'usos-ciren.json', 'usos-censo2024.json', 'usos-minvu.json']
+
+def usos_entries():
+    """Every entry of the land-use files that exist, in the order of USOS_FILES."""
+    return [u for f in USOS_FILES if (CONFIG / f).exists() for u in json.load(open(CONFIG / f))['usos']]
 
 def land_uses(geo):
     """config/usos.json -> DATA.usos = {k: [uso, …], u: [[uso index, ring (delta-encoded), {opts} | 0], …]}.
     A `vivienda` entry is housing the Censo does not have: with `bi`, that block becomes built (type 3, as with
     manzanas.json); with `poly` (ground without a census block), a new built block is appended, ~35 dwellings/ha,
-    so that cityGen lays houses along the map's streets inside it. Entries with most of their vertices outside the
-    commune's limit (DATA.limit) are left out."""
+    so that cityGen lays houses along the map's streets inside it (its `viviendas` and `personas` when the entry has
+    them, from the Censo 2024; ~35 dwellings/ha otherwise). The entries of every file of USOS_FILES, in order; those
+    with most of their vertices outside the commune's limit (DATA.limit) are left out."""
     names, out, lim = [], [], dec(geo['limit'])
-    for u in json.load(open(CONFIG / 'usos.json'))['usos']:
+    for u in usos_entries():
         r = u['poly'] if 'poly' in u else dec(geo['blocks'][u['bi']][3])
         if sum(pip(p, lim) for p in r) < len(r) / 2: continue   # mostly outside the commune (in Maule): not drawn
         if u['uso'] == 'vivienda':
             if 'poly' in u:
                 r = u['poly']; A = abs(sum(r[i-1][0]*r[i][1]-r[i][0]*r[i-1][1] for i in range(len(r))))/2
-                viv = max(1, round(A/1e4*35)); geo['blocks'].append([3, viv*3, viv, enc(r)])
+                viv = u.get('viviendas') or max(1, round(A/1e4*35)); geo['blocks'].append([3, u.get('personas') or viv*3, viv, enc(r)])
             elif geo['blocks'][u['bi']][0] == 1: geo['blocks'][u['bi']][0] = 3
             continue
         if u['uso'] not in names: names.append(u['uso'])
@@ -158,6 +169,8 @@ def main():
              'ed': ('edificios.json', json.load(open(require(DATA / 'edificios.json', 'Ejecute: make edificios')))),   # los edificios de OSM (ED)
              'golf': ('golf.json', json.load(open(require(DATA / 'golf.json', 'Ejecute: make golf')))),   # el pasto y las copas del Talca Country Club (pipeline/golf.py)
              'pois': ('pois.json', json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois'))))}
+    if (DATA / 'cobertura.json').exists():   # la cobertura vegetal de CONAF (pipeline/cobertura.py; sin ella, solo la pendiente)
+        files['cob'] = ('cobertura.json', json.load(open(DATA / 'cobertura.json')))
     require(THREE, 'Ejecute: npm install')
     # dist/assets/ only holds this build's files; the rest of dist/ is overwritten (make serve may be serving it)
     shutil.rmtree(DIST / 'assets', ignore_errors=True); (DIST / 'assets').mkdir(parents=True)
