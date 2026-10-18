@@ -116,7 +116,7 @@ function boot(){
     const ready=bi=>{const b=blocks[bi].bb;return boxIn(...b)&&Math.max(Math.hypot(b[0],b[1]),Math.hypot(b[2],b[1]),Math.hypot(b[0],b[3]),Math.hypot(b[2],b[3]))+CITY_REACH<=rho;};
     const AL=[...ALAM],[bis1,bis2]=split(blocks.map((b,bi)=>bi),ready),[al1,al2]=split(AL,ready),[wk1,wk2]=split(WALKS,w=>polyIn(w.pts));
     const Y=new GB(1<<18),Z=new GB(1<<17);let nb=0;
-    const [ed1,ed2]=split(ED.bks,bk=>boxIn(...bk.bb));
+    const [ed1,ed2]=split(ED.bks,bk=>boxIn(...bk.bb));edHullsFor(si=>k1<0||CITY_POS[si]<k1); // the hulls the lots of those streets can reach (the rest: edificiosBase, below and in rest())
     edificiosBase(B,Z,Y,ed1);tm('edificios'); // ...drawn, with their blocks' ground (2.5e7 + the block: between the Cerro and the city)
     const streetsOf=(Bx,Yx,Zx,sts)=>{const c=cityGen(Bx,Yx,Zx,sts,[]);PT.yard.push(...c.TR);nb+=c.nb;};
     const blocksOf=bis=>{for(const bi of bis)blockTrees(bi,PT.blocks[bi]=[]);};

@@ -28,7 +28,7 @@ el HTML), three (llega three.js), dcl (DOMContentLoaded), script (empieza el scr
 gen (termina la parte de la primera vista), frame (termina de dibujarse el primer cuadro, que tarda frameMs:
 compila los sombreadores y dibuja el primer mapa de sombras), shown (empieza el cuadro siguiente: el primero ya está en
 la pantalla) y full (termina el resto de la generación, en tajadas después del primer cuadro). Con --arranque N carga la página N veces, imprime cada arranque y la
-mediana, y no mide las vistas: la primera sin caché y las siguientes recargando, con lo que el navegador guardó (dist/
+mediana (también de las fases: los ms de __stats.t, y edDecode y edHulls de window.__ed), y no mide las vistas: la primera sin caché y las siguientes recargando, con lo que el navegador guardó (dist/
 se sirve como Cloudflare Pages, con assets/ en la caché y el texto comprimido: serve() de screenshot.py), o cada una
 sin caché con --frio (una página nueva en un contexto nuevo del mismo navegador). --red emula una red (CDP, también para
 lo que no viene de dist/: las fuentes de Google, o three.js desde cdnjs en una versión vieja): lenta, la de los
@@ -69,6 +69,8 @@ DEVICE = r"""(()=>{const gl=__three.renderer.getContext(),x=gl.getExtension('WEB
   css:[innerWidth,innerHeight],dpr:devicePixelRatio,webgl2:!!__three.renderer.capabilities.isWebGL2};})()"""
 
 LOAD = 'JSON.stringify(window.__stats.load)'
+# the ms of each phase of the generation (__stats.t) and of the OSM buildings' decoding and plan (__ed)
+PHASES = 'JSON.stringify(Object.assign({},window.__stats.t,window.__ed?{edDecode:__ed.decodeMs,edHulls:Math.round(__ed.hullMs||0)}:{}))'
 
 async def android_page(p, port, url=None):
     """La página en el Chrome del teléfono por adb: (navegador, página, logs, URL de dist/ servido en el puerto)."""
@@ -112,15 +114,19 @@ async def main(a):
         else: b, pg, logs = await open_page(p, a.size, dpr=a.dpr)
         print('dispositivo:', json.dumps(await pg.evaluate(DEVICE), ensure_ascii=False))
         await pg.wait_for_function('window.__stats.load.shown', timeout=60000)
-        runs = [json.loads(await pg.evaluate(LOAD))]; print('arranque:', json.dumps(runs[0]))
+        async def run():
+            if a.arranque: await pg.wait_for_function('window.__stats&&window.__stats.load.full', timeout=300000)
+            r, f = json.loads(await pg.evaluate(LOAD)), json.loads(await pg.evaluate(PHASES))
+            print('arranque:', json.dumps(r)); a.arranque and print('fases:', json.dumps(f)); return r, f
+        runs, fases = map(list, zip(await run()))
         for i in range(1, a.arranque or 0):
             if a.android: await android_load(pg, a.port, a.url)
             elif a.frio: await pg.context.close(); pg = await fresh(b, a)
             else: await pg.reload(); await pg.wait_for_function('window.__stats&&window.__stats.load.shown', timeout=300000)
-            runs.append(json.loads(await pg.evaluate(LOAD))); print('arranque:', json.dumps(runs[-1]))
+            r, f = await run(); runs.append(r); fases.append(f)
         if a.arranque:
-            med = {k: sorted(r[k] for r in runs)[len(runs) // 2] for k in runs[0] if all(isinstance(r.get(k), int) for r in runs)}
-            print('mediana:', json.dumps(med))
+            med = lambda rs: {k: sorted(r[k] for r in rs)[len(rs) // 2] for k in rs[0] if all(isinstance(r.get(k), int) for r in rs)}
+            print('mediana:', json.dumps(med(runs))); print('mediana de las fases:', json.dumps(med(fases)))
         print('[ms, llamadas, triángulos, mapas de sombra, ms de CPU] por cuadro; gesto: [mediana, p90] ms entre cuadros')
         for v in [] if a.arranque else a.view or VIEWS:
             name, _, js = v.partition('=')

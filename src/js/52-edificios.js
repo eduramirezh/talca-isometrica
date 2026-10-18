@@ -72,32 +72,57 @@ function clipHalf(r,a,t,side,m){const o=[],d=p=>side*((p[0]-a[0])*t[1]-(p[1]-a[1
   return o;}
 function edificiosPlan(){const t0=performance.now();
   const HN=NOLOTS.map(q=>({q,bb:ringBox(q)}));
-  const pts=Object.values(MODELS);
+  // the landmarks' points by 100 m cell (a building is far smaller: the cells of its box)
+  const PG=new Map(),pk=(gx,gy)=>gx*65536+gy;for(const m of Object.values(MODELS)){const k=pk(Math.floor(m.x/100),Math.floor(m.y/100));if(!PG.has(k))PG.set(k,[]);PG.get(k).push(m);}
+  const inPts=(x0,y0,x1,y1,R)=>{for(let gx=Math.floor(x0/100);gx<=Math.floor(x1/100);gx++)for(let gy=Math.floor(y0/100);gy<=Math.floor(y1/100);gy++)
+    for(const m of PG.get(pk(gx,gy))||[])if(m.x>=x0&&m.x<=x1&&m.y>=y0&&m.y<=y1&&pip([m.x,m.y],R))return true;return false;};
+  const seen=new Int32Array(segs.length);let stamp=0;
   for(const e of ED.list){const [x0,y0,x1,y1]=e.bb,R=e.R[0];
     // a landmark models it already (the samples inside the footprint are counted only when one of them falls on a
     // landmark: with the machine-learning footprints the pip tests took ~0.1 s of the startup)
     const hn=HN.filter(({bb})=>bb[0]<=x1&&bb[2]>=x0&&bb[1]<=y1&&bb[3]>=y0),inHito=(x,y)=>hn.some(({q,bb})=>x>=bb[0]&&x<=bb[2]&&y>=bb[1]&&y<=bb[3]&&pip([x,y],q));
     let n=0,hit=0,any=false;for(let i=0;i<4&&!any;i++)for(let j=0;j<4;j++){const x=x0+(x1-x0)*(i+.5)/4,y=y0+(y1-y0)*(j+.5)/4;if(occAt(x,y)===1||inHito(x,y)){any=true;break;}}
     if(any)for(let i=0;i<4;i++)for(let j=0;j<4;j++){const x=x0+(x1-x0)*(i+.5)/4,y=y0+(y1-y0)*(j+.5)/4;if(!pip([x,y],R))continue;n++;if(occAt(x,y)===1||inHito(x,y))hit++;}
-    if(pts.some(m=>m.x>=x0&&m.x<=x1&&m.y>=y0&&m.y<=y1&&pip([m.x,m.y],R))||(n&&hit>=n/4)){e.skip=true;EDS.landmark.push(e.id);continue;}
-    // cut at the line of the sidewalks of every street segment it reaches into
-    const A0=ringArea(R),seen=new Set(),cOf=O=>{let c=[0,0];for(const p of O){c[0]+=p[0];c[1]+=p[1];}return [c[0]/O.length,c[1]/O.length];};let rings=e.R,c=cOf(R);
+    if(inPts(x0,y0,x1,y1,R)||(n&&hit>=n/4)){e.skip=true;EDS.landmark.push(e.id);continue;}
+    // cut at the line of the sidewalks of every street segment it reaches into (a segment whose line is beyond reach
+    // from every corner of the footprint's box, or whose ends are past it, is skipped before the test of each point:
+    // the box holds every point of the footprint and of what is left of it, and the margin of 1e-6 m covers the rounding)
+    const A0=ringArea(R),cOf=O=>{let c=[0,0];for(const p of O){c[0]+=p[0];c[1]+=p[1];}return [c[0]/O.length,c[1]/O.length];};let rings=e.R,c=cOf(R);stamp++;
     for(let gx=Math.max(0,Math.floor((x0-XMIN)/SG));gx<=Math.min(sgW-1,Math.floor((x1-XMIN)/SG));gx++)for(let gy=Math.max(0,Math.floor((y0-YMIN)/SG));gy<=Math.min(sgH-1,Math.floor((y1-YMIN)/SG));gy++)
-      for(const id of sgrid[gy*sgW+gx]){if(seen.has(id))continue;seen.add(id);const s=segs[id],st=streets[s[5]];if(st.bridge)continue;
-        const L=Math.hypot(s[2]-s[0],s[3]-s[1]);if(L<0.5)continue;const t=[(s[2]-s[0])/L,(s[3]-s[1])/L],a=[s[0],s[1]],m=s[4]+(walkOf(st)?WALK_OUT:0.3);
-        const O=rings[0];
-        const side=Math.sign((c[0]-a[0])*t[1]-(c[1]-a[1])*t[0])||1;
-        const reach=O.some(p=>{const u=(p[0]-a[0])*t[0]+(p[1]-a[1])*t[1],d=side*((p[0]-a[0])*t[1]-(p[1]-a[1])*t[0]);return u>=0&&u<=L&&d<m;});
-        if(!reach)continue;const o=clipHalf(O,a,t,side,m);if(o.length<3){rings=null;break;}
+      for(const id of sgrid[gy*sgW+gx]){if(seen[id]===stamp)continue;seen[id]=stamp;const s=segs[id],st=streets[s[5]];if(st.bridge)continue;
+        const L=Math.hypot(s[2]-s[0],s[3]-s[1]);if(L<0.5)continue;const tx=(s[2]-s[0])/L,ty=(s[3]-s[1])/L,ax=s[0],ay=s[1],m=s[4]+(walkOf(st)?WALK_OUT:0.3);
+        const ua=(x0-ax)*tx,ub=(x1-ax)*tx,va=(y0-ay)*ty,vb=(y1-ay)*ty;if(Math.max(ua,ub)+Math.max(va,vb)<-1e-6||Math.min(ua,ub)+Math.min(va,vb)>L+1e-6)continue;
+        const side=Math.sign((c[0]-ax)*ty-(c[1]-ay)*tx)||1,ga=(x0-ax)*ty,gb=(x1-ax)*ty,ha=(y0-ay)*tx,hb=(y1-ay)*tx;
+        if((side>0?Math.min(ga,gb)-Math.max(ha,hb):-(Math.max(ga,gb)-Math.min(ha,hb)))>m+1e-6)continue;
+        const O=rings[0];let reach=false;
+        for(const p of O){const u=(p[0]-ax)*tx+(p[1]-ay)*ty,d=side*((p[0]-ax)*ty-(p[1]-ay)*tx);if(u>=0&&u<=L&&d<m){reach=true;break;}}
+        if(!reach)continue;const a=[ax,ay],t=[tx,ty],o=clipHalf(O,a,t,side,m);if(o.length<3){rings=null;break;}
         rings=[o,...rings.slice(1).filter(h=>h.every(p=>side*((p[0]-a[0])*t[1]-(p[1]-a[1])*t[0])>=m))];c=cOf(o);}
     if(!rings||ringArea(rings[0])<Math.max(4,A0*.4)){e.skip=true;EDS.dropped++;continue;}
     if(rings!==e.R){e.R=rings;EDS.clipped++;}
-    occMark(e.R[0],3);EDS.buildings++;
-    // a loose footprint is closed to the lots too: a vivienda block of config/usos.json may cover it (pipeline/edificios.py
-    // gives the footprints inside one to its block, but usos.json may have changed since)
-    if(e.bk.mix||e.bk.loose){const q=edHull(e.R[0],ED_GAP);lotBlock(q);e.bk.obs.push(q);if(e.t!=='casa')e.bk.paved.push(q);EDS.inMixed+=e.bk.mix;EDS.hulls++;}}
-  for(const bk of ED.bks)if(bk.mix)for(const s of bk.surf){const q=edHull(s.r,0);lotBlock(q);bk.obs.push(q);bk.paved.push(q);EDS.hulls++;}
+    occMark(e.R[0],3);EDS.buildings++;}
   EDS.planMs=Math.round(performance.now()-t0);}
+// The hulls a block closes to the lots (lotBlock): in a mixed block, of each building grown by ED_GAP and of each
+// surface; a loose footprint's too (a vivienda block of config/usos.json may cover it: pipeline/edificios.py gives
+// the footprints inside one to its block, but usos.json may have changed since). Only the lots that can reach a
+// block (CITY_REACH from their street's axis) and its own ground read them, so each block's wait until one of those
+// comes: edHullsFor() before the streets of each stage, edificiosBase() before its ground (the startup's first stage
+// computes those of the first view; the rest go in rest(), before the far streets). Same hulls as at once
+function edHulls(bk){if(bk.hulled)return;bk.hulled=true;if(!bk.mix&&!bk.loose)return;const t0=performance.now();
+  for(const e of bk.eds){if(e.skip)continue;const q=edHull(e.R[0],ED_GAP);lotBlock(q);bk.obs.push(q);if(e.t!=='casa')bk.paved.push(q);EDS.inMixed+=bk.mix;EDS.hulls++;}
+  if(bk.mix)for(const s of bk.surf){const q=edHull(s.r,0);lotBlock(q);bk.obs.push(q);bk.paved.push(q);EDS.hulls++;}
+  EDS.hullMs=(EDS.hullMs||0)+performance.now()-t0;}
+// the hulls of every block a lot of the streets for which near(si) is true can reach: a segment of one in the 40 m
+// cells (sgrid) of the block's box grown by CITY_REACH
+function edHullsFor(near){const t0=performance.now(),ok=new Uint8Array(sgW*sgH);
+  for(const s of segs){if(!near(s[5]))continue;const hw=s[4],x0=Math.min(s[0],s[2])-hw,x1=Math.max(s[0],s[2])+hw,y0=Math.min(s[1],s[3])-hw,y1=Math.max(s[1],s[3])+hw; // its cells, as in sgrid
+    for(let gx=Math.max(0,Math.floor((x0-XMIN)/SG));gx<=Math.min(sgW-1,Math.floor((x1-XMIN)/SG));gx++)for(let gy=Math.max(0,Math.floor((y0-YMIN)/SG));gy<=Math.min(sgH-1,Math.floor((y1-YMIN)/SG));gy++)ok[gy*sgW+gx]=1;}
+  for(const bk of ED.bks){if(bk.hulled||(!bk.mix&&!bk.loose))continue;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    for(const o of [...bk.eds.filter(e=>!e.skip),...bk.surf]){const b=o.bb;x0=Math.min(x0,b[0]);y0=Math.min(y0,b[1]);x1=Math.max(x1,b[2]);y1=Math.max(y1,b[3]);}
+    if(x0>x1){bk.hulled=true;continue;}const m=CITY_REACH+ED_GAP;let hit=false;
+    for(let gx=Math.max(0,Math.floor((x0-m-XMIN)/SG));gx<=Math.min(sgW-1,Math.floor((x1+m-XMIN)/SG))&&!hit;gx++)for(let gy=Math.max(0,Math.floor((y0-m-YMIN)/SG));gy<=Math.min(sgH-1,Math.floor((y1+m-YMIN)/SG));gy++)if(ok[gy*sgW+gx]){hit=true;break;}
+    if(hit){edHulls(bk);EDS.hullsNear=(EDS.hullsNear||0)+1;}}
+  EDS.hullForMs=Math.round(performance.now()-t0);}
 // r inset by d (counter-clockwise ring; the corners mitred, an acute one clipped at 2.5 d), or null where the
 // outline would fold over itself (a part narrower than 2 d)
 function insetRing(r,d){const n=r.length,o=[];
@@ -125,7 +150,7 @@ const ED_K={wall:{casa:PAL.wallsCore,comercio:PAL.wallsCore,otro:PAL.wallsCore,d
   surf:{estacionamiento:hex('#8F8C86'),pasto:PAL.lawn,jardin:hex('#93A85B'),piscina:PAL.water2,juegos:hex('#D2BF92')},walk:hex('#C3C1BA')};
 // the blocks bks (pieces of ED.bks), each its buildings then its ground
 function edificiosBase(B,Z,Y,bks){const t0=performance.now();
-  for(const bk of bks){B.k=Z.k=Y.k=2.5e7+bk.k; // after the Cerro (2e7), before the city (3e7 +)
+  for(const bk of bks){edHulls(bk);B.k=Z.k=Y.k=2.5e7+bk.k; // after the Cerro (2e7), before the city (3e7 +)
     const t1=performance.now();for(const e of bk.eds)if(!e.skip)edificio(B,Z,e);const t2=performance.now();edificiosGround(Y,bk);
     EDS.msEd=(EDS.msEd||0)+t2-t1;EDS[bk.mix?'msGx':'msGm']=(EDS[bk.mix?'msGx':'msGm']||0)+performance.now()-t2;}
   B.dy=Z.dy=Y.dy=0;EDS.ms+=performance.now()-t0;window.__ed=EDS;}
