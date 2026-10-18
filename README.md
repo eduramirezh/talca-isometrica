@@ -9,7 +9,7 @@ Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca 
 - **55 lugares** en 8 categorías, cada uno con dirección y fuente; en los datos (`data/pois.csv`), también sus coordenadas y el nivel de confianza de la ubicación.
 - **Dos recorridos guiados:** la Ruta de la Justicia y Talca icónica.
 - **~54.000 edificios** generados en el navegador frente a cada calle real, con alturas según la densidad del censo, ~3.900 de OpenStreetMap con su planta (todo el centro, y supermercados, colegios, torres y villas en el resto de la comuna) y 24 hitos con modelo propio, sobre su planta real.
-- **Relieve real** del modelo de elevación SRTM: los cerros del poniente y las terrazas de la ciudad hacia sus ríos, con exageración logarítmica.
+- **Relieve real** del modelo de elevación Copernicus GLO-30: los cerros del poniente y las terrazas de la ciudad hacia sus ríos, con exageración logarítmica.
 - **Vistas:** pixel art (píxeles de 0,5 m con contorno), modo noche, giro de la vista en 90°, tema claro y oscuro, y diseño para móvil.
 - **Un solo archivo HTML** autocontenido (~820 KB). Solo carga three.js desde cdnjs y las fuentes de Google Fonts.
 
@@ -28,7 +28,7 @@ make smoke          # carga la página en Chromium y falla si hay errores o la g
 Para regenerar todo desde las fuentes originales:
 
 ```bash
-make fetch          # descarga manzanas del Censo, grafo vial OSM y elevación SRTM a raw/ (~72 MB, requiere git y curl)
+make fetch          # descarga manzanas del Censo, grafo vial OSM y elevación (Copernicus y SRTM) a raw/ (~117 MB, requiere git y curl)
 make osm            # la API de OpenStreetMap sobre la comuna: caminos rurales, Ruta 5 y vía (~240 cajas, ~35 MB)
 make all            # geometría -> lugares -> HTML
 make validate       # compara cada lugar con su dirección en la grilla
@@ -64,12 +64,14 @@ pipeline/
   common.py              rutas, proyección (origen en la Plaza de Armas, grilla girada 5°) y el límite de la comuna (OSM)
   fetch_sources.sh       descarga las fuentes a raw/
   process_geometry.py    manzanas + calles + trazados -> data/geometry.json
-  elevation.py           elevación SRTM -> data/elevation.json
+  elevation.py           elevación Copernicus GLO-30 -> data/elevation.json (--srtm: la de antes, para comparar)
+  geotiff.py             lector de GeoTIFF de elevación (float32, DEFLATE, predictores 1–3) con la biblioteca estándar
   pois.py                catálogo de lugares y recorridos -> data/pois.json + pois.csv
   geocode.py             geocodificador de la numeración de Talca y validador
   build.py               plantilla + datos -> dist/; --where traduce una línea de dist/ a su archivo de src/
   diagnostics.py         paneles PNG para revisar trazados contra las manzanas
-  satellite.py           imagen satelital con las manzanas y los usos de suelo encima (qué hay de verdad en cada una); `marco`: la imagen girada al marco local de un hito
+  satellite.py           imagen satelital con las manzanas y los usos de suelo encima (qué hay de verdad en cada una); `marco`: la imagen girada al marco local de un hito;
+                         --fecha: de cuándo es la imagen; Esri Wayback: --release, `historia` (versiones de una tesela), `tiempo` (una caja en cada captura)
   usos.py                usos de suelo: importación desde OSM, revisión de lo que falta y de config/usos.json
   edificios.py           los edificios de OSM (manzanas enteras y mixtas) -> data/edificios.json; panel de cobertura; techos
   golf.py                la imagen de Esri sobre el Talca Country Club -> data/golf.json (pasto cortado y copas)
@@ -92,6 +94,8 @@ tools/variants.py        hoja de comparación: varias vistas por varias variante
 tools/site_assets.py     la imagen de Open Graph, el ícono y los pósters del arranque de src/site/, desde el mapa (make site-assets)
 tools/probe.py           evalúa expresiones JS en el mapa cargado (window.__rail, __trains…) e imprime el resultado
 tools/perf.py            lo que cuesta un cuadro (ms, llamadas de dibujo, triángulos, mapas de sombra, ms de CPU, ms entre cuadros al arrastrar) en varias vistas, y el arranque (--arranque N: ms hasta el primer cuadro; --red, una red móvil emulada; --frio, sin caché); --android en un teléfono por USB
+tools/relieve.py         qué mueve un cambio de data/elevation.json: alturas sobre la plaza por zona, matorral por pendiente, puntos de referencia (--png: mapa)
+tools/sentinel.py        Sentinel-2 L2A (uv run --with rasterio): escenas sin nubes, recorte en color y NDVI de una caja, usos de suelo que hoy se ven construidos o pelados
 tools/regress.py         ¿sale el mismo mapa?: capturas fijas y __stats de referencia (--save) y comparación píxel a píxel (--against)
 tools/profile.py         perfil de CPU del arranque: ms por función de src/ (propio, total, --callers), en Chromium o en el teléfono (--android); por etapa (--etapa) y las tareas largas de la segunda (--tareas)
 scripts/deploy-cloudflare.sh  publica dist/ en Cloudflare Pages (make deploy); .githooks/pre-push lo corre al empujar main
@@ -122,6 +126,7 @@ Los cambios de código o de datos se reciben como pull request en GitHub. Antes 
 - **Datos derivados de OpenStreetMap** (`data/geometry.json`, `data/ruta5.json`, `data/edificios.json` y las partes de OSM de `config/trazados.json`, `config/usos.json` y las coordenadas de los lugares): ODbL 1.0, © colaboradores de OpenStreetMap, en [LICENSE-DATA](LICENSE-DATA). Toda publicación debe mantener la atribución (está en la pestaña «Acerca»).
 - **Textos de las fichas y de `docs/`:** obra propia de Edu Ramírez; se pueden citar con atribución (ver [LICENSE-DATA](LICENSE-DATA)).
 - **Manzanas:** Censo de Población y Vivienda 2017, Instituto Nacional de Estadísticas de Chile.
+- **Relieve** (`data/elevation.json`): producido con Copernicus WorldDEM-30 © DLR e.V. 2010-2014 y © Airbus Defence and Space GmbH 2014-2018, provisto bajo COPERNICUS por la Unión Europea y la ESA; aviso y frase de responsabilidad en [LICENSE-DATA](LICENSE-DATA).
 - **Imagen satelital:** las teselas de Esri World Imagery que baja `pipeline/satellite.py` se usan solo para revisar a mano; nada de ellas se redistribuye.
 
 Cada fuente, su licencia y para qué se usó: [docs/FUENTES.md](docs/FUENTES.md).
