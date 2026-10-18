@@ -1,0 +1,6 @@
+{
+  "_comentario": "Nombres de rutas de OSM que el rol de la Dirección de Vialidad (MOP) corrige: process_geometry.py los reemplaza al armar las calles (make data) y `python -I pipeline/rutas.py check` compara cada «Ruta …» del mapa con la Red Vial. Lo ideal es corregirlos también en OSM.",
+  "reemplazos": [
+    {"de": "Ruta K-555", "a": "Ruta K-355", "fuente": "MOP Dirección de Vialidad, Red Vial (VIALIDAD/Red_Vial_Chile/MapServer/3): rol K-355 «Cruce Ruta 115 CH (Mercedes) – Cruce K-35 (Purísima)»; el 100 % de los 5,5 km que OSM rotula K-555 en la comuna corre a menos de 25 m de él (pipeline/rutas.py check, octubre de 2026)", "nota": "En OSM, ref=K-555 y name=Ruta K-555 en las vías del camino entre Mercedes y Purísima: probablemente un error de tipeo; falta corregirlo en OSM."}
+  ]
+}

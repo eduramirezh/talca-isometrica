@@ -4,6 +4,7 @@ Entradas:
   raw/chile_geojson/manzanas/R07_MANZANA_{IND,SIN_INF,ALDEA}_C17.shp.geojson  (Censo 2017, INE)
   raw/cicloconecta/data/cities/talca/nav_graph.json                         (OSM, vía cicloconecta)
   config/trazados.json                                                      (ríos, vía férrea, Ruta 5)
+  config/rutas.json                                 (nombres de rutas de OSM que corrige el rol del MOP; rutas.py)
   raw/osm/comuna-talca.json   límite de la comuna (OSM, relación 541797; common.comuna() lo baja la primera vez)
   raw/osm/map-comuna.json     calles de OSM donde el grafo no llega (python traces.py tiles-comuna)
   raw/osm/rio-<río>.json      (eje y agua de cada río con clave `osm`, de la API de OSM; se baja solo la primera vez)
@@ -31,6 +32,7 @@ Salida (todas las coordenadas en metros de grilla enteros, codificadas en delta:
 """
 import json, math, collections
 from common import loc, MANZANAS_DIR, NAV_GRAPH, CONFIG, DATA, RAW, require, EXT, comuna, clip_line
+import rutas
 
 XMIN, XMAX, YMIN, YMAX = EXT                          # ≈ lon -71.722..-71.492, lat -35.532..-35.311
 COMUNA = '7101'                                       # código del Censo de la comuna de Talca
@@ -115,7 +117,9 @@ def load_streets(R):
         if k in seen: continue
         seen.add(k); ways[e['way_id']].append((e['u'], e['v'])); winfo[e['way_id']] = (c, e['name'] or '')
     names, nidx, streets = [], {}, []
+    ren = rutas.reemplazos()   # roles of Vialidad (MOP) that correct OSM's (config/rutas.json)
     def add(c, nm, pts):
+        nm = ren.get(nm, nm)
         for part in clip_line(pts, R):
             if nm not in nidx: nidx[nm] = len(names); names.append(nm)
             streets.append([c, nidx[nm], enc(part)])
