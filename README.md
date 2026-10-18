@@ -111,6 +111,7 @@ Los cambios de código o de datos se reciben como pull request en GitHub. Antes 
 - [docs/FUENTES.md](docs/FUENTES.md): fuentes de datos, licencias y atribuciones.
 - [docs/PROYECTOS-SIMILARES.md](docs/PROYECTOS-SIMILARES.md): Isopolis, Isometric NYC y las ideas que se tomaron de ellos.
 - [docs/PLAN-TREN.md](docs/PLAN-TREN.md): la vía férrea completa y sus puentes (hechos) y el plan del tren en movimiento.
+- [docs/PLAN-SITIO.md](docs/PLAN-SITIO.md): separar el sitio publicado del artifact (datos aparte, empaquetador, Worker, primera vista generada al armar, three.js nuevo, relieve más fino); sin empezar.
 - [CLAUDE.md](CLAUDE.md): guía para seguir trabajando con Claude Code (arquitectura, convenciones, trampas conocidas).
 - [CHANGELOG.md](CHANGELOG.md): cambios.
 
