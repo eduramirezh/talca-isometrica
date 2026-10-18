@@ -8,6 +8,10 @@
                                                 # coordenadas de esas vías en el marco local del modelo
   python landmark.py photos estadio ["consulta"]  # fotos de Commons en diagnostics/fotos/estadio/
   python landmark.py photos diagonal "Isidoro del Solar Talca"   # algo que no es un lugar: el nombre es la carpeta
+  python landmark.py photos estacion --geo 150 --cat    # además, las fotos con coordenadas a menos de 150 m (100 por
+                                                # omisión) y las de la categoría de Commons de su elemento de Wikidata
+                                                # (wd= en pois.py; --cat "Categoría" da otra)
+  python landmark.py photos estacion --panoramax 150 [--mapillary 100] [--flickr 100]   # otras fuentes en ese radio
 
 osm: el plano muestra, en metros de grilla, las calles del mapa con su ancho de render (gris), las manzanas
 con su índice (rosado: con datos; celeste: sin información; verde: construida según config/manzanas.json),
@@ -25,11 +29,19 @@ Imprime los lados de la primera vía y, para cada vía, su extensión en u y v y
 photos: sin consulta, busca en Commons el nombre del lugar (solo archivos). Guarda miniaturas de 960 px (un
 ancho estándar: con otros, Commons responde 429) y un indice.txt con título, fecha, descripción, licencia, autor
 y enlace, para citar las que se usen. Las fotos con fecha importan: la imagen satelital puede ser de antes de
-una remodelación.
+una remodelación. Las opciones suman fuentes a la misma lista (sin repetir), en el mismo indice.txt con la fuente y,
+si la foto tiene coordenadas, su distancia al lugar («de frente» si la cámara lo mira, ±45°):
+  --geo [r]        Commons por ubicación: encuentra lo que el nombre no (la Estación: 40 archivos a menos de 150 m
+                   contra 6 por nombre).
+  --cat [cat]      los archivos de una categoría de Commons: la P373 del elemento de Wikidata del lugar, o la dada.
+  --panoramax [r]  fotos a nivel de calle de Panoramax (sin clave, CC BY-SA 4.0; en 2026 casi nada en Talca).
+  --mapillary [r]  Mapillary (CC BY-SA 4.0): necesita la clave en MAPILLARY_TOKEN; sin ella dice cómo pedirla.
+  --flickr [r]     Flickr, solo licencias libres: necesita la clave en FLICKR_KEY; sin ella dice cómo pedirla.
+La consulta puede ir en cualquier lugar salvo justo después de --cat, que la tomaría como categoría.
 
 Requiere internet y Pillow para el plano (uv run --with pillow python landmark.py osm …).
 """
-import json, math, re, sys, time, urllib.error, urllib.parse, urllib.request
+import json, math, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 from common import ROOT, DATA, RAW, loc, unloc, require
 
 UA = {'User-Agent': 'talca-isometrica/1.0 (maqueta isometrica de Talca)'}
@@ -177,29 +189,171 @@ def cmd_frame(pid, *args):
         print('\nnodos etiquetados a menos de 150 m (u, v):')
         for t, q in near: print(f'  ({q[0]:.1f}, {q[1]:.1f}) {t}')
 
-def cmd_photos(pid, query=None):
-    q = query or poi(pid)['n']   # con consulta, pid puede ser cualquier nombre (una calle): solo nombra la carpeta
-    r = json.loads(get(COMMONS + urllib.parse.urlencode({'action': 'query', 'list': 'search', 'srsearch': q,
-                                                         'srnamespace': 6, 'srlimit': 30, 'format': 'json'})))
-    titles = [s['title'] for s in r['query']['search'] if s['title'].lower().endswith(('.jpg', '.jpeg', '.png'))]
-    if not titles: raise SystemExit(f'Sin fotos en Commons para {q!r}; pruebe otra consulta')
-    out = ROOT / 'diagnostics' / 'fotos' / pid; out.mkdir(parents=True, exist_ok=True)
+def where(pid):
+    """(lat, lon, x, y) of a place or a grid point, or None for a free name (a street) that is neither."""
+    try: p = poi(pid)
+    except SystemExit: return None
+    return p['lat'], p['lon'], p['x'], p['y']
+
+def bbox(lat, lon, r):
+    dla, dlo = r / 110950, r / (111320 * math.cos(math.radians(-lat)))
+    return lon - dlo, lat - dla, lon + dlo, lat + dla
+
+def facing(lat, lon, at, az):
+    """Whether a camera at (lat, lon) looking at azimuth az (degrees from true north) faces the place at `at`, ±45°."""
+    if az is None: return False
+    x, y = loc(lon, lat)
+    b = (math.degrees(math.atan2(at[2] - x, at[3] - y)) - 5) % 360   # the grid is turned +5°: back to true north
+    return min(abs(b - az), 360 - abs(b - az)) < 45
+
+def commons_rows(titles, at=None):
+    """Commons files -> rows (date, source, title, description, licence, author, page, thumb, note)."""
     rows = []
     for k in range(0, len(titles), 20):
         info = json.loads(get(COMMONS + urllib.parse.urlencode({'action': 'query', 'titles': '|'.join(titles[k:k+20]),
-              'prop': 'imageinfo', 'iiprop': 'url|extmetadata', 'iiurlwidth': 960, 'format': 'json'})))
+              'prop': 'imageinfo|coordinates', 'iiprop': 'url|extmetadata', 'iiurlwidth': 960, 'format': 'json'})))
         for pg in info['query']['pages'].values():
             if 'imageinfo' not in pg: continue
             ii = pg['imageinfo'][0]; m = ii.get('extmetadata', {})
             val = lambda k: ' '.join(str(m.get(k, {}).get('value', '')).split())
             date = re.search(r'\d{4}(-\d\d-\d\d)?', val('DateTimeOriginal'))
-            rows.append((date.group(0) if date else '?', pg['title'], val('ImageDescription')[:160],
-                         val('LicenseShortName'), re.sub('<[^>]+>', '', val('Artist'))[:60], ii['descriptionurl'], ii['thumburl']))
+            note = ''
+            if at and pg.get('coordinates'):
+                c = pg['coordinates'][0]; note = f'a {math.dist(loc(c["lon"], c["lat"]), at[2:]):.0f} m'
+            rows.append((date.group(0) if date else '?', 'Commons', pg['title'], val('ImageDescription')[:160],
+                         val('LicenseShortName'), re.sub('<[^>]+>', '', val('Artist'))[:60], ii['descriptionurl'], ii['thumburl'], note))
+    return rows
+
+def commons_search(q):
+    r = json.loads(get(COMMONS + urllib.parse.urlencode({'action': 'query', 'list': 'search', 'srsearch': q,
+                                                         'srnamespace': 6, 'srlimit': 30, 'format': 'json'})))
+    return [s['title'] for s in r['query']['search']]
+
+def commons_geo(at, r):
+    # files with coordinates within r m (Commons caps the radius at 10 km and the list at 500)
+    g = json.loads(get(COMMONS + urllib.parse.urlencode({'action': 'query', 'list': 'geosearch', 'gscoord': f'{at[0]}|{at[1]}',
+                       'gsradius': int(min(r, 10000)), 'gsnamespace': 6, 'gslimit': 500, 'format': 'json'})))
+    return [x['title'] for x in g['query']['geosearch']]
+
+def commons_cat(cat):
+    titles, cont = [], {}
+    while True:
+        r = json.loads(get(COMMONS + urllib.parse.urlencode({'action': 'query', 'list': 'categorymembers', 'cmtype': 'file',
+                           'cmtitle': 'Category:' + cat, 'cmlimit': 500, 'format': 'json', **cont})))
+        titles += [x['title'] for x in r['query']['categorymembers']]
+        if 'continue' not in r: return titles
+        cont = r['continue']
+
+def wikidata_cat(pid):
+    """The Commons category (P373) of the place's Wikidata item (wd= in pois.py), or None."""
+    try: q = poi(pid).get('wd')
+    except SystemExit: return None
+    if not q: return None
+    e = json.loads(get('https://www.wikidata.org/wiki/Special:EntityData/' + q.split(',')[0] + '.json'))['entities']
+    c = next(iter(e.values())).get('claims', {}).get('P373', [])
+    return c[0]['mainsnak']['datavalue']['value'] if c else None
+
+PANORAMAX = ['https://panoramax.mapcomplete.org', 'https://panoramax.openstreetmap.fr', 'https://panoramax.ign.fr']
+
+def panoramax_rows(at, r):
+    # keyless STAC search on each instance (the federated api.panoramax.xyz answered 500 in October 2026)
+    rows = []
+    for inst in PANORAMAX:
+        b = ','.join(f'{v:.6f}' for v in bbox(at[0], at[1], r))
+        try: d = json.loads(get(f'{inst}/api/search?bbox={b}&limit=100', tries=2))
+        except (urllib.error.URLError, TimeoutError) as e: print(f'  {inst}: {e}'); continue
+        for ft in d.get('features', []):
+            p = ft.get('properties', {}); lo, la = ft['geometry']['coordinates'][:2]
+            th = ft.get('assets', {}).get('thumb', {}).get('href')
+            if not th: continue
+            by = ', '.join(x.get('name', '') for x in p.get('providers') or [])
+            note = f'a {math.dist(loc(lo, la), at[2:]):.0f} m' + (', de frente' if facing(la, lo, at, p.get('view:azimuth')) else '')
+            rows.append(((p.get('datetime') or '?')[:10], 'Panoramax', ft['id'], f'azimut {p.get("view:azimuth")}°',
+                         p.get('license', '?'), by[:60], f'{inst}/#focus=pic&pic={ft["id"]}', th, note))
+    return rows
+
+def mapillary_rows(at, r):
+    tok = os.environ.get('MAPILLARY_TOKEN')
+    if not tok:
+        print('  --mapillary: falta MAPILLARY_TOKEN. Es gratis: entre a mapillary.com, Dashboard → Developers → Register\n'
+              '  application (permiso «Read») y copie el «Client Token» (MLY|…); guárdelo en el llavero y expórtelo como\n'
+              '  MAPILLARY_TOKEN. Fotos CC BY-SA 4.0: «© usuario, Mapillary, CC BY-SA 4.0».')
+        return []
+    b = ','.join(f'{v:.6f}' for v in bbox(at[0], at[1], r))
+    url = 'https://graph.mapillary.com/images?' + urllib.parse.urlencode({'bbox': b, 'limit': 200,
+          'fields': 'id,captured_at,compass_angle,computed_compass_angle,computed_geometry,geometry,is_pano,creator,thumb_1024_url'})
+    d = json.loads(urllib.request.urlopen(urllib.request.Request(url, headers={**UA, 'Authorization': f'OAuth {tok}'}), timeout=60).read())
+    rows = []
+    for im in d.get('data', []):
+        g = (im.get('computed_geometry') or im.get('geometry') or {}).get('coordinates')
+        if not g or not im.get('thumb_1024_url'): continue
+        az = im.get('computed_compass_angle', im.get('compass_angle'))
+        note = f'a {math.dist(loc(*g[:2]), at[2:]):.0f} m' + (', panorámica' if im.get('is_pano') else ', de frente' if facing(g[1], g[0], at, az) else '')
+        rows.append((time.strftime('%Y-%m-%d', time.gmtime(im['captured_at'] / 1000)), 'Mapillary', im['id'], f'azimut {az}°',
+                     'CC BY-SA 4.0', (im.get('creator') or {}).get('username', ''), f'https://www.mapillary.com/app/?pKey={im["id"]}',
+                     im['thumb_1024_url'], note))
+    return rows
+
+FLICKR_LIC = {'4': 'CC BY 2.0', '5': 'CC BY-SA 2.0', '7': 'sin derechos conocidos', '9': 'CC0', '10': 'dominio público'}
+
+def flickr_rows(at, r):
+    key = os.environ.get('FLICKR_KEY')
+    if not key:
+        print('  --flickr: falta FLICKR_KEY. Es gratis: con una cuenta de flickr.com, App Garden → Create an App →\n'
+              '  Non-commercial; exporte la «Key» como FLICKR_KEY. Solo se listan fotos CC BY, CC BY-SA, CC0 o de dominio público.')
+        return []
+    b = ','.join(f'{v:.6f}' for v in bbox(at[0], at[1], r))
+    d = json.loads(get('https://api.flickr.com/services/rest/?' + urllib.parse.urlencode({'method': 'flickr.photos.search',
+        'api_key': key, 'bbox': b, 'license': ','.join(FLICKR_LIC), 'has_geo': 1, 'per_page': 100, 'format': 'json',
+        'nojsoncallback': 1, 'extras': 'license,date_taken,geo,owner_name,url_m,description'})))
+    rows = []
+    for ph in d.get('photos', {}).get('photo', []):
+        if not ph.get('url_m'): continue
+        note = f'a {math.dist(loc(float(ph["longitude"]), float(ph["latitude"])), at[2:]):.0f} m'
+        rows.append(((ph.get('datetaken') or '?')[:10], 'Flickr', ph.get('title', ''), ' '.join(str(ph.get('description', {}).get('_content', '')).split())[:160],
+                     FLICKR_LIC.get(str(ph.get('license')), '?'), ph.get('ownername', ''), f'https://www.flickr.com/photos/{ph["owner"]}/{ph["id"]}',
+                     ph['url_m'], note))
+    return rows
+
+def cmd_photos(pid, *args):
+    args = list(args); opts = {}
+    for o in ('--geo', '--cat', '--panoramax', '--mapillary', '--flickr'):
+        if o in args:
+            # the value: a radius in m, or for --cat a category; anything else is the query
+            i = args.index(o); v = args[i+1] if i + 1 < len(args) and not args[i+1].startswith('--') else None
+            if v and o != '--cat' and not re.fullmatch(r'\d+(\.\d+)?', v): v = None
+            opts[o] = v; del args[i:i+(2 if v else 1)]
+    query = args[0] if args else None
+    at = where(pid)   # con consulta, pid puede ser cualquier nombre (una calle): solo nombra la carpeta
+    if not at and set(opts) - {'--cat'}: raise SystemExit(f'{pid!r} no es un lugar ni un punto de grilla: --geo y las demás fuentes necesitan uno')
+    rows, seen = [], set()
+    def add(rs, what):
+        n = 0
+        for r in rs:
+            if r[2] in seen: continue
+            seen.add(r[2]); rows.append(r); n += 1
+        print(f'{what}: {n}')
+    if query or not opts:
+        q = query or poi(pid)['n']
+        add(commons_rows([t for t in commons_search(q) if t.lower().endswith(('.jpg', '.jpeg', '.png'))], at), f'Commons, «{q}»')
+    if '--geo' in opts:
+        r = float(opts['--geo'] or 100)
+        add(commons_rows([t for t in commons_geo(at, r) if t.lower().endswith(('.jpg', '.jpeg', '.png'))], at), f'Commons a menos de {r:.0f} m')
+    if '--cat' in opts:
+        cat = opts['--cat'] or wikidata_cat(pid)
+        if not cat: print('--cat: el lugar no tiene wd= en pois.py o su elemento no tiene categoría de Commons (P373); dé la categoría')
+        else: add(commons_rows([t for t in commons_cat(cat) if t.lower().endswith(('.jpg', '.jpeg', '.png'))], at), f'Commons, categoría «{cat}»')
+    for o, f, n in (('--panoramax', panoramax_rows, 'Panoramax'), ('--mapillary', mapillary_rows, 'Mapillary'), ('--flickr', flickr_rows, 'Flickr')):
+        if o in opts: add(f(at, float(opts[o] or 100)), n)
+    if not rows: raise SystemExit('Sin fotos; pruebe otra consulta, --geo con un radio mayor o --cat')
+    out = ROOT / 'diagnostics' / 'fotos' / pid; out.mkdir(parents=True, exist_ok=True)
     rows.sort(key=lambda r: r[0] if r[0] != '?' else '0', reverse=True)   # sin fecha al final
     with open(out / 'indice.txt', 'w') as f:
-        for i, (date, title, desc, lic, author, page, thumb) in enumerate(rows):
-            name = f'{i:02d}.jpg'; (out / name).write_bytes(get(thumb)); time.sleep(1)
-            line = f'{name}  {date}  {title}  [{lic}] {author}\n    {desc}\n    {page}\n'
+        for i, (date, src, title, desc, lic, author, page, thumb, note) in enumerate(rows):
+            name = f'{i:02d}.jpg'
+            try: (out / name).write_bytes(get(thumb)); time.sleep(1)
+            except (urllib.error.URLError, TimeoutError) as e: name = f'{i:02d} (sin miniatura: {e})'
+            line = f'{name}  {date}  [{src}] {title}  [{lic}] {author}{"  (" + note + ")" if note else ""}\n    {desc}\n    {page}\n'
             f.write(line); print(line, end='')
     print(f'-> {out.relative_to(ROOT)}/ (más recientes primero)')
 
