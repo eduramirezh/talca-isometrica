@@ -1,0 +1,6 @@
+# Cloudflare Pages: las cabeceras del sitio (https://developers.cloudflare.com/pages/configuration/headers/).
+# dist/assets/ lleva el hash del contenido en cada nombre (pipeline/build.py): un archivo con ese nombre no cambia
+# nunca, así que el navegador lo guarda sin volver a preguntar. index.html y lo demás siguen como Pages los sirve
+# (revalidados en cada visita), para que una publicación nueva se vea de inmediato.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

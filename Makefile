@@ -31,10 +31,10 @@ golf:                         ## la imagen de Esri sobre el Talca Country Club (
 pois:                         ## pipeline/pois.py -> data/pois.json + data/pois.csv
 	cd pipeline && $(PY) pois.py
 
-build:                        ## -> dist/talca.html (fragmento) y dist/index.html (página completa)
-	cd pipeline && $(PY) build.py --standalone
+build:                        ## -> dist/: index.html, assets/ (el script, three.js y los datos, con hash) y los archivos de src/site/ (requiere npm install)
+	cd pipeline && $(PY) build.py
 
-check: build                  ## revisión rápida (<1 s): JSON, marcadores, restricciones de artifact, node --check; la corre el hook de pre-commit
+check: build                  ## revisión rápida (<1 s): JSON, marcadores, hitos, node --check, los archivos que pide la página; la corre el hook de pre-commit
 	$(PY) tools/check.py
 
 smoke: build                  ## carga la página en Chromium y falla si hay errores de consola o la generación sale vacía (~1 min)

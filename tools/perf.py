@@ -5,6 +5,8 @@
   uv run --with "playwright==1.63" python tools/perf.py --view "estadio=__look(-560,1000,4)"   # vistas propias (repetible)
   uv run --with "playwright==1.63" python tools/perf.py --android     # en el Chrome de un teléfono Android por USB
   uv run --with "playwright==1.63" python tools/perf.py --android --arranque 3   # solo el arranque, en tres cargas
+  uv run --with "playwright==1.63" python tools/perf.py --arranque 3 --red lenta --frio   # en una red móvil lenta, sin caché
+  TALCA_DIST=shots/dist-antes uv run --with "playwright==1.63" python tools/perf.py --arranque 3   # otra copia de dist/, para comparar
 
 Para cada vista (JS que mueve la cámara, como en screenshot.py) da tres cuadros que pasan por el loop() real:
   refit   el mapa de sombras rehecho (fitShadow(true)): lo que cuesta un salto o un zoom grande
@@ -24,18 +26,23 @@ el HTML), three (llega three.js), dcl (DOMContentLoaded), script (empieza el scr
 gen (termina la parte de la primera vista), frame (termina de dibujarse el primer cuadro, que tarda frameMs:
 compila los sombreadores y dibuja el primer mapa de sombras), shown (empieza el cuadro siguiente: el primero ya está en
 la pantalla) y full (termina el resto de la generación, en tajadas después del primer cuadro). Con --arranque N carga la página N veces, imprime cada arranque y la
-mediana, y no mide las vistas.
+mediana, y no mide las vistas: la primera sin caché y las siguientes recargando, con lo que el navegador guardó (dist/
+se sirve como Cloudflare Pages, con assets/ en la caché y el texto comprimido: serve() de screenshot.py), o cada una
+sin caché con --frio (una página nueva en un contexto nuevo del mismo navegador). --red emula una red (CDP, también para
+lo que no viene de dist/: las fuentes de Google, o three.js desde cdnjs en una versión vieja): lenta, la de los
+teléfonos de Lighthouse (150 ms de ida y vuelta, 1,6 Mbit/s de bajada, 750 kbit/s de subida), o 4g (60 ms, 9 Mbit/s,
+1,5 Mbit/s). No sirve con --android, que va por USB.
 Usa window.__three (99-boot.js) y abre la página con open_page() de screenshot.py (una carga, ~1 min).
 
 Con --android mide en un teléfono de verdad: con la depuración USB activada, el teléfono conectado y Chrome abierto
 en él, sirve dist/ en el puerto --port, lo lleva al teléfono (adb reverse), se conecta a su Chrome por CDP (adb
 forward a chrome_devtools_remote) y abre la página en una pestaña nueva, del tamaño y la densidad del teléfono
-(--size y --dpr no cuentan). three.js va desde node_modules, como en screenshot.py. Imprime el modelo, la GPU y la
+(--size y --dpr no cuentan), con todo desde dist/, como en screenshot.py. Imprime el modelo, la GPU y la
 pantalla. Deja la pantalla del teléfono encendida y la pestaña al frente: una pestaña oculta no dibuja.
 """
-import argparse, asyncio, functools, http.server, json, subprocess, threading
+import argparse, asyncio, json, subprocess
 from playwright.async_api import async_playwright
-from screenshot import open_page, ROOT
+from screenshot import open_page, serve, ROOT
 
 FRAME = r"""(async (look)=>{const {renderer}=__three;const gl=renderer.getContext(),px=new Uint8Array(4),SM=renderer.shadowMap;
  const render=renderer.render.bind(renderer),smr=SM.render.bind(SM);let ms=0,calls=0,tri=0,shadow=0,cpu=0;
@@ -61,24 +68,15 @@ DEVICE = r"""(()=>{const gl=__three.renderer.getContext(),x=gl.getExtension('WEB
 LOAD = 'JSON.stringify(window.__stats.load)'
 
 async def android_page(p, port):
-    """La página en el Chrome del teléfono por adb: (navegador, página, logs, servidor)."""
+    """La página en el Chrome del teléfono por adb: (navegador, página, logs, URL de dist/ servido en el puerto)."""
     adb = lambda *a: subprocess.run(['adb', *a], check=True, capture_output=True, text=True).stdout
     if 'device' not in adb('devices').split('\n', 1)[1]: raise SystemExit('adb no ve el teléfono: conéctelo, desbloquéelo y acepte la depuración USB')
-    class Quiet(http.server.SimpleHTTPRequestHandler):
-        def log_message(self, *a): pass
-    handler = functools.partial(Quiet, directory=str(ROOT / 'dist'))
-    srv = http.server.ThreadingHTTPServer(('127.0.0.1', port), handler); threading.Thread(target=srv.serve_forever, daemon=True).start()
+    srv = serve(port)
     adb('reverse', f'tcp:{port}', f'tcp:{port}'); adb('forward', 'tcp:9222', 'localabstract:chrome_devtools_remote')
     b = await p.chromium.connect_over_cdp('http://127.0.0.1:9222')
     pg = await b.contexts[0].new_page(); await pg.bring_to_front()
     logs = []
     pg.on('console', lambda m: logs.append(f'{m.type}: {m.text}')); pg.on('pageerror', lambda e: logs.append(f'ERROR: {e}'))
-    THREE = (ROOT / 'node_modules/three/build/three.min.js').read_text()
-    async def route(r):
-        u = r.request.url
-        if 'three' in u and u.endswith('.js'): await r.fulfill(body=THREE, content_type='application/javascript')
-        else: await r.continue_()
-    await pg.route('**/*', route)
     await android_load(pg, port)
     print('stats:', await pg.evaluate('JSON.stringify(window.__stats)'))
     return b, pg, logs, srv
@@ -89,16 +87,33 @@ async def android_load(pg, port):
 
 VIEWS = ['inicial=0', 'comuna=__look(3000,1000,0.12)', 'ciudad=__look(-60,30,1.5)', 'plaza-z4=__look(-60,30,4)', 'plaza-z14=__look(-60,30,14.2)']
 
+# network conditions for --red (CDP Network.emulateNetworkConditions: ms of latency, bytes per second)
+RED = {'lenta': (150, 1.6e6 / 8, 750e3 / 8), '4g': (60, 9e6 / 8, 1.5e6 / 8)}
+
+async def fresh(b, a, pg=None):
+    """A page that loads the map with --red's network: in a new context (an empty cache) unless pg is given."""
+    if pg is None:
+        w, h = map(int, a.size.split('x'))
+        pg = await b.new_page(viewport={'width': w, 'height': h}, has_touch=w < 800, is_mobile=w < 800, device_scale_factor=a.dpr)
+    if a.red:
+        cdp = await pg.context.new_cdp_session(pg); lat, down, up = RED[a.red]
+        await cdp.send('Network.enable')
+        await cdp.send('Network.emulateNetworkConditions', {'offline': False, 'latency': lat, 'downloadThroughput': down, 'uploadThroughput': up})
+    await pg.goto(serve()); await pg.wait_for_function('window.__stats&&window.__stats.load.shown', timeout=300000)
+    return pg
+
 async def main(a):
     async with async_playwright() as p:
         if a.android: b, pg, logs, srv = await android_page(p, a.port)
+        elif a.red or a.frio: b, pg, logs = await open_page(p, a.size, dpr=a.dpr, go=False); pg = await fresh(b, a, pg)
         else: b, pg, logs = await open_page(p, a.size, dpr=a.dpr)
         print('dispositivo:', json.dumps(await pg.evaluate(DEVICE), ensure_ascii=False))
         await pg.wait_for_function('window.__stats.load.shown', timeout=60000)
         runs = [json.loads(await pg.evaluate(LOAD))]; print('arranque:', json.dumps(runs[0]))
         for i in range(1, a.arranque or 0):
             if a.android: await android_load(pg, a.port)
-            else: await pg.reload(); await pg.wait_for_function('window.__stats&&window.__stats.load.shown', timeout=180000)
+            elif a.frio: await pg.context.close(); pg = await fresh(b, a)
+            else: await pg.reload(); await pg.wait_for_function('window.__stats&&window.__stats.load.shown', timeout=300000)
             runs.append(json.loads(await pg.evaluate(LOAD))); print('arranque:', json.dumps(runs[-1]))
         if a.arranque:
             med = {k: sorted(r[k] for r in runs)[len(runs) // 2] for k in runs[0] if all(isinstance(r.get(k), int) for r in runs)}
@@ -110,7 +125,7 @@ async def main(a):
             print(name, json.dumps(r))
         for l in logs:
             if l.startswith(('ERROR:', 'error:')): print(l)
-        if a.android: await pg.close(); srv.shutdown()
+        if a.android: await pg.close()
         else: await b.close()
 
 if __name__ == '__main__':
@@ -120,4 +135,6 @@ if __name__ == '__main__':
     ap.add_argument('--android', action='store_true', help='en el Chrome de un teléfono Android conectado por adb')
     ap.add_argument('--arranque', type=int, metavar='N', help='solo el arranque, en N cargas de la página')
     ap.add_argument('--port', type=int, default=8766, help='puerto en que se sirve dist/ con --android')
+    ap.add_argument('--red', choices=RED, help='emula una red: lenta (150 ms, 1,6 Mbit/s) o 4g (60 ms, 9 Mbit/s)')
+    ap.add_argument('--frio', action='store_true', help='con --arranque, cada carga sin caché (por omisión, solo la primera)')
     asyncio.run(main(ap.parse_args()))

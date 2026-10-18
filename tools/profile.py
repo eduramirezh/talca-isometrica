@@ -31,7 +31,7 @@ corre la segunda etapa: mediana, percentil 90, máximo y cuántos pasan de 50 ms
 como quien lo arrastra mientras carga: sliced() usa entonces tajadas de SLICE_BUSY y la lista de tareas muestra cuánto
 dura cada pieza de rest() que no se puede partir.
 """
-import argparse, asyncio, json, sys
+import argparse, asyncio, json, re, sys
 
 # the ms between frames while stage 2 runs (from window.__three, at the end of stage 1, to window.__stats); with
 # PAN, the map moves 4 px each frame meanwhile, back and forth
@@ -46,17 +46,23 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'pipeline'))
 import build  # noqa: E402
 
-STANDALONE = build.STANDALONE.count('\n')
+_PIECES = {}
+def pieces(kind):
+    """build.script_pieces() or build.page_pieces(), read once."""
+    if kind not in _PIECES: _PIECES[kind] = getattr(build, f'{kind}_pieces')()
+    return lambda: _PIECES[kind]
 
 def src_of(frame):
     """callFrame -> 'src/js/50-city.js:123' (or the URL's last part, for three.js and the rest)."""
     url, n = frame['url'], frame['lineNumber'] + 1
     if not url: return '(nativo)'
-    if not url.split('#')[0].endswith(('index.html', '/')): return url.rsplit('/', 1)[-1]
+    name = url.split('#')[0].rsplit('/', 1)[-1]
+    kind = 'script' if re.fullmatch(r'app\.\w+\.js', name) else 'page' if name in ('index.html', '') else None
+    if not kind: return name
     try:
-        f, k = build.where(n - STANDALONE)
+        f, k = build.where(n, pieces(kind))
         return f'{f}:{k}'
-    except ValueError: return f'index.html:{n}'
+    except ValueError: return f'{name or "index.html"}:{n}'
 
 def samples(prof):
     """[(µs since the profile's start, ms, [node, its caller, …])] for each sample, in order."""
@@ -190,7 +196,7 @@ async def main(a):
         prof = staged(json.load(open(a.from_)), a.etapa)
         return callers(prof, a.callers, a.depth, a.top) if a.callers else report(prof, a.top, a.under)
     from playwright.async_api import async_playwright  # --from works without Playwright
-    from screenshot import open_page
+    from screenshot import open_page, serve
     from perf import android_page
     async with async_playwright() as p:
         # locally, a page that has loaded nothing: after another load of the map (a reload, or about:blank in between)
@@ -201,7 +207,7 @@ async def main(a):
             url = pg.url; await pg.goto('about:blank'); await pg.wait_for_timeout(3000)
         else:
             b, pg, logs = await open_page(p, a.size, dpr=a.dpr, go=False, init=FRAMES % ('true' if a.gesto else 'false'))
-            url = (ROOT / 'dist' / 'index.html').as_uri()
+            url = serve()
         cdp = await pg.context.new_cdp_session(pg)
         await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', {'interval': a.interval})
         if a.tareas is not None: await b.start_tracing(page=pg, categories=['toplevel'])
@@ -222,7 +228,7 @@ async def main(a):
         prof = staged(prof, a.etapa)
         if a.callers: callers(prof, a.callers, a.depth, a.top)
         else: report(prof, a.top, a.under)
-        if a.android: await pg.close(); srv.shutdown()
+        if a.android: await pg.close()
         else: await b.close()
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 {
   "name": "talca-isometrica",
   "private": true,
-  "description": "three.js local solo para pruebas sin conexión (tools/screenshot.py). La página publicada lo carga desde cdnjs.",
+  "description": "three.js r128: pipeline/build.py lo copia a dist/assets/ (make build necesita npm install).",
   "devDependencies": {
     "three": "0.128.0"
   }

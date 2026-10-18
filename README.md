@@ -18,9 +18,10 @@ Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca 
 No hace falta descargar nada para ver o modificar la página: los datos procesados ya están en `data/`.
 
 ```bash
-make build          # -> dist/index.html (página completa) y dist/talca.html (fragmento para Claude)
-make serve          # sirve en http://localhost:8765 y lo abre en el navegador
-make check          # revisión rápida (<1 s): JSON, marcadores, restricciones de artifact, node --check; make hooks la deja en el pre-commit
+npm install         # una vez: three.js r128 (package.json), que make build copia a dist/
+make build          # -> dist/: index.html y assets/ (el script, three.js y los datos)
+make serve          # sirve en http://localhost:8765 y lo abre en el navegador (desde file:// no carga: pide sus datos con fetch)
+make check          # revisión rápida (<1 s): JSON, marcadores, hitos, node --check, los archivos que pide la página; make hooks la deja en el pre-commit
 make smoke          # carga la página en Chromium y falla si hay errores o la generación sale vacía (~1 min)
 ```
 
@@ -77,20 +78,20 @@ pipeline/
                          la API map de OSM por cajas (tiles, tiles-comuna);
                          cruces, calzadas y ramales de la Ruta 5 -> data/ruta5.json
   railway.py             la vía férrea y el ramal desde OSM: cruces bajo la vía o a nivel, catenaria y señales -> config/trazados.json
-src/                     toda la aplicación (CSS, UI y motor three.js r128), en fuentes que build.py une en un solo fragmento:
-  page.html              fuentes, DOM y etiquetas <script>; los marcadores /*STYLE*/ y /*SCRIPT*/
+src/                     toda la aplicación (CSS, UI y motor three.js r128), en fuentes que build.py une en la página y su script:
+  page.html              la página entera: <head>, cargador de los datos (/*DATA*/), DOM, póster y <!--SCRIPTS-->; el marcador /*STYLE*/
   style.css              estilos de la interfaz (tokens de tema en :root)
   js/NN-<sección>.js     el script por secciones (terreno, ciudad, Ruta 5, vía, trenes, usos…), unidas en orden de número
   js/hitos/<id>.js       un hito por archivo, dentro de buildModels (marcador /*HITOS*/ de js/45-landmarks.js)
   js/hitos/ORDER         el orden de los hitos (importa: explanadas vecinas, ayudantes de la plaza)
-  site/                  lo que el sitio publicado lleva junto a index.html: favicon.svg, apple-touch-icon.png, og.jpg y los pósters del arranque (poster-movil.webp, poster-escritorio.webp)
+  site/                  lo que el sitio publicado lleva junto a index.html: favicon.svg, apple-touch-icon.png, og.jpg, los pósters del arranque (poster-movil.webp, poster-escritorio.webp) y _headers (la caché de assets/ en Cloudflare Pages)
 data/                    datos procesados (versionados)
-dist/                    resultado (no versionado: `make build`): talca.html (fragmento) e index.html (página completa, con su <head> y los archivos de src/site/)
+dist/                    resultado (no versionado: `make build`): index.html, assets/ (app.<hash>.js, three-r128.<hash>.js y un .json con hash por fuente de datos) y los archivos de src/site/
 tools/screenshot.py      capturas con Chromium sin interfaz
 tools/variants.py        hoja de comparación: varias vistas por varias variantes de render (--diff: píxeles distintos)
 tools/site_assets.py     la imagen de Open Graph, el ícono y los pósters del arranque de src/site/, desde el mapa (make site-assets)
 tools/probe.py           evalúa expresiones JS en el mapa cargado (window.__rail, __trains…) e imprime el resultado
-tools/perf.py            lo que cuesta un cuadro (ms, llamadas de dibujo, triángulos, mapas de sombra, ms de CPU, ms entre cuadros al arrastrar) en varias vistas, y el arranque (--arranque N: ms hasta el primer cuadro); --android en un teléfono por USB
+tools/perf.py            lo que cuesta un cuadro (ms, llamadas de dibujo, triángulos, mapas de sombra, ms de CPU, ms entre cuadros al arrastrar) en varias vistas, y el arranque (--arranque N: ms hasta el primer cuadro; --red, una red móvil emulada; --frio, sin caché); --android en un teléfono por USB
 tools/regress.py         ¿sale el mismo mapa?: capturas fijas y __stats de referencia (--save) y comparación píxel a píxel (--against)
 tools/profile.py         perfil de CPU del arranque: ms por función de src/ (propio, total, --callers), en Chromium o en el teléfono (--android); por etapa (--etapa) y las tareas largas de la segunda (--tareas)
 scripts/deploy-cloudflare.sh  publica dist/ en Cloudflare Pages (make deploy); .githooks/pre-push lo corre al empujar main
@@ -111,7 +112,7 @@ Los cambios de código o de datos se reciben como pull request en GitHub. Antes 
 - [docs/FUENTES.md](docs/FUENTES.md): fuentes de datos, licencias y atribuciones.
 - [docs/PROYECTOS-SIMILARES.md](docs/PROYECTOS-SIMILARES.md): Isopolis, Isometric NYC y las ideas que se tomaron de ellos.
 - [docs/PLAN-TREN.md](docs/PLAN-TREN.md): la vía férrea completa y sus puentes (hechos) y el plan del tren en movimiento.
-- [docs/PLAN-SITIO.md](docs/PLAN-SITIO.md): separar el sitio publicado del artifact (datos aparte, empaquetador, Worker, primera vista generada al armar, three.js nuevo, relieve más fino); sin empezar.
+- [docs/PLAN-SITIO.md](docs/PLAN-SITIO.md): el sitio sin las restricciones del artifact de Claude: datos aparte y three.js propio (hechos); empaquetador, Worker, primera vista generada al armar, three.js nuevo y relieve más fino.
 - [CLAUDE.md](CLAUDE.md): guía para seguir trabajando con Claude Code (arquitectura, convenciones, trampas conocidas).
 - [CHANGELOG.md](CHANGELOG.md): cambios.
 

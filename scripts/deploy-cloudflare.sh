@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Publica el sitio en Cloudflare Pages (subida directa): talca.eduramirez.com.
 #
-# `make build` arma dist/ (index.html con su <head> y los archivos de src/site/); este script sube dist/ al proyecto
-# de Cloudflare Pages con Wrangler, sin dist/talca.html (el fragmento para Claude, sin <head>: no debe quedar
-# publicado como una segunda página). Se corre a mano (`make deploy`) o lo corre el hook de pre-push cuando se
-# empuja main (.githooks/pre-push).
+# `make build` arma dist/ (index.html, assets/ con el script, three.js y los datos, y los archivos de src/site/, entre
+# ellos _headers: la caché de assets/); este script sube dist/ al proyecto de Cloudflare Pages con Wrangler. Se corre a
+# mano (`make deploy`) o lo corre el hook de pre-push cuando se empuja main (.githooks/pre-push).
 #
 # Una sola vez (interactivo, con la cuenta de Cloudflare):
 #   npx wrangler login
@@ -29,12 +28,8 @@ cd "$root"
 say "armando (make build)…"
 make -s build >/dev/null
 
-# Lo que se sube: dist/ sin el fragmento.
-stage=$(mktemp -d "${TMPDIR:-/tmp}/talca-pages.XXXXXX")
-trap 'rm -rf "$stage"' EXIT
-cp -R dist/. "$stage/"
-rm -f "$stage/talca.html"
-[ -f "$stage/index.html" ] || { say "falta dist/index.html: ¿make build falló?" >&2; exit 1; }
+[ -f dist/index.html ] || { say "falta dist/index.html: ¿make build falló?" >&2; exit 1; }
+stage=dist
 
 if [ "${DRY_RUN:-0}" != "0" ]; then
   say "prueba (DRY_RUN): se subirían estos archivos, sin subir nada:"

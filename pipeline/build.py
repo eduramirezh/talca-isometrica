@@ -1,26 +1,25 @@
-"""Ensambla dist/talca.html: la plantilla (src/, ver template()) + data/geometry.json + data/elevation.json + data/ruta5.json
-+ config/usos.json + data/pois.json. config/manzanas.json reclasifica como construidas (tipo 3) manzanas «sin
-información» del Censo; config/usos.json va como DATA.usos (usos de suelo; sus entradas `vivienda` agregan manzanas
-construidas donde el Censo no tiene).
+"""Arma el sitio (talca.eduramirez.com) en dist/: la página (src/page.html, con src/style.css en línea), el script
+(src/js/, ver script_pieces()) en su propio archivo, three.js y los datos, con un hash de su contenido en el nombre
+(dist/assets/), y los archivos de src/site/ (ícono, imagen de Open Graph, pósters, _headers).
 
-La plantilla se arma con los fuentes de src/ (template()) y tiene dos marcadores, /*DATA*/ y /*POIS*/, que se
-reemplazan por JSON literal.
-El resultado es un único HTML autocontenido (~670 KB) que solo carga three.js r128 desde cdnjs y
-las fuentes de Google Fonts.
+Los datos son data/geometry.json (más config/usos.json como `usos`; config/manzanas.json reclasifica como construidas,
+tipo 3, manzanas «sin información» del Censo, y las entradas `vivienda` de los usos agregan manzanas construidas donde el
+Censo no tiene), data/elevation.json, data/ruta5.json, data/edificios.json, data/golf.json y data/pois.json: un archivo
+cada uno, que la página pide con fetch apenas empieza (src/page.html, el marcador /*DATA*/) y el script espera
+(src/js/00-start.js). Con el hash en el nombre se guardan en la caché del navegador sin fecha de vencimiento
+(src/site/_headers): un cambio del código no vuelve a bajar los datos, ni al revés.
 
-  python pipeline/build.py             -> dist/talca.html (fragmento, como se publica en Claude)
-  python pipeline/build.py --standalone -> además dist/index.html con <!doctype>, <head> (título, descripción,
-                                           canónica, Open Graph, ícono) y <body>, más los archivos de src/site/: el sitio
-                                           que se publica en talca.eduramirez.com (make deploy) o se abre directo.
-  python pipeline/build.py --where index.html:4026
-                                        -> el archivo de src/ y la línea que dan esa línea de dist/ (index.html:N o
-                                           (index):N como en la consola del navegador; talca.html:N o N para
-                                           dist/talca.html y los errores de make check)
+  python pipeline/build.py                       -> dist/index.html, dist/assets/, los archivos de src/site/
+  python pipeline/build.py --where app.js:4026   -> el archivo de src/ y la línea que dan esa línea del script
+                                                    (app.<hash>.js:N como en la consola del navegador, o solo N);
+                                                    index.html:N o (index):N para una línea de la página
 """
-import json, re, shutil, sys
+import hashlib, json, re, shutil, sys
 from common import ROOT, DATA, CONFIG, require, loc
 
 SRC = ROOT / 'src'
+DIST = ROOT / 'dist'
+THREE = ROOT / 'node_modules' / 'three' / 'build' / 'three.min.js'   # r128, fijado en package.json (npm install)
 
 def cut(path, *markers):
     """A source file cut at the lines holding only each marker (and its indentation), in that order: [(first line, text)]
@@ -42,37 +41,44 @@ def sources():
     return [SRC / 'page.html', SRC / 'style.css', *sorted((SRC / 'js').glob('*.js')),
             *(SRC / 'js' / 'hitos' / f'{h}.js' for h in hito_ids())]
 
-def pieces():
-    """The template as [(source file, its first line, text)], in order: src/page.html with src/style.css at /*STYLE*/
-    and the script at /*SCRIPT*/, the files src/js/*.js in the order of their names; src/js/45-landmarks.js holds
-    /*HITOS*/ inside buildModels(B,S), where the landmarks src/js/hitos/<id>.js go in the order of hitos/ORDER.
-    Each piece of the script comes after a line `// ---- src/js/<file>[:line] ----` (its first line is 0), so that the
-    browser's sources show where the code comes from."""
+def page_pieces():
+    """The page as [(source file, its first line, text)], in order: src/page.html with src/style.css at /*STYLE*/."""
+    (a, page0), (b, page1) = cut(SRC / 'page.html', '/*STYLE*/')
+    return [(SRC / 'page.html', a, page0), (SRC / 'style.css', 1, (SRC / 'style.css').read_text()), (SRC / 'page.html', b, page1)]
+
+def script_pieces():
+    """The script as [(source file, its first line, text)]: the files src/js/*.js in the order of their names;
+    src/js/45-landmarks.js holds /*HITOS*/ inside buildModels(B,S), where the landmarks src/js/hitos/<id>.js go in the
+    order of hitos/ORDER. Each piece comes after a line `// ---- src/js/<file>[:line] ----` (its first line is 0), so
+    that the browser's sources show where the code comes from."""
     def js(f, a, text, ind=''):
         return [(f, 0, f'{ind}// ---- {f.relative_to(ROOT)}{f":{a}" if a > 1 else ""} ----\n'), (f, a, text)]
-    (a, page0), (b, page1), (c, page2) = cut(SRC / 'page.html', '/*STYLE*/', '/*SCRIPT*/')
-    out = [(SRC / 'page.html', a, page0), (SRC / 'style.css', 1, (SRC / 'style.css').read_text()), (SRC / 'page.html', b, page1)]
+    out = []
     for f in sorted((SRC / 'js').glob('*.js')):
         if f.name != '45-landmarks.js': out += js(f, 1, f.read_text()); continue
         (a, head), (b, tail) = cut(f, '/*HITOS*/')
         out += js(f, a, head)
         for h in hito_ids(): out += js(SRC / 'js' / 'hitos' / f'{h}.js', 1, (SRC / 'js' / 'hitos' / f'{h}.js').read_text(), '  ')
         out += js(f, b, tail, '  ')
-    return out + [(SRC / 'page.html', c, page2)]
+    return out
 
-def template():
-    """The template, a single HTML fragment (src/template.html until it was split): the pieces() joined."""
-    return ''.join(t for _, _, t in pieces())
+def page():
+    """The page's HTML, before build.py fills its markers (/*DATA*/, <!--SCRIPTS-->)."""
+    return ''.join(t for _, _, t in page_pieces())
 
-def where(line):
-    """A line of the template, which is also a line of dist/talca.html (the JSON of /*DATA*/ and /*POIS*/ has no line
-    breaks) -> (source file relative to ROOT, its line; 0 for the `// ---- <file> ----` line before it)."""
+def script():
+    """The script, one file (dist/assets/app.<hash>.js): a single function that the files of src/js/ open and close."""
+    return ''.join(t for _, _, t in script_pieces())
+
+def where(line, pieces=script_pieces):
+    """A line of the script (or of the page, with pieces=page_pieces: the markers that build.py fills take one line)
+    -> (source file relative to ROOT, its line; 0 for the `// ---- <file> ----` line before it)."""
     n = 1
     for f, a, t in pieces():
         k = t.count('\n')
         if line < n + k: return f.relative_to(ROOT), a + line - n
         n += k
-    raise ValueError(f'la plantilla tiene {n - 1} líneas: no hay línea {line}')
+    raise ValueError(f'tiene {n - 1} líneas: no hay línea {line}')
 
 def dec(a):
     pts, x, y = [], 0, 0
@@ -127,72 +133,47 @@ def land_uses(geo):
         out.append([names.index(u['uso']), enc(ring), o or 0])
     geo['usos'] = {'k': names, 'u': out}
 
-# The published site (talca.eduramirez.com, Cloudflare Pages): its <head>, which the fragment cannot carry (the artifact
-# platform supplies its own), and the files of src/site/ (favicon, og.jpg: tools/site_assets.py) copied next to it.
-SITE = 'https://talca.eduramirez.com/'
-TITLE = 'Talca Isométrica'
-DESC = ('Maqueta isométrica interactiva de Talca, Chile: sus tribunales, notarías e historia legal junto a los hitos '
-        'de la ciudad, sobre datos reales del Censo 2017 y OpenStreetMap.')
-OG_ALT = 'La Plaza de Armas y el barrio cívico de la Alameda de Talca en la maqueta isométrica, con los marcadores de los lugares.'
-# What --standalone puts before the fragment in dist/index.html: its lines are this many lines further down.
-STANDALONE = ('<!doctype html>\n<html lang="es-CL"><head><meta charset="utf-8">\n'
-              '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
-              f'<title>{TITLE}</title><meta name="description" content="{DESC}"><meta name="author" content="Edu Ramírez">\n'
-              f'<link rel="canonical" href="{SITE}"><link rel="icon" href="favicon.svg" type="image/svg+xml">'
-              '<link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="theme-color" content="#F3F4EF">\n'
-              f'<meta property="og:type" content="website"><meta property="og:site_name" content="{TITLE}"><meta property="og:locale" content="es_CL">'
-              f'<meta property="og:url" content="{SITE}"><meta property="og:title" content="{TITLE}"><meta property="og:description" content="{DESC}">\n'
-              f'<meta property="og:image" content="{SITE}og.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
-              f'<meta property="og:image:alt" content="{OG_ALT}">\n'
-              f'<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{TITLE}"><meta name="twitter:description" content="{DESC}">'
-              f'<meta name="twitter:image" content="{SITE}og.jpg"><meta name="twitter:image:alt" content="{OG_ALT}">\n'
-              '<style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>\n'
-              '</head><body>\n')
-
-# The poster (tools/site_assets.py poster: src/site/poster-*.webp), the initial view shown while the map is generated:
-# a <picture> at the line <!--POSTER--> of src/page.html, so that the browser fetches the phone's or the desktop's as
-# soon as it reads the HTML; the inline script after #app places it. Only in dist/index.html: in the fragment (the
-# artifact, which carries no other files) the ~1 MB of both as data: URIs would delay the map's data behind them.
-POSTER_MARK = '<!--POSTER-->'
-def poster():
-    if not all((SRC / 'site' / f'poster-{n}.webp').exists() for n in ('movil', 'escritorio')): return ''
-    return ('<picture><source media="(max-width:760px)" srcset="poster-movil.webp">'
-            '<img id="poster" src="poster-escritorio.webp" alt="" aria-hidden="true" elementtiming="poster" fetchpriority="high"></picture>')
-
 def cmd_where(arg):
-    """`--where 4021`, `--where talca.html:4021` or `--where index.html:4026` (as the browser's console gives it,
-    also `(index):4026`): the source file and line of that line of dist/."""
+    """`--where 4021`, `--where app.js:4021` or `--where app.3fa2c1d4e5.js:4021` (as the browser's console gives it), a
+    line of the script; `--where index.html:120` or `(index):120`, a line of the page: the source file and line."""
     f, _, n = arg.rpartition(':'); n = int(n)
-    if 'index' in f: n -= STANDALONE.count('\n')
-    src, k = where(n)
+    src, k = where(n, page_pieces if 'index' in f else script_pieces)
     if not k: return print(f'{src}: la línea `// ---- … ----` que build.py pone antes de un trozo de ese archivo')
     print(f'{src}:{k}'); print((ROOT / src).read_text().split('\n')[k-1][:160])
+
+def asset(name, data):
+    """dist/assets/<name>.<hash of data>.<ext> -> its path relative to dist/ (as the page asks for it)."""
+    stem, ext = name.rsplit('.', 1)
+    f = DIST / 'assets' / f'{stem}.{hashlib.sha256(data).hexdigest()[:10]}.{ext}'
+    f.write_bytes(data); return f.relative_to(DIST).as_posix()
 
 def main():
     if '--where' in sys.argv: return cmd_where(sys.argv[sys.argv.index('--where') + 1])
     geo = json.load(open(require(DATA / 'geometry.json', 'Ejecute: make data')))
     mark_built(geo['blocks'])
     land_uses(geo)
-    geo['elev'] = json.load(open(require(DATA / 'elevation.json', 'Ejecute: make elevation')))
-    geo['r5'] = json.load(open(require(DATA / 'ruta5.json', 'Ejecute: make ruta5')))   # las calzadas y ramales de la Ruta 5 (R5)
-    geo['ed'] = json.load(open(require(DATA / 'edificios.json', 'Ejecute: make edificios')))   # los edificios de OSM (ED)
-    geo['golf'] = json.load(open(require(DATA / 'golf.json', 'Ejecute: make golf')))   # el pasto y las copas del Talca Country Club (pipeline/golf.py)
-    pois = json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois')))
-    t = template()
-    assert '/*DATA*/' in t and '/*POIS*/' in t, 'faltan los marcadores en la plantilla'
-    js = lambda o: json.dumps(o, separators=(',', ':'), ensure_ascii=False).replace('</', '<\\/')
-    out = t.replace('/*DATA*/', js(geo)).replace('/*POIS*/', js(pois))
-    (ROOT / 'dist').mkdir(exist_ok=True)
-    frag = out.replace(POSTER_MARK, '')
-    (ROOT / 'dist' / 'talca.html').write_text(frag)
-    print('dist/talca.html:', len(frag.encode()), 'bytes')
-    if '--standalone' in sys.argv:
-        # the fragment's own <title> and description stay in it for the artifact; here the <head> has them: the lines
-        # are emptied, not removed, so --where still counts right
-        body = re.sub(r'^<title>.*</title>$|^<meta name="description"[^\n]*>$', '', out, count=2, flags=re.M)
-        page = STANDALONE + body.replace(POSTER_MARK, poster()) + '\n</body></html>\n'
-        (ROOT / 'dist' / 'index.html').write_text(page); print('dist/index.html:', len(page.encode()), 'bytes')
-        for f in sorted((SRC / 'site').iterdir()): shutil.copy(f, ROOT / 'dist' / f.name)
+    files = {'geo': ('geometry.json', geo),
+             'elev': ('elevation.json', json.load(open(require(DATA / 'elevation.json', 'Ejecute: make elevation')))),
+             'r5': ('ruta5.json', json.load(open(require(DATA / 'ruta5.json', 'Ejecute: make ruta5')))),   # las calzadas y ramales de la Ruta 5 (R5)
+             'ed': ('edificios.json', json.load(open(require(DATA / 'edificios.json', 'Ejecute: make edificios')))),   # los edificios de OSM (ED)
+             'golf': ('golf.json', json.load(open(require(DATA / 'golf.json', 'Ejecute: make golf')))),   # el pasto y las copas del Talca Country Club (pipeline/golf.py)
+             'pois': ('pois.json', json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois'))))}
+    require(THREE, 'Ejecute: npm install')
+    # dist/assets/ only holds this build's files; the rest of dist/ is overwritten (make serve may be serving it)
+    shutil.rmtree(DIST / 'assets', ignore_errors=True); (DIST / 'assets').mkdir(parents=True)
+    (DIST / 'talca.html').unlink(missing_ok=True)   # the old fragment for Claude's artifacts (until October 2026)
+    dump = lambda o: json.dumps(o, separators=(',', ':'), ensure_ascii=False).encode()
+    urls = {k: asset(name, dump(o)) for k, (name, o) in files.items()}
+    three, app = asset('three-r128.js', THREE.read_bytes()), asset('app.js', script().encode())
+    t = page()
+    for m in ('/*DATA*/', '<!--SCRIPTS-->'): assert t.count(m) == 1, f'src/page.html: el marcador {m} debe aparecer una vez'
+    html = (t.replace('/*DATA*/', json.dumps(urls))
+             .replace('<!--SCRIPTS-->', '<script>window.__go.then(()=>{for(const u of %s){const s=document.createElement("script");'
+                      's.src=u;s.async=false;document.body.append(s);}});</script>' % json.dumps([three, app])))
+    (DIST / 'index.html').write_text(html)
+    for f in sorted((SRC / 'site').iterdir()): shutil.copy(f, DIST / f.name)
+    size = lambda u: (DIST / u).stat().st_size
+    print('dist/index.html:', len(html.encode()), 'bytes;', ', '.join(f'{u.split("/")[-1]}: {size(u)}' for u in [app, three, *urls.values()]))
 
 if __name__ == '__main__':
     main()

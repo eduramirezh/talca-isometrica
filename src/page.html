@@ -1,15 +1,33 @@
-<title>Talca Isométrica</title>
-<meta name="description" content="Maqueta isométrica de Talca con sus lugares icónicos y jurídicos">
+<!doctype html>
+<html lang="es-CL"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Talca Isométrica</title><meta name="description" content="Maqueta isométrica interactiva de Talca, Chile: sus tribunales, notarías e historia legal junto a los hitos de la ciudad, sobre datos reales del Censo 2017 y OpenStreetMap."><meta name="author" content="Edu Ramírez">
+<link rel="canonical" href="https://talca.eduramirez.com/"><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="theme-color" content="#F3F4EF">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Talca Isométrica"><meta property="og:locale" content="es_CL"><meta property="og:url" content="https://talca.eduramirez.com/"><meta property="og:title" content="Talca Isométrica"><meta property="og:description" content="Maqueta isométrica interactiva de Talca, Chile: sus tribunales, notarías e historia legal junto a los hitos de la ciudad, sobre datos reales del Censo 2017 y OpenStreetMap.">
+<meta property="og:image" content="https://talca.eduramirez.com/og.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="La Plaza de Armas y el barrio cívico de la Alameda de Talca en la maqueta isométrica, con los marcadores de los lugares.">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Talca Isométrica"><meta name="twitter:description" content="Maqueta isométrica interactiva de Talca, Chile: sus tribunales, notarías e historia legal junto a los hitos de la ciudad, sobre datos reales del Censo 2017 y OpenStreetMap."><meta name="twitter:image" content="https://talca.eduramirez.com/og.jpg"><meta name="twitter:image:alt" content="La Plaza de Armas y el barrio cívico de la Alameda de Talca en la maqueta isométrica, con los marcadores de los lugares.">
+<script>
+// The map's data (pipeline/build.py: data/ + config/ in dist/assets/, with a hash of their content in the name) and its
+// scripts (at the end of the body) are asked for once the poster is in (window.__go, from the poster's script below), or right
+// away when there is none: on a slow phone network they would take the poster's bandwidth, and it came after the map
+// (October 2026, 1.6 Mbit/s: at 9.5 s instead of 2.3 s). The script waits for the data (00-start.js).
+window.__go=new Promise(r=>{window.__goR=r;});
+window.__data=window.__go.then(()=>{const F=/*DATA*/;
+  return Promise.all(Object.entries(F).map(([k,u])=>fetch(u).then(r=>{if(!r.ok)throw new Error(`${u}: ${r.status}`);return r.json();}).then(v=>[k,v])))
+    .then(Object.fromEntries).then(d=>(window.__dataT=Math.round(performance.now()),d));});
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700;800&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
+:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}
 /*STYLE*/
 </style>
+</head><body>
 
 <div id="app">
   <div id="stage"><canvas id="gl" aria-label="Maqueta isométrica de Talca. Arrastre para mover, rueda o pellizco para acercar."></canvas>
-<!--POSTER-->
+<picture><source media="(max-width:760px)" srcset="poster-movil.webp"><img id="poster" src="poster-escritorio.webp" alt="" aria-hidden="true" elementtiming="poster" fetchpriority="high"></picture>
   </div>
   <div id="overlay" aria-hidden="false"></div>
 
@@ -96,11 +114,13 @@
 </div>
 
 <script>
-// The poster (only in dist/index.html: build.py puts it in #stage; tools/site_assets.py poster): the initial
-// view as an image while the map is generated, scaled to the map's height and moved right of the panel as homeView()
-// does; the loading screen becomes a badge over it. Not for a link to a place or a tour, which opens elsewhere.
-(function(){const p=document.getElementById('poster'),L=document.getElementById('loading');if(!p)return;
-  if(location.hash.length>1){p.remove();return;}
+// The poster (in #stage; tools/site_assets.py poster): the initial view as an image while the map is generated,
+// scaled to the map's height and moved right of the panel as homeView() does; the loading screen becomes a badge over it.
+// Not for a link to a place or a tour, which opens elsewhere. Once it is in (or not shown), the rest starts (__go).
+(function(){const p=document.getElementById('poster'),L=document.getElementById('loading'),go=()=>window.__goR();
+  if(!p)return go();
+  if(location.hash.length>1){p.remove();return go();}
+  if(p.complete)go();else{p.addEventListener('load',go);p.addEventListener('error',go);}
   const mob=matchMedia('(max-width:760px)').matches,P=document.getElementById('panel');
   if(mob)P.classList.add('folded');else p.style.left=`calc(50% + ${P.getBoundingClientRect().right/2}px)`;
   L.classList.add('over');p.onerror=()=>{p.remove();L.classList.remove('over');};
@@ -109,11 +129,5 @@
   try{new PerformanceObserver(l=>{for(const e of l.getEntries())if(e.identifier==='poster')window.__posterT=Math.round(e.renderTime||e.loadTime);}).observe({type:'element',buffered:true});}catch(e){}
 })();
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
-const DATA=/*DATA*/;
-const PD=/*POIS*/;
-</script>
-<script>
-/*SCRIPT*/
-</script>
+<!--SCRIPTS-->
+</body></html>

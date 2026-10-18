@@ -15,13 +15,16 @@ function loop(now){
 // startup times, ms since navigation start (__stats.load): the script runs, the generation starts (boot), the first
 // view's part of it ends (gen), the first frame is drawn (frame; frameMs of it in loop(), with the shader compiles and
 // the first shadow map) and the frame after it starts (shown: the first one is on screen), and the rest of the
-// generation ends (full); plus the navigation's own (the HTML's response, DOMContentLoaded) and three.js
+// generation ends (full); plus the navigation's own (the HTML's response, DOMContentLoaded), three.js, the script's
+// file (app) and the data (data: all of it parsed, src/page.html; dataKB, what was transferred)
 const LOAD={script:Math.round(T_SCRIPT)};
 // the poster (src/page.html) gives way to the map once its first frame is on screen; poster: when it was (Chromium)
 function posterOff(){const p=$('#poster');if(!p)return;p.style.opacity=0;setTimeout(()=>p.remove(),450);}
 function loadTimes(){if(window.__posterT)LOAD.poster=window.__posterT;const n=performance.getEntriesByType?.('navigation')[0],r=performance.getEntriesByType?.('resource')||[];
   if(n){LOAD.html=Math.round(n.responseEnd);LOAD.htmlKB=Math.round((n.transferSize||0)/1024);LOAD.dcl=Math.round(n.domContentLoadedEventEnd);}
   const t=r.find(e=>/three/.test(e.name));if(t){LOAD.three=Math.round(t.responseEnd);LOAD.threeKB=Math.round((t.transferSize||0)/1024);}
+  const a=r.find(e=>/\/app\.\w+\.js$/.test(e.name));if(a){LOAD.app=Math.round(a.responseEnd);LOAD.appKB=Math.round((a.transferSize||0)/1024);}
+  if(window.__dataT)LOAD.data=window.__dataT;const d=r.filter(e=>/\.json$/.test(e.name));if(d.length)LOAD.dataKB=Math.round(d.reduce((s,e)=>s+(e.transferSize||0),0)/1024);
   const f=r.filter(e=>/fonts\.(googleapis|gstatic)/.test(e.name));if(f.length)LOAD.fonts=Math.round(Math.max(...f.map(e=>e.responseEnd)));
   return LOAD;}
 // The rest of the generation runs after the first frame, in slices of SLICE_MS (SLICE_BUSY while the camera moves) so

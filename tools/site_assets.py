@@ -1,4 +1,4 @@
-"""Imágenes del sitio publicado (talca.eduramirez.com) en src/site/, que build.py --standalone copia a dist/.
+"""Imágenes del sitio publicado (talca.eduramirez.com) en src/site/, que build.py copia a dist/.
 
   python tools/site_assets.py og      # src/site/og.jpg: la imagen de Open Graph (1200 × 630) desde el mapa, sin el panel
   python tools/site_assets.py icon    # src/site/apple-touch-icon.png (180 × 180) desde src/site/favicon.svg
@@ -8,9 +8,8 @@
 El póster es la imagen que la página muestra mientras genera la maqueta (trampa «El póster del arranque» en CLAUDE.md):
 la vista inicial (homeView()) sin panel, marcadores ni etiquetas, con la Plaza de Armas al centro de la imagen. La
 página lo escala a la altura del mapa (la vista inicial muestra los mismos metros de alto en cualquier pantalla) y
-lo corre a la derecha del panel como homeView(). build.py lo enlaza en dist/index.html; dist/talca.html (el artifact)
-no lo lleva. Vuelva a correrlo cuando cambie lo que se ve desde la vista inicial, o la página mostrará un
-póster viejo durante el arranque. Necesita Pillow para el WebP: uv run --with "playwright==1.63" --with pillow …
+lo corre a la derecha del panel como homeView(); src/page.html lo enlaza. Vuelva a correrlo cuando cambie lo que se
+ve desde la vista inicial, o la página mostrará un póster viejo durante el arranque. Necesita Pillow para el WebP: uv run --with "playwright==1.63" --with pillow …
 
 Usa dist/index.html (make build) y Playwright, como tools/screenshot.py (sin Playwright en el Python del sistema:
 uv run --with "playwright==1.63" python tools/site_assets.py). Vuelva a correrlo cuando cambie la vista de la

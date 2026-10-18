@@ -1,30 +1,27 @@
 """Revisión rápida del repo (menos de un segundo): la corre `make check`, y el hook de pre-commit (`make hooks`).
 
-  python tools/check.py            # config/, data/, los fuentes de src/ y dist/talca.html (make build)
+  python tools/check.py            # config/, data/, los fuentes de src/ y dist/ (make build)
   python tools/check.py --no-dist  # sin dist/ (antes de make build)
 
 Comprueba:
   - que todos los JSON de config/ y data/ se lean;
-  - que la plantilla (src/, unida por pipeline/build.py) tenga los marcadores /*DATA*/, /*POIS*/ y <!--POSTER--> una sola vez y que
-    los bloques `// ==== hito:` no repitan id; que cada archivo de src/js/hitos/ esté en su ORDER, empiece con su
-    línea `// ==== hito: <id> ====` y no tenga otra, y que cada fuente termine en un salto de línea;
-  - las restricciones de los artifacts de Claude: scripts solo de cdnjs, jsdelivr o unpkg; estilos solo de Google Fonts;
-    sin fetch, alert, confirm ni prompt;
+  - que src/page.html tenga los marcadores /*STYLE*/, /*DATA*/ y <!--SCRIPTS--> una sola vez y que los bloques
+    `// ==== hito:` no repitan id; que cada archivo de src/js/hitos/ esté en su ORDER, empiece con su línea
+    `// ==== hito: <id> ====` y no tenga otra, y que cada fuente termine en un salto de línea;
   - que data/pois.json tenga ids únicos y que cada recorrido apunte a lugares que existen;
-  - que cada script de dist/talca.html compile (node --check; el error da el archivo de src/ y la línea, con
-    build.where()) y que la página pese menos de 16 MB.
+  - que el script de dist/assets/ compile (node --check; el error da el archivo de src/ y la línea, con build.where()),
+    que cada archivo que pide dist/index.html (src, href, srcset y lo que pide desde JS en assets/) exista en dist/, y que
+    dist/assets/ no tenga otros.
 Termina con código 1 y una línea por falla. No reemplaza a `make smoke` (carga la página en Chromium y revisa la
 generación) ni a `python pipeline/usos.py check` (14 s; avisos sobre los usos de suelo).
 """
-import json, re, shutil, subprocess, sys, tempfile, time
+import json, re, shutil, subprocess, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'pipeline'))
 import build
-SCRIPT_HOSTS = ('https://cdnjs.cloudflare.com/', 'https://cdn.jsdelivr.net/npm/', 'https://unpkg.com/')
-STYLE_HOSTS = ('https://fonts.googleapis.com', 'https://fonts.gstatic.com')
-MAX_BYTES = 16 * 1024 * 1024
+SRC_PAGE = build.SRC / 'page.html'
 
 def main(dist=True):
     t0 = time.time(); bad = []
@@ -44,23 +41,17 @@ def main(dist=True):
             t = f.read_text()
             if not t.startswith(f'  // ==== hito: {f.stem} ====\n') or re.findall(r'// ==== hito: ([\w-]+) ====', t) != [f.stem]:
                 fail(f'src/js/hitos/{f.name}: debe empezar con «  // ==== hito: {f.stem} ====» y no tener otro bloque')
-    try: tpl = build.template()
-    except (AssertionError, OSError) as e: fail(f'src/: no se pudo unir la plantilla: {e}'); tpl = None
-    for m in ('/*DATA*/', '/*POIS*/', '<!--POSTER-->') if tpl is not None else ():
-        if tpl.count(m) != 1: fail(f'src/: el marcador {m} aparece {tpl.count(m)} veces (debe ser 1)')
+    try: page, tpl = build.page(), build.script()
+    except (AssertionError, OSError) as e: fail(f'src/: no se pudo unir la página o el script: {e}'); page = tpl = None
+    for m in ('/*STYLE*/', '/*DATA*/', '<!--SCRIPTS-->') if page is not None else ():
+        n = (SRC_PAGE.read_text() if m == '/*STYLE*/' else page).count(m)
+        if n != 1: fail(f'src/page.html: el marcador {m} aparece {n} veces (debe ser 1)')
     hitos = re.findall(r'// ==== hito: ([\w-]+) ====', tpl or '')
     for h in sorted({h for h in hitos if hitos.count(h) > 1}): fail(f'src/: bloque de hito repetido: {h}')
     for f in build.sources():
         if not f.exists(): continue
         t, name = f.read_text(), f.relative_to(ROOT)
         if not t.endswith('\n'): fail(f'{name}: no termina en un salto de línea (build.py lo pegaría al siguiente)')
-        for src in re.findall(r'<script[^>]*\ssrc="([^"]+)"', t):
-            if not src.startswith(SCRIPT_HOSTS): fail(f'{name}: script fuera de cdnjs/jsdelivr/unpkg: {src}')
-        for href in re.findall(r'<link[^>]*\shref="([^"]+)"', t):
-            if not href.startswith(STYLE_HOSTS): fail(f'{name}: enlace fuera de Google Fonts: {href}')
-        for fn in ('fetch', 'alert', 'confirm', 'prompt'):
-            for m in re.finditer(rf'(?<![\w.$]){fn}\(', t):
-                fail(f'{name}:{t.count(chr(10), 0, m.start()) + 1}: {fn}() no está permitido en un artifact')
 
     pois = json.load(open(ROOT / 'data' / 'pois.json'))
     ids = [p['id'] for p in pois['pois']]
@@ -70,26 +61,32 @@ def main(dist=True):
             if s not in ids: fail(f'data/pois.json: el recorrido {k} apunta a un lugar que no existe: {s}')
 
     if dist:
-        page = ROOT / 'dist' / 'talca.html'
-        if not page.exists(): fail('dist/talca.html no existe (make build)')
+        index = ROOT / 'dist' / 'index.html'
+        if not index.exists(): fail('dist/index.html no existe (make build)')
         else:
-            html = page.read_text()
-            if len(html.encode()) > MAX_BYTES: fail(f'dist/talca.html pesa {len(html.encode())/2**20:.1f} MB (máximo 16)')
+            html = index.read_text()
+            asked = set(re.findall(r'\s(?:src|href|srcset)="([^"]+)"', html))
+            asked |= set(re.findall(r'"(assets/[^"]+)"', html))   # the data (/*DATA*/) and the scripts, asked for from JS
+            if not re.search(r'"assets/geometry\.\w+\.json"', html): fail('dist/index.html: no pide los datos (/*DATA*/ en src/page.html)')
+            local = {u.split('#')[0] for u in asked if not re.match(r'[a-z]+:|//|#', u)}
+            for u in sorted(local):
+                if not (ROOT / 'dist' / u).is_file(): fail(f'dist/index.html pide {u}, que no está en dist/')
+            for f in sorted((ROOT / 'dist' / 'assets').glob('*')):
+                if f'assets/{f.name}' not in local: fail(f'dist/assets/{f.name}: ningún archivo lo pide (¿quedó de otro build?)')
+            app = [u for u in local if re.fullmatch(r'assets/app\.\w+\.js', u)]
             node = shutil.which('node')
-            if not node: fail('node no está en el PATH: hace falta para node --check (nodenv / brew install node)')
+            if len(app) != 1: fail(f'dist/index.html: debe pedir un script assets/app.<hash>.js (pide {len(app)})')
+            elif not node: fail('node no está en el PATH: hace falta para node --check (nodenv / brew install node)')
             else:
-                for n, sm in enumerate(re.finditer(r'<script>(.*?)</script>', html, re.S), 1):
-                    js, l0 = sm.group(1), html.count('\n', 0, sm.start(1))   # line k of the script is line l0+k of the page
-                    with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as f: f.write(js); tmp = f.name
-                    r = subprocess.run([node, '--check', tmp], capture_output=True, text=True); Path(tmp).unlink()
-                    if r.returncode:
-                        err = next((l for l in r.stderr.splitlines() if 'Error' in l), r.stderr.strip())
-                        where = re.search(r':(\d+)\n', r.stderr)
-                        at = ''
-                        if where:
-                            try: src, k = build.where(l0 + int(where.group(1))); at = f' en {src}:{k}'
-                            except ValueError: at = f' (línea {where.group(1)} del script)'
-                        fail(f'dist/talca.html: el script {n} no compila{at}: {err}')
+                r = subprocess.run([node, '--check', str(ROOT / 'dist' / app[0])], capture_output=True, text=True)
+                if r.returncode:
+                    err = next((l for l in r.stderr.splitlines() if 'Error' in l), r.stderr.strip())
+                    where = re.search(r':(\d+)\n', r.stderr)
+                    at = ''
+                    if where:
+                        try: src, k = build.where(int(where.group(1))); at = f' en {src}:{k}'
+                        except ValueError: at = f' (línea {where.group(1)} del script)'
+                    fail(f'dist/{app[0]}: el script no compila{at}: {err}')
 
     for m in bad: print('FALLA:', m)
     print(f'check: {len(bad)} fallas' if bad else f'check: ok ({(time.time()-t0)*1000:.0f} ms)')
