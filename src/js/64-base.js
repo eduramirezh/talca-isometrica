@@ -36,7 +36,7 @@ function buildBase(L){
   }}
   // blocks
   blocks.forEach((b,bi)=>{let col;
-    if(bi===PLAZA_BI)col=PAL.park; else if(b.built){col=PAL.lot;}
+    if(bi===PLAZA_BI)col=PAL.park; else if(b.built){col=b.edYard?edYardCol(bi):PAL.lot;} // edYard: a block of real houses (52-edificios.js)
     else if(ALAM.has(bi))col=PAL.lawn;
     else col=b.A<40000?PAL.park:PAL.open;
     B.flat(b.r,0.1,col);});

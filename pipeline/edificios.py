@@ -1,4 +1,5 @@
-"""Edificios de OpenStreetMap, donde OSM los tiene todos o algunos: data/edificios.json (METODOLOGIA §14).
+"""Edificios de OpenStreetMap, donde OSM los tiene todos o algunos, y huellas de aprendizaje automático donde OSM no
+tiene el edificio: data/edificios.json (METODOLOGIA §14).
 
 La ciudad de la maqueta es generada (cityGen, en la plantilla): casas sobre lotes a lo largo de las calles, con
 recetas por barrio. En el centro OSM tiene casi todos los edificios con sus pisos, y ahí la planta real se ve mejor
@@ -12,13 +13,27 @@ jardines, piscinas, juegos). build.py lo inyecta como DATA.ed y la sección «ed
 (src/js/52-edificios.js) los dibuja; cityGen() no pone lotes en las enteras y en las mixtas llena los frentes libres.
 `forzar` (entera), `quitar` (mixta) y `generar` (sin OSM) son puntos dentro de una manzana, para corregir a mano.
 
+Donde OSM no tiene el edificio entran las huellas de aprendizaje automático de Microsoft y Google (Overture Maps), que
+tools/ml_buildings.py deja en raw/edificios-ml/ (METODOLOGIA §14): OSM gana siempre (fuera la huella con un 10 % sobre
+un edificio de OSM), solo OSM hace una manzana entera, y no entran en las áreas con `"ml": false` (el centro). Una
+manzana construida con huellas que entran es mixta. Las huellas fuera de toda manzana (villas posteriores al Censo,
+galpones y casas del campo) van sueltas, en grupos por celdas de 500 m, sin suelo de manzana. Cada huella se corre por
+la mediana de su desfase contra OSM (shifts(), medido en cada corrida), y se quitan las de Google con confianza bajo
+0,8, las de menos de `mixto.m2`, las de centro en una calzada del mapa o en el agua, y las sueltas rurales aisladas
+(sin landuse residencial, industrial, comercial o de granja y a más de 100 m de una vía de OSM) que no confirma una
+segunda fuente (Google v3 sobre una de Microsoft, o la presencia de Google 2.5D en 2023). Los pisos de las huellas y de
+los edificios de OSM sin dato salen del alto de Google 2.5D Temporal 2023 desde 11 m (raster_floors); bajo eso siguen
+estimados (la plantilla les da uno o dos pisos).
+
   python pipeline/edificios.py                 # escribe data/edificios.json e imprime las manzanas elegidas (make edificios)
+  python pipeline/edificios.py solo-osm        # lo mismo sin las huellas de aprendizaje automático (como hasta octubre de 2026)
   python pipeline/edificios.py manzanas [n]    # las n manzanas más cercanas al umbral, con su cobertura y un punto
   uv run --with pillow python pipeline/edificios.py panel [x0 x1 y0 y1] [z]
       diagnostics/edificios.png: la imagen satelital con las manzanas (verde: entera, amarillo: mixta, rojo: sin
       OSM, con su cobertura) y
-      los edificios de OSM coloreados por pisos (verde 1, amarillo 2, naranjo 3–5, rojo 6 o más, magenta sin dato);
-      en cada manzana, su cobertura y la de los edificios con pisos
+      los edificios de OSM coloreados por pisos (verde 1, amarillo 2, naranjo 3–5, rojo 6 o más, magenta sin dato) y las
+      huellas de aprendizaje automático que entran, ya corridas, sin relleno (celeste: Microsoft; azul: Google);
+      en cada manzana, su cobertura y la de los edificios con pisos (solo OSM)
   uv run --with pillow python pipeline/edificios.py techos [z]
       config/techos.json: la familia del techo de cada edificio de data/edificios.json (CP.roof de la plantilla:
       teja, óxido, zinc, claro…), clasificada con la imagen satelital de Esri (la mediana de los píxeles claros dentro
@@ -35,13 +50,16 @@ Lo que hace con OSM:
 
 Formato de data/edificios.json (enteros en decímetros, anillos codificados en delta como geometry.json):
   {"m": [[x, y], …] un punto dentro de cada manzana entera (metros de grilla, con un decimal), "x": lo mismo, mixtas,
-   "e": [[id, [anillo, hueco, …], alto, tipo, pisos, techo, estimada, manzana], …],
-   "s": [[anillo, superficie, manzana], …], "tipos": [...], "superficies": [...], "techos": [...]}
-techo es el índice en "techos" de la familia de config/techos.json, o -1 sin dato; manzana, su lugar en m y luego x.
+   "z": [[x0, y0, x1, y1], …] la caja de cada grupo de huellas sueltas,
+   "e": [[id, [anillo, hueco, …], alto, tipo, pisos, techo, estimada, manzana, fuente], …],
+   "s": [[anillo, superficie, manzana], …], "tipos": [...], "superficies": [...], "techos": [...], "fuentes": [...]}
+techo es el índice en "techos" de la familia de config/techos.json, o -1 sin dato; estimada, 0 con pisos de OSM, 1 sin
+dato (la plantilla elige uno o dos pisos), 2 con pisos de Google 2.5D; manzana, su lugar en m, luego x y luego z;
+fuente, el índice en "fuentes" (osm, ms, google). Una huella de aprendizaje automático lleva id 0.
 """
 import json, math, sys
 from common import ROOT, RAW, DATA, CONFIG, loc, require
-from build import dec, pip, mark_built
+from build import dec, pip, mark_built, land_uses
 
 TIPOS = ['otro', 'casa', 'comercio', 'publico', 'iglesia', 'techo', 'ruina', 'galpon', 'departamentos']
 TIPO = {'house': 1, 'residential': 1, 'detached': 1, 'semidetached_house': 1, 'terrace': 1, 'bungalow': 1,
@@ -114,10 +132,19 @@ def enc(pts):
         xi, yi = int(round(x*10)), int(round(y*10)); out += [xi-px, yi-py]; px, py = xi, yi
     return out
 
+_ELS = {}
+def elements(name='comuna'):
+    if name not in _ELS: _ELS[name] = json.load(open(require(RAW / 'osm' / f'map-{name}.json', 'Ejecute: make osm')))['elements']
+    return _ELS[name]
+
+_NODES = {}
+def node_locs(name='comuna'):
+    if name not in _NODES: _NODES[name] = {e['id']: loc(e['lon'], e['lat']) for e in elements(name) if e['type'] == 'node'}
+    return _NODES[name]
+
 def osm(name='comuna'):
     """Los edificios y las superficies de raw/osm/map-<name>.json: ([(id, [anillo, hueco…], tags)], [(anillo, tipo)])."""
-    els = json.load(open(require(RAW / 'osm' / f'map-{name}.json', 'Ejecute: make osm')))['elements']
-    nodes = {e['id']: loc(e['lon'], e['lat']) for e in els if e['type'] == 'node'}
+    els = elements(name); nodes = node_locs(name)
     ways = {e['id']: e for e in els if e['type'] == 'way'}
     pts = lambda w: [nodes[n] for n in w['nodes'] if n in nodes]
     bld, srf = [], []
@@ -150,7 +177,10 @@ def height(t):
     return 3.5, 1, True
 
 def blocks():
-    g = json.load(open(require(DATA / 'geometry.json', 'Ejecute: make data'))); mark_built(g['blocks'])
+    """Las manzanas como las ve la plantilla: las del Censo (data/geometry.json) reclasificadas por config/manzanas.json y
+    por las entradas `vivienda` de config/usos.json, más las que esas entradas agregan donde el Censo no tiene manzana
+    (build.land_uses), al final: las villas posteriores al Censo."""
+    g = json.load(open(require(DATA / 'geometry.json', 'Ejecute: make data'))); mark_built(g['blocks']); land_uses(g)
     out = []
     for i, b in enumerate(g['blocks']):
         r = dec(b[3]); xs = [p[0] for p in r]; ys = [p[1] for p in r]
@@ -172,8 +202,153 @@ def point_in(b):
 
 def centroid(r): return (sum(p[0] for p in r)/len(r), sum(p[1] for p in r)/len(r))
 
-def analyse():
-    """Las manzanas con su cobertura y los edificios que caen en ellas: (cfg, manzanas, edificios, superficies)."""
+def centre(r):
+    """El centroide de área de un anillo (el de vértices se corre hacia las esquinas con muchos puntos)."""
+    A = area(r)
+    if abs(A) < 1e-9: return centroid(r)
+    cx = sum((r[i-1][0]+r[i][0])*(r[i-1][0]*r[i][1]-r[i][0]*r[i-1][1]) for i in range(len(r)))/(6*A)
+    cy = sum((r[i-1][1]+r[i][1])*(r[i-1][0]*r[i][1]-r[i][0]*r[i-1][1]) for i in range(len(r)))/(6*A)
+    return (cx, cy)
+
+def median(v):
+    v = sorted(v); n = len(v)
+    return (v[n//2] if n % 2 else (v[n//2-1]+v[n//2])/2) if n else 0.0
+
+ML = RAW / 'edificios-ml'                                    # tools/ml_buildings.py
+
+def shifts(bld=None):
+    """El corrimiento de cada fuente de aprendizaje automático contra OSM: {fuente: (dx, dy, pares)}, la mediana de la
+    diferencia entre los centros de los pares 1:1: una huella de raw/edificios-ml/ajuste-<fuente>.jsonl y el edificio de
+    OSM más cercano, a menos de 6 m, con un área de 0,6 a 1,6 veces la suya y sin otra huella que lo elija."""
+    if bld is None: bld = osm()[0]
+    O = [(centre(r[0]), abs(area(r[0]))) for _, r, _ in bld]; G = {}
+    for k, (c, _) in enumerate(O): G.setdefault((int(c[0]//10), int(c[1]//10)), []).append(k)
+    out = {}
+    for f in ('ms', 'google'):
+        path = ML / f'ajuste-{f}.jsonl'
+        if not path.exists(): continue
+        pairs = {}
+        for l in open(path):
+            r = [loc(*p) for p in json.loads(l)['r']]; c, a = centre(r), abs(area(r)); best = None
+            for gx in range(int(c[0]//10)-1, int(c[0]//10)+2):
+                for gy in range(int(c[1]//10)-1, int(c[1]//10)+2):
+                    for k in G.get((gx, gy), ()):
+                        d = math.hypot(c[0]-O[k][0][0], c[1]-O[k][0][1])
+                        if d < 6 and 0.6 <= a/O[k][1] <= 1.6 and (best is None or d < best[0]): best = (d, k)
+            if best: pairs.setdefault(best[1], []).append((c[0]-O[best[1]][0][0], c[1]-O[best[1]][0][1]))
+        one = [v[0] for v in pairs.values() if len(v) == 1]
+        out[f] = (median([d[0] for d in one]), median([d[1] for d in one]), len(one))
+    return out
+
+SW = [16, 13, 11, 9.5, 7, 5, 3.5, 3.5]                        # el ancho de las calles del mapa por clase (SW de la plantilla)
+FUENTES = ['osm', 'ms', 'google']
+LANDUSE = {'residential', 'industrial', 'commercial', 'retail', 'farmyard'}   # donde una huella rural no está aislada
+
+class Cells:
+    """Un índice por celdas de c m: add(caja, v) pone v en las celdas de la caja; at(x, y, m) da lo de las celdas a
+    menos de m de (x, y), y over(caja), sin repetir, lo de las celdas de la caja."""
+    def __init__(self, c): self.c, self.d = c, {}
+    def add(self, bb, v):
+        c = self.c
+        for gx in range(int(bb[0]//c), int(bb[2]//c)+1):
+            for gy in range(int(bb[1]//c), int(bb[3]//c)+1): self.d.setdefault((gx, gy), []).append(v)
+    def at(self, x, y, m=0):
+        c = self.c; out = []
+        for gx in range(int((x-m)//c), int((x+m)//c)+1):
+            for gy in range(int((y-m)//c), int((y+m)//c)+1): out += self.d.get((gx, gy), ())
+        return out
+    def over(self, bb):
+        c = self.c; out = set()
+        for gx in range(int(bb[0]//c), int(bb[2]//c)+1):
+            for gy in range(int(bb[1]//c), int(bb[3]//c)+1): out.update(self.d.get((gx, gy), ()))
+        return out
+
+def bbox(r): xs = [p[0] for p in r]; ys = [p[1] for p in r]; return (min(xs), min(ys), max(xs), max(ys))
+
+def seg_dist(p, a, b):
+    dx, dy = b[0]-a[0], b[1]-a[1]; L = dx*dx+dy*dy
+    t = max(0, min(1, ((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L)) if L else 0
+    return math.hypot(p[0]-a[0]-t*dx, p[1]-a[1]-t*dy)
+
+def context():
+    """Lo que filtra las huellas de aprendizaje automático: las calzadas del mapa (data/geometry.json, el 80 % del
+    medio ancho de su clase), el agua de los ríos y el límite de la comuna, y de raw/osm/map-comuna.json los landuse
+    de LANDUSE y las vías (highway, también las huellas y senderos)."""
+    g = json.load(open(DATA / 'geometry.json'))
+    road = Cells(50)
+    for s in g['streets']:
+        pts = dec(s[2]); w = SW[s[0]]*0.4
+        for a, b in zip(pts, pts[1:]): road.add((min(a[0], b[0])-w, min(a[1], b[1])-w, max(a[0], b[0])+w, max(a[1], b[1])+w), (a, b, w))
+    water = [[dec(r) for r in p] for polys in g['area'].values() for p in polys]
+    els, N = elements(), node_locs(); W = {e['id']: e for e in els if e['type'] == 'way'}
+    lu, hw = Cells(200), Cells(100)
+    for e in els:
+        t = e.get('tags') or {}
+        if e['type'] == 'way' and 'highway' in t:
+            pts = [N[n] for n in e['nodes'] if n in N]
+            for a, b in zip(pts, pts[1:]): hw.add((min(a[0], b[0]), min(a[1], b[1]), max(a[0], b[0]), max(a[1], b[1])), (a, b))
+        if t.get('landuse') in LANDUSE:
+            if e['type'] == 'way' and e['nodes'][0] == e['nodes'][-1]: rings = [[N[n] for n in e['nodes'] if n in N]]
+            elif e['type'] == 'relation':
+                rings = assemble([[N[n] for n in W[m['ref']]['nodes'] if n in N] for m in e['members'] if m['type'] == 'way' and m.get('role') == 'outer' and m['ref'] in W])
+            else: continue
+            for r in rings:
+                if len(r) > 3: lu.add(bbox(r), (r, t['landuse']))
+    return {'road': road, 'water': water, 'lu': lu, 'hw': hw, 'limit': dec(g['limit'])}
+
+def landuse_at(ctx, p): return next((k for r, k in ctx['lu'].at(*p) if pip(p, r)), None)
+
+def isolated(ctx, p):
+    """Sin landuse de LANDUSE y a más de 100 m de toda vía de OSM."""
+    return not landuse_at(ctx, p) and not any(seg_dist(p, a, b) < 100 for a, b in ctx['hw'].at(*p, 100))
+
+def ml(cfg, bld, ctx):
+    """Las huellas de aprendizaje automático (raw/edificios-ml/huellas.jsonl, de tools/ml_buildings.py) que pueden
+    entrar, corridas a OSM: ([{'id', 'f': fuente, 'r': [anillo, hueco…], 'A': área, 'c': centro, 'h': alto de Google
+    2.5D, 'g8', 'p23'}], lo quitado por motivo, el corrimiento de cada fuente). Se quitan las de Google con confianza
+    bajo 0,8, las de menos de `mixto.m2`, las que tienen un 10 % o más sobre un edificio de OSM (OSM gana), las de
+    centro en una calzada del mapa o en el agua, las que salen de la comuna y las de `excluir` (por su id GERS)."""
+    from collections import Counter
+    from common import in_ring
+    path = ML / 'huellas.jsonl'
+    if not path.exists(): return [], Counter(), {}
+    sh = shifts(bld); excl = {e['id'] for e in cfg['excluir'] if 'id' in e}; mn = cfg['mixto']['m2']
+    OR = [r[0] for _, r, _ in bld]; O = Cells(20)
+    for k, r in enumerate(OR): O.add(bbox(r), k)
+    gone, out = Counter(), []
+    for l in open(path):
+        d = json.loads(l); f = d['f']; dx, dy = sh[f][:2]
+        if d['id'] in excl: gone['excluir'] += 1; continue
+        if f == 'google' and (d['c'] or 0) < 0.8: gone['Google bajo 0,8'] += 1; continue
+        rings = [ring_of([(x-dx, y-dy) for x, y in (loc(*q) for q in r)], ccw=(i == 0)) for i, r in enumerate(d['r'])]
+        if not rings[0]: gone['chica'] += 1; continue
+        R = rings[0]; rings = [R] + [h for h in rings[1:] if h and pip(h[0], R)]
+        A = abs(area(R)) - sum(abs(area(h)) for h in rings[1:])
+        if A < mn: gone[f'bajo {mn} m²'] += 1; continue
+        c, bb = centre(R), bbox(R); cand = O.over(bb)
+        if cand:                                            # OSM gana: la parte sobre sus edificios, en 5 × 5 puntos
+            pts = [p for p in ((bb[0]+(bb[2]-bb[0])*(i+.5)/5, bb[1]+(bb[3]-bb[1])*(j+.5)/5) for i in range(5) for j in range(5)) if pip(p, R)]
+            if pts and sum(any(pip(p, OR[k]) for k in cand) for p in pts) >= 0.1*len(pts): gone['sobre OSM'] += 1; continue
+        if any(seg_dist(c, a, b) < w for a, b, w in ctx['road'].at(*c)): gone['en una calzada'] += 1; continue
+        if any(in_ring(c, w[0]) and not any(in_ring(c, i) for i in w[1:]) for w in ctx['water']): gone['en el agua'] += 1; continue
+        if not all(in_ring(p, ctx['limit']) for p in R): gone['fuera de la comuna'] += 1; continue
+        out.append({'id': d['id'], 'f': f, 'r': rings, 'A': A, 'c': c, 'h': d.get('h'), 'g8': d.get('g8', 0), 'p23': d.get('p23')})
+    return out, gone, sh
+
+def raster_floors(h, A=0):
+    """Los pisos de un edificio con el alto de Google 2.5D Temporal (m), o None donde el alto no los separa. Contra los
+    1.023 edificios de OSM con pisos: bajo 11 m el raster no distingue uno de dos (un 3 % de los de uno o dos pisos
+    pasa de 11 m, la mitad de los de tres a cinco no llega), así que ahí siguen estimados; de 11 a 14 m, tres; desde 14,
+    un piso cada 3,2 m, hasta 15. Nada sobre los 2.500 m² (A): ahí son naves (el Gimnasio Regional leía 29 m, nueve pisos)."""
+    if h is None or h < 11 or A > 2500: return None
+    return 3 if h < 14 else min(15, round(h/3.2))
+
+def analyse(with_ml=True):
+    """Las manzanas con su cobertura y los edificios que caen en ellas: (cfg, manzanas, excluidos de OSM, info), con info
+    = {'loose': las huellas fuera de las manzanas que entran, 'gone': lo quitado por motivo, 'sh': los corrimientos,
+    'ctx': context()}. La cobertura y las manzanas enteras son solo de OSM; una manzana construida de un área sin
+    `ml: false` con huellas de aprendizaje automático que entran es mixta (si no es entera)."""
+    from collections import Counter
     cfg = json.load(open(CONFIG / 'edificios.json'))
     bld, srf = osm(); B = blocks()
     G = {}                                                   # índice de manzanas por celda de 100 m
@@ -181,8 +356,8 @@ def analyse():
         for gx in range(int(b['bb'][0]//100), int(b['bb'][2]//100)+1):
             for gy in range(int(b['bb'][1]//100), int(b['bb'][3]//100)+1): G.setdefault((gx, gy), []).append(b)
     def block_of(p): return next((b for b in G.get((int(p[0]//100), int(p[1]//100)), []) if inside(b, p)), None)
-    excl = {e['osm'] for e in cfg['excluir']}
-    for b in B: b['cov'] = b['covp'] = 0; b['eds'] = []; b['srf'] = []
+    excl = {e['osm'] for e in cfg['excluir'] if 'osm' in e}
+    for b in B: b['cov'] = b['covp'] = 0; b['eds'] = []; b['srf'] = []; b['ml'] = []
     for e in bld:
         b = block_of(centroid(e[1][0]))
         if not b: continue
@@ -191,46 +366,97 @@ def analyse():
     for s in srf:
         b = block_of(centroid(s[0]))
         if b: b['srf'].append(s)
-    def area_of(b):
-        c = point_in(b)
-        return next((a for a in cfg['areas'] if a['caja'][0] <= c[0] <= a['caja'][2] and a['caja'][1] <= c[1] <= a['caja'][3]), None)
+    ctx = context() if with_ml else None
+    M, gone, sh = ml(cfg, bld, ctx) if with_ml else ([], Counter(), {})
+    loose = []
+    for m in M:
+        b = block_of(m['c'])
+        if b: b['ml'].append(m)
+        else: loose.append(m)
+    in_area = lambda c: next((a for a in cfg['areas'] if a['caja'][0] <= c[0] <= a['caja'][2] and a['caja'][1] <= c[1] <= a['caja'][3]), None)
+    def area_of(b): return in_area(point_in(b))
     mn = cfg['mixto']['m2']
+    big = lambda b: any(abs(area(e[1][0])) >= mn for e in b['eds'])
     for b in B:
-        b['cov'] /= b['A']; b['covp'] /= b['A']; a = area_of(b) if b['built'] and b['eds'] else None
+        b['cov'] /= b['A']; b['covp'] /= b['A']; a = area_of(b) if b['built'] and (b['eds'] or b['ml']) else None
         th, thp = (a.get('cobertura', cfg['cobertura']), a.get('cobertura_pisos', cfg['cobertura_pisos'])) if a else (0, 0)
-        b['sel'] = bool(a) and (b['cov'] >= th or (thp is not None and b['covp'] >= thp))
-        b['mix'] = bool(a) and not b['sel'] and any(abs(area(e[1][0])) >= mn for e in b['eds'])
+        b['mlok'] = bool(a) and a.get('ml', True)
+        b['sel'] = bool(a) and bool(b['eds']) and (b['cov'] >= th or (thp is not None and b['covp'] >= thp))
+        b['mix'] = bool(a) and not b['sel'] and (big(b) or (b['mlok'] and bool(b['ml'])))
     for k, sel, mix in (('forzar', True, False), ('quitar', False, None), ('generar', False, False)):
         for p in cfg[k]:
             b = block_of(p); assert b, f'edificios.json: {k} {p} no cae en una manzana'
-            b['sel'] = sel; b['mix'] = (b['built'] and any(abs(area(e[1][0])) >= mn for e in b['eds'])) if mix is None else mix
-    return cfg, B, excl
+            b['sel'] = sel; b['mix'] = (b['built'] and (big(b) or (b['mlok'] and bool(b['ml'])))) if mix is None else mix
+    for b in B:                                              # OSM gana: las huellas solo en las mixtas
+        if b['ml'] and not (b['mix'] and b['mlok']):
+            gone['en manzana entera de OSM' if b['sel'] else 'en manzana sin construir' if not b['built']
+                 else 'en el área sin ml (el centro)' if not b['mlok'] and area_of(b) else 'en manzana generada (generar)'] += len(b['ml'])
+            b['ml'] = []
+    keep = []
+    for m in loose:
+        a = in_area(m['c'])
+        if not a or not a.get('ml', True): gone['suelta, en el área sin ml'] += 1
+        elif isolated(ctx, m['c']) and not (m['g8'] or (m['p23'] or 0) >= 0.65): gone['suelta rural aislada, sin segunda fuente'] += 1
+        else: keep.append(m)
+    return cfg, B, excl, {'loose': keep, 'gone': gone, 'sh': sh, 'ctx': ctx}
 
 def techos():
     f = CONFIG / 'techos.json'
     return json.load(open(f))['techos'] if f.exists() else {}
 
-def main():
-    cfg, B, excl = analyse(); T = techos(); mn = cfg['mixto']['m2']
+LOOSE_C = 500                                                # las huellas sueltas van en grupos por celdas de 500 m
+
+def ml_row(m, k, kind):
+    """Una huella de aprendizaje automático -> su fila de "e" (id 0: la plantilla saca la semilla de la planta). Tipo:
+    departamentos con tres pisos o más (Google 2.5D) y 150 m²; casa bajo 600 m² (250 suelta o en un landuse de granja; ninguna en uno industrial: las
+    de 250 a 600 m² suelen ser casas pareadas o en fila que la huella junta, y como «otro» eran cajas grises); galpón en un landuse industrial o de
+    granja, suelta (fuera de las manzanas) o desde 1.500 m²; si no, otro. Un galpón toma el alto del raster (de 4 a 10 m)."""
+    A = m['A']; fl = raster_floors(m['h'], A)
+    t = 'departamentos' if fl and A >= 150 else 'casa' if A < (250 if kind in ('suelta', 'farmyard') else 600) and kind != 'industrial' else 'galpon' if kind in ('industrial', 'farmyard', 'suelta') or A >= 1500 else 'otro'
+    if fl: h, lv, est = fl*3.0 + 0.5, fl, 2
+    elif t == 'galpon': h, lv, est = max(4.0, min(10.0, m['h'] or 5.0)), 1, 1
+    else: h, lv, est = 3.5, 1, 1
+    return [0, [enc(r) for r in m['r']], int(round(h*10)), TIPOS.index(t), lv, -1, est, k, FUENTES.index(m['f'])]
+
+def main(with_ml=True):
+    from collections import Counter
+    cfg, B, excl, info = analyse(with_ml); T = techos(); mn = cfg['mixto']['m2']; ctx = info['ctx']
+    alt = json.load(open(ML / 'alturas-osm.json')) if with_ml and (ML / 'alturas-osm.json').exists() else {}
     sel, mix = [b for b in B if b['sel']], [b for b in B if b['mix']]
-    out = {'tipos': TIPOS, 'superficies': SUPERFICIES, 'techos': TECHOS, 'm': [], 'x': [], 'e': [], 's': []}
-    nt = ne = nm = 0
+    groups = {}
+    for m in info['loose']: groups.setdefault((int(m['c'][0]//LOOSE_C), int(m['c'][1]//LOOSE_C)), []).append(m)
+    groups = [groups[g] for g in sorted(groups)]
+    out = {'tipos': TIPOS, 'superficies': SUPERFICIES, 'techos': TECHOS, 'fuentes': FUENTES, 'm': [], 'x': [], 'z': [], 'e': [], 's': []}
+    nt = ne = nm = nr = 0; nf = Counter()
     for k, b in enumerate(sel + mix):
         out['m' if b['sel'] else 'x'].append([round(c, 1) for c in point_in(b)])
         for oid, rings, t in b['eds']:
             if oid in excl or (b['mix'] and abs(area(rings[0])) < mn): continue
             h, lv, est = height(t)
+            if est and t['building'] not in ('roof', 'carport', 'ruins') and 'leisure' not in t and 'sport' not in t and oid in alt:
+                fl = raster_floors(alt[oid][0], abs(area(rings[0])))
+                if fl: h, lv, est = fl*3.0 + 0.5, fl, 2; nr += 1
             fam = T.get(oid); nt += fam is not None; nm += b['mix']
-            out['e'].append([oid, [enc(r) for r in rings], int(round(h*10)), TIPO.get(t['building'], 0), int(lv), TECHOS.index(fam) if fam in TECHOS else -1, int(est), k])
-            ne += est
+            out['e'].append([oid, [enc(r) for r in rings], int(round(h*10)), TIPO.get(t['building'], 0), int(lv), TECHOS.index(fam) if fam in TECHOS else -1, int(est), k, 0])
+            ne += est == 1; nf['osm'] += 1
+        for m in b['ml']: out['e'].append(ml_row(m, k, landuse_at(ctx, m['c']))); nf[m['f']] += 1
         for r, s in b['srf']: out['s'].append([enc(r), s, k])
+    for z, g in enumerate(groups):
+        bb = [bbox(m['r'][0]) for m in g]
+        out['z'].append([round(min(v[0] for v in bb), 1), round(min(v[1] for v in bb), 1), round(max(v[2] for v in bb), 1), round(max(v[3] for v in bb), 1)])
+        for m in g: out['e'].append(ml_row(m, len(sel) + len(mix) + z, 'suelta')); nf[m['f'] + ' sueltas'] += 1
     (DATA / 'edificios.json').write_text(json.dumps(out, separators=(',', ':')))
     kb = (DATA / 'edificios.json').stat().st_size / 1024
-    print(f"data/edificios.json: {len(sel)} manzanas enteras y {len(mix)} mixtas, {len(out['e'])} edificios ({nm} en las mixtas, "
-          f"{ne} sin altura, {nt} con color de techo), {len(out['s'])} superficies, {kb:.0f} KB")
+    print(f"data/edificios.json: {len(sel)} manzanas enteras, {len(mix)} mixtas y {len(groups)} grupos de huellas sueltas, "
+          f"{len(out['e'])} edificios ({nm} de OSM en las mixtas, {ne} de OSM sin altura, {nr} de OSM con pisos de Google 2.5D, "
+          f"{nt} con color de techo; por fuente: {dict(nf)}), {len(out['s'])} superficies, {kb:.0f} KB")
+    if with_ml:
+        print('corrimiento contra OSM (m de grilla, lo que se resta; pares):', {k: (round(v[0], 2), round(v[1], 2), v[2]) for k, v in info['sh'].items()})
+        print('huellas quitadas:', dict(info['gone'].most_common()))
+        print('pisos de Google 2.5D (pisos: edificios):', dict(sorted(Counter(e[4] for e in out['e'] if e[6] == 2).items())))
 
 def cmd_manzanas(n='20'):
-    cfg, B, _ = analyse(); th = cfg['cobertura']
+    cfg, B, _, _ = analyse(False); th = cfg['cobertura']
     near = sorted((b for b in B if b['built'] and len(b['eds'])), key=lambda b: abs(b['cov']-th))[:int(n)]
     for b in sorted(near, key=lambda b: -b['cov']):
         p = point_in(b)
@@ -242,7 +468,7 @@ def cmd_panel(*args):
     from satellite import mosaic
     a = [float(v) for v in args[:4]] if len(args) >= 4 else [-700, 800, -650, 650]
     z = int(args[4]) if len(args) > 4 else 18
-    cfg, B, _ = analyse(); x0, x1, y0, y1 = a
+    cfg, B, _, info = analyse(); x0, x1, y0, y1 = a
     img, P = mosaic(x0, x1, y0, y1, z); img = img.convert('RGBA')
     ov = Image.new('RGBA', img.size, (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
     vis = lambda bb: bb[2] > x0 and bb[0] < x1 and bb[3] > y0 and bb[1] < y1
@@ -252,6 +478,8 @@ def cmd_panel(*args):
             lv = num(t.get('building:levels')) or (num(t.get('height')) or 0)/2.8
             col = (255, 0, 255, 90) if not lv else (60, 200, 60, 90) if lv <= 1 else (240, 200, 0, 100) if lv <= 2 else (255, 120, 0, 110) if lv <= 5 else (220, 0, 0, 130)
             d.polygon([P(p) for p in rings[0]], fill=col, outline=(255, 255, 255, 200))
+    for m in [m for b in B if vis(b['bb']) for m in b['ml']] + info['loose']:   # las de aprendizaje automático, sin relleno
+        d.polygon([P(p) for p in m['r'][0]], outline=(0, 220, 255, 230) if m['f'] == 'ms' else (60, 120, 255, 230), width=2)
     for b in B:
         if not vis(b['bb']) or not b['built']: continue
         d.polygon([P(p) for p in b['r']], outline=(60, 255, 60, 255) if b['sel'] else (255, 200, 0, 255) if b['mix'] else (255, 60, 60, 255), width=3)
@@ -315,6 +543,7 @@ def cmd_techos(z='19'):
 if __name__ == '__main__':
     a = sys.argv[1:]
     if not a: main()
+    elif a[0] == 'solo-osm': main(False)
     elif a[0] == 'manzanas': cmd_manzanas(*a[1:])
     elif a[0] == 'panel': cmd_panel(*a[1:])
     elif a[0] == 'techos': cmd_techos(*a[1:])

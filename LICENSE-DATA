@@ -14,6 +14,14 @@ Los archivos siguientes contienen datos derivados de OpenStreetMap
   y canales, y la vía férrea con sus cruces, postes y señales (las manzanas que
   también contiene son del Censo 2017 del INE: ver el punto 3);
 - data/ruta5.json: las calzadas y los ramales de la Ruta 5;
+- data/edificios.json: los edificios de OSM y, donde OSM no los tiene, huellas de
+  edificios de Microsoft Global ML Building Footprints (ODbL) y Google Open
+  Buildings v3 (elegida bajo ODbL entre CC BY 4.0 y ODbL), reunidas por Overture
+  Maps Foundation (ODbL 1.0), con pisos estimados de Google Open Buildings 2.5D
+  Temporal (elegida bajo ODbL; contiene datos modificados de Copernicus
+  Sentinel-2). Su atribución: «© colaboradores de OpenStreetMap, Overture Maps
+  Foundation, Microsoft, Google; contiene datos modificados de Copernicus
+  Sentinel-2»;
 - config/trazados.json: las partes tomadas de OSM (las que dicen OSM en `fuente`
   o llevan ids `osm`: ríos, Ruta 5, vía férrea y ramal);
 - config/usos.json: las entradas importadas de OSM (fuente OSM, con su id);

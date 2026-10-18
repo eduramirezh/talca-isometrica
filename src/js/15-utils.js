@@ -14,6 +14,7 @@ const inRing=(x,y,r)=>{const b=ringBox(r);return x>b[0]-1&&y>b[1]-1&&x<b[2]+1&&y
 // does; (x, y) is inside r, as pipXY() says, when an odd number of them is greater than x. For a row of points
 // (a raster, the relief's nodes) instead of a pip per point: same answers, one pass over the ring per row
 function pipRow(r,y,xs){xs.length=0;for(let i=0,j=r.length-1;i<r.length;j=i++){const xi=r[i][0],yi=r[i][1],xj=r[j][0],yj=r[j][1];if((yi>y)!==(yj>y))xs.push((xj-xi)*(y-yi)/(yj-yi)+xi);}
-  return xs.sort((a,b)=>a-b);}
+  for(let i=1;i<xs.length;i++){const v=xs[i];let k=i-1;while(k>=0&&xs[k]>v){xs[k+1]=xs[k];k--;}xs[k+1]=v;} // insertion sort: a row crosses a ring a few times
+  return xs;}
 function segDist2(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay;const L=dx*dx+dy*dy;let t=L?((px-ax)*dx+(py-ay)*dy)/L:0;t=t<0?0:t>1?1:t;const x=ax+t*dx-px,y=ay+t*dy-py;return x*x+y*y;}
 

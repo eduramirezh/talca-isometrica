@@ -3,7 +3,7 @@ PY ?= python3
 PW ?= uv run --with "playwright==1.63" python   # Python con Playwright, para las capturas (el del sistema no lo tiene)
 PORT ?= 8765
 DRY_RUN ?= 0
-.PHONY: all fetch osm data elevation ruta5 edificios golf pois build check smoke hooks validate diagnostics shots site-assets deploy serve clean
+.PHONY: all fetch osm data elevation ruta5 edificios edificios-ml golf pois build check smoke hooks validate diagnostics shots site-assets deploy serve clean
 
 all: data elevation edificios golf pois build         ## pipeline completo (requiere raw/: make fetch)
 
@@ -22,8 +22,11 @@ elevation:                    ## raw/dem/copernicus/ (Copernicus GLO-30; pipelin
 ruta5:                        ## raw/osm/map-comuna.json -> data/ruta5.json (calzadas y ramales de la Ruta 5; requiere traces.py tiles-comuna)
 	cd pipeline && $(PY) traces.py calzadas comuna
 
-edificios:                    ## raw/osm/map-comuna.json + config/edificios.json (+ config/techos.json) -> data/edificios.json (los edificios de OSM donde OSM está completo)
+edificios:                    ## raw/osm/map-comuna.json + config/edificios.json (+ config/techos.json) -> data/edificios.json (los edificios de OSM y, donde OSM no los tiene, las huellas de raw/edificios-ml/)
 	cd pipeline && $(PY) edificios.py
+
+edificios-ml:                 ## raw/overture, raw/msbuildings, raw/google-open-buildings* -> raw/edificios-ml/ (huellas de aprendizaje automático y alturas de Google 2.5D, para make edificios; uv)
+	uv run --with duckdb --with shapely --with numpy --with rasterio --with pyproj python -I tools/ml_buildings.py
 
 golf:                         ## la imagen de Esri sobre el Talca Country Club (su contorno, en config/usos.json) -> data/golf.json (pasto cortado y copas)
 	cd pipeline && $(PY) golf.py
