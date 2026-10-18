@@ -569,7 +569,7 @@ def main(with_ml=True):
         idx.append(ci[a])
     out['h'] = {'q': HQ, 'K': HK, 'k': runs, 'c': [list(a) for a in C], 'i': idx, **G}
     for z in range(len(groups)):                            # la caja de cada grupo suelto, con las plantas redondeadas
-        bb = [bbox(r) for (k, _, _), r in zip(H, dec_rings) if r and k == len(sel) + len(mix) + z]
+        bb = [bbox(r) for (k, _, _), r in zip(H, dec_rings) if r and k == len(sel) + len(mix) + z] or [bbox(m['r'][0]) for m in groups[z]]
         out['z'].append([math.floor(min(v[0] for v in bb)*10)/10, math.floor(min(v[1] for v in bb)*10)/10, math.ceil(max(v[2] for v in bb)*10)/10, math.ceil(max(v[3] for v in bb)*10)/10])
     (DATA / 'edificios.json').write_text(json.dumps(out, separators=(',', ':')))
     kb = (DATA / 'edificios.json').stat().st_size / 1024
