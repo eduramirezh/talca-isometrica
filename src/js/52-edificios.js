@@ -10,9 +10,10 @@
 //    the line of the sidewalks (the map's streets are wider than the real ones, and OSM may sit a few metres off the
 //    census blocks: trap «Calzadas del mapa y plantas de OSM») and marks it in occ with 3: the trees and the uses'
 //    objects keep out of it, while the street level (sidewalks, crosswalks, street trees, parked cars), which only
-//    yields to 1, and cityGen's tests, which only see 1, go on as before. In a mixed block it also closes to the lots
+//    yields to 1, and cityGen's tests, which only see 1, go on as before. In a mixed block edHulls() closes to the lots
 //    (lotBlock: the exact test of cityGen, not the raster) the convex hull of each building grown by ED_GAP, and of
-//    each surface: the lots and their yards shrink around them as they do around each other.
+//    each surface: the lots and their yards shrink around them as they do around each other (before the first street
+//    whose lots can reach the block, or its ground: edHullsFor, edificiosBase).
 //  - edificiosBase(B, Z, Y, bks), with the final terrain and before the city: each building on its real footprint, in
 //    the city's vocabulary (docs/ESTETICA.md): walls with the window shader on B; a flat roof with a white parapet, or a
 //    hipped roof made by insetting the footprint (any plan, concave too: the slopes rise to the inset outline and
@@ -36,10 +37,26 @@ const ED_T0=performance.now(),ED=(()=>{const D=DATA.ed;if(!D)return {list:[],sur
   // cells with their box: no block, no ground of their own
   for(const bb of D.z||[])bks.push({bi:-1,mix:false,loose:true,k:bks.length,eds:[],surf:[],obs:[],paved:[],bb});
   const seed=id=>{let h=2166136261;for(let i=0;i<id.length;i++)h=Math.imul(h^id.charCodeAt(i),16777619);return h>>>0;};
-  // a machine-learning footprint has no id (0): its seed comes from its encoded footprint, its id is its block's
-  const seedN=a=>{let h=2166136261;for(let i=0;i<a.length;i++)h=Math.imul(h^(a[i]&0xffff),16777619);return h>>>0;};
-  const list=D.e.map(([id,rings,h,t,lv,roof,est,k,f=0])=>{const R=rings.map(dm),e={id:id||'ml'+k,R,h:h/10,t:D.tipos[t],lv,roof:roof<0?null:D.techos[roof],est:est===1,f:D.fuentes?D.fuentes[f]:'osm',bb:box(R[0]),bk:bks[k],seed:id?seed(id):seedN(rings[0])};
-    bks[k].eds.push(e);if(f)bks[k].ml=true;return e;});
+  const list=D.e.map(([id,rings,h,t,lv,roof,est,k])=>{const R=rings.map(dm),e={id,R,h:h/10,t:D.tipos[t],lv,roof:roof<0?null:D.techos[roof],est:est===1,f:'osm',bb:box(R[0]),bk:bks[k],seed:seed(id)};
+    bks[k].eds.push(e);return e;});
+  // the machine-learning footprints (pipeline/edificios.py h_encode): k runs of footprints of a block, after its OSM
+  // buildings; c their data (height, kind, floors, estimated, source), i the row of c of each; n, o, l their outlines,
+  // each starting from the first vertex of the one before, taken to its own grid of q m (the same operations as the
+  // pipeline: the same integers). n: k + 2K(m/2 - 2) for a rectilinear one of m vertices in direction k (integers
+  // (K, k) up to 45 degrees, (2K - k, K) after), its lengths in l along u and v by turns but the two that close it;
+  // -m for another, its other vertices in l as deltas on the map's grid. A footprint has no id ('ml' and its block):
+  // its seed comes from its integers
+  const H=D.h;if(H){const {q,K,n:N,o:O,l:LL,c:C,i:I,k:KR}=H;let po=0,pl=0,j=0,px=0,py=0;
+    for(let r=0;r<KR.length;r+=2){const k=KR[r],bk=bks[k];bk.ml=true;
+      for(let c=0;c<KR[r+1];c++,j++){const nk=N[j],R=[];let s=2166136261;const hs=v=>{s=Math.imul(s^(v&0xffff),16777619);};
+        if(nk>=0){const kk=nk%(2*K),n=2*Math.floor(nk/(2*K))+4,a=kk<K?K:2*K-kk,b=kk<K?kk:K,w=Math.sqrt(a*a+b*b),cu=a/w,su=b/w;
+          let u=Math.floor((px*cu+py*su)/q+.5)+O[po++],v=Math.floor((-px*su+py*cu)/q+.5)+O[po++];const u0=u;hs(nk);hs(u);hs(v);R.push([(u*cu-v*su)*q,(u*su+v*cu)*q]);
+          for(let i=0;i<n-2;i++){const d=LL[pl++];hs(d);if(i%2)v+=d;else u+=d;R.push([(u*cu-v*su)*q,(u*su+v*cu)*q]);}
+          R.push([(u0*cu-v*su)*q,(u0*su+v*cu)*q]);}
+        else{let u=Math.floor(px/q+.5)+O[po++],v=Math.floor(py/q+.5)+O[po++];hs(nk);hs(u);hs(v);R.push([u*q,v*q]);
+          for(let i=1;i<-nk;i++){const du=LL[pl++],dv=LL[pl++];hs(du);hs(dv);u+=du;v+=dv;R.push([u*q,v*q]);}}
+        px=R[0][0];py=R[0][1];const [h,t,lv,est,f]=C[I[j]];
+        const e={id:'ml'+k,R:[R],h:h/10,t:D.tipos[t],lv,roof:null,est:est===1,f:D.fuentes[f],bb:box(R),bk,seed:s>>>0};bk.eds.push(e);list.push(e);}}}
   const surf=D.s.map(([r,s,k])=>{const R=dm(r),o={r:R,k:D.superficies[s],bb:box(R)};bks[k].surf.push(o);return o;});
   // a mixed block under ED_SOLID with machine-learning footprints has its houses nearly all drawn: its own ground
   // (buildBase) takes the yard colour of its barrio (edYardCol) instead of the 2 m raster of yards, which then only

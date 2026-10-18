@@ -48,14 +48,19 @@ Lo que hace con OSM:
   - Las plantas de OSM pueden quedar unos metros corridas respecto de las calles del mapa (trampa «Calzadas del mapa
     y plantas de OSM»): la plantilla las recorta a la línea de las veredas.
 
-Formato de data/edificios.json (enteros en decímetros, anillos codificados en delta como geometry.json):
+Formato de data/edificios.json (los edificios de OSM y las superficies en decímetros, con los anillos codificados en
+delta como geometry.json; las huellas, en "h"):
   {"m": [[x, y], …] un punto dentro de cada manzana entera (metros de grilla, con un decimal), "x": lo mismo, mixtas,
    "z": [[x0, y0, x1, y1], …] la caja de cada grupo de huellas sueltas,
-   "e": [[id, [anillo, hueco, …], alto, tipo, pisos, techo, estimada, manzana, fuente], …],
-   "s": [[anillo, superficie, manzana], …], "tipos": [...], "superficies": [...], "techos": [...], "fuentes": [...]}
+   "e": [[id, [anillo, hueco, …], alto, tipo, pisos, techo, estimada, manzana], …] los edificios de OSM,
+   "s": [[anillo, superficie, manzana], …],
+   "h": {"q": HQ, "K": HK, "k": [manzana, cuántas, …], "c": [[alto, tipo, pisos, estimada, fuente], …], "i": [fila de c, …],
+         "n": […], "o": […], "l": […]} las huellas de aprendizaje automático (h_encode),
+   "tipos": [...], "superficies": [...], "techos": [...], "fuentes": [...]}
 techo es el índice en "techos" de la familia de config/techos.json, o -1 sin dato; estimada, 0 con pisos de OSM, 1 sin
 dato (la plantilla elige uno o dos pisos), 2 con pisos de Google 2.5D; manzana, su lugar en m, luego x y luego z;
-fuente, el índice en "fuentes" (osm, ms, google). Una huella de aprendizaje automático lleva id 0.
+fuente, el índice en "fuentes" (ms, google). Las huellas van de a corridas de una manzana ("k"), en el orden de las
+manzanas, y en cada una después de sus edificios de OSM; sus plantas, sin huecos, como las describe h_encode().
 """
 import json, math, sys
 from common import ROOT, RAW, DATA, CONFIG, loc, require
@@ -131,6 +136,116 @@ def enc(pts):
     for x, y in pts:
         xi, yi = int(round(x*10)), int(round(y*10)); out += [xi-px, yi-py]; px, py = xi, yi
     return out
+
+# Las huellas de aprendizaje automático ("h" de data/edificios.json; METODOLOGIA §14). Casi todas tienen solo ángulos
+# rectos (Microsoft las regulariza): se guardan como una dirección y los largos de sus lados sobre una grilla de HQ m
+# girada a esa dirección, y las demás como polígono sobre la grilla de la maqueta. HQ es el píxel de arte (ESTETICA §2):
+# cada lado se mueve hasta HQ/2 en su perpendicular, y dos casas pareadas en la misma dirección siguen compartiendo el
+# muro (los dos redondean la misma línea). Una huella que se movería más de HTOL m va como polígono.
+HQ, HK, HTOL = 0.5, 115, 0.5
+
+def h_dir(k):
+    """La dirección k (0 ≤ k < 2·HK): (HK, k) hasta 45° y (2·HK − k, HK) desde ahí, normalizada (~0,5° entre una y otra
+    junto a los ejes, ~0,25° a 45°). Solo enteros y una raíz: la plantilla obtiene exactamente los mismos números."""
+    a, b = (HK, k) if k < HK else (2*HK - k, HK); s = math.sqrt(a*a + b*b); return a/s, b/s
+
+def h_round(v): return math.floor(v + 0.5)                   # Math.floor(v + .5) en la plantilla (no el round de Python)
+
+def h_k(r):
+    """La dirección más cercana a la de los lados de r: su ángulo medio módulo 90°, pesado por el largo."""
+    s = c = 0
+    for i in range(len(r)):
+        (ax, ay), (bx, by) = r[i-1], r[i]; L = math.hypot(bx-ax, by-ay); t = 4*math.atan2(by-ay, bx-ax); s += L*math.sin(t); c += L*math.cos(t)
+    th = math.atan2(s, c)/4 % (math.pi/2)
+    if th < math.pi/4: return h_round(HK*math.tan(th)) % (2*HK)
+    return (2*HK - h_round(HK*math.tan(math.pi/2 - th))) % (2*HK)
+
+def h_clean(V):
+    """Sin vértices repetidos ni alineados con sus vecinos (lo que deja el redondeo), o None si queda menos de un triángulo."""
+    V = list(V)
+    while True:
+        n = len(V)
+        if n < 3: return None
+        for i in range(n):
+            a, b, c = V[i-1], V[i], V[(i+1) % n]
+            if b == a or (b[0]-a[0])*(c[1]-a[1]) == (b[1]-a[1])*(c[0]-a[0]): del V[i]; break
+        else: return V
+
+def h_ok(V):
+    """Un anillo de enteros antihorario y simple (ningún par de lados no vecinos se toca)."""
+    n = len(V)
+    if sum(V[i-1][0]*V[i][1] - V[i][0]*V[i-1][1] for i in range(n)) <= 0: return False
+    X = lambda o, a, b: (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0])
+    def meet(a, b, c, d):
+        d1, d2, d3, d4 = X(a, b, c), X(a, b, d), X(c, d, a), X(c, d, b)
+        if ((d1 > 0) != (d2 > 0) and d1 and d2) and ((d3 > 0) != (d4 > 0) and d3 and d4): return True
+        on = lambda p, q, r: min(p[0], q[0]) <= r[0] <= max(p[0], q[0]) and min(p[1], q[1]) <= r[1] <= max(p[1], q[1])
+        return (not d1 and on(a, b, c)) or (not d2 and on(a, b, d)) or (not d3 and on(c, d, a)) or (not d4 and on(c, d, b))
+    for i in range(n):
+        for j in range(i+2, n):
+            if i == 0 and j == n-1: continue
+            if meet(V[i], V[(i+1) % n], V[j], V[(j+1) % n]): return False
+    return True
+
+def h_rect(r, k):
+    """r como polígono rectilíneo en la dirección k: sus vértices en enteros de la grilla girada (u a lo largo de k, v a
+    90°), el primer lado hacia +u; None si r no lo es (un lado a más de 12° de los ejes, dos seguidos paralelos)."""
+    cu, su = h_dir(k); n = len(r)
+    if n < 4 or n % 2: return None
+    P = [((x*cu + y*su)/HQ, (-x*su + y*cu)/HQ) for x, y in r]; ax = []
+    for i in range(n):
+        (au, av), (bu, bv) = P[i], P[(i+1) % n]; du, dv = abs(bu-au), abs(bv-av)
+        if min(du, dv) > 0.2126*max(du, dv): return None     # tan 12°
+        ax.append(0 if du >= dv else 1)
+    if any(ax[i] == ax[i-1] for i in range(n)): return None
+    # la línea de cada lado (su v si va a lo largo de u, su u si va a lo largo de v), redondeada; el vértice i, entre el
+    # lado i − 1 y el i
+    L = [h_round((P[i][1] + P[(i+1) % n][1])/2 if ax[i] == 0 else (P[i][0] + P[(i+1) % n][0])/2) for i in range(n)]
+    V = h_clean([(L[i-1], L[i]) if ax[i] == 0 else (L[i], L[i-1]) for i in range(n)])
+    if not V or len(V) < 4 or not h_ok(V): return None
+    i0 = next(i for i in range(len(V)) if V[(i+1) % len(V)][1] == V[i][1] and V[(i+1) % len(V)][0] > V[i][0])
+    return V[i0:] + V[:i0]
+
+def h_dev(r, G):
+    """Cuánto se aleja G de r (m): el mayor de las distancias de cada vértice de uno al contorno del otro."""
+    def far(A, B): return max(min(math.sqrt(seg_d2(p, B[j-1], B[j])) for j in range(len(B))) for p in A)
+    return max(far(r, G), far(G, r))
+
+def seg_d2(p, a, b):
+    dx, dy = b[0]-a[0], b[1]-a[1]; L = dx*dx + dy*dy; t = ((p[0]-a[0])*dx + (p[1]-a[1])*dy)/L if L else 0; t = min(1, max(0, t))
+    return (a[0]+t*dx-p[0])**2 + (a[1]+t*dy-p[1])**2
+
+def h_encode(rings):
+    """Las huellas (anillos antihorarios, en metros de grilla, en el orden de la plantilla) -> ({"n", "o", "l"}: tres
+    listas de enteros, los anillos como los decodifica la plantilla, cuántas rectilíneas). Por huella: en "n", k + 2·HK·(n/2 − 2)
+    si es rectilínea con n vértices en la dirección k (un rectángulo, solo k), −n si es otra; en "o", su primer vértice
+    relativo al de la anterior, llevado a su grilla (Math.floor(… + .5), con las mismas operaciones que la plantilla); en
+    "l", una rectilínea, los largos de sus lados alternando u y v menos los dos últimos, que cierran el polígono; otra, los
+    otros vértices en delta sobre la grilla de la maqueta de HQ m. Una que el redondeo deja sin superficie o cruzada no se
+    escribe (None en su lugar)."""
+    N, O, L, out = [], [], [], []; px = py = 0.0; pk = 0; nr = 0
+    for r in rings:
+        kn = h_k(r); best = None
+        near = lambda a, b: min((a-b) % (2*HK), (b-a) % (2*HK))
+        for k in ([pk] if near(pk, kn) <= 4 else []) + [kn, (kn+1) % (2*HK), (kn-1) % (2*HK)]:
+            V = h_rect(r, k)
+            if not V: continue
+            cu, su = h_dir(k); G = [((u*cu - v*su)*HQ, (u*su + v*cu)*HQ) for u, v in V]; d = h_dev(r, G)
+            if d <= HTOL and (best is None or (d < best[0] - 0.05 and k != pk)): best = (d, k, V, G)
+            if best and best[1] == pk: break                # la dirección de la anterior, si sirve: muros compartidos
+        if best:
+            d, k, V, G = best; cu, su = h_dir(k); n = len(V)
+            N.append(k + 2*HK*(n//2 - 2)); O += [V[0][0] - h_round((px*cu + py*su)/HQ), V[0][1] - h_round((-px*su + py*cu)/HQ)]
+            L += [V[i+1][i % 2] - V[i][i % 2] for i in range(n-2)]
+            pk = k; nr += 1
+        else:
+            V = h_clean([(h_round(x/HQ), h_round(y/HQ)) for x, y in r])
+            if not V or not h_ok(V): out.append(None); continue
+            N.append(-len(V)); O += [V[0][0] - h_round(px/HQ), V[0][1] - h_round(py/HQ)]
+            for i in range(1, len(V)): L += [V[i][0] - V[i-1][0], V[i][1] - V[i-1][1]]
+            G = [(u*HQ, v*HQ) for u, v in V]
+        out.append(G); px, py = G[0]
+    return {'n': N, 'o': O, 'l': L}, out, nr
 
 _ELS = {}
 def elements(name='comuna'):
@@ -407,7 +522,8 @@ def techos():
 LOOSE_C = 500                                                # las huellas sueltas van en grupos por celdas de 500 m
 
 def ml_row(m, k, kind):
-    """Una huella de aprendizaje automático -> su fila de "e" (id 0: la plantilla saca la semilla de la planta). Tipo:
+    """Una huella de aprendizaje automático -> (su manzana, sus datos en "c" de "h": alto, tipo, pisos, estimada, fuente,
+    y su anillo, que h_encode() escribe en "g"). Tipo:
     departamentos con tres pisos o más (Google 2.5D) y 150 m²; casa bajo 600 m² (250 suelta o en un landuse de granja; ninguna en uno industrial: las
     de 250 a 600 m² suelen ser casas pareadas o en fila que la huella junta, y como «otro» eran cajas grises); galpón en un landuse industrial o de
     granja, suelta (fuera de las manzanas) o desde 1.500 m²; si no, otro. Un galpón toma el alto del raster (de 4 a 10 m)."""
@@ -416,7 +532,7 @@ def ml_row(m, k, kind):
     if fl: h, lv, est = fl*3.0 + 0.5, fl, 2
     elif t == 'galpon': h, lv, est = max(4.0, min(10.0, m['h'] or 5.0)), 1, 1
     else: h, lv, est = 3.5, 1, 1
-    return [0, [enc(r) for r in m['r']], int(round(h*10)), TIPOS.index(t), lv, -1, est, k, FUENTES.index(m['f'])]
+    return k, (int(round(h*10)), TIPOS.index(t), lv, est, FUENTES.index(m['f'])), m['r'][0]
 
 def main(with_ml=True):
     from collections import Counter
@@ -427,7 +543,7 @@ def main(with_ml=True):
     for m in info['loose']: groups.setdefault((int(m['c'][0]//LOOSE_C), int(m['c'][1]//LOOSE_C)), []).append(m)
     groups = [groups[g] for g in sorted(groups)]
     out = {'tipos': TIPOS, 'superficies': SUPERFICIES, 'techos': TECHOS, 'fuentes': FUENTES, 'm': [], 'x': [], 'z': [], 'e': [], 's': []}
-    nt = ne = nm = nr = 0; nf = Counter()
+    nt = ne = nm = nr = 0; nf = Counter(); H = []
     for k, b in enumerate(sel + mix):
         out['m' if b['sel'] else 'x'].append([round(c, 1) for c in point_in(b)])
         for oid, rings, t in b['eds']:
@@ -437,23 +553,33 @@ def main(with_ml=True):
                 fl = raster_floors(alt[oid][0], abs(area(rings[0])))
                 if fl: h, lv, est = fl*3.0 + 0.5, fl, 2; nr += 1
             fam = T.get(oid); nt += fam is not None; nm += b['mix']
-            out['e'].append([oid, [enc(r) for r in rings], int(round(h*10)), TIPO.get(t['building'], 0), int(lv), TECHOS.index(fam) if fam in TECHOS else -1, int(est), k, 0])
+            out['e'].append([oid, [enc(r) for r in rings], int(round(h*10)), TIPO.get(t['building'], 0), int(lv), TECHOS.index(fam) if fam in TECHOS else -1, int(est), k])
             ne += est == 1; nf['osm'] += 1
-        for m in b['ml']: out['e'].append(ml_row(m, k, landuse_at(ctx, m['c']))); nf[m['f']] += 1
+        for m in b['ml']: H.append(ml_row(m, k, landuse_at(ctx, m['c']))); nf[m['f']] += 1
         for r, s in b['srf']: out['s'].append([enc(r), s, k])
     for z, g in enumerate(groups):
-        bb = [bbox(m['r'][0]) for m in g]
-        out['z'].append([round(min(v[0] for v in bb), 1), round(min(v[1] for v in bb), 1), round(max(v[2] for v in bb), 1), round(max(v[3] for v in bb), 1)])
-        for m in g: out['e'].append(ml_row(m, len(sel) + len(mix) + z, 'suelta')); nf[m['f'] + ' sueltas'] += 1
+        for m in g: H.append(ml_row(m, len(sel) + len(mix) + z, 'suelta')); nf[m['f'] + ' sueltas'] += 1
+    # las huellas, en "h", en el orden de las manzanas (en cada una, después de las de OSM de "e")
+    G, dec_rings, nrect = h_encode([r for _, _, r in H]); C = sorted({a for _, a, _ in H}); ci = {a: i for i, a in enumerate(C)}
+    runs, idx = [], []
+    for (k, a, _), r in zip(H, dec_rings):
+        if r is None: nf['quitadas al redondear'] += 1; continue
+        if runs and runs[-2] == k: runs[-1] += 1
+        else: runs += [k, 1]
+        idx.append(ci[a])
+    out['h'] = {'q': HQ, 'K': HK, 'k': runs, 'c': [list(a) for a in C], 'i': idx, **G}
+    for z in range(len(groups)):                            # la caja de cada grupo suelto, con las plantas redondeadas
+        bb = [bbox(r) for (k, _, _), r in zip(H, dec_rings) if r and k == len(sel) + len(mix) + z]
+        out['z'].append([math.floor(min(v[0] for v in bb)*10)/10, math.floor(min(v[1] for v in bb)*10)/10, math.ceil(max(v[2] for v in bb)*10)/10, math.ceil(max(v[3] for v in bb)*10)/10])
     (DATA / 'edificios.json').write_text(json.dumps(out, separators=(',', ':')))
     kb = (DATA / 'edificios.json').stat().st_size / 1024
     print(f"data/edificios.json: {len(sel)} manzanas enteras, {len(mix)} mixtas y {len(groups)} grupos de huellas sueltas, "
-          f"{len(out['e'])} edificios ({nm} de OSM en las mixtas, {ne} de OSM sin altura, {nr} de OSM con pisos de Google 2.5D, "
+          f"{len(out['e'])} edificios de OSM y {len(idx)} huellas ({nrect} rectilíneas; {nm} de OSM en las mixtas, {ne} de OSM sin altura, {nr} de OSM con pisos de Google 2.5D, "
           f"{nt} con color de techo; por fuente: {dict(nf)}), {len(out['s'])} superficies, {kb:.0f} KB")
     if with_ml:
         print('corrimiento contra OSM (m de grilla, lo que se resta; pares):', {k: (round(v[0], 2), round(v[1], 2), v[2]) for k, v in info['sh'].items()})
         print('huellas quitadas:', dict(info['gone'].most_common()))
-        print('pisos de Google 2.5D (pisos: edificios):', dict(sorted(Counter(e[4] for e in out['e'] if e[6] == 2).items())))
+        print('pisos de Google 2.5D (pisos: edificios):', dict(sorted(Counter([e[4] for e in out['e'] if e[6] == 2] + [a[2] for _, a, _ in H if a[3] == 2]).items())))
 
 def cmd_manzanas(n='20'):
     cfg, B, _, _ = analyse(False); th = cfg['cobertura']
