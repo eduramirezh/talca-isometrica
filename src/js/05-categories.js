@@ -8,14 +8,14 @@ const CATS={
   penitenciario:{n:'Penitenciario',ic:'M4 3h12v14H4zM8 3v14M12 3v14'},
   historia:{n:'Historia legal',ic:'M5 3h9.5a2 2 0 0 1 0 4H14v8.5a2 2 0 0 1-2 2H4.5a2 2 0 0 1 0-4H6V5a2 2 0 0 1 2-2M8 8h4M8 11h4'},
   ciudad:{n:'Hitos de la ciudad',ic:'M10 2l2.3 4.9 5.2.6-3.9 3.6 1.1 5.2L10 13.7l-4.7 2.6 1.1-5.2L2.5 7.5l5.2-.6z'},
-  // Monumentos Históricos (CMN) and Inmuebles de Conservación Histórica (PRC 2011); places of other categories that are
-  // heritage list it in cs
+  // sin capa propia: los Monumentos Históricos (CMN) y los Inmuebles de Conservación Histórica (PRC 2011) son hitos de
+  // la ciudad (o de su categoría) con 'patrimonio' en cs, que la ficha muestra junto a la categoría
   patrimonio:{n:'Patrimonio',ic:'M2.5 17.5h15M4 17.5V9.5a6 6 0 0 1 12 0v8M7.5 17.5v-7a2.5 2.5 0 0 1 5 0v7'}
 };
 const LEGAL=['tribunales','fiscalia','notarial','academia','gobierno','penitenciario','historia'];
-const CITYCATS=['ciudad','patrimonio'];
+const CITYCATS=['ciudad'];
 const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const icon=c=>`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="${CATS[c].ic}"/></svg>`;
 const POIS=PD.pois; const BYID={}; POIS.forEach(p=>BYID[p.id]=p);
-const enabled=new Set(Object.keys(CATS));
+const enabled=new Set([...LEGAL,...CITYCATS]);   // las capas con botón: 'patrimonio' no apaga ni enciende nada
 

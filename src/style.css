@@ -3,7 +3,7 @@
   --rule:#CDD1C6; --wine:#7A1F3D; --wine-soft:#F1DDE3; --focus:#2E5E8C;
   --stage-a:#DCDFD2; --stage-b:#C9CDBE; --shadow:0 1px 2px rgba(31,42,68,.10),0 8px 28px rgba(31,42,68,.14);
   --c-tribunales:#7A1F3D; --c-fiscalia:#B4532A; --c-notarial:#8A6D12; --c-academia:#2E5E8C;
-  --c-gobierno:#5E4B8B; --c-penitenciario:#505A66; --c-historia:#1F2A44; --c-ciudad:#2F6F62; --c-patrimonio:#6E6A2E;
+  --c-gobierno:#5E4B8B; --c-penitenciario:#505A66; --c-historia:#1F2A44; --c-ciudad:#2F6F62;
   --pin-ring:#F7F8F4;
   --serif:"Alegreya SC","Alegreya","Palatino Linotype",Palatino,Georgia,serif;
   --sans:"Alegreya Sans","Gill Sans","Segoe UI",system-ui,sans-serif;
@@ -15,7 +15,7 @@
     --paper:#161A24; --paper-2:#1F2431; --ink:#E7E5DC; --ink-2:#B9BBC4; --ink-3:#8A8E9C;
     --rule:#2E3444; --wine:#E07A98; --wine-soft:#3A2230; --focus:#8FB6E0;
     --stage-a:#1B2030; --stage-b:#10131C; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
-    --c-historia:#3B4A74; --c-patrimonio:#9A9450; --pin-ring:#E9E7DE;
+    --c-historia:#3B4A74; --pin-ring:#E9E7DE;
   }
 }
 :root[data-theme="dark"]{
@@ -23,7 +23,7 @@
   --paper:#161A24; --paper-2:#1F2431; --ink:#E7E5DC; --ink-2:#B9BBC4; --ink-3:#8A8E9C;
   --rule:#2E3444; --wine:#E07A98; --wine-soft:#3A2230; --focus:#8FB6E0;
   --stage-a:#1B2030; --stage-b:#10131C; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
-  --c-historia:#3B4A74; --c-patrimonio:#9A9450; --pin-ring:#E9E7DE;
+  --c-historia:#3B4A74; --pin-ring:#E9E7DE;
 }
 html,body{height:100%}
 body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45;overflow:hidden}

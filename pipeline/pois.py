@@ -3,9 +3,10 @@
 Cada lugar: add(id, nombre, categoría, lat, lon, dirección, descripción, confianza, fuentes,
                 fact=dato curioso, sub=instituciones dentro, model=modelo 3D propio, pri=prioridad
                 de etiqueta 0..3 (0 = siempre visible), cats=categorías extra, wd=elemento de Wikidata).
-Categorías: tribunales, fiscalia, notarial, academia, gobierno, penitenciario, historia, ciudad, patrimonio
-(Monumentos Históricos del Consejo de Monumentos Nacionales e Inmuebles de Conservación Histórica del Plan Regulador
-de Talca de 2011; los lugares de otra categoría que lo son llevan 'patrimonio' en cats).
+Categorías: tribunales, fiscalia, notarial, academia, gobierno, penitenciario, historia, ciudad. Los Monumentos
+Históricos del Consejo de Monumentos Nacionales y los Inmuebles de Conservación Histórica del Plan Regulador de Talca
+de 2011 llevan 'patrimonio' en cats: no es una capa (van en la suya, casi siempre «Hitos de la ciudad»), y la ficha
+lo muestra junto a la categoría.
 wd: 'Q…' (o varios separados por comas, el principal primero); lo usan `wikidata.py check` y `landmark.py photos
 --cat`. Wikidata solo sirve para revisar: las coordenadas de aquí vienen de OSM (ODbL) y no se copian allá.
 Confianza: alta = punto OSM o CMN que calza con la dirección; media = una fuente secundaria o
@@ -270,67 +271,67 @@ add('cementerio', 'Cementerio General', 'ciudad', -35.40751, -71.66412, 'Sector 
 # Monumentos Históricos del CMN (capa de puntos oficiales, decretos) e Inmuebles de Conservación Histórica del PRC de
 # 2011 (MINVU IDE) que no eran lugares; octubre de 2026. Las ubicaciones: OSM donde tiene el edificio, si no el punto
 # del CMN o el centro del polígono del PRC (confianza media).
-add('puente-pangue', 'Puente ferroviario sobre el río Pangue', 'patrimonio', -35.353135, -71.574995,
+add('puente-pangue', 'Puente ferroviario sobre el río Pangue', 'ciudad', -35.353135, -71.574995,
     'Línea Central, en el límite norte de la comuna',
     'Viaducto de ladrillo de unos 60 m y ocho arcos de medio punto, construido hacia 1878–1880 para el ferrocarril al sur, con sus pilas estucadas imitando piedra. Monumento Histórico desde 1989. Los trenes pasan hoy por un puente de acero pintado de amarillo, unos metros al oriente.',
     'alta', [['Decreto 499 de 1989 (CMN)', DEC + 'MH_00478_1989_D00499.PDF'], ['OpenStreetMap vía Mapcarta', MC + 'N4289189189'],
              ['Foto de 2008 en Commons', 'https://commons.wikimedia.org/wiki/File:Puente_Pangue.JPG']],
     fact='El decreto lo protegió por ser el único puente de su tipo que seguía en pie en Chile. El límite de la comuna corre por el estero: la maqueta muestra solo la mitad sur de los dos puentes.',
-    pri=2, wd='Q42898047')
-add('intendencia', 'Antigua Intendencia', 'patrimonio', -35.426266, -71.664950, '1 Norte con 1 Oriente, frente a la plaza',
+    pri=2, wd='Q42898047', cats=['patrimonio'])
+add('intendencia', 'Antigua Intendencia', 'ciudad', -35.426266, -71.664950, '1 Norte con 1 Oriente, frente a la plaza',
     'Edificio neoclásico del arquitecto Carlos Crouzat, levantado entre 1910 y 1915 para la Intendencia de la provincia de Talca. Monumento Histórico desde 2001. El terremoto de 2010 lo dejó inutilizable; una restauración empezada en 2022 quedó inconclusa.',
     'alta', [['Decreto 103 de 2001 (CMN)', DEC + 'MH_00800_2001_D00103.PDF'], ['Wikipedia', 'https://es.wikipedia.org/wiki/Edificio_de_la_Intendencia_de_la_Regi%C3%B3n_del_Maule'],
              ['OpenStreetMap vía Mapcarta', MC + 'W275506476']],
-    fact='Su fachada hacia la Plaza de Armas tenía un tercer piso bajo una mansarda, que se quitó en la reparación de 2011.', pri=3, cats=['gobierno'], wd='Q16559130')
-add('edificio-ohiggins', 'Edificio O\'Higgins (ex Banco de Talca)', 'patrimonio', -35.427383, -71.665628, '1 Sur 790, esquina 1 Oriente',
+    fact='Su fachada hacia la Plaza de Armas tenía un tercer piso bajo una mansarda, que se quitó en la reparación de 2011.', pri=3, cats=['gobierno', 'patrimonio'], wd='Q16559130')
+add('edificio-ohiggins', 'Edificio O\'Higgins (ex Banco de Talca)', 'ciudad', -35.427383, -71.665628, '1 Sur 790, esquina 1 Oriente',
     'Edificio art déco de hormigón de los arquitectos Carlos y Alberto Cruz Eyzaguirre, construido entre 1929 y 1930 como casa matriz del Banco de Talca, que el terremoto de 1928 había dejado sin sede. Inmueble de Conservación Histórica del Plan Regulador de 2011.',
     'media', [ICH, ['Wikipedia', 'https://es.wikipedia.org/wiki/Edificio_O%27Higgins'], ['Foto de 2014 en Commons', 'https://commons.wikimedia.org/wiki/File:Ex_Banco_de_Talca.jpg']],
-    fact='Entre 2010 y 2021 funcionaron aquí oficinas de la Fiscalía, mientras se construían sus edificios; desde entonces está desocupado. Ubicación: el polígono del Plan Regulador.', pri=3, wd='Q131410816')
-add('buen-pastor', 'Iglesia del Buen Pastor', 'patrimonio', -35.428801, -71.673358, '3 Sur, a la altura del 7½ Poniente',
+    fact='Entre 2010 y 2021 funcionaron aquí oficinas de la Fiscalía, mientras se construían sus edificios; desde entonces está desocupado. Ubicación: el polígono del Plan Regulador.', pri=3, wd='Q131410816', cats=['patrimonio'])
+add('buen-pastor', 'Iglesia del Buen Pastor', 'ciudad', -35.428801, -71.673358, '3 Sur, a la altura del 7½ Poniente',
     'Iglesia neogótica que levantó entre 1887 y 1900 la congregación del Buen Pastor, que acogía mujeres y educaba niñas huérfanas; su fachada neorrománica es de la reconstrucción que siguió al terremoto de 1928. Monumento Histórico desde 1993; hoy se llama también del Apóstol Pedro.',
     'alta', [['Decreto 281 de 1993 (CMN)', DEC + 'MH_00592_1993_D00281.PDF'], ['Wikipedia', 'https://es.wikipedia.org/wiki/Iglesia_del_Ap%C3%B3stol_Pedro'], ['OpenStreetMap vía Mapcarta', MC + 'W310246576']],
-    fact='El terremoto de 2010 la dejó muy dañada: está cerrada y abandonada.', pri=3, wd='Q42898048,Q50750351')
-add('huilquilemu', 'Casa Patronal de Huilquilemu', 'patrimonio', -35.462210, -71.577126, 'Avenida San Miguel, Huilquilemu',
+    fact='El terremoto de 2010 la dejó muy dañada: está cerrada y abandonada.', pri=3, wd='Q42898048,Q50750351', cats=['patrimonio'])
+add('huilquilemu', 'Casa Patronal de Huilquilemu', 'ciudad', -35.462210, -71.577126, 'Avenida San Miguel, Huilquilemu',
     'Casona de adobe de hacia 1850, con corredores en torno a un patio, en un parque de árboles centenarios. Desde 1975 es de la Universidad Católica (hoy la UCM), que la restauró como Villa Cultural Huilquilemu y museo. Monumento Histórico desde 1986.',
     'alta', [['Decreto 1092 de 1986 (CMN)', DEC + 'MH_00423_1986_D01092.PDF'], ['Wikipedia', 'https://es.wikipedia.org/wiki/Casa_patronal_de_Huilquilemu'],
              ['OpenStreetMap vía Mapcarta', MC + 'W244752822']],
-    fact='La mandó construir Bruno González, que hizo fortuna en la minería del Norte Grande. Tras el terremoto de 2010 se restauró hasta 2013.', pri=2, wd='Q42898043,Q86280850')
-add('estacion-mercedes', 'Estación Mercedes', 'patrimonio', -35.470332, -71.553539, 'Mercedes, al oriente de la comuna',
+    fact='La mandó construir Bruno González, que hizo fortuna en la minería del Norte Grande. Tras el terremoto de 2010 se restauró hasta 2013.', pri=2, wd='Q42898043,Q86280850', cats=['patrimonio'])
+add('estacion-mercedes', 'Estación Mercedes', 'ciudad', -35.470332, -71.553539, 'Mercedes, al oriente de la comuna',
     'Estación de madera de 1900 del antiguo ramal Talca–Mariposas, que llevó trenes hacia la precordillera hasta 1975. Restaurada en 2005 como centro comunitario. Monumento Histórico desde 2010.',
     'alta', [['Decreto 98 de 2010 (CMN)', DEC + 'MH_01229_2010_D00098.PDF'], ['Wikipedia', 'https://es.wikipedia.org/wiki/Estaci%C3%B3n_Mercedes_(Chile)'],
-             ['OpenStreetMap vía Mapcarta', MC + 'W475336898']], pri=3, wd='Q42899036')
-add('iglesia-san-agustin', 'Iglesia de San Agustín', 'patrimonio', -35.421339, -71.663615, '2 Oriente 1500, junto a la Alameda',
+             ['OpenStreetMap vía Mapcarta', MC + 'W475336898']], pri=3, wd='Q42899036', cats=['patrimonio'])
+add('iglesia-san-agustin', 'Iglesia de San Agustín', 'ciudad', -35.421339, -71.663615, '2 Oriente 1500, junto a la Alameda',
     'Iglesia del convento de los agustinos, la orden que cedió el terreno donde se fundó la villa de San Agustín de Talca en 1742. Inmueble de Conservación Histórica del Plan Regulador de 2011.',
     'alta', [['OpenStreetMap vía Mapcarta', MC + 'W802004025'], ICH],
-    fact='El Plan Regulador le da la dirección Alameda 1334, que es la del Liceo de Niñas; su polígono y OpenStreetMap la ubican en 2 Oriente.', pri=3)
-add('maria-auxiliadora', 'Santuario de María Auxiliadora', 'patrimonio', -35.428469, -71.660131, '2 Sur 1147 (Av. Monseñor Manuel Larraín)',
+    fact='El Plan Regulador le da la dirección Alameda 1334, que es la del Liceo de Niñas; su polígono y OpenStreetMap la ubican en 2 Oriente.', pri=3, cats=['patrimonio'])
+add('maria-auxiliadora', 'Santuario de María Auxiliadora', 'ciudad', -35.428469, -71.660131, '2 Sur 1147 (Av. Monseñor Manuel Larraín)',
     'Templo de los salesianos, inaugurado en 1915 donde desde 1807 estuvo la capilla del antiguo Hospital San Juan de Dios. Él y el colegio salesiano vecino son Inmuebles de Conservación Histórica del Plan Regulador de 2011.',
     'alta', [['OpenStreetMap vía Mapcarta', MC + 'W565185280'], ['Wikipedia', 'https://es.wikipedia.org/wiki/Santuario_de_Mar%C3%ADa_Auxiliadora_(Talca)'], ICH],
-    fact='Los salesianos llegaron a Talca en 1888 y compraron el edificio del hospital, que se había trasladado.', pri=3, wd='Q130639815')
-add('san-francisco', 'Iglesia de San Francisco (Pompeya)', 'patrimonio', -35.426714, -71.668635, '1 Sur con 2 Poniente',
+    fact='Los salesianos llegaron a Talca en 1888 y compraron el edificio del hospital, que se había trasladado.', pri=3, wd='Q130639815', cats=['patrimonio'])
+add('san-francisco', 'Iglesia de San Francisco (Pompeya)', 'ciudad', -35.426714, -71.668635, '1 Sur con 2 Poniente',
     'Iglesia de San Francisco de Asís, a una cuadra al poniente de la Plaza de Armas. Inmueble de Conservación Histórica del Plan Regulador de 2011, que la nombra también «de Pompeya».',
-    'alta', [['OpenStreetMap vía Mapcarta', MC + 'W799509091'], ICH], pri=3)
-add('corazon-de-maria', 'Iglesia del Corazón de María', 'patrimonio', -35.428433, -71.655905, '2 Sur 1499, cerca de 8 Oriente',
+    'alta', [['OpenStreetMap vía Mapcarta', MC + 'W799509091'], ICH], pri=3, cats=['patrimonio'])
+add('corazon-de-maria', 'Iglesia del Corazón de María', 'ciudad', -35.428433, -71.655905, '2 Sur 1499, cerca de 8 Oriente',
     'Iglesia del barrio oriente del centro. Inmueble de Conservación Histórica del Plan Regulador de 2011.',
-    'media', [ICH], fact='Ubicación: el centro del polígono del Plan Regulador; OpenStreetMap no tiene el edificio con nombre.', pri=3)
-add('liceo-ninas', 'Liceo de Niñas (Liceo Marta Donoso Espejo)', 'patrimonio', -35.423320, -71.657153, 'Alameda 1334',
+    'media', [ICH], fact='Ubicación: el centro del polígono del Plan Regulador; OpenStreetMap no tiene el edificio con nombre.', pri=3, cats=['patrimonio'])
+add('liceo-ninas', 'Liceo de Niñas (Liceo Marta Donoso Espejo)', 'ciudad', -35.423320, -71.657153, 'Alameda 1334',
     'El antiguo Liceo de Niñas de Talca, hoy Liceo Marta Donoso Espejo, frente a la Alameda. Su edificio es Inmueble de Conservación Histórica del Plan Regulador de 2011.',
-    'alta', [['OpenStreetMap vía Mapcarta', MC + 'W111123034'], ICH], pri=3)
-add('club-talca', 'Club Talca', 'patrimonio', -35.427785, -71.665886, '1 Oriente 1033',
+    'alta', [['OpenStreetMap vía Mapcarta', MC + 'W111123034'], ICH], pri=3, cats=['patrimonio'])
+add('club-talca', 'Club Talca', 'ciudad', -35.427785, -71.665886, '1 Oriente 1033',
     'Edificio del Club Talca, en 1 Oriente al sur de la Plaza de Armas. Inmueble de Conservación Histórica del Plan Regulador de 2011.',
-    'media', [ICH], fact='Ubicación: el polígono del Plan Regulador. OpenStreetMap llama «Centro Español» a este edificio, pero el Centro Español está en 3 Oriente.', pri=3)
-add('centro-espanol', 'Centro Español', 'patrimonio', -35.427053, -71.662810, '3 Oriente 1109, esquina 1 Sur',
+    'media', [ICH], fact='Ubicación: el polígono del Plan Regulador. OpenStreetMap llama «Centro Español» a este edificio, pero el Centro Español está en 3 Oriente.', pri=3, cats=['patrimonio'])
+add('centro-espanol', 'Centro Español', 'ciudad', -35.427053, -71.662810, '3 Oriente 1109, esquina 1 Sur',
     'Edificio del Centro Español, frente al Paseo 1 Sur. Inmueble de Conservación Histórica del Plan Regulador de 2011.',
-    'alta', [['OpenStreetMap vía Mapcarta', MC + 'W310550395'], ICH], pri=3)
-add('hotel-plaza', 'Hotel Plaza', 'patrimonio', -35.426582, -71.667061, '1 Poniente 1141, frente a la plaza',
+    'alta', [['OpenStreetMap vía Mapcarta', MC + 'W310550395'], ICH], pri=3, cats=['patrimonio'])
+add('hotel-plaza', 'Hotel Plaza', 'ciudad', -35.426582, -71.667061, '1 Poniente 1141, frente a la plaza',
     'Edificio del Hotel Plaza, en el costado poniente de la Plaza de Armas. Inmueble de Conservación Histórica del Plan Regulador de 2011.',
-    'media', [ICH], fact='Ubicación: el polígono del Plan Regulador.', pri=3)
-add('ex-registro-civil', 'Antiguo Registro Civil', 'patrimonio', -35.424421, -71.665383, '1 Oriente 1311',
+    'media', [ICH], fact='Ubicación: el polígono del Plan Regulador.', pri=3, cats=['patrimonio'])
+add('ex-registro-civil', 'Antiguo Registro Civil', 'ciudad', -35.424421, -71.665383, '1 Oriente 1311',
     'Antiguo edificio del Registro Civil, que el Plan Regulador de 2011 protege como Inmueble de Conservación Histórica. La oficina de hoy está en 3 Sur 1188.',
-    'media', [ICH], fact='Ubicación: el polígono del Plan Regulador.', pri=3, cats=['notarial'])
-add('ex-hospicio', 'Antiguo Hospicio e iglesia', 'patrimonio', -35.434617, -71.679216, 'Av. Ignacio Carrera Pinto 106',
+    'media', [ICH], fact='Ubicación: el polígono del Plan Regulador.', pri=3, cats=['notarial', 'patrimonio'])
+add('ex-hospicio', 'Antiguo Hospicio e iglesia', 'ciudad', -35.434617, -71.679216, 'Av. Ignacio Carrera Pinto 106',
     'Ruinas del antiguo hospicio de Talca y su iglesia, al sur poniente del centro. Inmueble de Conservación Histórica del Plan Regulador de 2011.',
-    'alta', [['OpenStreetMap vía Mapcarta', MC + 'W587986690'], ICH], pri=3)
+    'alta', [['OpenStreetMap vía Mapcarta', MC + 'W587986690'], ICH], pri=3, cats=['patrimonio'])
 
 # ------------------------------------------------------------------ HISTORIA: MEMORIA
 add('sitio-memoria', 'Sitio de Memoria 4 Oriente 1470', 'historia', -35.423117, -71.660504, '4 Oriente 1470',
