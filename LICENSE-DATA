@@ -42,10 +42,31 @@ https://github.com/eduramirezh/talca-isometrica/issues.
 
 - Manzanas: Censo de Población y Vivienda 2017, Instituto Nacional de
   Estadísticas de Chile (datos públicos; citar la fuente).
-- Elevación: SRTM, NASA/USGS (dominio público).
+- Elevación (data/elevation.json): Copernicus DEM GLO-30; ver el punto 4.
 - Imagen satelital: las teselas de Esri World Imagery que baja
   pipeline/satellite.py se usan solo para revisar a mano; nada de ellas se
   redistribuye (ni las teselas ni imágenes hechas con ellas están en el
   repositorio ni en la página).
+
+4. Relieve: Copernicus DEM GLO-30
+---------------------------------
+
+data/elevation.json (el relieve de la maqueta) se obtuvo del Copernicus DEM
+GLO-30, filtrado y remuestreado por pipeline/elevation.py:
+
+  produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus
+  Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European
+  Union and ESA; all rights reserved.
+
+The organisations in charge of the Copernicus programme by law or by
+delegation do not incur any liability for any use of the Copernicus
+WorldDEM-30. (Las organizaciones a cargo del programa Copernicus, por ley o por
+delegación, no tienen responsabilidad alguna por el uso del Copernicus
+WorldDEM-30.)
+
+Licencia: «COP-DEM-GLO-30-F Full, Free & Open». Quien reutilice
+data/elevation.json o una obra hecha con él queda sujeto a las mismas
+condiciones: conservar este aviso y la frase de responsabilidad, y no dar a
+entender que la Unión Europea, la ESA, el DLR o Airbus respaldan el uso.
 
 El detalle de cada fuente, su licencia y para qué se usó está en docs/FUENTES.md.

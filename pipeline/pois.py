@@ -220,7 +220,7 @@ add('viejas-cochinas', 'Las Viejas Cochinas', 'ciudad', -35.41803, -71.68383, 'R
 add('cerro-la-virgen', 'Cerro La Virgen', 'ciudad', -35.42270, -71.70318, 'Ribera poniente del Río Claro',
     'Su punto más alto, el Peñón (372 m), es el techo de la comuna y queda unos 2 km al norte del santuario. La Virgen del Carmen del santuario se inauguró en 1910, para el Centenario.',
     'alta', [['Wikipedia', 'https://es.wikipedia.org/wiki/Cerro_La_Virgen_(Talca)']],
-    fact='El relieve de la maqueta es el real (SRTM): el santuario queda a unos 270 m, 165 m sobre la Plaza de Armas. Las alturas están exageradas unas 3 veces en el plano y unas 1,3 veces en los cerros.', model='cerro', pri=1)
+    fact='El relieve de la maqueta es el real (Copernicus GLO-30): el santuario queda a unos 265 m, 170 m sobre la Plaza de Armas. Las alturas están exageradas unas 3 veces en el plano y unas 1,3 veces en los cerros.', model='cerro', pri=1)
 add('estacion', 'Estación de Ferrocarriles', 'ciudad', -35.42978, -71.64960, '11 Oriente 1000',
     'Principal estación del Maule, reconstruida en 1929 y en 2017. Desde aquí parte el ramal Talca–Constitución.',
     'alta', [['OpenStreetMap vía Mapcarta', MC + 'N308140957'], ['Wikipedia', 'https://en.wikipedia.org/wiki/Talca_railway_station']],

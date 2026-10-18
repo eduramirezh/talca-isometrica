@@ -1,12 +1,16 @@
-"""Modelo de elevación SRTM -> data/elevation.json (relieve que se incrusta en el HTML).
+"""Modelo de elevación Copernicus GLO-30 -> data/elevation.json (el relieve de la maqueta).
 
-Entrada:
-  raw/dem/S36W072.hgt.gz   SRTM 1 segundo de arco (~30 m), tesela de los Terrain Tiles de AWS (make fetch)
+Entrada (make fetch):
+  raw/dem/copernicus/Copernicus_DSM_COG_10_S36_00_W072_00_DEM.tif
+      Copernicus DEM GLO-30 (1 segundo de arco, ~30 m; TanDEM-X 2011–2015), la tesela S36W072 del bucket público
+      de AWS: GeoTIFF float32 que lee pipeline/geotiff.py (biblioteca estándar, ~2 s)
+  raw/dem/S36W072.hgt.gz
+      SRTM 1" de los Terrain Tiles de AWS, el relieve hasta octubre de 2026; queda para comparar (--srtm)
 
-El SRTM es un modelo de superficie: mide techos y copas de árboles, no el suelo. Para acercarlo al
-terreno se muestrea a 20 m, se aplica una apertura morfológica (mínimo y luego máximo en una ventana
-de ~100 m, que borra objetos más angostos que eso sin tocar los valles) y un suavizado gaussiano, y
-después se baja a la grilla de salida de 40 m.
+Copernicus, como el SRTM, es un modelo de superficie: mide techos y copas de árboles, no el suelo (sus cuerpos
+de agua sí vienen aplanados: el Río Claro baja parejo). Para acercarlo al terreno se muestrea a 20 m, se aplica
+una apertura morfológica (mínimo y luego máximo en una ventana de ~100 m, que borra objetos más angostos que eso
+sin tocar los valles) y un suavizado gaussiano, y después se baja a la grilla de salida de 40 m.
 
 Salida (metros de grilla; nodos de la grilla, no celdas):
   o    [x0, y0]  nodo (0, 0), esquina suroeste
@@ -18,10 +22,13 @@ Salida (metros de grilla; nodos de la grilla, no celdas):
 
   python elevation.py            -> data/elevation.json
   python elevation.py stats      -> además compara bruto y filtrado por zonas
+  python elevation.py --srtm     -> lo mismo con el SRTM (escribe data/elevation.json: para comparar, no para quedarse)
 """
-import gzip, json, math, struct, sys
+import array, gzip, json, math, sys
 from common import RAW, DATA, unloc, require, EXT, comuna, in_ring
+from geotiff import Grid, Raster
 
+COP = RAW / 'dem' / 'copernicus' / 'Copernicus_DSM_COG_10_S36_00_W072_00_DEM.tif'
 HGT = RAW / 'dem' / 'S36W072.hgt.gz'
 XMIN, XMAX, YMIN, YMAX = EXT                          # la caja de la comuna (common.EXT), como process_geometry.py
 KEEP = 4                                               # nodos fuera del límite que se guardan (celdas de margen)
@@ -29,18 +36,13 @@ S, FINE = 40, 20                                       # grilla de salida y gril
 OPEN_R = 2                                             # radio de la apertura, en celdas de FINE (ventana 5x5 = 100 m)
 SIGMA = 1.5                                            # suavizado gaussiano, en celdas de FINE (30 m)
 
-class Tile:
+class Hgt(Grid):
     """Tesela SRTM .hgt: 3601x3601 enteros de 16 bits big-endian, fila 0 en el borde norte."""
     def __init__(self, path, lat_n=-35, lon_w=-72):
-        self.raw = gzip.open(path).read(); self.N = int(math.isqrt(len(self.raw) // 2))
-        self.lat_n, self.lon_w, self.k = lat_n, lon_w, self.N - 1
-    def at(self, lat, lon):
-        r = (self.lat_n - lat) * self.k; c = (lon - self.lon_w) * self.k
-        i, j = int(r), int(c); fr, fc = r - i, c - j
-        g = lambda a, b: struct.unpack_from('>h', self.raw, (a * self.N + b) * 2)[0]
-        v = [g(i, j), g(i, j + 1), g(i + 1, j), g(i + 1, j + 1)]
-        if min(v) < -1000: raise SystemExit(f'vacío en el SRTM cerca de {lat:.5f}, {lon:.5f}')
-        return v[0]*(1-fr)*(1-fc) + v[1]*(1-fr)*fc + v[2]*fr*(1-fc) + v[3]*fr*fc
+        self.v = array.array('h', gzip.open(path).read())
+        if sys.byteorder == 'little': self.v.byteswap()
+        self.nx = self.ny = int(math.isqrt(len(self.v)))
+        self.lat_n, self.lon_w, self.k = lat_n, lon_w, self.nx - 1
 
 def filt1d(row, r, f):
     n = len(row); return [f(row[max(0, i - r):min(n, i + r + 1)]) for i in range(n)]
@@ -61,11 +63,16 @@ def gauss(row, sigma=SIGMA):
     return out
 
 def main():
-    t = Tile(require(HGT))
     # grilla fina con un margen para que los filtros no se recorten en el borde
     m = (OPEN_R + 3 * SIGMA) * FINE * 2
     fx0, fy0 = XMIN - m, YMIN - m
     fnx, fny = int((XMAX - XMIN + 2 * m) / FINE) + 1, int((YMAX - YMIN + 2 * m) / FINE) + 1
+    if '--srtm' in sys.argv: t, name = Hgt(require(HGT)), 'SRTM'
+    else:   # solo la ventana de la tesela que cubre la grilla fina (girada: las cuatro esquinas)
+        ll = [unloc(x, y) for x in (fx0, fx0 + (fnx - 1) * FINE) for y in (fy0, fy0 + (fny - 1) * FINE)]
+        t = Raster(str(require(COP, 'Ejecute: make fetch')), max(p[0] for p in ll), min(p[0] for p in ll),
+                   min(p[1] for p in ll), max(p[1] for p in ll))
+        name = 'Copernicus GLO-30'
     raw = [[t.at(*unloc(fx0 + i * FINE, fy0 + j * FINE)) for i in range(fnx)] for j in range(fny)]
     opened = sep(sep(raw, lambda r: filt1d(r, OPEN_R, min)), lambda r: filt1d(r, OPEN_R, max))
     smooth = sep(opened, gauss)
@@ -92,7 +99,7 @@ def main():
     s = json.dumps(out, separators=(',', ':'))
     (DATA / 'elevation.json').write_text(s)
     vals = [fine(smooth, XMIN + i * S, YMIN + j * S) for j in range(ny) for i in range(nx) if keep[j*nx+i]]
-    print(f'data/elevation.json: {len(s)} bytes, {nx}x{ny} nodos de {S} m ({sum(keep)} en la comuna), '
+    print(f'data/elevation.json ({name}): {len(s)} bytes, {nx}x{ny} nodos de {S} m ({sum(keep)} en la comuna), '
           f'{min(vals):.0f}–{max(vals):.0f} m s.n.m., plaza {z0:.1f} m')
 
     if 'stats' in sys.argv:   # cuánto quita el filtro: debería ser poco en el campo y algo más en el centro
