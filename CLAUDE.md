@@ -31,6 +31,7 @@ python tools/probe.py "__trains()" "__rail.main.s.length"   # evalúa expresione
 uv run --with "playwright==1.63" python tools/perf.py [--size 1440x900 --dpr 1] [--view "nombre=__look(x,y,z)"]   # ms, llamadas, triángulos y ms de CPU de un cuadro (refit, pan, settle) y ms entre cuadros al arrastrar (gesto); teléfono por omisión
 uv run --with "playwright==1.63" python tools/perf.py --android   # lo mismo en el Chrome de un teléfono Android conectado por USB (adb, depuración USB)
 uv run --with "playwright==1.63" python tools/perf.py --android --arranque 3   # solo el arranque (__stats.load: ms desde la navegación hasta el primer cuadro en pantalla), tres cargas y la mediana
+uv run --with "playwright==1.63" python tools/perf.py --android --arranque 3 --url https://talca.eduramirez.com/   # el sitio publicado (o una publicación anterior: npx wrangler pages deployment list --project-name talca-isometrica) por la red del teléfono
 uv run --with "playwright==1.63" python tools/perf.py --arranque 3 --red lenta --frio   # el arranque en Chromium con una red móvil emulada (lenta: 150 ms, 1,6 Mbit/s; 4g), cada carga sin caché (sin --frio, recargando); TALCA_DIST=<copia de dist/> mide otra versión
 uv run --with "playwright==1.63" python tools/profile.py --android [--under cityGen] [--callers pip --depth 2] [--save x.cpuprofile]   # perfil de CPU del arranque: ms por función, con su archivo y línea de src/
 python tools/profile.py --from x.cpuprofile --callers blockAt   # lo mismo sobre un perfil guardado, sin cargar la página

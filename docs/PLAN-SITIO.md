@@ -35,7 +35,7 @@ Cada etapa se puede publicar sola y deja el mapa idéntico, píxel a píxel, sal
 
 ### 3.0 Medir en el teléfono, ya publicado
 
-`tools/perf.py --android --arranque 3` contra la versión de antes (8,4 s hasta el primer cuadro en el Pixel 8a con la página servida por USB) y, sobre todo, en una red móvil de verdad y en una segunda visita (con `assets/` en caché). Agregar un iPhone (depuración de Safari) y un Android de gama baja, que faltan (CLAUDE.md, «Rendimiento»).
+Hecho en el Pixel 8a por wifi (§4): el mapa llega igual que antes y el póster antes. Falta en una red móvil de verdad (con el teléfono fuera del wifi, `tools/perf.py --android --arranque 3 --url https://talca.eduramirez.com/`), en una segunda visita después de una publicación que cambie solo el código, en un iPhone (depuración de Safari) y en un Android de gama baja (CLAUDE.md, «Rendimiento»).
 
 ### 3.1 Las fuentes, del mismo origen
 
@@ -92,6 +92,19 @@ Chromium con SwiftShader en un Mac, 390 × 844 y densidad 2, `--red lenta` (150 
 | recarga: póster | 824 | 940 |
 | recarga: primer cuadro | 2.258 | 2.361 |
 | bytes de la primera visita (comprimidos) | 750 KB de página + 118 KB de three.js (cdnjs, brotli) | 9 + 215 (script) + 146 (three.js) + 528 (datos) KB, más el póster en los dos |
+
+En el Pixel 8a (Chrome 155, Mali-G715), por su propia red (wifi), el 18 de octubre de 2026: las dos publicaciones de Cloudflare Pages, la anterior (`e951faec`, f723dd2) y esta (`7a673f0a`), con `tools/perf.py --android --arranque 3 --url <publicación>`; la primera carga es sin caché (un origen que el teléfono no había abierto) y las otras dos, recargas.
+
+| | antes | ahora |
+|---|---|---|
+| sin caché: póster | 1.300 | 408 |
+| sin caché: empieza el script | 693 | 664 |
+| sin caché: primer cuadro | 4.666 | 4.601 |
+| recarga (mediana): póster | 340 | 228 |
+| recarga (mediana): primer cuadro | 3.935 | 3.866 |
+| recarga (mediana): todo (`full`) | 10.978 | 10.892 |
+
+En una red rápida el mapa llega igual (la generación, ~3,4 s, es casi todo el arranque) y el póster sale antes: la página ya no tiene que bajar 750 KB para llegar a él.
 
 Sin red (`tools/perf.py --arranque 3 --size 1440x900 --dpr 1`), los dos arrancan igual: el primer cuadro a los ~2,4–2,5 s al recargar, ~4,1 s en frío, la mayor parte en crear el contexto WebGL.
 
