@@ -137,13 +137,21 @@ function railBase(B){const t0=performance.now(),R=new GB(1<<16),RX=DATA.railx||[
 // The girders of a rail bridge from a to b (grid metres), hw its half width, hAt(p) its deck's height, in palette K
 // (steel, steel2): o.plates, the depth of plate girders under the deck, whose faces get stiffener panels in two tones;
 // o.spans and o.h, half-through lattice girders above the deck on both sides, one per span (chords, verticals with
-// wider end posts, an X of 0.45 m bars in each ~3.6 m panel, two tones by panel), outer and inner faces.
+// wider end posts, an X of 0.45 m bars in each ~3.6 m panel, two tones by panel), outer and inner faces; o.warren, the
+// depth of a deck truss under the deck's edges (0.6 m chords, a vertical at each ~3 m panel point, one 0.6 m diagonal
+// per panel alternating as a Warren: thinner bars vanish in the pixel art; two tones by panel), outer and inner faces.
 function railGirder(G,K,a,b,hw,hAt,o){const L=Math.hypot(b[0]-a[0],b[1]-a[1]),dx=(b[0]-a[0])/L,dy=(b[1]-a[1])/L,nx=-dy,ny=dx;
   const P=(t,off,dh)=>{const x=a[0]+dx*t+nx*off,y=a[1]+dy*t+ny*off;return [x,hAt({x:a[0]+dx*t,y:a[1]+dy*t})+dh,-y];};
   const pl=(off,sg)=>({r:(t0,t1,h0,h1,col)=>G.face([P(t0,off,h0),P(t1,off,h0),P(t1,off,h1),P(t0,off,h1)],[nx*sg,0,-ny*sg],col),
     q:(pts,col)=>G.face(pts.map(([t,h])=>P(t,off,h)),[nx*sg,0,-ny*sg],col)});
   for(const sd of [1,-1]){
     if(o.plates){const f=pl(sd*(hw+.06),sd),n=Math.max(2,Math.round(L/1.4));for(let k=0;k<n;k++)f.r(L*k/n,L*(k+1)/n,-o.plates+.05,-.05,k%2?K.steel2:K.steel);}
+    if(o.warren){const d=o.warren,np=Math.max(2,Math.round(L/3)),pw=L/np,h1=-1,h0=-d+.6;
+      for(const [off,sg] of [[sd*(hw-.35),sd],[sd*(hw-.65),-sd]]){const f=pl(off,sg);
+        f.r(0,L,h1,h1+.6,K.steel);f.r(0,L,-d,h0,K.steel);
+        for(let k=0;k<=np;k++){const t=k*pw,e=k%np?.25:.45;f.r(Math.max(0,t-e),Math.min(L,t+e),h0,h1,K.steel2);}
+        for(let k=0;k<np;k++){const u0=k*pw,u1=u0+pw,c=k%2?K.steel2:K.steel;
+          f.q(k%2?[[u0,h0],[u0+.6,h0],[u1,h1],[u1-.6,h1]]:[[u1-.6,h0],[u1,h0],[u0+.6,h1],[u0,h1]],c);}}}
     if(o.spans){const sp=L/o.spans,h=o.h;
       for(let j=0;j<o.spans;j++){const t0=j*sp+.3,t1=(j+1)*sp-.3,np=Math.max(3,Math.round((t1-t0)/3.6)),pw=(t1-t0)/np;
         for(const [off,sg,bk] of [[sd*(hw+.06),sd,sd*(hw+.03)],[sd*(hw-.31),-sd,sd*(hw-.28)]]){const f=pl(off,sg),fb=pl(bk,sg);
@@ -155,14 +163,16 @@ function railGirder(G,K,a,b,hw,hAt,o){const L=Math.hypot(b[0]-a[0],b[1]-a[1]),dx
 // The piers and abutments of a rail bridge (same arguments as railGirder): o.spans-1 piers with cutwaters from the
 // riverbed to under the beam (o.beamD), with a cap band in the second tone; an abutment at each end, outside the deck,
 // from the ground to the deck; o.pillars, a stone pillar on each corner of the abutments, above the girders; o.cut,
-// a bridge that goes on past b out of the commune: a pier there instead of the abutment.
+// a bridge that goes on past b out of the commune: a pier there instead of the abutment; o.open, no abutment at a
+// (another span's is there).
 function railPiers(G,K,a,b,hw,hAt,o){const L=Math.hypot(b[0]-a[0],b[1]-a[1]),dx=(b[0]-a[0])/L,dy=(b[1]-a[1])/L,nx=-dy,ny=dx;
   const at=(t,n)=>[a[0]+dx*t+nx*n,a[1]+dy*t+ny*n];
   const pier=t=>{const c=at(t,0),h=hAt({x:c[0],y:c[1]})-o.beamD,g=E(c[0],c[1]);if(h-g<1)return;
     const hex6=(r)=>[[-1.2*r,-hw-1],[0,-hw-2.4],[1.2*r,-hw-1],[1.2*r,hw+1],[0,hw+2.4],[-1.2*r,hw+1]].map(([lt,ln])=>at(t+lt,ln));
     G.prism(hex6(1),g-.6,h-.5,K.stone,K.stone);G.prism(hex6(1.12),h-.5,h-.05,K.stone2,K.stone2);};
   for(let k=1;k<o.spans;k++)pier(L*k/o.spans);
-  for(const [t,sg] of [[0,-1],[L,1]]){if(o.cut&&t){pier(L-1.4);continue;}const q=[at(t,-hw-.8),at(t+sg*2.2,-hw-.8),at(t+sg*2.2,hw+.8),at(t,hw+.8)],c=at(t,0),h=hAt({x:c[0],y:c[1]});
+  for(const [t,sg] of [[0,-1],[L,1]]){if(o.cut&&t){pier(L-1.4);continue;}if(o.open&&!t)continue;
+    const q=[at(t,-hw-.8),at(t+sg*2.2,-hw-.8),at(t+sg*2.2,hw+.8),at(t,hw+.8)],c=at(t,0),h=hAt({x:c[0],y:c[1]});
     G.prism(q,groundMin(q)-.5,h-.02,K.stone,K.stone);
     if(o.pillars)for(const n of [-hw-.2,hw+.2]){const pc=at(t+sg*1.1,n),pq=rotRect(pc[0],pc[1],1.4,1.4,Math.atan2(dy,dx));
       G.prism(pq,h-.02,h+3.2,K.stone2,K.stone);G.prism(rotRect(pc[0],pc[1],1.7,1.7,Math.atan2(dy,dx)),h+3.2,h+3.6,K.stone,K.stone);}}}
