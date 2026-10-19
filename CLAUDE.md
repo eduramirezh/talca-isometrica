@@ -12,6 +12,7 @@ make smoke                      # carga dist/ en Chromium y falla si hay errores
 make serve                      # http://localhost:8765
 make deploy [DRY_RUN=1]         # make build y publica dist/ en Cloudflare Pages: talca.eduramirez.com (scripts/deploy-cloudflare.sh)
 make site-assets                # src/site/og.jpg (Open Graph, 1200 × 630, desde el mapa), apple-touch-icon.png y los pósters del arranque poster-*.webp (tools/site_assets.py; `poster` hace solo los pósters)
+uv run --with "playwright==1.63" --with pillow python tools/gif.py shots/talca.gif [--center 0,0 --zoom 9 --from 2.2 --size 640x400 --turn 32 --night 90 --labels]   # GIF para mostrar el mapa (un correo): se acerca, una vuelta de día, fundido a la noche, medio giro y fundido al comienzo (~2 min)
 make pois build                 # tras editar pipeline/pois.py
 make data build                 # tras editar config/trazados.json o process_geometry.py (requiere raw/)
 make elevation build            # tras editar elevation.py (requiere raw/dem/copernicus/; no necesita las otras fuentes)
