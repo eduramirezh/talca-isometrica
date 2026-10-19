@@ -223,6 +223,13 @@ add('estadio', 'Estadio Fiscal de Talca', 'ciudad', -35.41991, -71.67281, 'Alame
     'Estadio Bicentenario Iván Azócar Bernales, casa de Rangers desde 1930. Tras la ampliación de 2019 recibe 16.070 espectadores.',
     'alta', [['OpenStreetMap vía Mapcarta', MC + 'W89069046'], ['IND', 'https://ind.cl/noticias/ind-rinde-homenaje-a-un-idolo-fiscal-de-talca-ahora-se-llama-estadio-bicentenario-ivan-azocar-bernales/']],
     model='estadio', pri=1, wd='Q5400204')
+add('gimnasio-regional', 'Gimnasio Regional «Manuel Herrera Blanco»', 'ciudad', -35.426602, -71.639909, '2 Norte con 18 Oriente',
+    'Principal recinto techado de Talca y de la región, para básquetbol y espectáculos, bajo una cubierta de doce paños en estrella. Desde 2022 lleva el nombre del baloncestista talquino Manuel Herrera Blanco.',
+    'alta', [['OpenStreetMap vía Mapcarta', MC + 'W89114822'], ['Talca Digital', 'https://talcadigital.cl/gimnasio-o-complejo-deportivo/4655/'],
+             ['Diario Talca', 'https://diariotalca.cl/renombran-gimnasio-regional-en-honor-al-deportista-talquino-manuel-herrera-blanco/'],
+             ['Mercado Público: licitación 2295-27-LP12', 'https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?qs=zbvW/Aigz6Q0rbiXJEWxDg%3D%3D']],
+    fact='Su capacidad varía según la fuente (4.000, 4.500 o 5.000 espectadores). El Gobierno Regional del Maule adjudicó su «mejoramiento» en julio de 2012 (licitación 2295-27-LP12, financiada con el FNDR y el IND); las fotos de 2013 muestran la estructura de acero de la cubierta en obras.',
+    model='gimnasio-regional', pri=2)
 add('parque-rio-claro', 'Parque Río Claro', 'ciudad', -35.41810, -71.68045, 'Extremo poniente de la Alameda',
     'Parque de 11 hectáreas sobre el antiguo balneario Río Claro, renovado en dos etapas (2020 y 2023): paseos, juegos, juegos de agua y muelles flotantes junto a los botes.',
     'alta', [['Talca Sostenible', 'https://www.talcasostenible.cl/parque-rio-claro/'],
