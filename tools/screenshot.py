@@ -64,13 +64,16 @@ def serve(port=0, root=None):
         _SERVED[key] = f'http://localhost:{srv.server_address[1]}/index.html'
     return _SERVED[key]
 
-async def open_page(p, size='1440x900', dark=False, offline=False, hash=None, dpr=1, init=None, go=True):
-    """Abre el mapa en Chromium (SwiftShader) y espera la generación. Devuelve (navegador, página, logs).
-    También la usa tools/variants.py. Con go=False no la carga: la URL es serve().
+GL = {'swiftshader': ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+      'metal': ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist']}  # metal: la GPU de un Mac, ~6 veces más rápido
+
+async def open_page(p, size='1440x900', dark=False, offline=False, hash=None, dpr=1, init=None, go=True, gl='swiftshader'):
+    """Abre el mapa en Chromium (SwiftShader; gl='metal', la GPU de un Mac) y espera la generación. Devuelve
+    (navegador, página, logs). También la usa tools/variants.py. Con go=False no la carga: la URL es serve().
     TALCA_DIST=<directorio> sirve otro dist/ (una copia de antes de un cambio, para comparar)."""
     url = serve()
     w, h = map(int, size.split('x'))
-    b = await p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
+    b = await p.chromium.launch(args=GL[gl])
     pg = await b.new_page(viewport={'width': w, 'height': h}, color_scheme='dark' if dark else 'light',
                           has_touch=w < 800, is_mobile=w < 800, device_scale_factor=dpr)
     logs = []

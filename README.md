@@ -102,6 +102,7 @@ tools/screenshot.py      capturas con Chromium sin interfaz
 tools/variants.py        hoja de comparación: varias vistas por varias variantes de render (--diff: píxeles distintos)
 tools/site_assets.py     la imagen de Open Graph, el ícono y los pósters del arranque de src/site/, desde el mapa (make site-assets)
 tools/gif.py             un GIF animado para mostrar el mapa: se acerca, gira de día, pasa a la noche y vuelve al comienzo
+tools/video.py           el mismo paseo como video vertical de alta calidad para una historia de Instagram (MP4, 1080x1920)
 tools/probe.py           evalúa expresiones JS en el mapa cargado (window.__rail, __trains…) e imprime el resultado
 tools/perf.py            lo que cuesta un cuadro (ms, llamadas de dibujo, triángulos, mapas de sombra, ms de CPU, ms entre cuadros al arrastrar) en varias vistas, y el arranque (--arranque N: ms hasta el primer cuadro; --red, una red móvil emulada; --frio, sin caché); --android en un teléfono por USB
 tools/relieve.py         qué mueve un cambio de data/elevation.json: alturas sobre la plaza por zona, matorral por pendiente, puntos de referencia (--png: mapa)
