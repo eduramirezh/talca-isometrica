@@ -19,7 +19,8 @@ un edificio de OSM), solo OSM hace una manzana entera, y no entran en las áreas
 manzana construida con huellas que entran es mixta. Las huellas fuera de toda manzana (villas posteriores al Censo,
 galpones y casas del campo) van sueltas, en grupos por celdas de 500 m, sin suelo de manzana. Cada huella se corre por
 la mediana de su desfase contra OSM (shifts(), medido en cada corrida), y se quitan las de Google con confianza bajo
-0,8, las de menos de `mixto.m2`, las de centro en una calzada del mapa o en el agua, y las sueltas rurales aisladas
+0,8, las de menos de `mixto.m2`, las de centro en una calzada del mapa o en el agua, las que otra mayor cubre en más
+de la mitad (duplicadas: dups()), y las sueltas rurales aisladas
 (sin landuse residencial, industrial, comercial o de granja y a más de 100 m de una vía de OSM) que no confirma una
 segunda fuente (Google v3 sobre una de Microsoft, o la presencia de Google 2.5D en 2023). Los pisos de las huellas y de
 los edificios de OSM sin dato salen del alto de Google 2.5D Temporal 2023 desde 11 m (raster_floors); bajo eso siguen
@@ -422,7 +423,8 @@ def ml(cfg, bld, ctx):
     entrar, corridas a OSM: ([{'id', 'f': fuente, 'r': [anillo, hueco…], 'A': área, 'c': centro, 'h': alto de Google
     2.5D, 'g8', 'p23'}], lo quitado por motivo, el corrimiento de cada fuente). Se quitan las de Google con confianza
     bajo 0,8, las de menos de `mixto.m2`, las que tienen un 10 % o más sobre un edificio de OSM (OSM gana), las de
-    centro en una calzada del mapa o en el agua, las que salen de la comuna y las de `excluir` (por su id GERS)."""
+    centro en una calzada del mapa o en el agua, las que salen de la comuna, las de `excluir` (por su id GERS) y las
+    que otra mayor cubre en más de la mitad (dups())."""
     from collections import Counter
     from common import in_ring
     path = ML / 'huellas.jsonl'
@@ -448,7 +450,31 @@ def ml(cfg, bld, ctx):
         if any(in_ring(c, w[0]) and not any(in_ring(c, i) for i in w[1:]) for w in ctx['water']): gone['en el agua'] += 1; continue
         if not all(in_ring(p, ctx['limit']) for p in R): gone['fuera de la comuna'] += 1; continue
         out.append({'id': d['id'], 'f': f, 'r': rings, 'A': A, 'c': c, 'h': d.get('h'), 'g8': d.get('g8', 0), 'p23': d.get('p23')})
+    n = len(out); out = dups(out); gone['duplicada'] += n - len(out)
     return out, gone, sh
+
+def overlap(a, b, bb):
+    """El área común de dos huellas (anillos con huecos) dentro de la caja bb, contando puntos de una grilla de a lo más
+    40 × 40 (y no más fina que 0,25 m)."""
+    w, h = bb[2]-bb[0], bb[3]-bb[1]; s = max(0.25, w/40, h/40); nx, ny = max(1, round(w/s)), max(1, round(h/s))
+    def ins(p, R): return pip(p, R[0]) and not any(pip(p, q) for q in R[1:])
+    n = sum(ins(p, a) and ins(p, b) for p in ((bb[0]+(i+.5)*w/nx, bb[1]+(j+.5)*h/ny) for i in range(nx) for j in range(ny)))
+    return n * w*h / (nx*ny)
+
+def dups(M):
+    """Sin las huellas que otra mayor cubre en más de la mitad: Overture deja duplicadas (sobre todo de Microsoft con
+    Microsoft) y huellas dentro de otras, que se dibujaban como un segundo volumen dentro del primero o un techo
+    coplanar. De la mayor a la menor, una huella entra si ninguna de las que ya entraron cubre más de la mitad de ella;
+    el orden de M no cambia."""
+    I = Cells(20); keep = set()
+    for k in sorted(range(len(M)), key=lambda k: (-M[k]['A'], k)):
+        m = M[k]; bb = bbox(m['r'][0])
+        for j in I.over(bb):
+            o = M[j]; ob = bbox(o['r'][0])
+            c = (max(bb[0], ob[0]), max(bb[1], ob[1]), min(bb[2], ob[2]), min(bb[3], ob[3]))
+            if c[2] > c[0] and c[3] > c[1] and (c[2]-c[0])*(c[3]-c[1]) > 0.5*m['A'] and overlap(m['r'], o['r'], c) > 0.5*m['A']: break
+        else: keep.add(k); I.add(bb, k)
+    return [m for k, m in enumerate(M) if k in keep]
 
 def raster_floors(h, A=0):
     """Los pisos de un edificio con el alto de Google 2.5D Temporal (m), o None donde el alto no los separa. Contra los
