@@ -59,6 +59,7 @@
     {const F=localFrame(562.8,-258,91.5*Math.PI/180),{R}=F,W=[4.2,4.6,4.6,4.5,4.4,4.2];let v=0;const ks=[];
       W.forEach((w,i)=>{ks.push([v,v+w,i]);v+=w;});
       occMark(R(-.5,-.3,D+FU+1.2,v+.3),3);
+      CLEAR.push(R(-.5,-3,9,v+3)); // no street trees or parked cars in front of the row (Edu, 2026-10-19: they hid it)
       const colB=[KA.brick,KA.white,KA.brick,KA.white,KA.brick,KA.white,KA.brick];
       ks.forEach(([a,b,i])=>kiosk(F,a,b,D,{pal:KA,shop:i===0,awning:i===5,crates:i===0,bin:i===0}));
       // columns: at each boundary and the two ends, full height, 0.4 m wide, brick and white alternating

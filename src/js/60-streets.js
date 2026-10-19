@@ -86,6 +86,10 @@ function crossings(B){const seen=new Set(),zeb=hex('#E4E0D6');let n=0;
 // centre and the industrial blocks. A run of sidewalk gets trees or not as a whole, all of one kind (one shade), with
 // the trunk 0.7 m behind the curb; none within 6 m of its ends (the corners), on parks (they have their own) or where
 // the canopy would reach a landmark. Their own rng, so the city stays as it was. Round trees, into cityGen's TR.
+// Where a landmark wants the curb clear (no street trees, no parked cars): polygons in grid metres, pushed from
+// buildModels (the carritos of 5 Oriente). Tested after a tree's or a car's numbers are drawn, so the rest of its run
+// stays as it was
+const CLEAR=[],inClear=(x,y)=>CLEAR.length>0&&CLEAR.some(q=>pipXY(x,y,q));
 function streetTrees(ws){const out=[]; // the trees along the sidewalks of ws (a part of WALKS: boot splits them by STAGE)
   for(const w of ws){const bi=w.bi;if(bi<0||!blocks[bi].built||bi===PLAZA_BI||ALAM.has(bi))continue;
     const s=streets[w.si],st=styleFor(bi),ave=s.c<=2||/^Avenida/.test(s.name||'');
@@ -100,7 +104,7 @@ function streetTrees(ws){const out=[]; // the trees along the sidewalks of ws (a
       const a=P[i],b=P[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,tx=(b[0]-a[0])/l,ty=(b[1]-a[1])/l,nx=-ty*w.side,ny=tx*w.side,v=u-acc+(r()-.5)*1.2;
       const x=a[0]+tx*v+nx*off,y=a[1]+ty*v+ny*off;
       if(occAt(x,y)===1||occAt(x+nx*2.5,y+ny*2.5)===1||occAt(x-nx*2,y-ny*2)===1||inMedian(x,y))continue;
-      out.push([x,y,size*(0.9+r()*.2),(kind+r()*.12)%1]);}}
+      const t=[x,y,size*(0.9+r()*.2),(kind+r()*.12)%1];if(!inClear(x,y))out.push(t);}}
   STREET.trees=(STREET.trees||0)+out.length;return out;}
 // Parked cars along the curbs, as the satellite shows them (pipeline/satellite.py at zoom 19 on the plaza, 3 Sur with
 // 3 Oriente, a neighbourhood at (1300,-700) and the Diagonal): nearly unbroken rows on both sides of the streets around
@@ -139,7 +143,7 @@ function parkedCars(ws){const t0=performance.now(),out=[],ZC=50;
       const q=rotRect(x,y,4.5*len,1.8,Math.atan2(ty,tx));
       if(q.some(c=>occAt(c[0],c[1])===1||inMedian(c[0],c[1]))||onZebra(x,y))continue;
       let c=r()*colW,col=CAR_COLS[0];for(const cc of CAR_COLS){if((c-=cc[3])<0){col=cc;break;}}
-      out.push([x,y,-tx*w.side,-ty*w.side,len,van?1.3:1,col,r()]);}}
+      const car=[x,y,-tx*w.side,-ty*w.side,len,van?1.3:1,col,r()];if(!q.some(c=>inClear(c[0],c[1])))out.push(car);}}
   STREET.cars=(STREET.cars||0)+out.length;STREET.carMs=(STREET.carMs||0)+Math.round(performance.now()-t0);return out;}
 // a car, 4.5 x 1.8 m, in local x (forward), y (up), z: a body 0.8 m tall, and over it the cabin, its windows a band of
 // one art pixel (0.5 m) in a dark tone and its roof in the body's colour (instanceColor multiplies the vertex colour)
