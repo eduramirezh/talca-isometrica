@@ -193,6 +193,12 @@ add('mercado-central', 'Mercado Central', 'ciudad', -35.42707, -71.66052, 'Entre
 add('escuelas-concentradas', 'Escuelas Concentradas', 'ciudad', -35.42687, -71.66239, '1 Sur 1025',
     'Escuelas públicas de 1939–1941, declaradas Monumento Histórico en 2013 para evitar su demolición tras el terremoto de 2010.',
     'alta', [['Consejo de Monumentos Nacionales', CMN + 'monumentos-historicos/escuelas-concentradas-de-talca']], pri=3, cats=['patrimonio'], wd='Q109311517,Q42899331,Q42899338')
+add('carritos-5-oriente', 'Carritos de completos de 5 Oriente', 'ciudad', -35.4290505, -71.6600422, '5 Oriente, entre 2 y 3 Sur',
+    'Hilera de quioscos de completos pegada al edificio de la vereda poniente de 5 Oriente, a media cuadra de 2 Sur: el lugar de comida al paso más conocido de Talca, con mucho público de noche. En 6 Oriente, frente al Mercado, hay otra hilera de quioscos rojos.',
+    'alta', [['OpenStreetMap (nodo n1033452823)', MC + 'N1033452823'], ['Diario El Centro, 8 de junio de 2026', 'https://www.diarioelcentro.cl/2026/06/08/fiscalizacion-a-carros-de-completos-en-talca-deja-un-local-clausurado-y-cuatro-sumarios-sanitarios/'],
+             ['Maule News, junio de 2026', 'https://www.maulenews.com/2026/06/carros-de-completos-de-talca-bajo-la.html'], ['Urbanbat: Talca, la ciudad del completo', 'https://urbanbat.org/talca-la-ciudad-del-completo/']],
+    fact='Antes de 2009 los carritos más conocidos estaban frente al Mercado Central, en 4 Oriente: una estructura compartida de cuatro locales que funcionó desde 1965 hasta la remodelación de la plaza.',
+    model='carritos', pri=3)
 add('torre-talca', 'Torre Talca', 'ciudad', -35.426810, -71.664253, '1 Sur 865',
     'Edificio de oficinas y departamentos de doce pisos, a una cuadra de la Plaza de Armas. Es de los pocos edificios altos del centro.',
     'alta', [['OpenStreetMap vía Mapcarta', MC + 'W310246574'], ['Mercantil.com (dirección)', 'https://www.mercantil.com/empresa/inmobiliaria-honorato/talca/300378810/esp/']],
