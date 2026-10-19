@@ -230,6 +230,15 @@ add('gimnasio-regional', 'Gimnasio Regional «Manuel Herrera Blanco»', 'ciudad'
              ['Mercado Público: licitación 2295-27-LP12', 'https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?qs=zbvW/Aigz6Q0rbiXJEWxDg%3D%3D']],
     fact='Su capacidad varía según la fuente (4.000, 4.500 o 5.000 espectadores). El Gobierno Regional del Maule adjudicó su «mejoramiento» en julio de 2012 (licitación 2295-27-LP12, financiada con el FNDR y el IND); las fotos de 2013 muestran la estructura de acero de la cubierta en obras.',
     model='gimnasio-regional', pri=2)
+add('casino-dreams', 'Casino Dreams Talca (ex FITAL)', 'ciudad', -35.419112, -71.676615, '4 Norte 99',
+    'Casino, centro de convenciones y salas de espectáculos de Dreams en el antiguo recinto de la FITAL, la feria agrícola, industrial y ganadera que la Agrícola Central hizo aquí desde 1947. El edificio, de madera y vidrio, se levanta sobre pilotes de 1,7 m porque el terreno es inundable; lo rodean un estacionamiento en anillo y plazas con piletas.',
+    'media', [['SMA: Res. Ex. 2367/2025 (archiva la denuncia; describe el proyecto)', 'https://transparencia.sma.gob.cl/doc/resoluciones/RESOL_EXENTA_SMA_2025/denuncias_archivadas/RESOL%202367%20Archivo%20Casino%20Dreams.pdf'],
+             ['Diario Financiero, agosto de 2025', 'https://www.df.cl/empresas/industria/dreams-inicia-obras-de-un-nuevo-casino-en-talca-en-terrenos-de-la-ex-fital'],
+             ['Meganoticias: imágenes del proyecto', 'https://www.meganoticias.cl/nacional/489185-nuevo-casino-en-talca-dreams-como-sera-inauguracion-pdp-18-6-2025.html'],
+             ['El Dínamo: el terreno inundable y el humedal', 'https://www.eldinamo.cl/reportajes/2025/03/01/el-polemico-proyecto-del-casino-dreams-en-talca-se-construiria-en-terreno-inundable-y-colinda-con-un-humedal-urbano/'],
+             ['Diario El Centro, junio de 2026', 'https://www.diarioelcentro.cl/2026/06/15/dreams-informa-rechazo-de-recurso-ambiental-que-aun-no-se-resuelve-por-construccion-de-casino-en-talca/']],
+    fact='En obras desde agosto de 2025; Dreams anunció la apertura para noviembre de 2026. Según la SMA: un edificio de dos pisos y un subterráneo, 7.655 m² construidos, 4,5 de las 8,8 ha del predio intervenidas y 373 estacionamientos. El terreno está en zona inundable del Plan Regulador (R-3B, con una franja en R-2), a unos 300 m del Humedal Urbano Cajón del Río Claro y Estero Piduco. El SEA resolvió en 2025 que no debía entrar a evaluación ambiental; en junio de 2026 seguía pendiente una solicitud de invalidación. El punto es el centro del edificio en el plano de la consulta de pertinencia; el modelo sigue ese plano y las imágenes del proyecto, y es aproximado.',
+    model='casino-dreams', pri=2)
 add('parque-rio-claro', 'Parque Río Claro', 'ciudad', -35.41810, -71.68045, 'Extremo poniente de la Alameda',
     'Parque de 11 hectáreas sobre el antiguo balneario Río Claro, renovado en dos etapas (2020 y 2023): paseos, juegos, juegos de agua y muelles flotantes junto a los botes.',
     'alta', [['Talca Sostenible', 'https://www.talcasostenible.cl/parque-rio-claro/'],
