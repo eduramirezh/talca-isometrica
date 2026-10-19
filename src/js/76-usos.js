@@ -41,8 +41,9 @@ const occ0At=(x,y)=>{const gx=Math.floor((x-XMIN)/OC),gy=Math.floor((y-YMIN)/OC)
 // is (x, y) in use u and none of its kids? A use without ground of its own (eriazo, bosque, parcelas) may overlap
 // others: it also leaves out every ground-laying use
 const groundAt=(x,y)=>(UGRID[Math.floor((y-YMIN)/BG)*bgW+Math.floor((x-XMIN)/BG)]||[]).some(p=>!p.skip&&USO_GROUND.has(p.k)&&x>=p.bb[0]&&x<=p.bb[2]&&y>=p.bb[1]&&y<=p.bb[3]&&pip([x,y],p.r));
-// is (x, y) in a use that replaces the generic farmland parcels (buildBase)? all but parcelas, whose houses stand on it
-const usoAt=(x,y)=>(UGRID[Math.floor((y-YMIN)/BG)*bgW+Math.floor((x-XMIN)/BG)]||[]).some(p=>!p.skip&&p.k!=='parcelas'&&x>=p.bb[0]&&x<=p.bb[2]&&y>=p.bb[1]&&y<=p.bb[3]&&pip([x,y],p.r));
+// is (x, y) in a use that replaces the generic farmland parcels (buildBase)? all but parcelas, whose houses stand on it; a use a
+// landmark replaces (skipped, but u.keep set by the landmark: colegio-ingles) still counts, so no parcel (and no draw from buildBase's rng) appears there
+const usoAt=(x,y)=>(UGRID[Math.floor((y-YMIN)/BG)*bgW+Math.floor((x-XMIN)/BG)]||[]).some(p=>(!p.skip||p.keep)&&p.k!=='parcelas'&&x>=p.bb[0]&&x<=p.bb[2]&&y>=p.bb[1]&&y<=p.bb[3]&&pip([x,y],p.r));
 const inUso=(u,x,y)=>x>=u.bb[0]&&x<=u.bb[2]&&y>=u.bb[1]&&y<=u.bb[3]&&pip([x,y],u.r)&&!u.kids.some(k=>pip([x,y],k.r))&&(USO_GROUND.has(u.k)||!groundAt(x,y));
 const ccwQ=q=>{let A=0;for(let i=0;i<q.length;i++){const p=q[i],r=q[(i+1)%q.length];A+=p[0]*r[1]-r[0]*p[1];}return A<0?q.slice().reverse():q;};
 function usoSamples(u,n=48){const [x0,y0,x1,y1]=u.bb,s=Math.max(4,Math.sqrt(u.A/n)),o=[];
