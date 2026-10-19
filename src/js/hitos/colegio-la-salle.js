@@ -108,12 +108,11 @@
       rect(w,405.9,408.1,1.9,4.4,K.stone);rect(w,406.6,407.4,2.1,3.7,K.white);
       for(const c of [403.6,410.4])rect(w,c-.8,c+.8,1.9,3,K.glass);for(const c of [404,407,410])rect(w,c-.75,c+.75,4.9,7,K.glass2);}
     // the two galvanised stairs that climb to the cross wing from the north and the south, along the east wing's yard
-    // face, each under a zinc canopy on steel posts: treads and risers every 0.5 m, a solid light rail on the yard side
-    {const stair=(u,vb,vt,hb,ht)=>{const sg=Math.sign(vt-vb),L=Math.abs(vt-vb),n=Math.max(4,Math.round((ht-hb)/.5)),u0=u-.9,u1=u+.9,rh=(ht-hb)/n,P=(uu,v,h)=>V(uu,v,h),
+    // face, each under a zinc canopy on steel posts: a sloped tread (steps every 0.5 m only made noise at the pixel-art
+    // scale) and a solid light rail on the yard side
+    {const stair=(u,vb,vt,hb,ht)=>{const sg=Math.sign(vt-vb),L=Math.abs(vt-vb),u0=u-.9,u1=u+.9,P=(uu,v,h)=>V(uu,v,h),
           hAt=(t,d)=>hb+(ht-hb)*t+d;S.dy=0;
-        for(let i=0;i<n;i++){const va=vb+sg*L*i/n,vz=vb+sg*L*(i+1)/n,h=hb+rh*(i+1);
-          S.face([P(u0,va,h),P(u1,va,h),P(u1,vz,h),P(u0,vz,h)],[0,1,0],K.steel);
-          S.face([P(u0,va,h-rh),P(u1,va,h-rh),P(u1,va,h),P(u0,va,h)],N3(0,-sg),K.steel2);}
+        S.face([P(u0,vb,hb),P(u1,vb,hb),P(u1,vt,ht),P(u0,vt,ht)],null,K.steel);
         S.face([P(u0,vb,hb-.6),P(u0,vt,ht-.6),P(u0,vt,ht+.9),P(u0,vb,hb+.9)],N3(-1,0),K.rail);
         S.face([P(u0-.3,vb-sg*.4,hb+2.6),P(u1,vb-sg*.4,hb+2.6),P(u1,vt,ht+2.6),P(u0-.3,vt,ht+2.6)],null,K.tile);
         for(const t of [0,.5,1]){const v=vb+sg*L*t;S.dy=E(u0-.2,v);S.prism(R(u0-.4,v-.2,u0,v+.2),0.3,hAt(t,2.6)-S.dy,K.steel2,K.steel2);}S.dy=0;};
@@ -142,7 +141,7 @@
       S.dy=E(uc,vb);S.prism(R(uc-.2,vb+sg*1.1-.2,uc+.2,vb+sg*1.1+.2),0.3,3.9,K.mast,K.mast);S.prism(R(uc-.2,Math.min(vb,vb+sg*1.1)-.2,uc+.2,Math.max(vb,vb+sg*1.1)+.2),3.5,3.9,K.mast,K.mast);
       S.prism(R(uc-.9,vb-.1,uc+.9,vb+.1),2.9,4.1,K.white,K.white);S.prism(R(uc-.25,vb-sg*.6-.25,uc+.25,vb-sg*.6+.25),2.9,3,K.ring,K.ring);}
     // two light poles at the east wing's foot, north and south of the cross wing (the photo shows one by the big tree)
-    for(const [u,v] of [[36.2,423],[36.2,393]]){S.dy=E(u,v);S.prism(R(u-.15,v-.15,u+.15,v+.15),0.3,7,K.iron,K.iron);S.prism(R(u-.45,v-.45,u+.45,v+.45),7,7.4,K.iron,K.lamp);GLOW.push(u,S.dy+7.2,v);}
+    for(const [u,v] of [[36.2,423],[36.2,393]]){S.dy=E(u,v);S.prism(R(u-.15,v-.15,u+.15,v+.15),0.3,7,K.iron,K.iron);S.prism(R(u-.45,v-.45,u+.45,v+.45),7,7.4,K.iron,K.lamp);GLOW.push(u,S.dy+7.7,v);}
     // a low white wall with an iron railing along the Alameda, the garden's gate
     {const fw=(a,b)=>{const g=R(a,469.6,b,470);S.dy=groundMin(g);S.prism(g,0.3,0.9,K.white,K.white);S.prism(R(a,469.75,b,469.85),0.9,1.9,K.iron,K.iron);};
       fw(-18,15);fw(19,38);for(const u of [15,19]){const g=R(u-.4,469.4,u+.4,470.2);S.dy=groundMin(g);S.prism(g,0.3,2.4,K.white,K.white);}}
