@@ -162,3 +162,28 @@ button{font:inherit;color:inherit}
   .ctrls button{width:38px;height:38px}
 }
 @media (min-width:761px){#panel.folded{height:46px;bottom:auto}#panel.folded .pane{display:none!important}}
+
+/* ---------- la culebrita de completos (96-completos.js) ---------- */
+#app.juego #panel,#app.juego #card,#app.juego .pin,#app.juego #more{display:none!important}
+#app.juego #game{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+#snk{position:absolute;inset:0;z-index:8;pointer-events:none}
+#snk .hud{position:absolute;left:50%;top:16px;transform:translateX(-50%);display:flex;gap:16px;background:var(--paper);border:1px solid var(--rule);border-radius:4px;box-shadow:var(--shadow);padding:7px 14px;font-family:var(--mono);font-size:12px;color:var(--ink-2);white-space:nowrap}
+#snk .hud b{font-weight:500;font-size:16px;color:var(--wine)}
+#snk .pad{position:absolute;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:10px;align-items:center;pointer-events:auto}
+#snk .pad button{width:46px;height:46px;display:grid;place-items:center;border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.14);cursor:pointer}
+#snk .pad button svg{width:22px;height:22px}
+#snk #snk-l,#snk #snk-rt{width:64px;height:64px}
+#snk #snk-l svg,#snk #snk-rt svg{width:30px;height:30px}
+#snk .pad button.on{background:var(--wine);color:var(--paper);border-color:var(--wine)}
+#snk-msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100% - 32px));max-height:calc(100% - 180px);overflow:auto;pointer-events:auto;background:var(--paper);border:1px solid var(--rule);border-top:5px solid var(--wine);border-radius:4px;box-shadow:var(--shadow);padding:16px 18px;display:grid;gap:10px}
+#snk-msg h2{margin:0;font-family:var(--serif);font-weight:800;font-size:25px;line-height:1.1;color:var(--ink)}
+#snk-msg p{margin:0;font-size:14.5px;color:var(--ink-2)}
+#snk-msg ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px;color:var(--ink-2)}
+#snk-msg .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.snk-pop{position:absolute;transform:translate(-50%,-50%);font-family:var(--serif);font-weight:800;font-size:20px;color:var(--wine);text-shadow:0 0 3px var(--paper),0 0 6px var(--paper);white-space:nowrap;animation:snkpop 1.3s ease-out forwards}
+@keyframes snkpop{from{opacity:1;margin-top:0}to{opacity:0;margin-top:-46px}}
+#snk-a{position:absolute;transform:translate(-50%,-50%);display:grid;place-items:center;width:52px;height:52px}
+#snk-a i{position:absolute;inset:0;transform:rotate(var(--r));background:var(--wine);clip-path:polygon(100% 50%,62% 22%,62% 78%)}
+#snk-a span{position:absolute;top:50px;font-family:var(--mono);font-size:11px;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:3px;padding:1px 5px;white-space:nowrap}
+@media (max-width:760px){#app.juego .brand{display:none}#snk .hud{top:12px;gap:12px;font-size:11px}#app.juego .ctrls{top:60px}}
+@media (prefers-reduced-motion: reduce){.snk-pop{animation-duration:.01s}}

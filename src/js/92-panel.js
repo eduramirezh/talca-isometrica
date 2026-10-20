@@ -30,11 +30,11 @@ function renderCard(p){
     ${p.sub?`<ul class="sub">${p.sub.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`:''}
     ${p.f?`<div class="fact">${esc(p.f)}</div>`:''}
     ${srcs.length?`<div class="src">Fuentes: ${srcs.map(s=>`<a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join(' · ')}</div>`:''}
-    <div class="actions"><button class="btn ghost" id="cz">Acercar</button><a class="btn ghost" href="${osm}" target="_blank" rel="noopener">Ver en OpenStreetMap</a></div>
+    <div class="actions"><button class="btn ghost" id="cz">Acercar</button>${p.id==='carritos-5-oriente'?'<button class="btn ghost" id="cg">Jugar a la culebrita</button>':''}<a class="btn ghost" href="${osm}" target="_blank" rel="noopener">Ver en OpenStreetMap</a></div>
     <a class="report" href="${issue}" target="_blank" rel="noopener">Reportar un error en este lugar</a>
     ${tn}</div>`;
   card.hidden=false;
-  $('#cx').onclick=closeCard;$('#cz').onclick=()=>{const m=MODELS[p.id];const t=lift(m?m.x:p.x,m?m.y:p.y);flyTo(t[0],t[1],Math.max(view.zoom*1.6,6));};
+  $('#cx').onclick=closeCard;if($('#cg'))$('#cg').onclick=()=>snkStart();$('#cz').onclick=()=>{const m=MODELS[p.id];const t=lift(m?m.x:p.x,m?m.y:p.y);flyTo(t[0],t[1],Math.max(view.zoom*1.6,6));};
   if(tour){$('#tprev').onclick=()=>stepTour(-1);$('#tnext').onclick=()=>stepTour(1);}
 }
 function startTour(k){tour={k,i:0};select(PD.tours[k].s[0],true);}

@@ -10,6 +10,7 @@ Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca 
 - **Dos recorridos guiados:** la Ruta de la Justicia y Talca icónica.
 - **~89.000 edificios:** ~3.900 de OpenStreetMap con su planta (todo el centro, y supermercados, colegios, torres y villas en el resto de la comuna), ~67.000 huellas de Microsoft y Google (vía Overture Maps) donde OSM no los tiene, con pisos de Google Open Buildings 2.5D, ~18.000 generados en el navegador frente a cada calle real en los frentes que quedan libres, con alturas según la densidad del censo, y 24 hitos con modelo propio, sobre su planta real.
 - **Relieve real** del modelo de elevación Copernicus GLO-30: los cerros del poniente y las terrazas de la ciudad hacia sus ríos, con exageración logarítmica.
+- **La culebrita de completos:** un Snake sobre las calles reales del centro, con una fila de completos que sale de los carritos de 5 Oriente (botón del completo o `#completos`).
 - **Vistas:** pixel art (píxeles de 0,5 m con contorno), modo noche, giro de la vista en 90°, tema claro y oscuro, y diseño para móvil.
 - **Un solo archivo HTML** autocontenido (~820 KB). Solo carga three.js desde cdnjs y las fuentes de Google Fonts.
 
@@ -92,7 +93,7 @@ pipeline/
 src/                     toda la aplicación (CSS, UI y motor three.js r128), en fuentes que build.py une en la página y su script:
   page.html              la página entera: <head>, cargador de los datos (/*DATA*/), DOM, póster y <!--SCRIPTS-->; el marcador /*STYLE*/
   style.css              estilos de la interfaz (tokens de tema en :root)
-  js/NN-<sección>.js     el script por secciones (terreno, ciudad, Ruta 5, vía, trenes, usos…), unidas en orden de número
+  js/NN-<sección>.js     el script por secciones (terreno, ciudad, Ruta 5, vía, trenes, usos, el juego de 96-completos.js…), unidas en orden de número
   js/hitos/<id>.js       un hito por archivo, dentro de buildModels (marcador /*HITOS*/ de js/45-landmarks.js)
   js/hitos/ORDER         el orden de los hitos (importa: explanadas vecinas, ayudantes de la plaza)
   site/                  lo que el sitio publicado lleva junto a index.html: favicon.svg, apple-touch-icon.png, og.jpg, los pósters del arranque (poster-movil.webp, poster-escritorio.webp) y _headers (la caché de assets/ en Cloudflare Pages)

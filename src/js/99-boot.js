@@ -3,6 +3,7 @@ function loop(now){
   if(anim){anim(now);}
   if(ring.visible){const t=((now-(ring.userData.t0||0))%1800)/1800;const s=18+t*38;ring.scale.set(s,s,s);ring.material.opacity=0.85*(1-t);dirty=true;}
   const tr=trainsTick(now);if(tr)dirty=true; // the trains: a frame at TRAIN_FPS while one moves in the view
+  if(SNK.on&&snkTick(now))dirty=true; // la culebrita de completos (96-completos.js): every frame while it is on
   // while the camera moves (a gesture, a flight: it moved since the last frame or less than MOVE_MS ago, which on a
   // slow phone is shorter than a frame) the frames leave out the normals pass of crease:'normals' (the creases from depth cost
   // nothing and stay); the first frame after it stops draws them again
@@ -87,6 +88,7 @@ function boot(){
     const h=decodeURIComponent(location.hash.slice(1));
     if(h&&BYID[h]){const m=MODELS[h]||BYID[h];select(h,false);view.zoom=4;const f=framed(...lift(m.x,m.y),4);view.tx=f[0];view.ty=f[1];placeCam();}
     else if(h==='justicia'||h==='iconica'){startTour(h);}
+    else if(h==='completos'){setTimeout(()=>snkStart(),0);} // the game's own link: its start screen over the map
     // (window.__STAGE before the page loads, for tools/regress.py --init: 0, everything at once; [x0, y0, x1, y1, rho], another first box)
     let rho=Infinity;const SG=window.__STAGE;if(Array.isArray(SG)){STAGE=SG.slice(0,4);rho=SG[4];}else if(SG!==0){const s=stageBox();STAGE=s.box;rho=s.rho;}
     const L={base:[],water:[],walk:[]};
