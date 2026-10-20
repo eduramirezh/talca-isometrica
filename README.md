@@ -10,6 +10,7 @@ Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca 
 - **Dos recorridos guiados:** la Ruta de la Justicia y Talca icónica.
 - **~89.000 edificios:** ~3.900 de OpenStreetMap con su planta (todo el centro, y supermercados, colegios, torres y villas en el resto de la comuna), ~67.000 huellas de Microsoft y Google (vía Overture Maps) donde OSM no los tiene, con pisos de Google Open Buildings 2.5D, ~18.000 generados en el navegador frente a cada calle real en los frentes que quedan libres, con alturas según la densidad del censo, y 24 hitos con modelo propio, sobre su planta real.
 - **Relieve real** del modelo de elevación Copernicus GLO-30: los cerros del poniente y las terrazas de la ciudad hacia sus ríos, con exageración logarítmica.
+- **Calles y esquinas en la búsqueda:** «1 Norte» ilumina la calle y lista sus lugares; «1 Norte con 5 Oriente» marca la esquina. Los recorridos dibujan el camino a pie por las calles, con la distancia y el tiempo entre paradas.
 - **La culebrita de completos:** un Snake sobre las calles reales del centro, con una fila de completos que sale de los carritos de 5 Oriente (botón del completo o `#completos`).
 - **Vistas:** pixel art (píxeles de 0,5 m con contorno), modo noche, giro de la vista en 90°, tema claro y oscuro, y diseño para móvil.
 - **Un solo archivo HTML** autocontenido (~820 KB). Solo carga three.js desde cdnjs y las fuentes de Google Fonts.

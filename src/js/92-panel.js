@@ -2,15 +2,16 @@
 let selId=null,tour=null;
 const card=$('#card');
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-function select(id,fly){const p=BYID[id];if(!p)return;selId=id;
+function select(id,fly){const p=BYID[id];if(!p)return;selId=id;streetHL(null);
   if(tour&&PD.tours[tour.k].s[tour.i]!==id){const idx=PD.tours[tour.k].s.indexOf(id);if(idx<0)tour=null;else tour.i=idx;}
+  if(!tour)tourRoute(null); // 93-calles.js: the street lit by the search, the tour's route
   const m=MODELS[id];ring.visible=true;ring.position.set(m?m.x:p.x,E(m?m.x:p.x,m?m.y:p.y)+1,-(m?m.y:p.y));ring.userData.t0=performance.now();ring.material.color.set(cssVar('--c-'+p.c)||'#7A1F3D');
   renderCard(p);
   if(fly){const z=p.id==='cerro-la-virgen'?2.2:p.id.startsWith('utalca')?2.4:Math.max(view.zoom,4.2);const f=framed(...lift(m?m.x:p.x,m?m.y:p.y),z);flyTo(f[0],f[1],z);}
   try{history.replaceState(null,'','#'+id);}catch(e){}
   document.querySelectorAll('#list li button').forEach(b=>b.classList.toggle('sel',b.dataset.id===id));
   dirty=true;}
-function closeCard(){selId=null;tour=null;card.hidden=true;ring.visible=false;dirty=true;try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}document.querySelectorAll('#list li button.sel').forEach(b=>b.classList.remove('sel'));}
+function closeCard(){selId=null;tour=null;tourRoute(null);streetHL(null);card.hidden=true;ring.visible=false;dirty=true;try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}document.querySelectorAll('#list li button.sel').forEach(b=>b.classList.remove('sel'));}
 function renderCard(p){
   card.style.setProperty('--cc',`var(--c-${p.c})`);
   // the category says what kind of institution a place is; «Hitos de la ciudad» says nothing the name and the map don't
@@ -32,12 +33,14 @@ function renderCard(p){
     ${srcs.length?`<div class="src">Fuentes: ${srcs.map(s=>`<a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join(' · ')}</div>`:''}
     <div class="actions"><button class="btn ghost" id="cz">Acercar</button>${p.id==='carritos-5-oriente'?'<button class="btn ghost" id="cg">Jugar a la culebrita</button>':''}<a class="btn ghost" href="${osm}" target="_blank" rel="noopener">Ver en OpenStreetMap</a></div>
     <a class="report" href="${issue}" target="_blank" rel="noopener">Reportar un error en este lugar</a>
+    ${tour&&legText(tour.k,tour.i)?`<div class="leg">${esc(legText(tour.k,tour.i))}</div>`:''}
     ${tn}</div>`;
   card.hidden=false;
   $('#cx').onclick=closeCard;if($('#cg'))$('#cg').onclick=()=>snkStart();$('#cz').onclick=()=>{const m=MODELS[p.id];const t=lift(m?m.x:p.x,m?m.y:p.y);flyTo(t[0],t[1],Math.max(view.zoom*1.6,6));};
   if(tour){$('#tprev').onclick=()=>stepTour(-1);$('#tnext').onclick=()=>stepTour(1);}
 }
-function startTour(k){tour={k,i:0};select(PD.tours[k].s[0],true);}
+// the walking route (93-calles.js) right after: the graph takes ~0.1 s the first time, and a tour's link opens at boot
+function startTour(k){tour={k,i:0};select(PD.tours[k].s[0],true);setTimeout(()=>{if(!tour||tour.k!==k)return;tourRoute(k);renderCard(BYID[PD.tours[k].s[tour.i]]);},0);}
 function stepTour(d){const s=PD.tours[tour.k].s;const i=tour.i+d;if(i>=s.length){closeCard();flyTo(420,260,0.9);return;}tour.i=Math.max(0,i);select(s[tour.i],true);}
 
 /* =============== panel =============== */
@@ -64,6 +67,7 @@ function renderList(){
     const g=document.createElement('div');g.className='group';g.style.setProperty('--cc',`var(--c-${c})`);
     g.innerHTML=`<h3><i></i>${CATS[c].n}</h3><ul>${items.map(p=>`<li><button data-id="${p.id}" class="${p.id===selId?'sel':''}"><span class="nm">${esc(p.n)}</span><span class="ad">${esc(p.a)}</span></button></li>`).join('')}</ul>`;
     g.querySelectorAll('button').forEach(b=>b.onclick=()=>{tour=null;if(matchMedia('(max-width:760px)').matches)$('#panel').classList.add('folded');select(b.dataset.id,true);});host.appendChild(g);});
+  streetResults(q,host); // 93-calles.js: streets and corners
   if(!host.children.length)host.innerHTML='<p style="color:var(--ink-3);margin:0">Sin resultados. Pruebe con otra palabra o active más capas.</p>';
 }
 

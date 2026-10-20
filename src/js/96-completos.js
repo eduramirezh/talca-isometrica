@@ -4,9 +4,9 @@
 // each one adds a completo at the tail with that topping; tomate, palta and mayo in a row make an italiano (bonus), and
 // tomate, chucrut and mayo a completo completo. The row dies when its head runs into its own body.
 // The board is the street graph of the map (streets, classes 0-5; not the paths or tracks, nor the streets that a
-// landmark draws as a bridge) inside SNK_AREA, from 4 Poniente to 10 Oriente and from the Piduco to 9 Norte: the
-// polylines split where another one ends, then cut to the area, without dead ends (the 2-core: a pasaje without exit
-// would need a U-turn) and only its largest connected part. The streets that leave the board, or the dead ends that
+// landmark draws as a bridge) inside SNK_AREA, from 4 Poniente to 10 Oriente and from the Piduco to 9 Norte, noded at
+// every crossing by roadGraph() (12-calles.js), nodes nearer than 10 m merged, without dead ends (the 2-core: a pasaje
+// without exit would need a U-turn) and only its largest connected part. The streets that leave the board, or the dead ends that
 // were cut, have a red and white barrier at their mouth (streets of class 4 or wider; the pasajes, no: there are
 // hundreds). So the row never hits a wall: at a corner it takes the turn asked for, or goes on as straight as it can.
 // Controls: a turn is asked for before the corner and taken at the next one where it can be (relative: ← → or A D, the
@@ -33,66 +33,8 @@ const matRing=new T.MeshBasicMaterial({color:0xE3B23C,transparent:true,opacity:.
 const matBlob=new T.MeshBasicMaterial({color:0x1A1410,transparent:true,opacity:.24,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4});
 
 // ---- the board: the street graph ----
-function snkGraph(){if(SNK.g)return SNK.g;const t0=performance.now();
-  const [ax0,ay0,ax1,ay1]=SNK_AREA,inA=p=>p[0]>=ax0&&p[0]<=ax1&&p[1]>=ay0&&p[1]<=ay1,key=p=>Math.round(p[0]*2)+','+Math.round(p[1]*2);
-  const near=p=>p[0]>=ax0-50&&p[0]<=ax1+50&&p[1]>=ay0-50&&p[1]<=ay1+50;
-  const SS=streets.filter(s=>s.c<=5&&!s.bridge&&s.pts.length>1&&s.pts.some(near));
-  // The graph of the map is not noded at every crossing (3 Norte crosses 4 Poniente without a common vertex): every
-  // pair of segments that cross, or whose ends stop within 1.5 m of the other (a T), gets one point that both take
-  const segs=[],cell=new Map();
-  SS.forEach((s,si)=>{for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1],k=segs.length;segs.push([si,i,a,b]);
-    for(let gx=Math.floor(Math.min(a[0],b[0])/50);gx<=Math.floor(Math.max(a[0],b[0])/50);gx++)for(let gy=Math.floor(Math.min(a[1],b[1])/50);gy<=Math.floor(Math.max(a[1],b[1])/50);gy++){
-      const c=gx+','+gy;if(!cell.has(c))cell.set(c,[]);cell.get(c).push(k);}}});
-  const cuts=SS.map(()=>[]),done=new Set();
-  for(const ks of cell.values())for(let x=0;x<ks.length;x++)for(let y=x+1;y<ks.length;y++){const k1=ks[x],k2=ks[y],pk=k1*1e6+k2;if(done.has(pk))continue;done.add(pk);
-    const [s1,i1,a,b]=segs[k1],[s2,i2,c,d]=segs[k2];if(s1===s2)continue;
-    const rx=b[0]-a[0],ry=b[1]-a[1],sx=d[0]-c[0],sy=d[1]-c[1],den=rx*sy-ry*sx;if(Math.abs(den)<1e-9)continue;
-    const t=((c[0]-a[0])*sy-(c[1]-a[1])*sx)/den,u=((c[0]-a[0])*ry-(c[1]-a[1])*rx)/den,e1=1.5/Math.hypot(rx,ry),e2=1.5/Math.hypot(sx,sy);
-    if(t<-e1||t>1+e1||u<-e2||u>1+e2)continue;
-    let P=[a[0]+rx*t,a[1]+ry*t];for(const q of [a,b,c,d])if(Math.hypot(q[0]-P[0],q[1]-P[1])<1.6){P=q;break;}
-    cuts[s1].push([i1,P]);cuts[s2].push([i2,P]);}
-  // nodes nearer than 10 m are one (the corners of a traffic island, two carriageways): no rings shorter than the row
-  const pts=new Map();const addP=p=>{const k=key(p);if(!pts.has(k))pts.set(k,p);return k;};
-  const nk=SS.map((s,si)=>{const n=new Set([addP(s.pts[0]),addP(s.pts[s.pts.length-1])]);for(const [,P] of cuts[si])n.add(addP(P));return n;});
-  const par=new Map(),find=k=>{while(par.has(k)&&par.get(k)!==k)k=par.get(k);return k;};
-  const nodeKeys=new Set();nk.forEach(n=>n.forEach(k=>nodeKeys.add(k)));const NK=[...nodeKeys];const ng=new Map();
-  for(const k of NK){const p=pts.get(k),c=Math.floor(p[0]/10)+','+Math.floor(p[1]/10);if(!ng.has(c))ng.set(c,[]);ng.get(c).push(k);}
-  for(const k of NK){const p=pts.get(k),cx=Math.floor(p[0]/10),cy=Math.floor(p[1]/10);
-    for(let gx=cx-1;gx<=cx+1;gx++)for(let gy=cy-1;gy<=cy+1;gy++)for(const o of ng.get(gx+','+gy)||[]){if(o===k)continue;const q=pts.get(o);
-      if(Math.hypot(p[0]-q[0],p[1]-q[1])<10){const r1=find(k),r2=find(o);if(r1!==r2)par.set(r2,r1);}}}
-  const nodes=new Map(),node=k=>{const r=find(k);let n=nodes.get(r);if(!n){const p=pts.get(r);nodes.set(r,n={x:p[0],y:p[1],adj:[],k:r});}return n;};
-  const edges=[],stubs=[]; // stubs: [inner point, the next point outward, street width] where a street leaves the board
-  const add=(q,s)=>{const a=node(key(q[0])),b=node(key(q[q.length-1]));q=q.slice();q[0]=[a.x,a.y];q[q.length-1]=[b.x,b.y];
-    let L=0;const cum=[0];for(let i=1;i<q.length;i++){L+=Math.hypot(q[i][0]-q[i-1][0],q[i][1]-q[i-1][1]);cum.push(L);}
-    if(a===b&&L<120)return; // a ring inside a node
-    if(L<.5)return;
-    if(q.every(inA))edges.push({a,b,pts:q,cum,len:L,name:s.name,c:s.c,w:swOf(s)});
-    else if(s.c<=4){if(inA(q[0]))stubs.push([q[0],q[1],swOf(s)]);if(inA(q[q.length-1]))stubs.push([q[q.length-1],q[q.length-2],swOf(s)]);}};
-  SS.forEach((s,si)=>{const by=new Map();for(const [i,P] of cuts[si]){if(!by.has(i))by.set(i,[]);by.get(i).push(P);}
-    const seq=[];for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i];seq.push(a);for(const P of (by.get(i)||[]).sort((p,q)=>Math.hypot(p[0]-a[0],p[1]-a[1])-Math.hypot(q[0]-a[0],q[1]-a[1])))seq.push(P);}
-    seq.push(s.pts[s.pts.length-1]);const q=[seq[0]];for(const v of seq.slice(1))if(key(v)!==key(q[q.length-1]))q.push(v);
-    let cur=[q[0]];for(let j=1;j<q.length;j++){cur.push(q[j]);const k=key(q[j]);
-      if(j===q.length-1||nk[si].has(k)&&find(k)!==find(key(cur[0]))){add(cur,s);cur=[q[j]];}}});
-  for(const e of edges){e.a.adj.push({e,fwd:true});e.b.adj.push({e,fwd:false});}
-  // without dead ends: a node with one street end left goes, with its street (a barrier at the other end's mouth)
-  const dead=new Set(),stack=[...nodes.values()].filter(n=>n.adj.length<2);
-  while(stack.length){const n=stack.pop();if(n.adj.length>=2||n.gone)continue;n.gone=true;
-    for(const {e} of n.adj){if(dead.has(e))continue;dead.add(e);const o=e.a===n?e.b:e.a;o.adj=o.adj.filter(a=>a.e!==e);
-      if(e.c<=4&&!o.gone){const p=e.a===o?e.pts[1]:e.pts[e.pts.length-2];stubs.push([[o.x,o.y],p,e.w]);}
-      if(o.adj.length<2)stack.push(o);}}
-  // the largest connected part
-  let best=null;const seen=new Set();
-  for(const n of nodes.values()){if(n.gone||seen.has(n))continue;const comp=[n];seen.add(n);
-    for(let i=0;i<comp.length;i++)for(const {e} of comp[i].adj){const o=e.a===comp[i]?e.b:e.a;if(!seen.has(o)){seen.add(o);comp.push(o);}}
-    if(!best||comp.length>best.length)best=comp;}
-  const keep=new Set(best),E2=edges.filter(e=>!dead.has(e)&&keep.has(e.a)&&keep.has(e.b));
-  const ns=new Set(best.map(n=>n.k)),S2=stubs.filter(s=>ns.has(key(s[0])));
-  let total=0;for(const e of E2)total+=e.len;
-  SNK.g={nodes:best,edges:E2,stubs:S2,total,ms:Math.round(performance.now()-t0)};return SNK.g;}
-// a point at distance s along e, travelled forward (a -> b) or not
-function snkAt(e,fwd,s){const S=fwd?s:e.len-s,c=e.cum;let lo=0,hi=c.length-1;if(S<=0)return e.pts[0];if(S>=e.len)return e.pts[c.length-1];
-  while(hi-lo>1){const m=(lo+hi)>>1;if(c[m]<=S)lo=m;else hi=m;}const t=(S-c[lo])/((c[hi]-c[lo])||1),a=e.pts[lo],b=e.pts[hi];
-  return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];}
+function snkGraph(){return SNK.g||(SNK.g=roadGraph(SNK_AREA,{cmax:5,merge:10,within:true,core:true}));}
+const snkAt=edgeAt; // 12-calles.js
 // the unit direction at which e leaves a node (forward or not), over its first 10 m
 function snkOut(e,fwd){const a=snkAt(e,fwd,0),b=snkAt(e,fwd,Math.min(10,e.len));const L=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return [(b[0]-a[0])/L,(b[1]-a[1])/L];}
 function snkIn(e,fwd){const a=snkAt(e,fwd,Math.max(0,e.len-10)),b=snkAt(e,fwd,e.len);const L=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return [(b[0]-a[0])/L,(b[1]-a[1])/L];}
@@ -252,6 +194,7 @@ function snkTick(now){const dt=Math.min(.25,(now-(snkLast||now))/1000);snkLast=n
   const hd=snkOut(SNK.e,SNK.fwd);SNK.head[0]+=(hd[0]-SNK.head[0])*Math.min(1,dt*3);SNK.head[1]+=(hd[1]-SNK.head[1])*Math.min(1,dt*3);
   if(!SNK.cam)SNK.cam=tgt.slice();else{const k=Math.min(1,dt*4);SNK.cam[0]+=(tgt[0]-SNK.cam[0])*k;SNK.cam[1]+=(tgt[1]-SNK.cam[1])*k;}
   const [tx,ty]=lift(SNK.cam[0],SNK.cam[1]);view.tx=tx;view.ty=ty;placeCam();
+  const nm=SNK.e&&SNK.e.name;if(nm!==SNK.nm){SNK.nm=nm;const c=$('#snk-c');c.textContent=nm?'por '+nm:'';c.hidden=!nm;} // the street of the head
   snkArrow();return true;}
 
 // ---- the page: HUD, messages, controls ----

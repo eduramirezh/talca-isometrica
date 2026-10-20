@@ -8,7 +8,7 @@ function loop(now){
   // slow phone is shorter than a frame) the frames leave out the normals pass of crease:'normals' (the creases from depth cost
   // nothing and stay); the first frame after it stops draws them again
   const moving=!!anim||camMoved||now-camT<MOVE_MS;camMoved=false;if(paLite&&!moving)dirty=true;
-  if(dirty){const t0=performance.now();ART=PA?paFit(PA):wpp()/DPR;setLod(ART);stripLod(cam);renderer.shadowMap.needsUpdate=shDirty;shDirty=false;
+  if(dirty){const t0=performance.now();ART=PA?paFit(PA):wpp()/DPR;setLod(ART);calleLod(ART);stripLod(cam);renderer.shadowMap.needsUpdate=shDirty;shDirty=false;
     if(PA){paRender(moving);paLite=moving&&PA.ol>1&&PA.crease==='normals';}else renderer.render(scene,cam);layout();dirty=false;if(tr)trainFrame(now,performance.now()-t0);
     if(!LOAD.frame){LOAD.frame=Math.round(performance.now());LOAD.frameMs=Math.round(LOAD.frame-t0);requestAnimationFrame(t=>{LOAD.shown=Math.round(performance.now());posterOff();});}}
   requestAnimationFrame(loop);

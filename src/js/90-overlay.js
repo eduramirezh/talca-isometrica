@@ -6,7 +6,7 @@ POIS.forEach(p=>{const b=document.createElement('button');b.className='pin';b.st
 // street labels
 const SL=[];
 (function(){const want=new Map();
-  streets.forEach(s=>{if(!s.name)return;const nm=s.name.replace(/^(Calle|Avenida) (\d+ )/,'$2').replace("Avenida Alameda Bernardo O'Higgins","Alameda");
+  streets.forEach(s=>{const nm=streetName(s);if(!nm)return; // 12-calles.js: no "Calle sin nombre"; "Calle 3½ Sur" is "3½ Sur"
     const grid=/^\d+ (Norte|Sur|Oriente|Poniente)$/.test(nm);if(!grid&&s.c>3&&nm!=='Alameda')return;
     if(!want.has(nm))want.set(nm,[]);want.get(nm).push(s);});
   want.forEach((list,nm)=>{let acc=0;const every=nm==='Alameda'?900:650;

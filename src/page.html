@@ -48,7 +48,7 @@ window.__data=window.__go.then(()=>{const F=/*DATA*/;
     <section class="pane" id="p-lugares">
       <label class="search" for="q">
         <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4 4"/></svg>
-        <input id="q" type="search" placeholder="Buscar: corte, notaría, 1 Norte…" autocomplete="off">
+        <input id="q" type="search" placeholder="Buscar: corte, notaría, una calle o esquina…" autocomplete="off">
       </label>
       <div>
         <p class="eyebrow" style="margin-bottom:6px">Capas del ámbito jurídico</p>
@@ -88,6 +88,7 @@ window.__data=window.__go.then(()=>{const F=/*DATA*/;
       <ul>
         <li>Arrastrar: mover. Rueda o pellizco: acercar.</li>
         <li>Teclas: flechas para mover, + y − para acercar, Q y E para girar la vista.</li>
+        <li>La búsqueda encuentra también calles y esquinas (por ejemplo, «1 Norte con 5 Oriente»): ilumina la calle o marca la esquina y lista los lugares que están ahí. Los recorridos dibujan el camino a pie por las calles y dicen cuánto hay desde la parada anterior.</li>
         <li>El botón del completo, bajo los controles de la vista, abre <b>la culebrita de completos</b>: un Snake que recorre las calles del centro desde los carritos de 5 Oriente (enlace propio: #completos).</li>
         <li>Cada lugar tiene su propio enlace: la dirección de la página termina en su identificador (por ejemplo, #corte-apelaciones).</li>
       </ul>
@@ -114,6 +115,7 @@ window.__data=window.__go.then(()=>{const F=/*DATA*/;
 
   <div id="snk" hidden aria-live="polite">
     <div class="hud"><span><b id="snk-n">3</b> completos</span><span><b id="snk-p">0</b> puntos</span><span>récord <b id="snk-r">0</b></span></div>
+    <div class="via" id="snk-c" hidden></div>
     <div class="pad"><button id="snk-l" aria-label="Doblar a la izquierda en la próxima esquina"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 19v-6a4 4 0 0 0-4-4H5"/><path d="M9 5L5 9l4 4"/></svg></button>
       <button id="snk-pz" aria-label="Pausa"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="6" width="3.5" height="12"/><rect x="13.5" y="6" width="3.5" height="12"/></svg></button>
       <button id="snk-x" aria-label="Salir del juego"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
