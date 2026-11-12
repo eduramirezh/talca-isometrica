@@ -29,6 +29,6 @@ function terrainMesh(){
     for(let m=0;m<pts.length-1;m++){const a=pts[m],b=pts[m+1];const ha=E(a[0],a[1]),hb=E(b[0],b[1]);
       const q=(y0a,y0b,y1a,y1b,c)=>S.face([[a[0],y0a,-a[1]],[b[0],y0b,-b[1]],[b[0],y1b,-b[1]],[a[0],y1a,-a[1]]],n,c);
       q(ha-3,hb-3,ha,hb,top);q(BOT+16,BOT+16,ha-3,hb-3,soil);q(BOT+9,BOT+9,BOT+16,BOT+16,strat);q(BOT,BOT,BOT+9,BOT+9,soil);}}
-  grp.add(tiled(S,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide})));
-  return grp;
+  const sk=tiled(S,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide}));sk.name='borde';grp.add(sk);
+  grp.name='terreno';return grp;
 }

@@ -65,7 +65,8 @@ class GB{
 // meshes of a material in the order they were made), so the image is the same, with no extra memory. Zoomed in, a
 // strip is never entirely in view and nothing changes.
 const TILE=1000,TILE_N=64,STRIP=4,STRIPS=[]; // tile keys: (tx+TILE_N)*2*TILE_N+(tz+TILE_N), the box of the commune is ±25 km at most
-function dropArray(){this.array=null;}
+// (window.__KEEP before the page loads: the arrays stay, for tools/export.py, which reads the finished meshes)
+const KEEP=!!window.__KEEP;function dropArray(){if(!KEEP)this.array=null;}
 function free(g){for(const k in g.attributes)g.attributes[k].onUpload(dropArray);if(g.index)g.index.onUpload(dropArray);return g;}
 // The tiling of a layer is a generator that yields between tiles (tileGen, tiledPartsGen, instTiledGen): rest() runs
 // it in slices with yield* (a whole layer at once was a task of up to 255 ms, a jolt while the map moved); the first
@@ -112,7 +113,7 @@ function* tileGen(parts,sp,sq,mat){
     const mesh=(s,n,sph)=>{const g=new T.BufferGeometry();g.setAttribute('position',pa);g.setAttribute('normal',na);g.setAttribute('color',ca);g.setIndex(ia);
       g.setDrawRange(s,n);g.boundingSphere=sph;const m=new T.Mesh(g,mat);grp.add(m);return m;};
     const c=st.length>1?mesh(0,si,sphere(0,sv,...bx)):null,f=st.map(t=>mesh(...t)); // the strip first: it draws before its tiles
-    if(c){c.visible=false;STRIPS.push({c,f,box:new T.Box3(new T.Vector3(bx[0],bx[1],bx[2]),new T.Vector3(bx[3],bx[4],bx[5])),on:false});}
+    if(c){c.visible=false;c.userData.strip=true;STRIPS.push({c,f,box:new T.Box3(new T.Vector3(bx[0],bx[1],bx[2]),new T.Vector3(bx[3],bx[4],bx[5])),on:false});}
     sv=si=0;st=[];bxReset();};
   for(let k=0;k<NK;k++){if(!cnt[k])continue;
     const kc=Math.floor(k/(2*TILE_N));if(st.length&&(kc!==col||st.length>=STRIP))flush();col=kc;

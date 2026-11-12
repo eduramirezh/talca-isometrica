@@ -146,6 +146,7 @@ function boot(){
     window.__cars=on=>{for(const m of cars)m.visible=on;shDirty=dirty=true;}; // the parked cars, likewise
     // for tools/perf.py: the renderer and what a frame depends on (timing each pass, panning, forcing a shadow refit)
     window.__three={renderer,scene,cam,sun,pan,placeCam,fitShadow,get PA(){return PA;}};
+    window.__export={PD,E,inTerrain,ext:[XMIN,XMAX,YMIN,YMAX],matBld}; // for tools/export.py (with window.__KEEP)
     window.__pads=PADS; // the landmark pads [x0,y0,x1,y1,h], for pipeline/traces.py check --pads
     $('#loading').style.opacity=0;setTimeout(()=>$('#loading').hidden=true,500);
     requestAnimationFrame(loop);
@@ -180,6 +181,8 @@ function boot(){
       fin.b=yield* tiledPartsGen([B,B2],matBld);fin.s=yield* tiledPartsGen([S,S2],matFlat);fin.d=yield* tiledPartsGen([D],matFlat);fin.y=yield* tiledPartsGen([Y,Y2],matFlat);yield;
       drop([first.g,first.w,first.u,first.z,first.b,first.s,first.d,first.y]);drop([...trees,...cars],true);
       trees.length=cars.length=0;trees.push(...fin.t);cars.push(fin.c);
+      for(const [k,n] of [['g','suelo'],['w','agua'],['u','usos'],['z','ciudad'],['c','autos'],['b','edificios'],['s','hitos'],['d','veredas'],['y','patios']])if(fin[k])fin[k].name=n;
+      fin.t[0].name='arboles';fin.t[1].name='alamos'; // the names tools/export.py gives each layer
       addMeshes([fin.g,fin.w,fin.u,fin.y].filter(Boolean),[fin.z,fin.c,...fin.t,fin.b,fin.s,fin.d]);lodFar=null;return C;}
     setTimeout(()=>sliced(rest(),(ms,C)=>{TT.rest=ms;
       lampPts=lamps();lampPts.visible=night;scene.add(lampPts);STAGE=null;$('#more').hidden=true;shDirty=dirty=true;

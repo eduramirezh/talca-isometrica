@@ -125,7 +125,7 @@ function trainsInit(){if(!RAILP.main||!RAILP.ramal)return;const t0=performance.n
   adm.s=PLAT+adm.len;if(TRAIN.reduced)sfb.s=ST+sfb.len/2;
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(new Float32Array(TRAIN.list.length*3),3));
   TRAIN.pts=new T.Points(g,glowMat());TRAIN.pts.visible=false;TRAIN.pts.frustumCulled=false;GLOWPTS.push(TRAIN.pts);scene.add(TRAIN.pts);
-  for(const t of TRAIN.list){scene.add(t.grp);trainPlace(t);}
+  for(const t of TRAIN.list){t.grp.name='trenes';scene.add(t.grp);trainPlace(t);}
   if(!TRAIN.reduced){trainHide(sfb);trainHide(carga);}
   let verts=0,cars=0;for(const k in TRAIN.geo){verts+=TRAIN.geo[k].body.attributes.position.count+TRAIN.geo[k].win.attributes.position.count;}
   for(const t of TRAIN.list)cars+=t.cars.length;STREET.trains={cars,verts,ms:Math.round(performance.now()-t0)};

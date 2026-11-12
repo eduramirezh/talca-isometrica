@@ -95,7 +95,7 @@ function ruta5Objects(){const K=R5K,G=new GB(1<<15),A=R5C[0];
   Object.assign(STREET,{r5posts:posts,r5cars:list.length,r5gaps:R5C.map(c=>c.gaps.length)});
   const mesh=tiled(G,matFlat);for(const o of [mesh,cars])o.traverse(c=>c.castShadow=true);
   window.__r5cars=on=>{cars.visible=on;shDirty=dirty=true;};
-  return [mesh,cars];}
+  mesh.name='ruta5';cars.name='autos-ruta5';return [mesh,cars];}
 // Carriageway k on a bridge or an embankment from d0 to d1 (landmarks, from buildModels): the deck (deckBridge: its
 // pavement, parapets and beam, piers every o.pier m where it stands 2.5 m over the ground) at h(d), an absolute height
 // never under the terrain plus 0.3 m, with its lines; outside the open spans (open: [[d0, d1], ...], where it stands on
