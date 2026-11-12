@@ -1,0 +1,14 @@
+; Visor de los glb de tools/export.py (ver ver.gd). Godot crea .godot/ al lado: está en .gitignore.
+config_version=5
+
+[application]
+config/name="Talca: visor glTF"
+run/main_scene="res://ver.tscn"
+config/features=PackedStringArray("4.7")
+
+[display]
+window/size/viewport_width=1600
+window/size/viewport_height=1000
+
+[rendering]
+renderer/rendering_method="forward_plus"

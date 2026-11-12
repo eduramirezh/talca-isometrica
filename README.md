@@ -112,6 +112,8 @@ tools/profile.py         perfil de CPU del arranque: ms por función de src/ (pr
 scripts/deploy-cloudflare.sh  publica dist/ en Cloudflare Pages (make deploy); .githooks/pre-push lo corre al empujar main
 tools/ml_buildings.py    huellas de edificios de Overture (Microsoft, Google) y alturas de Google 2.5D Temporal -> raw/edificios-ml/, para edificios.py (make edificios-ml)
 tools/export.py          la maqueta generada a glTF (Blender, Godot; --teselas: un archivo por km²) y a STL cerrado para impresión 3D (tools/export.js corre en la página)
+tools/blender_ver.py     abre en Blender un glb o STL exportado, con sus colores y encuadrado (-b --png: una vista sin ventana)
+tools/godot/             proyecto de Godot que carga un glb exportado (ver.gd: cámara ortográfica, colores por vértice; --png)
 tools/check.py           revisión rápida del repo (make check); .githooks/pre-commit la corre antes de cada commit (make hooks)
 docs/                    metodología, fuentes, investigación de proyectos similares
 ```
