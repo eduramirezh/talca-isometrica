@@ -75,7 +75,7 @@ function buildCerro(B){ // Cerro La Virgen: the hill is real terrain now; the st
     for(let i=0;i<n;i++){const p0=[a[0]+du*L*i/n,a[1]+dv*L*i/n],p1=[a[0]+du*L*(i+1)/n,a[1]+dv*L*(i+1)/n];
       const q=Gs([[p0[0]-dv*1.2,p0[1]+du*1.2],[p1[0]-dv*1.2,p1[1]+du*1.2],[p1[0]+dv*1.2,p1[1]-du*1.2],[p0[0]+dv*1.2,p0[1]-du*1.2]]);
       const es=q.map(p=>E(p[0],p[1]));S.prism(q,Math.min(...es)-1.5,Math.max(...es)+.12,K.step2,i%2?K.step:K.paving);}}
-  S.dy=0;cerroMesh=new T.Mesh(S.geo(),matFlat);scene.add(cerroMesh);
+  S.dy=0;cerroMesh=new T.Mesh(S.geo(),matFlat);cerroMesh.name='cerro';scene.add(cerroMesh);
   const c=G(0,0);MODELS['cerro-la-virgen']={x:c[0],y:c[1],h:h1+12};
 }
 // scrub and wood on steep ground and where CONAF says there is (wildAt), in clumps; the plantations of eucalyptus or pine
