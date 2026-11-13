@@ -592,7 +592,7 @@ const COLORES_AUTO := [Color(0.92, 0.92, 0.9), Color(0.92, 0.92, 0.9), Color(0.6
 # adelante. Cinco siluetas: sedán, hatchback, SUV, camioneta y colectivo (sedán negro con letrero amarillo)
 func auto(m: Malla, p: Vector2, adelante: Vector2) -> void:
 	var f := Malla.Marco.new(p.x, p.y, atan2(adelante.y, adelante.x), S.E(p.x, p.y) + Plano.ALTO_CALZADA)
-	var tipo := rng.randi() % 5  # sedán, hatchback, SUV, camioneta, colectivo (sedán negro con letrero)
+	var tipo: int = [0, 0, 0, 1, 1, 2, 2, 3, 4][rng.randi() % 9]  # sedán, hatchback, SUV, camioneta, colectivo (sedán negro con letrero)
 	var col: Color = COLORES_AUTO[rng.randi() % COLORES_AUTO.size()]
 	if tipo == 4:
 		col = Color(0.07, 0.07, 0.08)

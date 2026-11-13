@@ -18,12 +18,16 @@
 #     TALCA», una explanada de piedra con baranda y una palmera; OSM dice dos pisos y 5,6 m, la foto ~12 m;
 #   - Gobierno Regional (1 Norte, 10 pisos): «Talca, reflecc (15550291390).jpg» (2014, CC BY-SA 2.0): muro cortina de
 #     vidrio azul con montantes y bandas de piso, cantos blancos;
+#   - el Edificio O'Higgins (ex Banco de Talca, 1 Sur con 1 Oriente): «Edificio ohiggins2.jpg» (2025-10-10, CC BY 4.0,
+#     ElPabloRN): beige, zócalo alto de piedra gris verdosa, pilastras planas entre ventanas altas, cornisa pesada;
+#   - el BCI (1 Sur 732): «Banco de Crédito e Inversiones Talca.jpg» (2024-03-15, CC BY 4.0, ElPabloRN): blanco,
+#     neoclásico, el nombre en letras negras en el friso y un frontón con tímpano;
 #   - la casa blanca de 1 Poniente 1133, junto a la catedral: fotos de la catedral 00 y 06 (2024, 2017): blanca, zócalo
 #     café rojizo, rejas en las ventanas, techo de cuatro aguas rojo con alero.
 # Lo demás es genérico y aproximado: los colores (una paleta de fachadas del centro, elegida por el id de OSM), la
 # cantidad de ventanas, los locales y sus toldos; los letreros llevan solo los nombres que da OSM (BCI, Oriencoop,
 # Chilexpress, AFP Habitat, Banco Santander, cine Plaza), con colores supuestos. El Edificio O'Higgins (ex Banco de
-# Talca, art déco según el CMN) no tiene fotos libres: se dibuja con el lenguaje de los Servicios Públicos.
+# Talca) y el BCI se dibujan con el lenguaje genérico «clásico», con lo que muestran sus fotos (zócalo, pilastras, friso).
 extends Node3D
 
 const Malla := preload("res://modelos/entorno/malla.gd")
@@ -39,18 +43,20 @@ const ESPECIAL := {
 	813755289: {"estilo": "clasico", "alto": 12.5, "pisos": 3, "color": "dccfb3", "pb": "ventanas"},
 	843566423: {"estilo": "comercial", "alto": 7.4, "color": "e3d4b6", "toldo": "2f5e3e"},
 	843566419: {"estilo": "comercial", "alto": 7.4, "color": "d6c3a8", "toldo": "8a2c26"},
-	275506471: {"estilo": "vidrio", "alto": 30.0, "pisos": 10},
+	275506471: {"estilo": "vidrio", "alto": 32.0, "pisos": 10, "corte_y": 82.0, "alto_basamento": 11.5},
 	944738558: {"estilo": "comercial", "alto": 7.0, "color": "e6dcc8"},
 	310597000: {"estilo": "clasico", "alto": 8.0, "pisos": 2, "color": "d9c9a6", "pb": "ventanas"},
 	310596999: {"estilo": "clasico", "alto": 8.4, "pisos": 2, "color": "e8e0cc", "pb": "ventanas"},
 	941592849: {"estilo": "clasico", "alto": 10.0, "pisos": 3, "color": "cdbfa8"},
 	310186641: {"estilo": "municipal"},
-	275506476: {"estilo": "intendencia", "alto": 12.0, "pisos": 3, "color": "e7dcc0"},
+	275506476: {"estilo": "intendencia", "alto": 12.0, "pisos": 3, "color": "e7dcc0", "pb": "ventanas", "marco": "3f6b4a"},
 	214849867: {"estilo": "deco", "alto": 15.5, "pisos": 4, "color": "c9c3b6", "pb": "ventanas", "marco": "6b4a32"},
 	275506477: {"estilo": "torre", "alto": 21.0, "pisos": 7, "color": "dfd6c4"},
-	941674694: {"estilo": "moderno", "alto": 13.0, "pisos": 4, "color": "d9d9d4", "letreros": [["BCI", "1e1e1e", "ffffff"]]},
+	941674694: {"estilo": "clasico", "alto": 13.0, "pisos": 3, "color": "efede6", "pb": "ventanas", "marco": "f4f3ef",
+		"friso": "Banco de Crédito e Inversiones", "fronton": true, "zocalo": "d8d6cf", "zocalo_alto": 1.2},
 	941980882: {"estilo": "clasico", "alto": 12.4, "pisos": 4, "color": "e2d5bb"},
-	813330085: {"estilo": "deco", "alto": 11.0, "pisos": 2, "color": "e3dac6", "pb": "ventanas", "marco": "3a3a36"},
+	813330085: {"estilo": "clasico", "alto": 13.0, "pisos": 2, "color": "d3c4a6", "pb": "ventanas", "marco": "3a3a36",
+		"zocalo": "4d5650", "zocalo_alto": 2.6, "bahia": 4.2, "pilastras": true},
 	565220652: {"estilo": "torre", "alto": 35.0, "pisos": 12, "color": "d9a679"},
 	392084816: {"estilo": "torre", "alto": 38.0, "pisos": 13, "color": "e6e1d6"},
 	392084817: {"estilo": "torre", "alto": 38.0, "pisos": 13, "color": "e6e1d6"},
@@ -99,8 +105,21 @@ func _init() -> void:
 			piezas = nuevas
 		hechas.append(t[1])
 		for pz in piezas:
-			if da_a_la_calle(pz) or ESPECIAL.has(t[0]):
-				plantas.append([t[0], pz, t[2], ESPECIAL.get(t[0], {})])
+			if not (da_a_la_calle(pz) or ESPECIAL.has(t[0])):
+				continue
+			var esp: Dictionary = ESPECIAL.get(t[0], {})
+			if esp.has("corte_y"):
+				# el GORE: un basamento de tres pisos a lo largo de 1 Norte y la torre detrás (el hito de la página)
+				var y: float = esp["corte_y"]
+				for r in Geometry2D.intersect_polygons(pz, Plano.rect([-500, -500, 500, y])):
+					var e2 := esp.duplicate()
+					e2["alto"] = esp["alto_basamento"]
+					e2["pisos"] = 3
+					plantas.append([t[0], r, t[2], e2])
+				for r in Geometry2D.intersect_polygons(pz, Plano.rect([-500, y, 500, 500])):
+					plantas.append([t[0], r, t[2], esp])
+				continue
+			plantas.append([t[0], pz, t[2], esp])
 
 
 static func area(p: PackedVector2Array) -> float:
@@ -146,9 +165,12 @@ func recortes() -> Array:
 		# 1,8 m de margen: las plantas de la página (data/edificios.json) no calzan exactas con las de OSM de hoy
 		var r := Geometry2D.offset_polygon(t[1], 1.8, Geometry2D.JOIN_MITER)
 		if not r.is_empty():
-			out.append({"poligono": r[0], "capas": ["edificios", "ciudad"]})
-	# la plaza de la Municipalidad (OSM w813330084): sin los árboles ni el suelo de la página
-	out.append({"poligono": Plano.rect([26.5, 69.0, 56.0, 77.2]), "capas": ["ciudad", "patios", "arboles", "autos", "suelo", "usos"]})
+			# «hitos»: la página modela el GORE, la Municipalidad y los Servicios Públicos como hitos
+			out.append({"poligono": r[0], "capas": ["edificios", "ciudad", "hitos"]})
+	# la plaza de la Municipalidad (OSM w813330084): sin los árboles ni el suelo de la página, y sin la terraza, la
+	# palmera y la bandera del hito; queda el Memorial Firma de la Independencia (el hito memorial-firma, en 44,9, 71,7)
+	for r in [[26.5, 69.0, 43.9, 77.2], [45.9, 69.0, 56.0, 77.2], [43.9, 69.0, 45.9, 71.25], [43.9, 72.15, 45.9, 77.2]]:
+		out.append({"poligono": Plano.rect(r), "capas": ["ciudad", "patios", "arboles", "autos", "suelo", "usos", "hitos"]})
 	return out
 
 
@@ -171,7 +193,7 @@ func spec(id: int, tags: Dictionary, esp: Dictionary) -> Dictionary:
 	alto = max(alto, pisos * 3.1 + 0.8)
 	var sp := {"estilo": "comercial" if pisos <= 3 else "clasico", "pisos": pisos, "alto": alto,
 		"color": PALETA[id % PALETA.size()], "zocalo": "", "pb": "vitrinas", "toldo": "", "techo": "plano",
-		"marco": "e8e6e0", "letreros": []}
+		"marco": "e8e6e0", "letreros": [], "zocalo_alto": -1.0, "friso": "", "fronton": false, "bahia": 0.0, "pilastras": false}
 	for k in esp:
 		sp[k] = esp[k]
 	if sp["estilo"] == "torre" or sp["estilo"] == "vidrio":
@@ -198,6 +220,8 @@ func edificio(id: int, p: PackedVector2Array, tags: Dictionary, esp: Dictionary)
 		var b := p[(i + 1) % p.size()]
 		if lado_a_calle(a, b):
 			fachada(g, a, b, sp, id * 31 + i)
+			if sp["estilo"] == "deco":
+				m.moldura(g, a, b, 0, a.distance_to(b), -0.9, 1.1, 0.08, Color("6e6c66"), "granito")
 		else:
 			m.muro(g, a, b, -0.9, H, col.darkened(0.12), "liso")
 	# el techo: plano, un poco bajo el pretil, o de cuatro aguas de teja
@@ -229,6 +253,8 @@ func fachada(g: Malla.Marco, a: Vector2, b: Vector2, sp: Dictionary, semilla: in
 	var pretil := 0.9
 	var hu: float = (H - hg - pretil) / max(1, n - 1)
 	var bahia: float = {"comercial": 4.2, "clasico": 3.6, "deco": 3.4, "torre": 3.3, "moderno": 3.0, "colonial": 3.4, "intendencia": 3.3}.get(estilo, 3.6)
+	if sp["bahia"] > 0:
+		bahia = sp["bahia"]
 	var nb: int = max(1, roundi(L / bahia))
 	var bw := L / nb
 	var huecos := []
@@ -263,8 +289,10 @@ func fachada(g: Malla.Marco, a: Vector2, b: Vector2, sp: Dictionary, semilla: in
 				baranda(g, a, b, s - w / 2 - 0.5, s + w / 2 + 0.5, hf + 0.16, 0.9)
 			elif estilo == "deco":
 
-				m.moldura(g, a, b, s - 0.32, s + 0.32, h0 - 1.07, h0 - 0.43, 0.04, col.lightened(0.05))
-				m.moldura(g, a, b, s - 0.2, s + 0.2, h0 - 0.95, h0 - 0.55, 0.08, col.lightened(0.08))
+				# el cuadrado escalonado del antepecho (foto «Detalle…», 2022), en un paño hundido más oscuro
+				m.panel(g, a, b, s - w / 2, s + w / 2, h0 - 1.15, h0 - 0.2, 0.004, col.darkened(0.08))
+				m.moldura(g, a, b, s - 0.32, s + 0.32, h0 - 1.0, h0 - 0.36, 0.04, col.lightened(0.08))
+				m.moldura(g, a, b, s - 0.2, s + 0.2, h0 - 0.88, h0 - 0.48, 0.08, col.lightened(0.14))
 			elif estilo == "intendencia" or estilo == "clasico":
 				# una cornisa sobre la ventana
 				m.moldura(g, a, b, s - w / 2 - 0.2, s + w / 2 + 0.2, h0 + vh + 0.1, h0 + vh + 0.28, 0.14, col.lightened(0.06))
@@ -315,6 +343,14 @@ func fachada(g: Malla.Marco, a: Vector2, b: Vector2, sp: Dictionary, semilla: in
 					hq = Malla.arco(s, 1.5, 0.0, 2.55, -1.0, 8)
 				huecos.append(hq)
 				m.derrame(g, a, b, hq, 0.35, col.darkened(0.15), "liso", Color("4a3626"), "pintura")
+				if estilo == "deco" and w > 1.8:
+					# tres puertas vidriadas de marco oscuro (la entrada de los Servicios Públicos)
+					var d2 := (b - a) / L
+					var o2 := Vector2(d2.y, -d2.x)
+					for kk in 3:
+						var sk: float = s - w / 2 + w * (kk + 0.5) / 3.0
+						m.panel(g, a - o2 * 0.34, b - o2 * 0.34, sk - w / 6 + 0.1, sk + w / 6 - 0.1, 0.1, 2.7, 0.01, Color("34414b"), "vidrio")
+						m.panel(g, a - o2 * 0.34, b - o2 * 0.34, sk - 0.03, sk + 0.03, 0.1, 2.7, 0.02, Color("2a2622"), "metal")
 				if estilo == "deco" or estilo == "clasico":
 					# marquesina sobre la entrada (los Servicios Públicos tienen una)
 					m.moldura(g, a, b, s - w / 2 - 0.6, s + w / 2 + 0.6, 3.35, 3.55, 1.3, col.darkened(0.05))
@@ -327,7 +363,33 @@ func fachada(g: Malla.Marco, a: Vector2, b: Vector2, sp: Dictionary, semilla: in
 				reja(g, a, b, s - w / 2, s + w / 2, 1.0, hg - 0.8)
 	m.muro_vanos(g, a, b, -0.9, H, huecos, col, "liso")
 	# zócalo, bandas de piso, cornisa y pretil
-	m.moldura(g, a, b, 0, L, -0.9, 0.2 if pb == "vitrinas" else 0.75, 0.05, zocalo, "liso")
+	var hz: float = sp["zocalo_alto"] if sp["zocalo_alto"] > 0 else (0.2 if pb == "vitrinas" else 0.75)
+	if hz < 1.5:
+		m.moldura(g, a, b, 0, L, -0.9, hz, 0.05, zocalo, "liso")
+	else:
+		# un zócalo alto de piedra (el Edificio O'Higgins): una capa 12 cm delante del muro, con los mismos vanos
+		var d4 := (b - a) / L
+		var o4 := Vector2(d4.y, -d4.x) * 0.12
+		var hz_huecos := huecos.filter(func(hq): return hq[0].y < hz)
+		m.superficie(g, a + o4, b + o4, PackedVector2Array([Vector2(0, -0.9), Vector2(L, -0.9), Vector2(L, hz), Vector2(0, hz)]), hz_huecos, zocalo, "granito")
+		m.moldura(g, a, b, 0, L, hz - 0.05, hz + 0.1, 0.16, zocalo.lightened(0.08), "granito")
+		for hq in hz_huecos:
+			m.derrame(g, a + o4, b + o4, hq, 0.13, zocalo.darkened(0.1), "granito")
+	if sp["friso"] != "" and L > 12:
+		rotulo(g, a, b, L / 2, H - pretil - 0.75, 0.31, sp["friso"], Color("1c1c1c"), 0.55)
+	if sp["fronton"] and L > 12:
+		# el frontón al medio, con su tímpano (foto del BCI, 2024)
+		var w2: float = min(9.0, L * 0.4)
+		var d3 := (b - a) / L
+		var o3 := Vector2(d3.y, -d3.x)
+		var P := func(ss: float, hh: float, sal: float) -> Vector3:
+			var q: Vector2 = a + d3 * ss + o3 * sal
+			return g.V(q.x, q.y, hh)
+		for sal in [0.32, -1.5]:
+			m.cara([P.call(L / 2 - w2 / 2, H, sal), P.call(L / 2 + w2 / 2, H, sal), P.call(L / 2, H + 1.6, sal)], col, "liso", g.N(o3.x, o3.y) if sal > 0 else -g.N(o3.x, o3.y))
+		for sg in [-1.0, 1.0]:
+			m.cara([P.call(L / 2 + sg * w2 / 2 * 1.05, H - 0.05, 0.45), P.call(L / 2, H + 1.75, 0.45), P.call(L / 2, H + 1.75, -1.6), P.call(L / 2 + sg * w2 / 2 * 1.05, H - 0.05, -1.6)],
+				col.darkened(0.1), "liso", (g.N(d3.x * sg, d3.y * sg) * 1.6 + Vector3.UP * w2 / 2).normalized())
 	if estilo in ["clasico", "intendencia", "colonial", "comercial"]:
 		for k in range(1, n):
 			var hf: float = hg + (k - 1) * hu
@@ -340,9 +402,9 @@ func fachada(g: Malla.Marco, a: Vector2, b: Vector2, sp: Dictionary, semilla: in
 		for j in range(0, nb + 1):
 			var s: float = j * bw
 			var alto := H + (1.2 if j % 2 == 0 else 0.4)
-			m.moldura(g, a, b, max(0.0, s - 0.42), min(L, s + 0.42), hg - 0.3, alto, 0.12, col.lightened(0.04))
-			m.moldura(g, a, b, max(0.0, s - 0.25), min(L, s + 0.25), hg - 0.3, alto - 0.3, 0.26, col.lightened(0.07))
-	if estilo == "intendencia" or estilo == "clasico" and n <= 3:
+			m.moldura(g, a, b, max(0.0, s - 0.42), min(L, s + 0.42), hg - 0.3, alto, 0.14, col.lightened(0.10))
+			m.moldura(g, a, b, max(0.0, s - 0.25), min(L, s + 0.25), hg - 0.3, alto - 0.3, 0.3, col.lightened(0.16))
+	if estilo == "intendencia" or estilo == "clasico" and (n <= 3 or sp["pilastras"]):
 		for j in range(0, nb + 1):
 			var s: float = j * bw
 			m.moldura(g, a, b, max(0.0, s - 0.3), min(L, s + 0.3), hg, H - pretil - 0.1, 0.1, col.lightened(0.05))
@@ -639,6 +701,19 @@ func plaza_municipal() -> void:
 		m.caja(g, x - 0.5, 72.3, x + 0.5, 73.3, 0.0, 0.7, Color("f2f0ea"), "liso")
 		m.cilindro(g, x, 72.8, 0.45, 0.7, 1.2, Color("3d5d2b"), "liso", 7)
 	palmera(g, 43.0, 75.6, 0.8, 11.0)
+	bandera(g, 33.0, 74.5, 0.8, 10.0)
+
+
+# el asta con la bandera de Chile (foto de 2018: a la izquierda de la entrada)
+func bandera(g: Malla.Marco, x: float, y: float, h0: float, alto: float) -> void:
+	m.cilindro(g, x, y, 0.06, h0, h0 + alto, Color("dcdcd8"), "metal", 8)
+	var t := h0 + alto - 0.2
+	var paño := func(x0: float, x1: float, z0: float, z1: float, c: Color) -> void:
+		for n in [Vector3(0, 0, 1), Vector3(0, 0, -1)]:
+			m.cara([g.V(x + x0, y, t - z1), g.V(x + x1, y, t - z1), g.V(x + x1, y, t - z0), g.V(x + x0, y, t - z0)], c, "tela", n)
+	paño.call(0.1, 0.85, 0.0, 0.75, Color("2b4c8c"))
+	paño.call(0.85, 2.3, 0.0, 0.75, Color("f2f0ea"))
+	paño.call(0.1, 2.3, 0.75, 1.5, Color("c8322b"))
 
 
 # una palmera canaria: tronco anillado de 0,45 m, una corona oscura y dieciséis hojas arqueadas
