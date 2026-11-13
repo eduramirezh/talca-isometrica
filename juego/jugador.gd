@@ -1,4 +1,4 @@
-# El personaje: una cápsula de 1,75 m con una cámara en tercera persona sobre un brazo (SpringArm3D) que se acorta
+# El personaje: una cápsula de 1,75 m (la colisión; lo que se ve es peaton.gd, animado según la velocidad) con una cámara en tercera persona sobre un brazo (SpringArm3D) que se acorta
 # cuando un muro se interpone. La rueda lo acorta hasta 0: primera persona, sin cuerpo a la vista.
 extends CharacterBody3D
 
@@ -19,6 +19,8 @@ var mouse := true  # falso en las pruebas (--png): el mouse real no mueve la cá
 var brazo := SpringArm3D.new()
 var cam := Camera3D.new()
 var cuerpo := Node3D.new()
+var pose := -1.0
+var peaton: Node3D = preload("res://peaton.gd").new()  # el cuerpo que se ve (peaton.gd)
 
 
 func _ready() -> void:
@@ -30,25 +32,7 @@ func _ready() -> void:
 	forma.position.y = ALTO / 2
 	add_child(forma)
 
-	var piel := StandardMaterial3D.new()
-	piel.albedo_color = Color("c8322b")
-	var m := MeshInstance3D.new()
-	var cm := CapsuleMesh.new()
-	cm.radius = RADIO
-	cm.height = ALTO
-	cm.material = piel
-	m.mesh = cm
-	m.position.y = ALTO / 2
-	cuerpo.add_child(m)
-	var nariz := MeshInstance3D.new()  # para ver hacia dónde mira
-	var bm := BoxMesh.new()
-	bm.size = Vector3(0.18, 0.12, 0.2)
-	var oscuro := StandardMaterial3D.new()
-	oscuro.albedo_color = Color("2b4c8c")
-	bm.material = oscuro
-	nariz.mesh = bm
-	nariz.position = Vector3(0, ALTO - 0.25, -RADIO)
-	cuerpo.add_child(nariz)
+	cuerpo.add_child(peaton)
 	add_child(cuerpo)
 
 	brazo.position.y = ALTO - 0.15
@@ -63,6 +47,9 @@ func _ready() -> void:
 
 	floor_snap_length = PELDANO + 0.05
 	floor_max_angle = deg_to_rad(50)
+	var args := OS.get_cmdline_user_args()
+	if "--pose" in args:
+		pose = float(args[args.find("--pose") + 1])
 	if mouse:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -122,7 +109,11 @@ func subir_cordon(paso: Vector3) -> void:
 	global_position += sube + paso
 
 
-func _process(_dt: float) -> void:
+func _process(dt: float) -> void:
+	var v := Vector2(velocity.x, velocity.z).length()
+	if pose >= 0.0:  # --pose R: anima como a R m/s sin moverse (capturas del peatón)
+		v = pose
+	peaton.animar(dt, v, is_on_floor())
 	largo_actual()
 	brazo.rotation = Vector3(pitch, yaw, 0)
 
