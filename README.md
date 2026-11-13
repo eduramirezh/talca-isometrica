@@ -114,7 +114,8 @@ tools/ml_buildings.py    huellas de edificios de Overture (Microsoft, Google) y 
 tools/export.py          la maqueta generada a glTF (Blender, Godot; --teselas: un archivo por km²) y a STL cerrado para impresión 3D (tools/export.js corre en la página)
 tools/blender_ver.py     abre en Blender un glb o STL exportado, con sus colores y encuadrado (-b --png: una vista sin ventana)
 tools/godot/             proyecto de Godot que carga un glb exportado (ver.gd: cámara ortográfica, colores por vértice; --png)
-juego/                   un juego de Godot para pasear por la Plaza de Armas en tercera persona (make juego exporta juego/plaza.glb; Godot --path juego)
+juego/                   un juego de Godot para pasear por la Plaza de Armas en tercera persona (make juego exporta juego/plaza.glb; Godot --path juego); juego/modelos/: la catedral, las fachadas y las calles de alrededor, de cerca
+tools/juego_osm.py       las plantas y los nodos de la calle de OSM alrededor de la plaza para juego/modelos/ (entorno/osm.json)
 tools/check.py           revisión rápida del repo (make check); .githooks/pre-commit la corre antes de cada commit (make hooks)
 docs/                    metodología, fuentes, investigación de proyectos similares
 ```
