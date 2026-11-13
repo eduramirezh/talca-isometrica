@@ -1,9 +1,10 @@
 # Talca Isométrica — tareas del pipeline. Ver README.md.
 PY ?= python3
 PW ?= uv run --with "playwright==1.63" python   # Python con Playwright, para las capturas (el del sistema no lo tiene)
+GODOT ?= /Applications/Godot.app/Contents/MacOS/Godot
 PORT ?= 8765
 DRY_RUN ?= 0
-.PHONY: all fetch osm data elevation ruta5 edificios edificios-ml golf pois build check smoke hooks validate diagnostics shots site-assets deploy serve clean
+.PHONY: all fetch osm data elevation ruta5 edificios edificios-ml golf pois build check smoke hooks validate diagnostics shots site-assets juego deploy serve clean
 
 all: data elevation edificios golf pois build         ## pipeline completo (requiere raw/: make fetch)
 
@@ -45,6 +46,10 @@ smoke: build                  ## carga la página en Chromium y falla si hay err
 
 hooks:                        ## instala .githooks/ (pre-commit = make check; pre-push = make deploy al empujar main a origin, sin bloquear)
 	git config core.hooksPath .githooks
+
+juego: build                  ## juego/plaza.glb (400 m alrededor de la plaza, tools/export.py) y su importación en Godot; luego: Godot --path juego
+	$(PW) tools/export.py --glb juego/plaza.glb --lado 400
+	$(GODOT) --headless --path juego --import
 
 deploy:                       ## make build y sube dist/ a Cloudflare Pages (talca.eduramirez.com); DRY_RUN=1 arma sin subir
 	DRY_RUN=$(DRY_RUN) ./scripts/deploy-cloudflare.sh

@@ -1,0 +1,15 @@
+; Un paseo por la Plaza de Armas (ver main.gd). La maqueta, juego/plaza.glb, sale de `make juego`.
+config_version=5
+
+[application]
+config/name="Talca: paseo por la Plaza de Armas"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.7")
+
+[display]
+window/size/viewport_width=1600
+window/size/viewport_height=1000
+
+[rendering]
+renderer/rendering_method="forward_plus"
+anti_aliasing/quality/msaa_3d=2
