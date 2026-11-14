@@ -1,0 +1,153 @@
+<!doctype html>
+<!-- La página del teléfono para juego/vp.gd: una sesión WebXR de realidad aumentada (ARCore) que no dibuja nada y
+     manda la pose de la cámara por WebSocket a Godot en cada cuadro. La sirve vp.gd en el puerto 8770. -->
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Talca · cámara</title>
+<style>
+  :root { --bg: #14171a; --fg: #f2f0ea; --dim: #a7a49b; --acc: #e8b04a; --ok: #6fcf86; --mal: #e57373; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.4 system-ui, sans-serif; }
+  #ui { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 16px; gap: 10px; pointer-events: none; }
+  #ui > * { pointer-events: auto; }
+  .caja { background: rgba(20, 23, 26, .78); border-radius: 12px; padding: 10px 14px; }
+  #estado { font: 14px/1.35 ui-monospace, monospace; white-space: pre-line; }
+  .botones { display: flex; gap: 10px; flex-wrap: wrap; }
+  button { font: 600 17px system-ui, sans-serif; padding: 14px 18px; border: 0; border-radius: 10px; background: var(--acc); color: #1b1b1b; }
+  button.sec { background: #3a3f45; color: var(--fg); }
+  .ok { color: var(--ok); } .mal { color: var(--mal); }
+  #cuenta { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; font: 700 30vw system-ui; color: var(--acc); text-shadow: 0 0 20px #000; pointer-events: none; }
+  body.oculto #ui .caja, body.oculto #ui .botones button:not(#mostrar) { display: none; }
+  #mostrar { display: none; opacity: .35; }
+  body.oculto #mostrar { display: block; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <div class="caja" id="intro">
+    <b>Cámara para la tele de fondo</b><br>
+    Toque «Empezar» y mueva el teléfono hasta que ARCore lo ubique. Luego párelo sobre el borde de arriba de la tele,
+    al centro, con la cámara mirando a la pieza, y toque «Calibrar»: tiene 3 segundos para dejarlo quieto ahí.
+    Para grabar, use la grabación de pantalla del teléfono y toque «Ocultar».
+  </div>
+  <div class="caja" id="estado">Conectando…</div>
+  <div class="botones">
+    <button id="empezar">Empezar</button>
+    <button id="calibrar" class="sec" disabled>Calibrar</button>
+    <button id="ocultar" class="sec" disabled>Ocultar</button>
+    <button id="mostrar" class="sec">Mostrar</button>
+  </div>
+  <div id="cuenta"></div>
+</div>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const host = location.hostname || "localhost";
+let ws = null, wsOk = false, godot = null, aviso = "", sesion = null, ref = null, gl = null;
+let ultima = null, juntando = null, perdida = 0;
+
+function conectar() {
+  ws = new WebSocket(`ws://${host}:8771`);
+  ws.onopen = () => { wsOk = true; pintar(); };
+  ws.onclose = () => { wsOk = false; pintar(); setTimeout(conectar, 1000); };
+  ws.onerror = () => {};
+  ws.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.aviso) { aviso = m.aviso; setTimeout(() => { aviso = ""; pintar(); }, 4000); }
+    if (m.ojo) godot = m;
+    pintar();
+  };
+}
+
+const f2 = (v) => v.toFixed(2).replace(".", ",");
+function pintar() {
+  const l = [];
+  l.push(wsOk ? '<span class="ok">Godot conectado</span>' : '<span class="mal">Sin conexión con Godot</span> (¿adb reverse tcp:8771?)');
+  if (!navigator.xr) l.push('<span class="mal">Este navegador no tiene WebXR</span> (Chrome en Android, con https o localhost)');
+  if (sesion) l.push(ultima ? "ARCore ubicado" : '<span class="mal">ARCore buscando… mueva el teléfono</span>');
+  if (godot) {
+    if (!godot.cal) l.push('<span class="mal">Sin calibrar</span>');
+    const o = godot.ojo;
+    l.push(`a ${f2(o[2])} m de la tele, ${f2(o[0])} m a la derecha, ${f2(o[1])} m arriba del centro`);
+  }
+  if (aviso) l.push(`<b>${aviso}</b>`);
+  $("estado").innerHTML = l.join("\n");
+}
+
+async function empezar() {
+  if (sesion) { sesion.end(); return; }
+  if (!navigator.xr || !(await navigator.xr.isSessionSupported("immersive-ar"))) {
+    aviso = "WebXR AR no está disponible: ¿Chrome con Servicios de Google Play para RA, en localhost o https?";
+    pintar(); return;
+  }
+  sesion = await navigator.xr.requestSession("immersive-ar", {
+    requiredFeatures: ["local"], optionalFeatures: ["dom-overlay"], domOverlay: { root: $("ui") },
+  });
+  const canvas = document.createElement("canvas");
+  gl = canvas.getContext("webgl", { xrCompatible: true, alpha: true });
+  sesion.updateRenderState({ baseLayer: new XRWebGLLayer(sesion, gl) });
+  ref = await sesion.requestReferenceSpace("local");
+  sesion.addEventListener("end", () => { sesion = null; ultima = null; $("empezar").textContent = "Empezar"; botones(); pintar(); });
+  $("empezar").textContent = "Terminar";
+  $("intro").style.display = "none";
+  botones();
+  sesion.requestAnimationFrame(cuadro);
+  pintar();
+}
+
+function botones() { $("calibrar").disabled = $("ocultar").disabled = !sesion; }
+
+function cuadro(t, frame) {
+  sesion.requestAnimationFrame(cuadro);
+  const capa = sesion.renderState.baseLayer;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, capa.framebuffer);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  const pose = frame.getViewerPose(ref);
+  if (!pose || pose.emulatedPosition) {
+    if (ultima && ++perdida > 15) { ultima = null; pintar(); }
+    return;
+  }
+  perdida = 0;
+  const tr = pose.views[0] ? pose.views[0].transform : pose.transform;  // la cámara
+  const p = [tr.position.x, tr.position.y, tr.position.z];
+  const q = [tr.orientation.x, tr.orientation.y, tr.orientation.z, tr.orientation.w];
+  if (!ultima) { ultima = true; pintar(); }
+  if (juntando) {
+    juntando.p.push(p); juntando.q = q;
+    if (juntando.p.length >= 30) {
+      const m = [0, 1, 2].map((i) => juntando.p.reduce((s, v) => s + v[i], 0) / juntando.p.length);
+      enviar({ t: "cal", p: m, q: juntando.q });
+      juntando = null;
+      if (navigator.vibrate) navigator.vibrate([80, 60, 80]);
+    }
+  }
+  enviar({ p, q, ms: t });
+}
+
+function enviar(m) { if (wsOk && ws.bufferedAmount < 4096) ws.send(JSON.stringify(m)); }
+
+function calibrar() {
+  let n = 3;
+  const c = $("cuenta");
+  c.style.display = "flex"; c.textContent = n;
+  const iv = setInterval(() => {
+    n -= 1;
+    if (navigator.vibrate) navigator.vibrate(40);
+    if (n > 0) { c.textContent = n; return; }
+    clearInterval(iv);
+    c.style.display = "none";
+    juntando = { p: [], q: null };
+  }, 1000);
+}
+
+$("empezar").onclick = () => empezar().catch((e) => { aviso = "No pude empezar: " + e.message; pintar(); });
+$("calibrar").onclick = calibrar;
+$("ocultar").onclick = () => document.body.classList.add("oculto");
+$("mostrar").onclick = () => document.body.classList.remove("oculto");
+conectar();
+pintar();
+</script>
+</body>
+</html>
