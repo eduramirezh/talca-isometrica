@@ -72,6 +72,7 @@ pipeline/
   geotiff.py             lector de GeoTIFF de elevación (float32, DEFLATE, predictores 1–3) con la biblioteca estándar
   pois.py                catálogo de lugares y recorridos -> data/pois.json + pois.csv
   geocode.py             geocodificador de la numeración de Talca y validador
+  grilla.py              el giro de la grilla de una ciudad (el rumbo dominante de sus calles alrededor de la plaza), para otra comuna
   wikidata.py            cruce de los lugares con Wikidata: distancias, fechas, patrimonio y fotos que faltan, candidatos
   build.py               plantilla + datos -> dist/; --where traduce una línea de dist/ a su archivo de src/
   diagnostics.py         paneles PNG para revisar trazados contra las manzanas
@@ -134,6 +135,7 @@ Los cambios de código o de datos se reciben como pull request en GitHub. Antes 
 - [docs/PROYECTOS-SIMILARES.md](docs/PROYECTOS-SIMILARES.md): Isopolis, Isometric NYC y las ideas que se tomaron de ellos.
 - [docs/PLAN-TREN.md](docs/PLAN-TREN.md): la vía férrea completa y sus puentes (hechos) y el plan del tren en movimiento.
 - [docs/PLAN-SITIO.md](docs/PLAN-SITIO.md): el sitio sin las restricciones del artifact de Claude: datos aparte y three.js propio (hechos); empaquetador, Worker, primera vista generada al armar, three.js nuevo y relieve más fino.
+- [docs/PLAN-COMUNAS.md](docs/PLAN-COMUNAS.md): qué de Talca está fijo en el código y un plan para hacer la maqueta de otra comuna (Curicó como prueba).
 - [CLAUDE.md](CLAUDE.md): guía para seguir trabajando con Claude Code (arquitectura, convenciones, trampas conocidas).
 - [CHANGELOG.md](CHANGELOG.md): cambios.
 

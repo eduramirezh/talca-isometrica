@@ -38,6 +38,8 @@ Talca tiene una de las grillas más regulares de Chile, con calles numeradas des
 - Las calles Norte/Sur dieron un pico en −5° / −6° y las Oriente/Poniente en −4° / −5°.
 - Se adoptó un **giro de +5°**.
 
+`pipeline/grilla.py` repite esta medición sobre un grafo de cicloconecta o un JSON de la API map de OSM (en Talca da +5,0° a 600 m y +4,9° a 1,2 km). Sirve para otra ciudad: el centro de Curicó da −5,9° (docs/PLAN-COMUNAS.md).
+
 La proyección (`common.loc`) es equirectangular local con origen en el centro de la Plaza de Armas (−35,42653; −71,66600). Usa 90.719 m por grado de longitud y 110.950 m por grado de latitud. A escala de una ciudad el error es menor a 0,1 %.
 
 ## 4. Procesamiento de la geometría (`process_geometry.py`)

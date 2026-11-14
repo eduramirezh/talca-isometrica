@@ -71,6 +71,7 @@ python -I pipeline/usos.py escuelas [300]       # colegios de MINEDUC 2025 (con 
 python -I pipeline/cobertura.py [stats]         # CONAF 2024 -> data/cobertura.json (una clase cada 40 m, src/js/26-cobertura.js); stats: hectáreas por clase y cuánto marca ya la pendiente
 python -I pipeline/rutas.py check [m]           # los nombres «Ruta …» del mapa contra los roles de la Red Vial del MOP; config/rutas.json corrige (make data)
 python pipeline/geocode.py address "2 Norte 781"
+python -I pipeline/grilla.py <nav_graph.json|map-*.json> <lat> <lon> [radio ...]   # el giro de la grilla de una ciudad alrededor de su plaza (METODOLOGIA §3; otra comuna: docs/PLAN-COMUNAS.md)
 python pipeline/diagnostics.py centro          # panel PNG en diagnostics/
 uv run --with pillow python pipeline/landmark.py osm estadio [250]   # planta OSM + plano en diagnostics/
 python pipeline/landmark.py frame estadio 815575960 [más vías]       # vías en el marco local del modelo
