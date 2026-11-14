@@ -16,6 +16,7 @@
 # usa los colores por vértice del glb (ver tools/godot/ver.gd): se encienden aquí.
 #
 # Lo que se ve y lo que reemplaza al glb va en archivos propios, para que este no crezca:
+#   vp.gd            --vp: producción virtual con una tele de fondo, la cámara movida por un teléfono (ver vp.gd)
 #   ambiente.gd      cielo, luz, sombras, niebla y posproceso (un Node3D que se agrega a la escena)
 #   jugador.gd       el personaje y su cámara
 #   modelos/*.gd     modelos propios del juego, más detallados que los de la página. Cada uno es un Node3D que construye
@@ -70,6 +71,10 @@ func _ready() -> void:
 		add_child(m)
 
 	var args := OS.get_cmdline_user_args()
+	if "--vp" in args:  # la tele de fondo: la cámara la mueve un teléfono (vp.gd), sin personaje
+		add_child(preload("res://vp.gd").new())
+		await png(args)
+		return
 	jugador = preload("res://jugador.gd").new()
 	jugador.mouse = not ("--png" in args or "--caminar" in args)
 	add_child(jugador)
@@ -99,13 +104,19 @@ func _ready() -> void:
 		if choque and jugador.is_on_wall():
 			contra = ", contra «%s»" % choque.get_collider().get_parent().name
 		print("main.gd: jugador en x %.1f, y %.1f, altura %.2f%s" % [jugador.global_position.x, -jugador.global_position.z, jugador.global_position.y, contra])
-	if "--png" in args:
-		for i in 10:
-			await RenderingServer.frame_post_draw
-		var out := abs_path(args[args.find("--png") + 1])
-		get_viewport().get_texture().get_image().save_png(out)
-		print("main.gd -> ", out)
-		get_tree().quit()
+	await png(args)
+
+
+# --png x.png: guarda un cuadro y sale
+func png(args: PackedStringArray) -> void:
+	if not "--png" in args:
+		return
+	for i in 10:
+		await RenderingServer.frame_post_draw
+	var out := abs_path(args[args.find("--png") + 1])
+	get_viewport().get_texture().get_image().save_png(out)
+	print("main.gd -> ", out)
+	get_tree().quit()
 
 
 # los modelos de modelos/*.gd, en orden de nombre
