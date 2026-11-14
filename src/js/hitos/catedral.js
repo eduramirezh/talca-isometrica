@@ -6,13 +6,13 @@
   // is the v=-29 line. Heights and colours from dated photos on Wikimedia Commons (2017–2024), measured against the
   // tower's OSM width: white façade 17 m to the shoulders and 20 m to the apex with three arched bays; brick tower
   // with white piers and bands, a setback halfway, balustrade, white belfry and a green spire to ~39 m; brick nave
-  // with clerestory windows between white pilasters, tiled roofs. Approximate: the nave's and aisles' exact widths,
+  // with clerestory windows between white pilasters, tiled roofs (grey-brown tile in the 2024 photo; the colours are the game's, juego/modelos/catedral.gd). Approximate: the nave's and aisles' exact widths,
   // the transept ends, apse and sacristy (no photos of the west side), the roofs' pitch. Night glow in the façade
   // windows is licence. Method: docs/METODOLOGIA.md §9; style: docs/ESTETICA.md.
   {const F=localFrame(-102.9,32.3,179.3*Math.PI/180),{G,Gs,V,N3,R}=F;
-    const K={brick:C('#A04B34'),brick2:C('#8F4330'),white:C('#ECE7DC'),whiteSh:C('#D3CDC0'),plinth:C('#C9C3B6'),
-      tile:C('#A35C42'),tile2:C('#8E4F3A'),flat:C('#8F8A82'),glass:C('#3B4653'),glass2:C('#2C3540'),door:C('#5A4636'),
-      bell:C('#2E2C2B'),spire:C('#3F5C4E'),iron:C('#3A3A3A'),step:C('#D9D3C5'),step2:C('#C6BFAF')};
+    const K={brick:C('#A65640'),brick2:C('#97503B'),white:C('#ECE7DC'),whiteSh:C('#D3CDC0'),plinth:C('#C9C3B6'),
+      tile:C('#7D5A4A'),tile2:C('#6E4F41'),flat:C('#8F8A82'),glass:C('#3B4653'),glass2:C('#2C3540'),door:C('#5A4636'),
+      bell:C('#2E2C2B'),spire:C('#50695A'),iron:C('#3A3A3A'),step:C('#D9D3C5'),step2:C('#C6BFAF')};
     const {box,WL,WV,WU,rect,arch,glass,roof}=facade(S,F,K);
     // footprint (OSM church + tower + steps); it levels the ground and keeps the city off it. The pad takes the plaza's
     // level: pads within ~80 m share terrain nodes and the last one registered wins, which tilted the plaza's west side

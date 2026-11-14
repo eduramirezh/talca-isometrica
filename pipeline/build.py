@@ -158,6 +158,10 @@ def asset(name, data):
     f = DIST / 'assets' / f'{stem}.{hashlib.sha256(data).hexdigest()[:10]}.{ext}'
     f.write_bytes(data); return f.relative_to(DIST).as_posix()
 
+# what the page takes of config/fachadas.json (src/js/52-edificios.js)
+FACHADA = ('alto', 'pisos', 'color', 'zocalo', 'zocalo_alto', 'techo', 'pb', 'estilo')
+
+
 def main():
     if '--where' in sys.argv: return cmd_where(sys.argv[sys.argv.index('--where') + 1])
     geo = json.load(open(require(DATA / 'geometry.json', 'Ejecute: make data')))
@@ -169,6 +173,9 @@ def main():
              'ed': ('edificios.json', json.load(open(require(DATA / 'edificios.json', 'Ejecute: make edificios')))),   # los edificios de OSM (ED)
              'golf': ('golf.json', json.load(open(require(DATA / 'golf.json', 'Ejecute: make golf')))),   # el pasto y las copas del Talca Country Club (pipeline/golf.py)
              'pois': ('pois.json', json.load(open(require(DATA / 'pois.json', 'Ejecute: make pois'))))}
+    # lo medido en fotos de los edificios de la plaza (config/fachadas.json, el mismo archivo del juego): DATA.ed.f
+    fach = {k: {c: v[c] for c in FACHADA if c in v} for k, v in json.load(open(CONFIG / 'fachadas.json')).items() if k.startswith('w')}
+    files['ed'][1]['f'] = {k: v for k, v in fach.items() if v}
     if (DATA / 'cobertura.json').exists():   # la cobertura vegetal de CONAF (pipeline/cobertura.py; sin ella, solo la pendiente)
         files['cob'] = ('cobertura.json', json.load(open(DATA / 'cobertura.json')))
     require(THREE, 'Ejecute: npm install')

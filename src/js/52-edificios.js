@@ -37,7 +37,9 @@ const ED_T0=performance.now(),ED=(()=>{const D=DATA.ed;if(!D)return {list:[],sur
   // cells with their box: no block, no ground of their own
   for(const bb of D.z||[])bks.push({bi:-1,mix:false,loose:true,k:bks.length,eds:[],surf:[],obs:[],paved:[],bb});
   const seed=id=>{let h=2166136261;for(let i=0;i<id.length;i++)h=Math.imul(h^id.charCodeAt(i),16777619);return h>>>0;};
-  const list=D.e.map(([id,rings,h,t,lv,roof,est,k])=>{const R=rings.map(dm),e={id,R,h:h/10,t:D.tipos[t],lv,roof:roof<0?null:D.techos[roof],est:est===1,f:'osm',bb:box(R[0]),bk:bks[k],seed:seed(id)};
+  // what was measured in photos of the plaza's buildings (config/fachadas.json, shared with the game: DATA.ed.f)
+  const FA=D.f||{};
+  const list=D.e.map(([id,rings,h,t,lv,roof,est,k])=>{const R=rings.map(dm),e={id,R,h:h/10,t:D.tipos[t],lv,roof:roof<0?null:D.techos[roof],est:est===1,f:'osm',bb:box(R[0]),bk:bks[k],seed:seed(id),fa:FA[id]||null};
     bks[k].eds.push(e);return e;});
   // the machine-learning footprints (pipeline/edificios.py h_encode): k runs of footprints of a block, after its OSM
   // buildings; c their data (height, kind, floors, estimated, source), i the row of c of each; n, o, l their outlines,
@@ -175,23 +177,28 @@ function edificiosBase(B,Z,Y,bks){const t0=performance.now();
   B.dy=Z.dy=Y.dy=0;EDS.ms+=performance.now()-t0;window.__ed=EDS;}
 function edificio(B,Z,e){const r=rng(e.seed),R=e.R[0],holes=e.R.slice(1),t=e.t;
   let lv=e.lv,h=e.h;if(e.est&&(t==='casa'||t==='otro'||t==='comercio')){lv=r()<.7?1:2;h=lv*3+.5;} // no height in OSM: one or two storeys, as the centre's
+  // measured in photos (config/fachadas.json): the height to the top of the parapet, or to the eaves under a tiled
+  // hip; the floors, the wall's colour, a plinth, a tiled roof, ground floors without shops. The random draws stay
+  // the same (each building has its own rng): only this building changes
+  const fa=e.fa,teja=!!fa&&fa.techo==='teja';if(fa){if(fa.pisos)lv=fa.pisos;if(fa.alto)h=teja?fa.alto:fa.alto-.6;}
   const G=t==='galpon'||t==='techo'||t==='ruina'?Z:B;B.dy=Z.dy=groundMin(R);
   // a house of a mixed block takes its barrio's walls and roofs (cityGen's recipe: a villa's one roof colour, a
   // población's mix), one of a whole block the centre's
   const H=t==='casa'&&e.bk.mix&&e.bk.bi>=0?recipeOf(e.bk.bi).h:null;
-  const wall=pick(r,H?H.wl:ED_K.wall[t]||PAL.wallsCore);
+  let wall=pick(r,H?H.wl:ED_K.wall[t]||PAL.wallsCore);if(fa&&fa.color)wall=hex('#'+fa.color);
   // the roof's colour: the satellite's family, else the barrio's or the centre's mix for a house, light or grey for
   // the rest (a tower's roof is displaced in the image, which is not orthorectified: its sample is facade or street,
   // and the warm families there are wrong; towers keep the light and grey ones)
   const sat=e.roof&&!(lv>=4&&/tile|rust|red/.test(e.roof))?e.roof:null;
-  const rf=sat||(H?(H.mix?fam(r,H.mix):H.rf):t==='casa'?fam(r,MIX.core):t==='galpon'?pick(r,['zinc','zincOld','light']):r()<.5?'light':null);
+  let rf=sat||(H?(H.mix?fam(r,H.mix):H.rf):t==='casa'?fam(r,MIX.core):t==='galpon'?pick(r,['zinc','zincOld','light']):r()<.5?'light':null);
+  if(teja)rf='tile';
   const roof=rf?CP.roof[rf][r()<.5?0:1]:pick(r,PAL.flat);
   if(t==='techo'){ // a canopy on posts (a petrol station, a car park)
     ringWalls(Z,R,Math.max(.4,h-.5),h,shade(roof,.85));Z.flatH([R],h,roof);const step=Math.max(1,Math.floor(R.length/6));
     for(let i=0;i<R.length;i+=step){const q=insetRing(R,.8);const p=q?q[i]:R[i];Z.prism([[p[0]-.25,p[1]-.25],[p[0]+.25,p[1]-.25],[p[0]+.25,p[1]+.25],[p[0]-.25,p[1]+.25]],.3,h-.5,ED_K.post,ED_K.post);}
     return;}
   if(t==='ruina'){for(const ring of e.R)ringWalls(Z,ring,.3,2.4,wall);return;}
-  const pitched=!holes.length&&lv<=2&&t!=='departamentos'&&rf&&rf!=='light'&&(t==='casa'||t==='iglesia'||t==='galpon'||r()<.45);
+  const pitched=!holes.length&&teja||!holes.length&&lv<=2&&t!=='departamentos'&&rf&&rf!=='light'&&(t==='casa'||t==='iglesia'||t==='galpon'||r()<.45);
   let cap=null,d=0;if(pitched)for(d=Math.min(4,Math.sqrt(Math.abs(ringArea(R)))*.3);d>=.9;d*=.7){cap=insetRing(R,d);if(cap)break;}
   if(cap){ // a truncated hip: each slope from the eaves up to the inset outline, the cap closing it
     EDS.hip++;const rh=d*(t==='galpon'?.3:.5),hl=Math.hypot(d,rh),s=rh/hl,c=d/hl;ringWalls(G,R,.3,h,wall);
@@ -207,9 +214,14 @@ function edificio(B,Z,e){const r=rng(e.seed),R=e.R[0],holes=e.R.slice(1),t=e.t;
       let cx=0,cy=0;for(const p of I){cx+=p[0];cy+=p[1];}cx/=I.length;cy/=I.length;const w=1.6+r()*.6,dd=2+r()*.8,q=[[cx-w,cy-dd],[cx+w,cy-dd],[cx+w,cy+dd],[cx-w,cy+dd]];
       if(q.every(p=>pip(p,I))){Z.prism(q,h,h+2.8,shade(wall,.92),pick(r,PAL.flat));
         const tq=ngon(cx+w+1.6,cy,1.1,8);if(r()<.6&&tq.every(p=>pip(p,I))){Z.prism(tq,h,h+1.8,CP.tank[0],CP.tank[1]);}}}}
+  // a plinth of its own colour, 6 cm out of the wall (0.8 m: lower, it is less than two art pixels)
+  if(fa&&fa.zocalo){const zh=fa.zocalo_alto>0?Math.max(.8,fa.zocalo_alto):.8,zc=hex('#'+fa.zocalo);
+    for(let i=0;i<R.length;i++){const a=R[i],b=R[(i+1)%R.length],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<0.5)continue;const nx=(b[1]-a[1])/L*.06,ny=-(b[0]-a[0])/L*.06;
+      Z.face([[a[0]+nx,-3.7,-a[1]-ny],[b[0]+nx,-3.7,-b[1]-ny],[b[0]+nx,zh,-b[1]-ny],[a[0]+nx,zh,-a[1]-ny]],[nx/.06,0,-ny/.06],zc);}}
   // shopfronts on the street fronts: most of the centre's ground floors are shops
   // (fewer on the machine-learning footprints: they are the suburbs and the countryside, where OSM would tag a shop)
-  const ps=(e.f==='osm'?{comercio:.9,otro:.6,casa:.35,departamentos:.6}:{otro:.25,casa:.05,departamentos:.3})[t]||0;if(!ps)return;
+  // (none where the photos show windows on the ground floor; on every street front of a row of shops)
+  const ps=fa&&fa.pb==='ventanas'?0:fa&&fa.estilo==='comercial'?1:(e.f==='osm'?{comercio:.9,otro:.6,casa:.35,departamentos:.6}:{otro:.25,casa:.05,departamentos:.3})[t]||0;if(!ps)return;
   for(let i=0;i<R.length;i++){const a=R[i],b=R[(i+1)%R.length],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<4.5)continue;
     const tx=(b[0]-a[0])/L,ty=(b[1]-a[1])/L,nx=ty,ny=-tx,mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
     if(!nearStreet(mx+nx*4.5,my+ny*4.5,0)||r()>ps)continue;

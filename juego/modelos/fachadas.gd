@@ -37,36 +37,29 @@ const Suelo := preload("res://modelos/entorno/suelo.gd")
 const NO := [114237041, 798980080, 223617018, 191869528]  # la catedral y su torre (catedral.gd), el quiosco, la Tesorería (dentro de los Servicios Públicos)
 const PALETA := ["e9dfc6", "efe8d8", "dcc093", "d2b48a", "e5d2ab", "c3c3bb", "dfc6b2", "c9d1cd", "e8d9a6", "d7c9b5"]
 
-# lo propio de cada edificio, por id de OSM (lo que falta sale de sus etiquetas y de valores por omisión)
-const ESPECIAL := {
-	939131659: {"estilo": "colonial", "alto": 7.6, "pisos": 2, "color": "ebe7dd", "zocalo": "6e4538", "techo": "teja"},
-	813755289: {"estilo": "clasico", "alto": 12.5, "pisos": 3, "color": "dccfb3", "pb": "ventanas"},
-	843566423: {"estilo": "comercial", "alto": 7.4, "color": "e3d4b6", "toldo": "2f5e3e"},
-	843566419: {"estilo": "comercial", "alto": 7.4, "color": "d6c3a8", "toldo": "8a2c26"},
-	275506471: {"estilo": "vidrio", "alto": 32.0, "pisos": 10, "corte_y": 82.0, "alto_basamento": 11.5},
-	944738558: {"estilo": "comercial", "alto": 7.0, "color": "e6dcc8"},
-	310597000: {"estilo": "clasico", "alto": 8.0, "pisos": 2, "color": "d9c9a6", "pb": "ventanas"},
-	310596999: {"estilo": "clasico", "alto": 8.4, "pisos": 2, "color": "e8e0cc", "pb": "ventanas"},
-	941592849: {"estilo": "clasico", "alto": 10.0, "pisos": 3, "color": "cdbfa8"},
-	310186641: {"estilo": "municipal"},
-	275506476: {"estilo": "intendencia", "alto": 12.0, "pisos": 3, "color": "e7dcc0", "pb": "ventanas", "marco": "3f6b4a"},
-	214849867: {"estilo": "deco", "alto": 15.5, "pisos": 4, "color": "c9c3b6", "pb": "ventanas", "marco": "6b4a32"},
-	275506477: {"estilo": "torre", "alto": 21.0, "pisos": 7, "color": "dfd6c4"},
-	941674694: {"estilo": "clasico", "alto": 13.0, "pisos": 3, "color": "efede6", "pb": "ventanas", "marco": "f4f3ef",
-		"friso": "Banco de Crédito e Inversiones", "fronton": true, "zocalo": "d8d6cf", "zocalo_alto": 1.2},
-	941980882: {"estilo": "clasico", "alto": 12.4, "pisos": 4, "color": "e2d5bb"},
-	813330085: {"estilo": "clasico", "alto": 13.0, "pisos": 2, "color": "d3c4a6", "pb": "ventanas", "marco": "3a3a36",
-		"zocalo": "4d5650", "zocalo_alto": 2.6, "bahia": 4.2, "pilastras": true},
-	565220652: {"estilo": "torre", "alto": 35.0, "pisos": 12, "color": "d9a679"},
-	392084816: {"estilo": "torre", "alto": 38.0, "pisos": 13, "color": "e6e1d6"},
-	392084817: {"estilo": "torre", "alto": 38.0, "pisos": 13, "color": "e6e1d6"},
-	842604131: {"estilo": "comercial", "letreros": [["ORIENCOOP", "f4f4f0", "0f5d3a"]]},
-	842629847: {"estilo": "comercial", "letreros": [["ORIENCOOP", "f4f4f0", "0f5d3a"]]},
-	842637397: {"estilo": "comercial", "letreros": [["CHILEXPRESS", "f3c623", "1b2a6b"]]},
-	842637398: {"estilo": "comercial", "alto": 9.0, "letreros": [["AFP HABITAT", "ffffff", "b0282a"]]},
-	818950429: {"estilo": "comercial", "letreros": [["BANCO SANTANDER", "d8241c", "ffffff"]]},
-	842604130: {"estilo": "comercial", "alto": 9.0, "letreros": [["CINE PLAZA", "1d1d1d", "f2c94c"]]},
-}
+# lo propio de cada edificio, por id de OSM (lo que falta sale de sus etiquetas y de valores por omisión): en
+# config/fachadas.json, que lee también la página (src/js/52-edificios.js)
+var ESPECIAL := especiales()
+
+
+static func especiales() -> Dictionary:
+	var ruta := ProjectSettings.globalize_path("res://").path_join("../config/fachadas.json").simplify_path()
+	var f := FileAccess.open(ruta, FileAccess.READ)
+	if f == null:
+		push_warning("fachadas.gd: no se pudo leer " + ruta)
+		return {}
+	var d: Variant = JSON.parse_string(f.get_as_text())
+	var out := {}
+	if not d is Dictionary:
+		return out
+	for k in d:
+		if not String(k).begins_with("w"):
+			continue
+		var e: Dictionary = d[k]
+		if e.has("pisos"):
+			e["pisos"] = int(e["pisos"])  # JSON da números de punto flotante
+		out[int(String(k).substr(1))] = e
+	return out
 
 var m := Malla.new()
 var mc := Malla.new()  # la colisión: el prisma de cada planta, sin los detalles
