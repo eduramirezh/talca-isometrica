@@ -11,7 +11,7 @@ PORT ?= 8765
 DRY_RUN ?= 0
 CINE ?= 1920x1080             # la resolución de make cine (1280x720 para una prueba rápida)
 CINE_CRF ?= 20                # la calidad del H.264 de make cine (18: ~100 MB los 30 s; 23: ~45 MB)
-.PHONY: all fetch osm data elevation ruta5 edificios edificios-ml golf pois build check golden lint smoke hooks validate diagnostics shots site-assets juego cine deploy serve clean
+.PHONY: all fetch osm data elevation ruta5 sentidos edificios edificios-ml golf pois build check golden lint smoke hooks validate diagnostics shots site-assets juego cine deploy serve clean
 
 all: data elevation edificios golf pois build         ## pipeline completo (requiere raw/: make fetch)
 
@@ -29,6 +29,9 @@ elevation:                    ## raw/dem/copernicus/ (Copernicus GLO-30; pipelin
 
 ruta5:                        ## raw/osm/map-comuna.json -> data/ruta5.json (calzadas y ramales de la Ruta 5; requiere traces.py tiles-comuna)
 	cd pipeline && $(PY) traces.py calzadas comuna
+
+sentidos:                     ## raw/osm/map-comuna.json -> data/sentidos.json (las calles de un sentido de OSM, para las flechas de los letreros del juego; requiere make osm)
+	cd pipeline && $(PY) sentidos.py
 
 edificios:                    ## raw/osm/map-comuna.json + config/edificios.json (+ config/techos.json) -> data/edificios.json (los edificios de OSM y, donde OSM no los tiene, las huellas de raw/edificios-ml/)
 	cd pipeline && $(PY) edificios.py
@@ -62,9 +65,9 @@ smoke: build lint             ## carga la página en Chromium y falla si hay err
 hooks:                        ## instala .githooks/ (pre-commit = make check; pre-push = make deploy al empujar main a origin, sin bloquear)
 	git config core.hooksPath .githooks
 
-juego: build                  ## juego/mapa/: la comuna en teselas de 500 m, sus árboles, autos y faroles como datos, sus edificios solos (de 1,8 a 3 km) y lo de lejos (tools/export.py --teselas; ~3 min, ~540 MB) y la importación en Godot; luego: Godot --path juego
+juego: build                  ## juego/mapa/: la comuna en teselas de 500 m, sus árboles, autos, faroles y letreros de las calles (con data/sentidos.json) como datos, sus edificios solos (de 1,8 a 3 km) y lo de lejos (tools/export.py --teselas; ~3 min, ~540 MB) y la importación en Godot; luego: Godot --path juego
 	rm -f juego/plaza.glb juego/plaza.glb.import juego/plaza.json   # el glb de 400 m de antes de noviembre de 2026
-	$(PW) tools/export.py --teselas juego/mapa --comuna --tam 500 --instancias arboles,alamos,autos,autos-ruta5 --faroles --lejos --medio --liviano
+	$(PW) tools/export.py --teselas juego/mapa --comuna --tam 500 --instancias arboles,alamos,autos,autos-ruta5 --faroles --letreros --lejos --medio --liviano
 	touch juego/mapa/.gdignore    # Godot no importa los glb: mapa.gd los lee al jugar
 	mkdir -p juego/datos && cp config/fachadas.json data/plaza-osm.json data/ruta5.json juego/datos/   # lo que el juego comparte con la página
 	$(GODOT) --headless --path juego --import

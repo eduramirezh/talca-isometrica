@@ -100,6 +100,7 @@ pipeline/
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
                          la API map de OSM por cajas (tiles, tiles-comuna);
                          cruces, calzadas y ramales de la Ruta 5 -> data/ruta5.json
+  sentidos.py            el sentido del tránsito de las calles de un sentido de OSM -> data/sentidos.json (las flechas de los letreros del juego)
   railway.py             la vía férrea y el ramal desde OSM: cruces bajo la vía o a nivel, catenaria y señales -> config/trazados.json
 src/                     toda la aplicación (CSS, UI y motor three.js r128), en fuentes que build.py une en la página y su script:
   page.html              la página entera: <head>, cargador de los datos (/*DATA*/), DOM, póster y <!--SCRIPTS-->; el marcador /*STYLE*/
@@ -134,6 +135,7 @@ tools/godot/             proyecto de Godot que carga un glb exportado (ver.gd: c
 juego/                   un juego de Godot para pasear por la comuna en tercera persona (make juego exporta juego/mapa/, la comuna en teselas de 500 m; Godot --path juego); juego/modelos/: la plaza, la catedral, las fachadas y las calles de alrededor, de cerca
 juego/mapa.gd, arboleda.gd   las teselas alrededor de la cámara (en hilos, con los edificios solos hasta 3 km, lo de lejos y la colisión cercana; cuantizado.gd: el formato liviano) y los árboles de la página como los de la plaza; viaje.gd: Tab, ir a un lugar; recorte.gd: los recortes de los modelos sobre cada tesela
 juego/autos.gd, faroles.gd   los autos de la página como los de calles.gd (modelos/entorno/auto.gd) de cerca, y los faroles de las calles de noche: postes, brillo y las luces más cercanas
+juego/letreros.gd        los letreros con el nombre de las calles en los cruces de la comuna (tools/export.py --letreros): poste, placas con la numeración de la cuadra y la flecha del sentido; el texto, en los más cercanos
 juego/vehiculo.gd        la bicicleta y el auto (E: subir o bajar, V: cambiar), con su cámara; pasos.gd: los pasos bajo la Ruta 5 en la colisión
 juego/cine.gd            --cine: un plano de cine de 30 s en la plaza, de la tarde a la noche (make cine: Movie Maker de Godot y ffmpeg -> shots/cine/plaza.mp4)
 juego/vp.gd, juego/vp/   --vp: la plaza en una tele de fondo, proyectada desde la posición de un teléfono Android que filma (WebXR, ARCore; producción virtual como un set de LED)
@@ -168,7 +170,7 @@ Los cambios de código o de datos se reciben como pull request en GitHub. Antes 
 ## Licencia
 
 - **Código y modelos de los hitos** (`pipeline/`, `tools/`, `src/`, incluidos los hitos hechos a mano de `src/js/hitos/`): licencia MIT, en [LICENSE](LICENSE).
-- **Datos derivados de OpenStreetMap** (`data/geometry.json`, `data/ruta5.json`, `data/edificios.json` y las partes de OSM de `config/trazados.json`, `config/usos.json` y las coordenadas de los lugares): ODbL 1.0, © colaboradores de OpenStreetMap, en [LICENSE-DATA](LICENSE-DATA). Toda publicación debe mantener la atribución (está en la pestaña «Acerca»).
+- **Datos derivados de OpenStreetMap** (`data/geometry.json`, `data/ruta5.json`, `data/sentidos.json`, `data/edificios.json` y las partes de OSM de `config/trazados.json`, `config/usos.json` y las coordenadas de los lugares): ODbL 1.0, © colaboradores de OpenStreetMap, en [LICENSE-DATA](LICENSE-DATA). Toda publicación debe mantener la atribución (está en la pestaña «Acerca»).
 - **Textos de las fichas y de `docs/`:** obra propia de Edu Ramírez; se pueden citar con atribución (ver [LICENSE-DATA](LICENSE-DATA)).
 - **Huellas de edificios de aprendizaje automático** (en `data/edificios.json`): Microsoft y Google vía Overture Maps Foundation, ODbL 1.0; alturas de Google Open Buildings 2.5D Temporal (elegida bajo ODbL; contiene datos modificados de Copernicus Sentinel-2). Ver [LICENSE-DATA](LICENSE-DATA).
 - **Manzanas:** Censo de Población y Vivienda 2017, Instituto Nacional de Estadísticas de Chile; las construidas desde 2017 (`config/usos-censo2024.json`), del Censo 2024 del INE, bajo CC BY-SA 4.0.

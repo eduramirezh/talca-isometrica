@@ -223,7 +223,8 @@ function hooksView(trees,cars){Object.assign(window,{
   __train:trainHold,__trains:trainsList,__trainFps:trainFps, // hold a train at s, the trains' state, the frames they ask for (70-trains.js)
   __E:(x,y)=>E(x,y),                     // the ground's height (grid metres), to measure the structures from --js
   __three:{renderer,scene,cam,sun,pan,placeCam,fitShadow,get PA(){return PA;}}, // tools/perf.py: the renderer and what a frame depends on
-  __export:{PD,E,inTerrain,ext:[XMIN,XMAX,YMIN,YMAX],matBld,GLOW,LIM,streetLamps,ALAM_LAMPS,walkY:Y_LAYER.walk, // tools/export.py (with window.__KEEP; GLOW: the landmarks' lights, LIM: the commune's limit, streetLamps and ALAM_LAMPS: the street lamps, for the game)
+  __export:{PD,E,inTerrain,ext:[XMIN,XMAX,YMIN,YMAX],matBld,GLOW,LIM,streetLamps,ALAM_LAMPS,walkY:Y_LAYER.walk,segs,sgrid,streets,swOf,walkOf,urbanAt, // segs…urbanAt: the street grid, for the game's street-name signs (tools/export.js __exSigns)
+    // tools/export.py (with window.__KEEP; GLOW: the landmarks' lights, LIM: the commune's limit, streetLamps and ALAM_LAMPS: the street lamps, for the game)
     onRoad:(x,y)=>(segsAt(x,y)||[]).some(id=>{const s=segs[id],st=streets[s[5]],r=s[4]-walkOf(st);return !st.bridge&&segDist2(x,y,s[0],s[1],s[2],s[3])<r*r;})}, // is (x, y) on a carriageway (where the game puts no lamp post)
   __pads:PADS,                           // the landmark pads [x0,y0,x1,y1,h]: pipeline/traces.py check --pads
   __rail:RAILP,                          // the rail lines as paths for the train (68-rail.js): tools/probe.py

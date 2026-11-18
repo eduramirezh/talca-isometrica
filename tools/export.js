@@ -200,6 +200,133 @@
     return out;
   };
 
+  // __exSigns([x0,y0,x1,y1]): los letreros con el nombre de las calles cuyo poste cae en la caja (juego/letreros.gd).
+  // La página no los dibuja (una placa de 20 cm se pierde en el píxel de arte de 0,5 m). Uno por cruce de dos calles de
+  // nombre distinto (clases 0 a 6: no las de servicio ni las «sin nombre») a más de 30° en el área urbana, en una de sus
+  // cuatro esquinas: a POSTE m de las dos soleras, la primera que no cae en una calzada, en un orden que sale del lugar
+  // del cruce (así no cambia de una exportación a otra). Una calle de dos calzadas da dos cruces: el segundo letrero con
+  // los mismos nombres a menos de SIGN_PAR m no va, ni uno a menos de SIGN_CERCA de otro (tres calles que se juntan).
+  // Cada placa sale del poste por la vereda de su calle (la que nombra), paralela a ella, y lleva:
+  //  - el rótulo (rotulo()): el nombre de OSM sin «Calle» y con «AV.» por «Avenida», en mayúsculas; las tres calles
+  //    numeradas que OSM rotula con el nombre de una persona, con su número (NUMERADAS);
+  //  - la numeración de la cuadra a la que apunta (numeros(): la regla de pipeline/geocode.py, solo entre calles
+  //    numeradas hasta la 10, donde la grilla es regular): «1 ORIENTE / 1199 - 1101» en 1 Sur, como en las fotos;
+  //  - el sentido del tránsito de esa cuadra (sentido(): de data/sentidos.json, que tools/export.py pone en
+  //    window.__exOneway; 0 si la calle es de doble sentido, no se sabe o sus dos calzadas van en sentidos opuestos).
+  // letreros: once números por letrero: x, y del pie del poste, su altura (la vereda) y, de cada placa, la dirección de
+  // su calle desde el cruce hacia la esquina (ax, ay), el índice de su rótulo en «nombres» y el sentido (1: hacia donde
+  // apunta la placa, -1: hacia el cruce, 0: los dos). nombres: los rótulos de la tesela, «NOMBRE» o, con numeración,
+  // «NOMBRE|cerca|lejos» (el número junto al poste y el del otro extremo de la cuadra).
+  const SIGN_PAR = 40, SIGN_CERCA = 12, SIGN_SIN = 0.5, SENTIDO_A = 12, SENTIDO_R = 7;
+  // las calles numeradas con nombre de persona en OSM (Diario Talca, «Calles de Talca: las coordenadas de Daniel Barros
+  // Grez»: «4 Norte: Bernardo O'Higgins; 11 Oriente: Salvador Allende; 1 Poniente: Cardenal Silva Henríquez»)
+  const NUMERADAS = { 'Cardenal Raúl Silva Henríquez': '1 Poniente', "Avenida Alameda Bernardo O'Higgins": '4 Norte', 'Avenida Salvador Allende': '11 Oriente' };
+  const nombreOSM = n => NUMERADAS[n] || n;
+  const rotulo = n => {
+    if (!n || /sin nombre/i.test(n)) return '';
+    return nombreOSM(n).replace(/^Calle\s+/i, '').replace(/^Avenida\s+/i, 'Av. ').replace(/\s+/g, ' ').trim().toUpperCase();
+  };
+  // la numeración de pipeline/geocode.py: el número de la línea de una calle numerada y hacia dónde crecen los de las
+  // que la cruzan (las Norte y Sur cortan a las Oriente y Poniente, cuyos números crecen hacia el norte, y al revés)
+  const NUM = /^(?:Avenida |Calle )?(\d+) (Norte|Sur|Oriente|Poniente)$/i;
+  const linea = n => {
+    const m = NUM.exec(nombreOSM(n || '')); if (!m || +m[1] > 10) return null;
+    const k = +m[1], d = m[2].toLowerCase();
+    return d === 'sur' ? [1200 - 100 * k, 'ns'] : d === 'norte' ? [1100 + 100 * k, 'ns'] : d === 'poniente' ? [800 - 100 * k, 'eo'] : [700 + 100 * k, 'eo'];
+  };
+  // la placa de la calle a (que va en la dirección dx, dy desde el cruce) en su cruce con b: [cerca, lejos] o null
+  const numeros = (a, b, dx, dy) => {
+    const A = linea(a), B = linea(b);
+    if (!A || !B || A[1] === B[1]) return null;
+    const s = (B[1] === 'ns' ? dy : dx) > 0 ? 1 : -1, cerca = B[0] + s, lejos = B[0] + 99 * s;
+    return cerca > 0 && lejos > 0 ? [cerca, lejos] : null;
+  };
+  // the one-way streets (data/sentidos.json, decoded): segments [ax, ay, bx, by] in the direction of traffic, by cell
+  let ONEWAY = null;
+  const oneway = () => {
+    if (ONEWAY) return ONEWAY;
+    ONEWAY = new Map();
+    for (const v of window.__exOneway || []) {
+      let px = v[0], py = v[1];
+      for (let i = 2; i + 1 < v.length; i += 2) {
+        const qx = px + v[i], qy = py + v[i + 1], k = Math.floor((px + qx) / 2 / 40) + ',' + Math.floor((py + qy) / 2 / 40);
+        ONEWAY.set(k, [...(ONEWAY.get(k) || []), [px, py, qx, qy]]); px = qx; py = qy;
+      }
+    }
+    return ONEWAY;
+  };
+  // the direction of traffic SENTIDO_A m from the crossing (x, y) along (dx, dy): 1 that way, -1 the other, 0 both or unknown
+  const sentido = (x, y, dx, dy) => {
+    const qx = x + dx * SENTIDO_A, qy = y + dy * SENTIDO_A, i = Math.floor(qx / 40), j = Math.floor(qy / 40);
+    let mas = false, menos = false;
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) for (const [ax, ay, bx, by] of oneway().get((i + di) + ',' + (j + dj)) || []) {
+      const L = Math.hypot(bx - ax, by - ay); if (L < 0.5) continue;
+      const c = ((bx - ax) * dx + (by - ay) * dy) / L;
+      if (Math.abs(c) < 0.85 || segDist2(qx, qy, ax, ay, bx, by) > SENTIDO_R ** 2) continue;
+      if (c > 0) mas = true; else menos = true;
+    }
+    return mas === menos ? 0 : mas ? 1 : -1;
+  };
+  const segDist2 = (px, py, ax, ay, bx, by) => {
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy, t = L2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L2)) : 0;
+    return (ax + dx * t - px) ** 2 + (ay + dy * t - py) ** 2;
+  };
+  let SIGNS = null;
+  const signsAll = () => {
+    const out = [], seen = new Map(), par = new Map(), segs = X.segs, st = X.streets;
+    const cell = (x, y) => Math.floor(x / SIGN_CERCA) + ',' + Math.floor(y / SIGN_CERCA);
+    const near = (x, y) => { const i = Math.floor(x / SIGN_CERCA), j = Math.floor(y / SIGN_CERCA);
+      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) for (const [sx, sy] of seen.get((i + di) + ',' + (j + dj)) || [])
+        if ((sx - x) ** 2 + (sy - y) ** 2 < SIGN_CERCA ** 2) return true;
+      return false; };
+    const cw = s => X.swOf(s) / 2 - X.walkOf(s);  // the half carriageway: axis to curb
+    for (const ids of X.sgrid) for (let p = 0; p < ids.length; p++) for (let q = p + 1; q < ids.length; q++) {
+      const A = segs[ids[p]], B = segs[ids[q]], sA = st[A[5]], sB = st[B[5]];
+      if (A[5] === B[5] || sA.c > 6 || sB.c > 6 || sA.bridge || sB.bridge) continue;
+      const nA = rotulo(sA.name), nB = rotulo(sB.name);
+      if (!nA || !nB || nA === nB) continue;
+      const ax = A[2] - A[0], ay = A[3] - A[1], bx = B[2] - B[0], by = B[3] - B[1], LA = Math.hypot(ax, ay), LB = Math.hypot(bx, by);
+      if (LA < 1 || LB < 1) continue;
+      const d = ax * by - ay * bx, sin = Math.abs(d) / LA / LB;
+      if (sin < SIGN_SIN) continue;
+      const t = ((B[0] - A[0]) * by - (B[1] - A[1]) * bx) / d, u = ((B[0] - A[0]) * ay - (B[1] - A[1]) * ax) / d;
+      if (t < -1 / LA || t > 1 + 1 / LA || u < -1 / LB || u > 1 + 1 / LB) continue;
+      const x = A[0] + ax * t, y = A[1] + ay * t;
+      if (!X.urbanAt(x, y) || !X.inTerrain(x, y)) continue;
+      if (near(x, y)) continue;
+      const k = nA < nB ? nA + '|' + nB : nB + '|' + nA, pp = par.get(k) || [];
+      if (pp.some(([sx, sy]) => (sx - x) ** 2 + (sy - y) ** 2 < SIGN_PAR ** 2)) continue;
+      // the corner at POSTE from both curbs: along A, the distance to B's axis grows by sin per metre (and the other way)
+      const ux = ax / LA, uy = ay / LA, vx = bx / LB, vy = by / LB, dA = cw(sA) + POSTE, dB = cw(sB) + POSTE;
+      const h = (Math.imul(Math.round(x), 73856093) ^ Math.imul(Math.round(y), 19349663)) >>> 0;
+      const Q = [[1, 1], [1, -1], [-1, -1], [-1, 1]];
+      let c = null;
+      for (let i = 0; i < 4 && !c; i++) {
+        const [ga, gb] = Q[(h + i) % 4], px = x + ga * ux * dB / sin + gb * vx * dA / sin, py = y + ga * uy * dB / sin + gb * vy * dA / sin;
+        if (!X.onRoad(px, py) && X.inTerrain(px, py)) c = [px, py, ga, gb];
+      }
+      if (!c) continue;
+      const ck = cell(x, y); seen.set(ck, [...(seen.get(ck) || []), [x, y]]); pp.push([x, y]); par.set(k, pp);
+      const placa = (n, otro, dx, dy) => { const m = numeros(n.name, otro, dx, dy); return [dx, dy, rotulo(n.name) + (m ? '|' + m.join('|') : ''), sentido(x, y, dx, dy)]; };
+      out.push([c[0], c[1], ...placa(sA, sB.name, ux * c[2], uy * c[2]), ...placa(sB, sA.name, vx * c[3], vy * c[3])]);
+    }
+    return out;
+  };
+  window.__exSigns = box => {
+    const [x0, y0, x1, y1] = box, r2 = v => Math.round(v * 100) / 100, r3 = v => Math.round(v * 1000) / 1000;
+    if (!SIGNS) SIGNS = signsAll();
+    const out = { letreros: [], nombres: [] }, idx = new Map();
+    const nombre = n => { if (!idx.has(n)) { idx.set(n, out.nombres.length); out.nombres.push(n); } return idx.get(n); };
+    for (const [x, y, ax, ay, nA, sA, bx, by, nB, sB] of SIGNS) {
+      if (x < x0 || x >= x1 || y < y0 || y >= y1) continue;
+      out.letreros.push(r2(x), r2(y), r2(X.E(x, y) + X.walkY), r3(ax), r3(ay), nombre(nA), sA, r3(bx), r3(by), nombre(nB), sB);
+    }
+    return out;
+  };
+  window.__exSignsN = () => { const S = SIGNS || (SIGNS = signsAll()), n = { letreros: S.length, placas: 2 * S.length, numeradas: 0, flecha: 0 };
+    for (const s of S) for (const [r, f] of [[s[4], s[5]], [s[8], s[9]]]) { if (r.includes('|')) n.numeradas++; if (f) n.flecha++; }
+    return n; };
+
   // el trozo [o, o + n) en bytes del arreglo a de la capa k, en base64
   window.__exChunk = (k, a, o, n) => { const v = window.__exBuf[k][a]; return b64(new Uint8Array(v.buffer, v.byteOffset + o, Math.min(n, v.byteLength - o))); };
   window.__exLen = (k, a) => window.__exBuf[k][a].byteLength;

@@ -29,6 +29,7 @@ const Arboleda := preload("res://arboleda.gd")
 const Cuantizado := preload("res://cuantizado.gd")
 const Autos := preload("res://autos.gd")
 const Faroles := preload("res://faroles.gd")
+const Letreros := preload("res://letreros.gd")
 const Pasos := preload("res://pasos.gd")
 const DIR := "res://mapa/"
 const CARGA := 1800.0  # m de la cámara al borde de la tesela
@@ -55,6 +56,7 @@ var cerrojo := Mutex.new()
 var arboleda: Node3D
 var autos: Node3D  # autos.gd
 var faroles: Node3D  # faroles.gd
+var letreros: Node3D  # letreros.gd
 var foco := Vector2(INF, INF)
 var t_revisar := 0.0
 var stats := {"leidas": 0, "ms": 0, "medios": 0, "ms_medios": 0}
@@ -76,6 +78,8 @@ func _ready() -> void:
 	add_child(autos)
 	faroles = Faroles.new()
 	add_child(faroles)
+	letreros = Letreros.new()
+	add_child(letreros)
 	cargar_lejos()
 	muro_del_limite()
 
@@ -156,7 +160,7 @@ func leer(clave: String, con_colision: bool) -> Dictionary:
 	var t0 := Time.get_ticks_msec()
 	var t: Dictionary = teselas[clave]
 	var raiz := leer_glb(DIR + String(t["archivo"]))
-	var out := {"raiz": raiz, "arboles": {}, "autos": {}, "faroles": {}, "formas": {}}
+	var out := {"raiz": raiz, "arboles": {}, "autos": {}, "faroles": {}, "letreros": {}, "formas": {}}
 	if raiz == null:
 		return out
 	raiz.name = "t_" + clave
@@ -170,6 +174,7 @@ func leer(clave: String, con_colision: bool) -> Dictionary:
 			out["arboles"] = Arboleda.preparar(j, recs)
 			out["autos"] = Autos.preparar(j, recs)
 			out["faroles"] = Faroles.preparar(j, recs)
+			out["letreros"] = Letreros.preparar(j, recs)
 	if con_colision:
 		out["formas"] = formas(raiz)
 	out["ms"] = Time.get_ticks_msec() - t0
@@ -222,6 +227,8 @@ func poner(clave: String, r: Dictionary) -> void:
 		autos.agregar(clave, r["autos"])
 	if not r["faroles"].is_empty():
 		faroles.agregar(clave, r["faroles"])
+	if not r["letreros"].is_empty():
+		letreros.agregar(clave, r["letreros"])
 	if not r["formas"].is_empty():
 		poner_colision(clave, r["formas"])
 	stats["leidas"] += 1
@@ -261,6 +268,7 @@ func soltar(clave: String) -> void:
 	arboleda.quitar(clave)
 	autos.quitar(clave)
 	faroles.quitar(clave)
+	letreros.quitar(clave)
 	if lejos.has(clave):
 		lejos[clave].visible = true
 

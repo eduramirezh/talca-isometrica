@@ -16,11 +16,12 @@
 #   - los autos: estacionados del lado de la plaza en las cuatro calles, como en la imagen de Esri y las fotos; modelos
 #     y colores inventados (los más comunes en Chile: blanco, gris, plata, negro, rojo, azul).
 # Lo aproximado: el ancho de las veredas (±1 m), la demarcación (líneas de pista segmentadas, cebras de 0,5 m), dónde
-# va cada farol (cada ~22 m), los letreros de las calles (texto real, colores supuestos).
+# va cada farol (cada ~22 m); los letreros de las calles son los de letreros.gd (con sus fuentes).
 extends Node3D
 
 const Args := preload("res://args.gd")
 const Auto := preload("res://modelos/entorno/auto.gd")
+const Letreros := preload("res://letreros.gd")
 const Malla := preload("res://malla.gd")
 const Plano := preload("res://modelos/entorno/plano.gd")
 const Suelo := preload("res://modelos/entorno/suelo.gd")
@@ -33,6 +34,10 @@ const C_GRANITO := Color(0.72, 0.71, 0.68)
 const C_BLANCO := Color(0.92, 0.92, 0.88)
 const C_FIERRO := Color(0.12, 0.19, 0.16)  # el verde oscuro de los faroles
 const C_NEGRO := Color(0.09, 0.09, 0.09)
+# el sentido del tránsito de las calles de la plaza (grilla: x al oriente, y al norte), para las flechas de sus letreros:
+# de OSM (oneway=yes; 1 Norte w33885109, 1 Oriente w33885416, 1 Sur w191869142, 1 Poniente w172679667, noviembre de
+# 2026), una vuelta en el sentido del reloj, como en data/sentidos.json
+const SENTIDO_PLAZA := {"1 NORTE": Vector2(1, 0), "1 SUR": Vector2(-1, 0), "1 ORIENTE": Vector2(0, -1), "1 PONIENTE": Vector2(0, 1)}
 
 var S: Suelo
 var calz := []  # polígonos de calzada (con los redondeos de las esquinas)
@@ -493,15 +498,29 @@ func letrero(m: Malla, p: Vector2, dir: Vector2, texto: String, fondo: Color, le
 
 
 func senales(m: Malla) -> void:
-	var azul := Color(0.08, 0.27, 0.55)
-	# los nombres de las calles en las cuatro esquinas de la plaza, en las veredas de las manzanas (nombre real de
-	# OSM; las placas, supuestas: azules con letras blancas, a 2,6 m)
-	var esquinas := [[Vector2(-65.6, 70.2), "1 NORTE", "1 PONIENTE"], [Vector2(68.6, 66.8), "1 NORTE", "1 ORIENTE"],
-		[Vector2(68.6, -69.6), "1 SUR", "1 ORIENTE"], [Vector2(-65.6, -69.6), "1 SUR", "1 PONIENTE"]]
+	# los nombres de las calles en las cuatro esquinas de la plaza, en las veredas de las manzanas: el letrero de toda la
+	# comuna (letreros.gd, con sus fuentes), cada placa saliendo del poste por la vereda de su calle, hacia afuera de la
+	# plaza, con la numeración de esa cuadra (la regla de pipeline/geocode.py, como __exSigns de tools/export.js)
+	var esquinas := [[Vector2(-65.6, 70.2), "1 NORTE|699|601", "1 PONIENTE|1201|1299"],
+		[Vector2(68.6, 66.8), "1 NORTE|801|899", "1 ORIENTE|1201|1299"],
+		[Vector2(68.6, -69.6), "1 SUR|801|899", "1 ORIENTE|1099|1001"],
+		[Vector2(-65.6, -69.6), "1 SUR|699|601", "1 PONIENTE|1099|1001"]]
 	for e in esquinas:
 		var p: Vector2 = e[0]
-		letrero(m, p, Vector2(0, 1), e[1], azul, Color.WHITE, 2.75, 1.0, 0.22)
-		letrero(m, p, Vector2(1, 0), e[2], azul, Color.WHITE, 2.48, 1.2, 0.22, false)
+		var h0 := S.E(p.x, p.y) + Plano.ALTO_VEREDA
+		Letreros.poste(m, Malla.Marco.new(p.x, p.y, 0.0, h0))
+		for k in 2:
+			var d := Vector2(signf(p.x), 0) if k == 0 else Vector2(0, signf(p.y))
+			var f := Malla.Marco.new(p.x, p.y, atan2(d.y, d.x), h0)
+			Letreros.placa(m, f)
+			# el tránsito de la calle de la placa: hacia donde apunta (1) o al revés (-1)
+			var s: float = SENTIDO_PLAZA.get(String(e[k + 1]).split("|")[0], Vector2.ZERO).dot(d)
+			if s != 0.0:
+				Letreros.flecha(m, f, signf(s))
+			for sg in [1.0, -1.0]:
+				var l := Letreros.etiqueta()
+				add_child(l)
+				Letreros.texto(l, f, e[k + 1], sg)
 	# «no estacionar» del lado de las manzanas (la foto de la catedral de 2017 tiene una frente al campanario)
 	for p in [Vector2(-65.1, 38.0), Vector2(-65.1, -20.0), Vector2(20.0, 66.1), Vector2(68.1, 15.0), Vector2(-20.0, -69.1)]:
 		var d := Vector2(0, 1) if abs(p.x) > 60 else Vector2(1, 0)
