@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["playwright==1.63", "pillow"]
+# dependencies = ["playwright==1.63", "pillow==13.0.0"]
 # ///
 """Hoja de comparación: varias vistas por varias variantes de render, en una sola carga del mapa.
 

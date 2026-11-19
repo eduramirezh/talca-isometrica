@@ -18,7 +18,7 @@ Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca 
 No hace falta descargar nada para ver o modificar la página: los datos procesados ya están en `data/`.
 
 ```bash
-npm install         # una vez: three.js r128 (package.json), que make build copia a dist/
+npm install         # una vez: three.js r128, que make build copia a dist/, y ESLint (package.json, versiones fijas)
 make build          # -> dist/: index.html y assets/ (el script, three.js y los datos)
 make serve          # sirve en http://localhost:8765 y lo abre en el navegador (desde file:// no carga: pide sus datos con fetch)
 make check          # revisión rápida (<1 s): JSON, marcadores, hitos, node --check, los archivos que pide la página; make hooks la deja en el pre-commit
@@ -36,7 +36,7 @@ make validate       # compara cada lugar con su dirección en la grilla
 
 Requisitos: Python 3.9+ (el pipeline usa solo la biblioteca estándar). Opcionales:
 
-- `pip install -r requirements.txt` para los paneles de diagnóstico y las capturas.
+- `pip install -r requirements.txt` para los paneles de diagnóstico y las capturas (o, sin instalar, `uv run tools/x.py`, que lee el encabezado del archivo). Las versiones van fijas y las sube Dependabot (`.github/dependabot.yml`; CLAUDE.md, «Dependencias»); `requirements-geo.txt`, las de `tools/ml_buildings.py` y `tools/sentinel.py`.
 - `python -m playwright install chromium` y `npm install` para las capturas sin conexión.
 
 ### En Linux
@@ -54,7 +54,7 @@ El sitio [talca.eduramirez.com](https://talca.eduramirez.com/) es `dist/index.ht
 
 ```bash
 make deploy DRY_RUN=1   # arma dist/ y lista lo que se subiría, sin subir nada
-make deploy             # make build + npx wrangler pages deploy (requiere npx wrangler login una vez)
+make deploy             # make build + wrangler pages deploy (el de scripts/deploy/, versión fija; una vez: scripts/deploy/node_modules/.bin/wrangler login)
 ```
 
 Con `make hooks`, un `git push` que actualiza `main` en `origin` (GitHub) publica solo (`.githooks/pre-push`). Nunca bloquea el push: si la publicación falla, avisa y el push sigue; tampoco publica si hay cambios sin commit. Para saltarlo: `git push --no-verify` o `TALCA_SKIP_DEPLOY=1 git push`.
@@ -122,12 +122,13 @@ tools/hitos.py           los hitos uno por uno: ms de cada uno y una huella exac
 tools/probe.py           evalúa expresiones JS en el mapa cargado (window.__rail, __trains…) e imprime el resultado
 tools/perf.py            lo que cuesta un cuadro (ms, llamadas de dibujo, triángulos, mapas de sombra, ms de CPU, ms entre cuadros al arrastrar) en varias vistas, y el arranque (--arranque N: ms hasta el primer cuadro; --red, una red móvil emulada; --frio, sin caché); --android en un teléfono por USB
 tools/relieve.py         qué mueve un cambio de data/elevation.json: alturas sobre la plaza por zona, matorral por pendiente, puntos de referencia (--png: mapa)
-tools/sentinel.py        Sentinel-2 L2A (uv run --with rasterio): escenas sin nubes, recorte en color y NDVI de una caja, usos de suelo que hoy se ven construidos o pelados
+tools/sentinel.py        Sentinel-2 L2A (uv run tools/sentinel.py): escenas sin nubes, recorte en color y NDVI de una caja, usos de suelo que hoy se ven construidos o pelados
 tools/regress.py         ¿sale el mismo mapa?: capturas fijas y __stats de referencia (--save) y comparación píxel a píxel (--against)
 tools/profile.py         perfil de CPU del arranque: ms por función de src/ (propio, total, --callers), en Chromium o en el teléfono (--android); por etapa (--etapa) y las tareas largas de la segunda (--tareas)
 tools/heap.py            la memoria del arranque: el montón de JS por fase (window.__mem), su pico, lo que queda tras un GC y quién asigna o retiene más (MB por función de src/)
 tools/lint.py            ESLint sobre el script unido (make lint; reglas en tools/eslint.config.mjs), con el archivo y la línea de src/
 scripts/deploy-cloudflare.sh  publica dist/ en Cloudflare Pages (make deploy); .githooks/pre-push lo corre al empujar main
+scripts/deploy/          package.json y package-lock.json de Wrangler (versión fija), que deploy-cloudflare.sh instala con npm ci
 tools/ml_buildings.py    huellas de edificios de Overture (Microsoft, Google) y alturas de Google 2.5D Temporal -> raw/edificios-ml/, para edificios.py (make edificios-ml)
 tools/export.py          la maqueta generada a glTF (Blender, Godot; --teselas: un archivo por tesela, con --instancias, --lejos, --medio y --liviano para el juego) y a STL cerrado para impresión 3D (tools/export.js corre en la página)
 tools/blender_ver.py     abre en Blender un glb o STL exportado, con sus colores y encuadrado (-b --png: una vista sin ventana)

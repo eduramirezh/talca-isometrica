@@ -13,6 +13,8 @@ Comprueba:
   - que las capas planas que se tocan (Y_OVER de src/js/30-geometry.js) queden separadas al menos Y_STEP (layer_heights);
   - que las secciones del script empiecen con «// ==== nombre ====» (section_headers);
   - que src/style.css no tenga colores fijos fuera de los tokens y que sus dos bloques oscuros coincidan (css_tokens);
+  - que las dependencias tengan versiones fijas: == en requirements*.txt, iguales en los encabezados PEP 723 de tools/ y
+    pipeline/, y exactas en package.json y scripts/deploy/package.json, como las resuelve su package-lock.json (pins);
   - que data/pois.json tenga ids únicos y que cada recorrido apunte a lugares que existen;
   - que lo que el juego y tools/ copian de la página siga igual (juego_contratos: el contorno y los prados de la plaza,
     LEJOS, config/fachadas.json, data/plaza-osm.json, las fórmulas del relieve de tools/relieve.py);
@@ -236,7 +238,7 @@ def main(dist=True):
         t, name = f.read_text(), f.relative_to(ROOT)
         if not t.endswith('\n'): fail(f'{name}: no termina en un salto de línea (build.py lo pegaría al siguiente)')
 
-    css_tokens(fail); section_headers(fail); layer_heights(fail)
+    css_tokens(fail); section_headers(fail); layer_heights(fail); pins(fail)
 
     pois = json.load(open(ROOT / 'data' / 'pois.json'))
     ids = [p['id'] for p in pois['pois']]
@@ -359,6 +361,44 @@ def railx(fail):
                         else: used.add(n)
     for n, x in enumerate(g['railx']):
         if n not in used: fail(f'data/geometry.json: la entrada {n} de railx ({x[2]}, {x[3]}) no está en el cruce de una calle con la vía: python pipeline/railway.py write comuna')
+
+# ---- dependencies: exact versions, one source for each (Dependabot bumps requirements*.txt and the package.json files)
+
+def pins(fail):
+    """Every Python dependency is pinned with == in requirements*.txt, the same version wherever two files name it, and
+    the PEP 723 headers of tools/ and pipeline/ (which Dependabot does not read) repeat those pins exactly; package.json
+    (the root and scripts/deploy/) uses exact versions that its package-lock.json resolves."""
+    norm = lambda n: re.sub(r'[-_.]+', '-', n).lower()
+    req = {}
+    for f in sorted(ROOT.glob('requirements*.txt'), key=lambda f: (f.name != 'requirements.txt', f.name)):
+        for k, line in enumerate(f.read_text().splitlines(), 1):
+            spec = line.split('#')[0].strip()
+            if not spec: continue
+            m = re.fullmatch(r'([A-Za-z0-9._-]+)==([^\s;]+)', spec)
+            if not m: fail(f'{f.name}:{k}: «{spec}» no es una versión fija (paquete==versión)'); continue
+            name, ver = norm(m[1]), m[2]
+            if name in req and req[name][0] != ver:
+                fail(f'{f.name}:{k}: {m[1]}=={ver}, pero {req[name][1]} dice {req[name][0]}')
+            req.setdefault(name, (ver, f.name))
+    for f in sorted((ROOT / 'tools').glob('*.py')) + sorted((ROOT / 'pipeline').glob('*.py')):
+        h = re.search(r'^# /// script\n(.*?)^# ///$', f.read_text(), re.M | re.S)
+        d = h and re.search(r'^# dependencies = (\[.*?\])$', h[1], re.M)
+        for spec in json.loads(d[1]) if d else ():
+            m = re.fullmatch(r'([A-Za-z0-9._-]+)==(\S+)', spec)
+            pin = m and req.get(norm(m[1]))
+            if not pin: fail(f'{f.relative_to(ROOT)}: «{spec}» no está fijo en un requirements*.txt')
+            elif pin[0] != m[2]:
+                fail(f'{f.relative_to(ROOT)}: {spec}, pero {pin[1]} fija {m[1]}=={pin[0]} (cambie el encabezado PEP 723)')
+    for pj in (ROOT / 'package.json', ROOT / 'scripts' / 'deploy' / 'package.json'):
+        name, lock = pj.relative_to(ROOT), pj.with_name('package-lock.json')
+        try: deps = {k: v for s in ('dependencies', 'devDependencies') for k, v in json.load(open(pj)).get(s, {}).items()}
+        except (OSError, ValueError) as e: fail(f'{name}: no se pudo leer: {e}'); continue
+        try: got = json.load(open(lock)).get('packages', {})
+        except (OSError, ValueError): got = None; fail(f'{lock.relative_to(ROOT)}: falta o no se lee (npm install)')
+        for k, v in sorted(deps.items()):
+            if not re.fullmatch(r'\d+\.\d+\.\d+', v): fail(f'{name}: {k} «{v}» no es una versión exacta (sin ^ ni ~)')
+            elif got is not None and got.get(f'node_modules/{k}', {}).get('version') != v:
+                fail(f'{lock.relative_to(ROOT)}: no resuelve {k} {v} (npm install --prefix {pj.parent.relative_to(ROOT)})')
 
 PIPELINE = (usos_bi, usos_order, railx)
 

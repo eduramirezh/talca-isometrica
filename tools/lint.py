@@ -5,28 +5,26 @@
 
 Los src/js/*.js no son módulos sino trozos de una sola función (trampa «Un solo script en muchos archivos»): solo el
 script unido (build.script(), el de dist/assets/app.<hash>.js) es JavaScript, con unos 500 nombres de primer nivel en
-un ámbito. ESLint (versión fija, por npx: la primera vez la baja) lo revisa con las reglas de tools/eslint.config.mjs:
-no-undef, no-redeclare, no-shadow (también un nombre de primer nivel declarado después: un `const H` dentro de una
-función de 50-city.js tapa el H de 86-camera.js) y no-unused-vars. Cada aviso se traduce a archivo y línea de src/ con
+un ámbito. ESLint (la versión fija de package.json, en node_modules/: npm install) lo revisa con las reglas de
+tools/eslint.config.mjs: no-undef, no-redeclare, no-shadow (también un nombre de primer nivel declarado después: un
+`const H` dentro de una función de 50-city.js tapa el H de 86-camera.js) y no-unused-vars. Cada aviso se traduce a archivo y línea de src/ con
 build.where(), como tools/check.py. Sale con 1 si hay avisos. Unos 3 s (por eso no va en make check).
 """
-import json, os, subprocess, sys
+import json, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'pipeline'))
 import build
 
-ESLINT = 'eslint@10.13.0'
+ESLINT = ROOT / 'node_modules' / '.bin' / 'eslint'   # package.json (exact version, package-lock.json)
 CONFIG = ROOT / 'tools' / 'eslint.config.mjs'
 
 def lint():
     """[(src file, line, column, rule, message)] for the joined script."""
-    r = subprocess.run(['npx', '-y', ESLINT, '-c', str(CONFIG), '-f', 'json', '--stdin', '--stdin-filename', 'app.js'],
-                       input=build.script(), capture_output=True, text=True, cwd=ROOT,
-                       env={**os.environ, 'NPM_CONFIG_UPDATE_NOTIFIER': 'false', 'NPM_CONFIG_PREFER_OFFLINE': 'true'})
-    # (prefer-offline: the pinned version comes from npx's cache without asking the registry; only the first run
-    # downloads it)
+    if not ESLINT.exists(): raise SystemExit('lint: falta node_modules/.bin/eslint: npm install (package.json lo fija)')
+    r = subprocess.run([str(ESLINT), '-c', str(CONFIG), '-f', 'json', '--stdin', '--stdin-filename', 'app.js'],
+                       input=build.script(), capture_output=True, text=True, cwd=ROOT)
     try: msgs = json.loads(r.stdout)[0]['messages']
     except (ValueError, IndexError, KeyError):
         raise SystemExit(f'lint: eslint no respondió (código {r.returncode}):\n{r.stderr.strip()}')

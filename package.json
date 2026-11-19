@@ -1,8 +1,9 @@
 {
   "name": "talca-isometrica",
   "private": true,
-  "description": "three.js r128: pipeline/build.py lo copia a dist/assets/ (make build necesita npm install).",
+  "description": "three.js r128: pipeline/build.py lo copia a dist/assets/ (make build necesita npm install); ESLint para make lint (tools/lint.py).",
   "devDependencies": {
+    "eslint": "10.13.0",
     "three": "0.128.0"
   }
 }

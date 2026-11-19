@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["playwright==1.63", "pillow"]
+# dependencies = ["playwright==1.63", "pillow==13.0.0"]
 # ///
 """¿Sale el mismo mapa? Capturas de referencia y comparación píxel a píxel, para cambios que no deben cambiar la imagen.
 

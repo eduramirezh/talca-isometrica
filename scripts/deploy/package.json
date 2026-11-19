@@ -1,0 +1,8 @@
+{
+  "name": "talca-isometrica-deploy",
+  "private": true,
+  "description": "Wrangler para scripts/deploy-cloudflare.sh (make deploy), aparte del package.json de la raíz para que make build no baje sus ~270 MB; el script lo instala con npm ci la primera vez y cuando cambia package-lock.json.",
+  "dependencies": {
+    "wrangler": "4.165.0"
+  }
+}

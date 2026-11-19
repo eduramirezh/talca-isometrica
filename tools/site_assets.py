@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["playwright==1.63", "pillow"]
+# dependencies = ["playwright==1.63", "pillow==13.0.0"]
 # ///
 """Imágenes del sitio publicado (talca.eduramirez.com) en src/site/, que build.py copia a dist/.
 

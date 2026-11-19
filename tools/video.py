@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["playwright==1.63", "pillow"]
+# dependencies = ["playwright==1.63", "pillow==13.0.0"]
 # ///
 """Video vertical del mapa para una historia de Instagram (1080x1920, H.264, 30 cuadros por segundo): se acerca a un punto
 mientras empieza a girar, da una vuelta de día, pasa a la noche con un fundido sin dejar de girar y se aleja de noche

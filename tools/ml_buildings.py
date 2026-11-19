@@ -1,7 +1,7 @@
 """Las huellas de edificios por aprendizaje automático y las alturas de Google 2.5D, en archivos simples para
 pipeline/edificios.py (que es de biblioteca estándar): raw/edificios-ml/ (METODOLOGIA §14).
 
-  uv run --with duckdb --with shapely --with numpy --with rasterio --with pyproj python -I tools/ml_buildings.py
+  uv run --with-requirements requirements-geo.txt python -I tools/ml_buildings.py
 
 Lee lo bajado y recortado a la caja de la comuna (raw/eval/buildings.md dice de dónde sale cada archivo):
   raw/overture/talca-buildings-<release>.parquet         Overture Maps, tema buildings: las filas de Microsoft y Google
