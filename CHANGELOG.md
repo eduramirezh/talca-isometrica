@@ -47,6 +47,7 @@
   - Dos tanques con correas y mandos, llamas sumadas en HDR (`shaders/llama.gdshader`) y una luz naranja. Frena antes de la tesela sin colisión, como el auto: 782 m a 28 m/s sin esperar ningún cuadro.
   - En la red local los otros lo ven puesto en la espalda, con la pose de vuelo y las llamas en el aire (`red.gd`).
   - `--volar N` lo prueba sin teclado, con `--fuerte`, `--pausa` y `--bajar`.
+  - La línea del vehículo (abajo a la izquierda: rapidez, combustible y las teclas del jetpack al ponérselo) llega hasta la barra de la vida y se parte en líneas hacia arriba: las teclas del jetpack pasaban bajo la barra.
 
 - **La ayuda de la pantalla, más corta en su primera línea**: «Espacio: saltar (tres seguidos: triple salto)»; la de antes llegaba bajo el reloj de arriba a la derecha.
 

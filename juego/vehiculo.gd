@@ -154,9 +154,17 @@ func _ready() -> void:
 	floor_stop_on_slope = true
 	var capa := CanvasLayer.new()
 	add_child(capa)
+	# abajo a la izquierda, hasta la barra de la vida (vida.gd, abajo al centro): un texto largo (las teclas del jetpack
+	# al ponérselo) se parte en líneas que crecen hacia arriba en vez de pasar bajo la barra
 	hud.anchor_top = 1.0
 	hud.anchor_bottom = 1.0
-	hud.position = Vector2(16, -44)
+	hud.anchor_right = 0.5
+	hud.offset_left = 16.0
+	hud.offset_right = -preload("res://vida.gd").ANCHO / 2.0 - 24.0
+	hud.offset_top = -44.0
+	hud.offset_bottom = -14.0
+	hud.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	hud.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hud.add_theme_font_size_override("font_size", 22)
 	hud.add_theme_color_override("font_color", Color(1, 1, 1))
 	hud.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
