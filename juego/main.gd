@@ -42,6 +42,7 @@
 #
 # Lo que se ve y lo que reemplaza al glb va en archivos propios, para que este no crezca:
 #   cine.gd          --cine: un plano de cine a la tarde, con la cámara en un recorrido fijo y peatones (ver cine.gd)
+#   trailer.gd       --trailer toma: una toma del avance (tools/trailer.py las graba y las junta)
 #   vp.gd            --vp: producción virtual con una tele de fondo, la cámara movida por un teléfono (ver vp.gd)
 #   mapa.gd          las teselas de la comuna alrededor de la cámara, lo de lejos, la colisión cercana y el límite
 #   arboleda.gd      los árboles de la página, como los de la plaza de cerca y copas redondas de lejos
@@ -71,6 +72,7 @@ const Args := preload("res://args.gd")
 const Fps := preload("res://fps.gd")
 const Glb := preload("res://glb.gd")
 const Mapa := preload("res://mapa.gd")
+const Trailer := preload("res://trailer.gd")
 const INICIO := Vector2(0, -45)  # x, y de grilla: el borde sur de la plaza, mirando al norte
 
 var jugador: CharacterBody3D
@@ -111,9 +113,12 @@ func _ready() -> void:
 	mapa = Mapa.new()
 	mapa.recs = recs
 	add_child(mapa)
+	var toma: Dictionary = Trailer.pedida() if Args.has("--trailer") else {}  # una toma del avance (trailer.gd)
 	var desde := Args.vec2("--desde", INICIO) if Args.has("--desde") else INICIO
+	if toma.has("desde") and not Args.has("--desde"):
+		desde = Vector2(toma["desde"][0], toma["desde"][1])
 	# la plaza (los modelos leen su suelo) y donde aparece el personaje; para la película, todo lo que ve su cámara
-	mapa.arrancar([Vector2.ZERO, desde], Mapa.CARGA if Args.has("--cine") else Mapa.ARRANQUE)
+	mapa.arrancar([Vector2.ZERO, desde], Mapa.CARGA if Args.has("--cine") or not toma.is_empty() else Mapa.ARRANQUE)
 	ambiente = preload("res://ambiente.gd").new()
 	add_child(ambiente)
 	for m in mods:
@@ -127,12 +132,15 @@ func _ready() -> void:
 	if Args.has("--cine"):  # un plano de cine: la cámara, la hora y los peatones, en función del tiempo (cine.gd)
 		add_child(preload("res://cine.gd").new())
 		return
+	if toma.get("tipo", "") == "camara":  # una toma de cámara del avance, sin personaje (trailer.gd)
+		add_child(Trailer.new())
+		return
 	if Args.has("--vp"):  # la tele de fondo: la cámara la mueve un teléfono (vp.gd), sin personaje
 		add_child(preload("res://vp.gd").new())
 		await png()
 		return
 	jugador = preload("res://jugador.gd").new()
-	jugador.mouse = not (Args.has("--png") or Args.has("--caminar"))
+	jugador.mouse = not (Args.has("--png") or Args.has("--caminar") or Args.has("--trailer"))
 	jugador.mapa = mapa
 	add_child(jugador)
 	viaje = preload("res://viaje.gd").new()
@@ -175,16 +183,17 @@ func _ready() -> void:
 	jugador.inicio = suelo(INICIO.x, -INICIO.y) + Vector3.UP * 0.1
 	jugador.global_position = jugador.inicio
 	jugador.plaza = Vector3(INICIO.x, INICIO.y, jugador.inicio.y - 0.1)  # donde reaparece al morir
-	ayuda()
+	if toma.is_empty():
+		ayuda()
 	menu = preload("res://menu.gd").new()  # el último: su _input ve Esc antes que los paneles (menu.gd)
 	menu.main = self
 	add_child(menu)
 
-	if Args.has("--desde"):
+	if Args.has("--desde") or not toma.is_empty():
 		# primero el personaje allá (jugador.gd no lo deja caer mientras no haya colisión): mapa.gd arma la colisión
 		# alrededor de la cámara y suelta la de más de 500 m, así que un rayo en este cuadro no daba con nada lejos de
 		# la plaza (el Cerro quedaba bajo el suelo)
-		var d := Args.vec2("--desde", INICIO)
+		var d := desde
 		jugador.global_position = Vector3(d.x, jugador.global_position.y, -d.y)
 		while not mapa.solido(d.x, d.y):
 			await get_tree().physics_frame
@@ -192,6 +201,11 @@ func _ready() -> void:
 		jugador.global_position = jugador.inicio
 	if Args.has("--girar"):
 		jugador.yaw = deg_to_rad(Args.num("--girar", 0.0))
+	elif toma.has("girar"):
+		jugador.yaw = deg_to_rad(toma["girar"])
+	if not toma.is_empty():  # una toma de juego del avance: trailer.gd maneja las teclas
+		add_child(Trailer.new())
+		return
 	if Args.has("--mirar"):  # grados sobre (+) o bajo (−) la horizontal
 		jugador.pitch = deg_to_rad(Args.num("--mirar", 0.0, -89.0, 89.0))
 	if Args.has("--vehiculo"):
