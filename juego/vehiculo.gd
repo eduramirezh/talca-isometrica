@@ -1,7 +1,9 @@
-# La bicicleta y el auto: la comuna mide ~20 km de lado, y caminando (8 m/s) o corriendo (18) se tarda. E sube al
-# vehículo si está a menos de CERCA, o lo trae al lado del personaje (donde quedó puede estar a kilómetros); E de nuevo
-# baja, y el vehículo queda estacionado ahí. V cambia entre la bicicleta y el auto (también andando). W/S acelera y
-# frena (detenido, S retrocede), A/D gira, Espacio frena de golpe; con la bicicleta, Q pedalea de pie (más rápido).
+# La bicicleta, el auto y el jetpack: la comuna mide ~20 km de lado, y caminando (8 m/s) o corriendo (18) se tarda. E
+# sube al vehículo si está a menos de CERCA, o lo trae al lado del personaje (donde quedó puede estar a kilómetros); E
+# de nuevo baja, y el vehículo queda estacionado ahí. V cambia de la bicicleta al auto, al jetpack y de vuelta a la
+# bicicleta (también andando). W/S acelera y frena (detenido, S retrocede), A/D gira, Espacio frena de golpe; con la
+# bicicleta, Q pedalea de pie (más rápido). El jetpack se pone y se saca (E) y se vuela con Espacio: ver «el jetpack»,
+# más abajo.
 #
 # Física de juego, no de simulador: un CharacterBody3D (como el personaje) con una cápsula acostada a lo largo del
 # vehículo, que se desliza contra muros y autos estacionados y sube sola los bordes de hasta r·(1 − cos 40°) (el auto,
@@ -21,9 +23,11 @@
 #
 #   var v := preload("res://vehiculo.gd").new()
 #   v.jugador = jugador; v.mapa = mapa; add_child(v)
-#   v.usar()            # E: sube, baja o lo trae
-#   v.cambiar()         # V: bicicleta <-> auto
+#   v.usar()            # E: sube, baja o lo trae (el jetpack: se lo pone o se lo saca)
+#   v.cambiar()         # V: bicicleta -> auto -> jetpack -> bicicleta
+#   v.armar("jetpack")  # ese, sin pasar por los otros (--vehiculo)
 #   await v.prueba()    # --vehiculo bici|auto --conducir N [--volante v]: acelera N s y dice dónde terminó (main.gd)
+#   await v.prueba_vuelo()  # --vehiculo jetpack --volar N: despega, sube, avanza y aterriza (main.gd)
 #
 # El auto es el sedán de modelos/entorno/auto.gd (el de calles.gd y autos.gd), con sus ruedas aparte para que giren.
 extends CharacterBody3D
@@ -32,11 +36,15 @@ const Malla := preload("res://malla.gd")
 const Mat := preload("res://materiales.gd")
 const Args := preload("res://args.gd")
 const Auto := preload("res://modelos/entorno/auto.gd")
+const Jugador := preload("res://jugador.gd")
+const Peaton := preload("res://peaton.gd")
 
 const CERCA := 6.0  # m: E sube a un vehículo a esta distancia; más lejos, lo trae
 const SEGUIR := 1.2  # s sin mover el mouse para que la cámara vuelva detrás del vehículo
 const PISO := 40.0  # grados: más empinado es un muro (más el cabeceo del vehículo: apoyar())
-# lo que cambia entre los dos: rapidez (m/s), aceleraciones (m/s²), geometría (m), la cápsula (radio y largo) y la cámara
+# lo que cambia entre la bicicleta y el auto: rapidez (m/s), aceleraciones (m/s²), geometría (m), la cápsula (radio y
+# largo) y la cámara. Del jetpack, solo lo que leen las funciones de todos (su vuelo va en las constantes J_*), con la
+# cápsula de pie, la del personaje (forma_jetpack()). V los recorre en este orden.
 const TIPOS := {
 	"bici": {"nombre": "bicicleta", "vmax": 12.0, "vmax_fuerte": 16.0, "vmax_ruta": 16.0, "acel": 4.5, "acel_fuerte": 6.0,
 		"potencia": 12.0, "potencia_fuerte": 20.0,  # W/kg (m²/s³): la de un ciclista, exagerada como el relieve
@@ -46,7 +54,44 @@ const TIPOS := {
 		"potencia": 80.0, "potencia_fuerte": 80.0,  # W/kg: 100 kW en 1.250 kg
 		"freno": 9.0, "frenazo": 11.0, "reversa": 5.0, "batalla": 2.8, "giro": 0.6, "lateral": 8.0, "radio": 0.85, "largo": 4.6,
 		"peldano": 0.0, "brazo": 9.0, "alto": 2.4, "ojo": Vector3(-0.38, 1.18, 0.25)},
+	"jetpack": {"nombre": "jetpack", "vmax": J_VH, "vmax_fuerte": J_VH_FUERTE, "vmax_ruta": J_VH_FUERTE, "reversa": 0.0,
+		"radio": Jugador.RADIO, "largo": Jugador.ALTO, "peldano": Jugador.PELDANO, "brazo": 6.0, "alto": 1.5,
+		"ojo": Vector3(0, 1.62, -0.12)},
 }
+
+# ---------- el jetpack ----------
+# Dos tanques a la espalda (como el Bell Rocket Belt de los años sesenta, con los mandos a los lados de la cintura): no
+# se sube a él, se pone. Puesto, el personaje camina como a pie (las rapideces y el peldaño de jugador.gd), y Espacio
+# empuja: sube hasta J_SUBE m/s; en el aire sin tocar nada las toberas lo sostienen y baja despacio (J_FLOTA: la
+# flotación), y C baja rápido (J_BAJA). La velocidad vertical va hacia la que se pide con lo que dan las toberas (de
+# cero, la caída libre, a J_EMPUJE m/s² sobre la gravedad), así que sube y frena con inercia. WASD lo mueve respecto de
+# la cámara, como a pie, acelerando de a poco (J_ACEL_H) y, sin teclas, deslizándose (J_ROCE_H); Mayús (o Q) más rápido.
+# El combustible se gasta mientras empuja y se recarga en el suelo; sin combustible en el aire cae, sin mando. No sube
+# más de J_TECHO m sobre lo que tiene debajo (un rayo, que da también la altura del HUD). Tocar el suelo bajando a más
+# de J_DURO m/s hace daño: jugador.danar(), si existe (lo agrega la barra de vida).
+const J_SUBE := 10.0  # m/s hacia arriba con Espacio
+const J_FLOTA := 2.0  # m/s hacia abajo en el aire sin tocar nada (la flotación)
+const J_BAJA := 15.0  # m/s hacia abajo con C: soltarla ~20 m sobre el suelo para llegar flotando
+const J_EMPUJE := 9.0  # m/s² hacia arriba sobre la gravedad: de flotar a subir en ~1,3 s
+const J_VH := 14.0  # m/s horizontales (50 km/h); con Mayús, J_VH_FUERTE (100 km/h)
+const J_VH_FUERTE := 28.0
+const J_ACEL_H := 6.0  # m/s²: de quieto a J_VH en ~2,3 s (con Mayús, 1,5 veces)
+const J_ROCE_H := 0.4  # 1/s: sin teclas, la velocidad horizontal se va a la mitad en ~1,7 s
+const J_TECHO := 180.0  # m sobre el suelo de abajo: desde 30 m antes sube cada vez más lento, y ahí ya no sube
+const J_GASTO := 1.0 / 40.0  # del tanque por s con Espacio: 40 s (al techo se llega en 18)
+const J_GASTO_FLOTA := 1.0 / 150.0  # en el aire sin tocar nada (2,5 min flotando); con C, la mitad
+const J_GASTO_FUERTE := 1.5  # veces, con Mayús y avanzando
+const J_RECARGA := 1.0 / 8.0  # del tanque por s en el suelo, sin empujar: de vacío a lleno en 8 s
+const J_ENCENDER := 0.05  # lo mínimo para despegar desde el suelo (si no, con Espacio apretado y el tanque vacío,
+# cada gota recargada lo levantaba un cuadro)
+const J_AIRE := 9.8 / (45.0 * 45.0)  # 1/m: el roce del aire en caída libre (sin combustible no pasa de 45 m/s)
+# El aterrizaje duro: a más de J_DURO m/s hacia abajo (una caída libre de 7,3 m), J_DANO de daño por cada m/s de más.
+# Con C hasta el suelo (15 m/s), 12; sin combustible desde 30 m (con el roce del aire, ~23 m/s), ~42; desde 60 m
+# (~30), ~72; desde el techo (~41), ~115.
+const J_DURO := 12.0
+const J_DANO := 4.0
+const J_PIVOTE := Vector3(0, 1.0, 0)  # el personaje se inclina en vuelo en torno a este punto (m sobre los pies)
+const J_EN_EL_SUELO := Vector3(0, 0.09, -0.2)  # dónde va la mochila sacada: parada sobre las toberas
 
 var tipo := "bici"
 var t: Dictionary = TIPOS["bici"]
@@ -74,8 +119,23 @@ var biela: Node3D  # la bicicleta: los pedales
 var fase := 0.0  # ángulo de las ruedas
 var fase_biela := 0.0
 var inclinar := Vector3.ZERO  # (cabeceo, alabeo, alto) del modelo, suavizados
-var asiento := Node3D.new()  # donde va el peatón en la bicicleta
+var asiento := Node3D.new()  # donde va el peatón en la bicicleta (y con el jetpack puesto, a sus pies)
 var hud := Label.new()
+
+# el jetpack
+var combustible := 1.0  # 0 … 1
+var en_aire := false  # puesto y sin tocar el suelo desde el cuadro anterior
+var altura := 0.0  # m sobre lo que tiene debajo (medir_altura())
+var llama := 0.0  # 0 … 1: lo que empujan las toberas según las teclas (volar()); empuje, lo mismo suavizado
+var empuje := 0.0
+var mochila: Node3D  # el modelo: en el torso del peatón (puesto) o en modelo, en el suelo
+var correas: Node3D  # las correas y los mandos: solo puesto
+var llamas: Array[Node3D] = []
+var mat_llamas: Array[ShaderMaterial] = []
+var luz: OmniLight3D
+var aviso := ""  # un mensaje en el HUD durante t_aviso s
+var t_aviso := 0.0
+var impactos: Array[float] = []  # --volar: la rapidez hacia abajo de cada aterrizaje
 
 # --conducir: lo medido mientras anda
 var prueba_on := false
@@ -103,6 +163,13 @@ func _ready() -> void:
 	hud.add_theme_constant_override("outline_size", 5)
 	hud.visible = false
 	capa.add_child(hud)
+	# C, bajar rápido con el jetpack: la acción se registra aquí, con el jetpack, y no en main.gd acciones() (las del
+	# personaje y de todos los vehículos); --volar la aprieta como --conducir aprieta las otras
+	if not InputMap.has_action("descender"):
+		InputMap.add_action("descender")
+		var c := InputEventKey.new()
+		c.physical_keycode = KEY_C
+		InputMap.action_add_event("descender", c)
 	cargar_r5()
 	armar(tipo)
 	visible = false
@@ -111,27 +178,47 @@ func _ready() -> void:
 
 # ---------- subir, bajar, cambiar ----------
 
-# E: si está montado, baja; si el vehículo está cerca, sube; si no, lo trae al lado y sube
+# E: si está montado, baja; si el vehículo está cerca, sube; si no, lo trae al lado y sube. El jetpack se trae
+# siempre: se lo pone el personaje donde está
 func usar() -> void:
 	if montado:
 		bajar()
 		return
-	if not activo or global_position.distance_to(jugador.global_position) > CERCA:
+	if not activo or tipo == "jetpack" or global_position.distance_to(jugador.global_position) > CERCA:
 		traer()
 	subir()
 
 
-# V: la bicicleta por el auto o al revés, donde esté (montado o no)
+# V: el que sigue en TIPOS (bicicleta, auto, jetpack), donde esté (montado o no); con el jetpack puesto, solo en el
+# suelo (una bicicleta a 100 m de altura caería con el personaje encima)
 func cambiar() -> void:
-	armar("auto" if tipo == "bici" else "bici")
+	if montado and tipo == "jetpack" and en_aire:
+		avisar("en el aire no se puede cambiar: primero aterrice")
+		return
+	var ts := TIPOS.keys()
+	armar(ts[(ts.find(tipo) + 1) % ts.size()])
 	if montado:
 		peaton_al_vehiculo()
 		jugador.largo = t["brazo"]
 		rapidez = clampf(rapidez, -t["reversa"], t["vmax_ruta"])
+		if tipo == "jetpack":
+			puesto()
 	print("vehiculo.gd: ", t["nombre"])
 
 
 func traer() -> void:
+	if tipo == "jetpack":
+		# en la espalda del personaje, donde está y con su velocidad: puesto en medio de un salto, sigue en el aire
+		rumbo = jugador.cuerpo.rotation.y
+		rotation.y = rumbo
+		activo = true
+		visible = true
+		forma.disabled = false
+		rapidez = 0.0
+		global_position = jugador.global_position
+		velocity = jugador.velocity
+		ultimo_suelo = global_position
+		return
 	var adelante := Vector3.FORWARD.rotated(Vector3.UP, jugador.yaw)
 	var derecha := adelante.cross(Vector3.UP)
 	var lado: float = t["radio"] + 1.2
@@ -161,9 +248,14 @@ func subir() -> void:
 	jugador.largo = t["brazo"]
 	peaton_al_vehiculo()
 	hud.visible = true
+	if tipo == "jetpack":
+		puesto()
 
 
 func bajar() -> void:
+	if tipo == "jetpack":
+		sacarse()
+		return
 	montado = false
 	hud.visible = false
 	var adelante := Vector3.FORWARD.rotated(Vector3.UP, rumbo)
@@ -175,6 +267,11 @@ func bajar() -> void:
 		p = suelo(p0 + d, p0.y + 1.5) + Vector3.UP * 0.1
 		if not jugador_choca(p):
 			break
+	soltar_jugador(p)
+
+
+# el personaje otra vez a pie, en p, mirando hacia el rumbo del vehículo
+func soltar_jugador(p: Vector3) -> void:
 	peaton_al_jugador()
 	jugador.vehiculo = null
 	jugador.forma.disabled = false
@@ -187,14 +284,17 @@ func bajar() -> void:
 	jugador.cuerpo.rotation.y = rumbo
 
 
-# el peatón en la bicicleta (sentado en el asiento, pedaleando: peaton.gd sentar()); en el auto no se ve
+# el peatón en la bicicleta (sentado en el asiento, pedaleando: peaton.gd sentar()); en el auto no se ve; con el
+# jetpack, de pie en el asiento (que va en sus pies: así se inclina con el modelo en vuelo) y la mochila en su torso
 func peaton_al_vehiculo() -> void:
 	var pe: Node3D = jugador.peaton
-	if tipo == "bici":
+	if tipo == "bici" or tipo == "jetpack":
 		if pe.get_parent() != asiento:
 			pe.reparent(asiento, false)
 		pe.transform = Transform3D.IDENTITY
 		pe.visible = true
+		if tipo == "jetpack":
+			mochila_puesta(true)
 	else:
 		peaton_al_jugador()
 		pe.visible = false
@@ -213,6 +313,7 @@ func ir(x: float, y: float, h: float) -> void:
 	llegar = Vector3(x, y, h)
 	rapidez = 0.0
 	velocity = Vector3.ZERO
+	en_aire = false  # el jetpack llega al suelo: no es un aterrizaje (bajando con C, sería uno duro)
 	global_position = Vector3(x, h + 1.0, -y)
 
 
@@ -232,7 +333,10 @@ func _physics_process(dt: float) -> void:
 		if prueba_on:
 			med["espera"] += 1
 		seguir_jugador()
-		return  # la tesela de abajo todavía no tiene colisión: espera
+		return  # la tesela de abajo todavía no tiene colisión: espera (el jetpack, también en el aire)
+	if tipo == "jetpack":
+		volar(dt)
+		return
 
 	var adelante := Vector3.FORWARD.rotated(Vector3.UP, rumbo)
 	var acel := 0.0
@@ -369,6 +473,9 @@ func seguir_jugador() -> void:
 func _process(dt: float) -> void:
 	if not activo:
 		return
+	if tipo == "jetpack":
+		mostrar_jetpack(dt)
+		return
 	fase += rapidez / radio_rueda * dt
 	for r in ruedas:
 		r.rotation.x = -fase
@@ -455,6 +562,19 @@ const CADERA := Vector2(-0.24, 1.02)
 
 
 func armar(nuevo: String) -> void:
+	if tipo == "jetpack":  # lo del jetpack que no está en modelo: la mochila puesta, la inclinación del vuelo
+		if mochila and mochila.get_parent() != modelo:
+			mochila.queue_free()
+		mochila = null
+		correas = null
+		luz = null
+		llamas.clear()
+		mat_llamas.clear()
+		llama = 0.0
+		empuje = 0.0
+		modelo.transform = Transform3D.IDENTITY
+		inclinar = Vector3.ZERO
+		hud.modulate = Color.WHITE
 	tipo = nuevo
 	t = TIPOS[tipo]
 	for c in modelo.get_children():
@@ -471,8 +591,11 @@ func armar(nuevo: String) -> void:
 	forma.position.y = t["radio"]
 	if tipo == "bici":
 		bicicleta()
-	else:
+	elif tipo == "auto":
 		auto()
+	else:
+		jetpack()
+		forma_jetpack()
 
 
 static func material(rugoso: float, metal := 0.0) -> StandardMaterial3D:
@@ -485,8 +608,9 @@ static func material(rugoso: float, metal := 0.0) -> StandardMaterial3D:
 
 
 # una pieza del modelo: las capas de m con un material sin dibujo (el de patron.gdshader está en coordenadas del mundo y
-# se deslizaría sobre algo que se mueve, como las ventanas de la página: CLAUDE.md, «Lo que se mueve no usa winMat()»)
-func pieza(padre: Node3D, m: Malla, pos := Vector3.ZERO) -> Node3D:
+# se deslizaría sobre algo que se mueve, como las ventanas de la página: CLAUDE.md, «Lo que se mueve no usa winMat()»);
+# con mat, ese material en todas sus capas (las piezas del jetpack, hechas con tubo() y torno(), que van en la capa "")
+func pieza(padre: Node3D, m: Malla, pos := Vector3.ZERO, mat: Material = null) -> Node3D:
 	var mats := {"": material(0.5), "pintura": material(0.35, 0.25), "metal": material(0.35, 0.6), "goma": material(0.9),
 		"vidrio": Mat.patron("vidrio")}
 	var am := ArrayMesh.new()
@@ -500,7 +624,7 @@ func pieza(padre: Node3D, m: Malla, pos := Vector3.ZERO) -> Node3D:
 		a[Mesh.ARRAY_NORMAL] = c[1]
 		a[Mesh.ARRAY_COLOR] = c[2]
 		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
-		am.surface_set_material(am.get_surface_count() - 1, mats.get(nombre, mats[""]))
+		am.surface_set_material(am.get_surface_count() - 1, mat if mat else mats.get(nombre, mats[""]))
 	var mi := MeshInstance3D.new()
 	mi.mesh = am
 	var n := Node3D.new()
@@ -1022,6 +1146,15 @@ func camara(dt: float) -> void:
 	var j := jugador
 	var primera: bool = j.largo < 0.6
 	j.brazo.position = Basis(Vector3.UP, rumbo) * t["ojo"] if primera else Vector3(0, t["alto"], 0)
+	if tipo == "jetpack":
+		# en el aire, más lejos (1,8 veces el brazo: se ve el suelo alrededor) y, con el mouse quieto, mirando más hacia
+		# abajo; no se pone sola detrás del rumbo como en los vehículos, porque WASD va respecto de ella (como a pie): con
+		# A, el personaje gira a la izquierda, la cámara lo seguía y la izquierda giraba con ella, en círculos
+		if en_aire and j.t_mouse > SEGUIR and not primera:
+			j.pitch = lerpf(j.pitch, -0.32, 1.0 - exp(-1.5 * dt))
+		j.brazo.spring_length = lerpf(j.brazo.spring_length, j.largo * (1.8 if en_aire else 1.0), 1.0 - exp(-3.0 * dt))
+		j.peaton.visible = not primera
+		return
 	if j.t_mouse > SEGUIR and absf(rapidez) > 1.5:
 		var detras := rumbo if rapidez > 0.0 else rumbo + PI
 		var k := 1.0 - exp(-2.5 * dt)
@@ -1111,3 +1244,450 @@ func _unhandled_input(e: InputEvent) -> void:
 		usar()
 	elif e.is_action_pressed("cambiar"):
 		cambiar()
+
+
+# ---------- el jetpack: el vuelo ----------
+
+# la física del jetpack (puesto o en el suelo, sacado), en vez de la de las ruedas: ver «el jetpack», arriba
+func volar(dt: float) -> void:
+	var en_suelo := is_on_floor()
+	var mando: bool = montado and not jugador.quieto
+	var sube := mando and Input.is_action_pressed("saltar")
+	var baja := mando and Input.is_action_pressed("descender")
+	var fuerte := mando and (Input.is_action_pressed("correr") or Input.is_action_pressed("impulso"))
+	var v2 := Input.get_vector("izquierda", "derecha", "adelante", "atras") if mando else Vector2.ZERO
+	var dir := Vector3(v2.x, 0, v2.y).rotated(Vector3.UP, jugador.yaw)
+	floor_max_angle = deg_to_rad(50.0)  # como jugador.gd (la bicicleta y el auto lo cambian en cada cuadro)
+	floor_snap_length = Jugador.PELDANO + 0.05
+	if not medir_altura() and mapa and mapa.solido(global_position.x, -global_position.z):
+		# la colisión de abajo está y el rayo no da con nada: atravesó el suelo; vuelve arriba
+		var s := suelo(global_position, 1500.0)
+		if s.y > global_position.y:
+			global_position = s + Vector3.UP * 0.3
+			velocity = Vector3.ZERO
+			print("vehiculo.gd: el jetpack quedó bajo el suelo; vuelve a x %.0f, y %.0f" % [s.x, -s.z])
+
+	var h := Vector3(velocity.x, 0, velocity.z)
+	var gasto := 0.0
+	var tenia := combustible
+	llama = 0.0
+	if not montado or (en_suelo and not (sube and combustible >= J_ENCENDER)):
+		# en el suelo: puesto, camina como jugador.gd; sacado, queda donde lo dejaron. Recarga (también con Espacio
+		# apretado y el tanque bajo J_ENCENDER)
+		var vmax := (Jugador.CORRER if fuerte else Jugador.CAMINAR) if montado else 0.0
+		h = h.lerp(dir * vmax, 1.0 - exp(-12.0 * dt))  # arranca y frena en ~0,2 s, como a pie
+		if not en_suelo:
+			velocity.y -= g * dt
+		else:
+			combustible = minf(1.0, combustible + J_RECARGA * dt)
+	elif combustible > 0.0:
+		# en el aire con combustible (o despegando): la velocidad vertical va hacia la que se pide, con lo que dan las
+		# toberas (de 0 a g + J_EMPUJE); el techo acota la de subida
+		var quiere := -J_FLOTA
+		gasto = J_GASTO_FLOTA
+		llama = 0.45
+		if sube:
+			quiere = J_SUBE * clampf((J_TECHO - altura) / 30.0, 0.0, 1.0)
+			gasto = J_GASTO
+			llama = 1.0
+		elif baja:
+			quiere = -J_BAJA
+			gasto = J_GASTO_FLOTA * 0.5
+			llama = 0.15
+		velocity.y += clampf((quiere - velocity.y) * 3.0, -g, J_EMPUJE) * dt
+		if dir.length() > 0.01:
+			h = h.move_toward(dir * (J_VH_FUERTE if fuerte else J_VH), J_ACEL_H * (1.5 if fuerte else 1.0) * dt)
+			if fuerte:
+				gasto *= J_GASTO_FUERTE
+		else:
+			h *= exp(-J_ROCE_H * dt)
+		combustible = maxf(0.0, combustible - gasto * dt)
+		if combustible == 0.0 and tenia > 0.0:
+			avisar("sin combustible")
+	else:
+		# sin combustible en el aire: cae, con el roce del aire, y no se maneja
+		velocity.y -= (g + J_AIRE * velocity.y * absf(velocity.y)) * dt
+		h *= exp(-J_AIRE * h.length() * dt)
+
+	# lo que pide la tesela de adelante, como el auto: sin su colisión, frena a tiempo (a 1,5 s de lo que recorre más
+	# 10 m); sin la de abajo, _physics_process() lo deja esperando quieto, también en el aire
+	if mapa and h.length() > 2.0:
+		var pm := global_position + h.normalized() * (h.length() * 1.5 + 10.0)
+		if not mapa.solido(pm.x, -pm.z):
+			h = h.move_toward(Vector3.ZERO, 12.0 * dt)
+			if prueba_on:
+				med["frena"] += 1
+	velocity.x = h.x
+	velocity.z = h.z
+
+	# mira hacia donde va (o, casi quieto, hacia donde se lo mueve), y en el aire se inclina hacia allá: adelante según
+	# la rapidez (31° con Mayús, 22° a J_VH), de lado según lo que se desliza
+	var hacia := h if h.length() > 1.5 else dir
+	if hacia.length() > 0.01:
+		rumbo = lerp_angle(rumbo, atan2(-hacia.x, -hacia.z), 1.0 - exp(-8.0 * dt))
+	rotation.y = rumbo
+	rapidez = h.length()
+	var cab := 0.0
+	var alab := 0.0
+	if montado and en_aire:
+		var adelante := Vector3.FORWARD.rotated(Vector3.UP, rumbo)
+		var va := h.dot(adelante)
+		cab = 0.55 * signf(va) * sqrt(minf(absf(va) / J_VH_FUERTE, 1.0))
+		alab = 0.3 * clampf(h.dot(adelante.cross(Vector3.UP)) / J_VH, -1.0, 1.0)
+	inclinar = inclinar.lerp(Vector3(cab, alab, 0.0), 1.0 - exp(-4.0 * dt))
+	var b := Basis.from_euler(Vector3(-inclinar.x, 0.0, -inclinar.y))
+	modelo.transform = Transform3D(b, J_PIVOTE - b * J_PIVOTE)
+
+	var vy := velocity.y
+	var deseo := h * dt
+	move_and_slide()
+	if is_on_wall() and montado:
+		subir_cordon(deseo, t["peldano"])
+	var toca := is_on_floor()
+	if toca and en_aire and montado:
+		aterrizar(-vy)
+	en_aire = montado and not toca
+	if toca:
+		ultimo_suelo = global_position
+	seguir_jugador()
+
+
+# la altura sobre lo que hay debajo (un rayo de 700 m, sin el jetpack ni el personaje), para el HUD y el techo; si no
+# da con nada (sin colisión todavía, o bajo el suelo), queda la de antes y devuelve false
+func medir_altura() -> bool:
+	var q := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 0.5, global_position + Vector3.DOWN * 700.0)
+	q.exclude = [get_rid(), jugador.get_rid()]
+	var r := get_world_3d().direct_space_state.intersect_ray(q)
+	if r:
+		altura = global_position.y - r.position.y
+	return not r.is_empty()
+
+
+# tocó el suelo bajando a v m/s: sobre J_DURO, se hace daño
+func aterrizar(v: float) -> void:
+	impactos.append(v)
+	if v <= J_DURO:
+		return
+	var dano := roundi((v - J_DURO) * J_DANO)
+	avisar("aterrizaje duro a %.0f m/s: %d de daño" % [v, dano])
+	if jugador.has_method("danar"):
+		jugador.danar(dano, "jetpack")
+
+
+# la cápsula: puesto, la del personaje (de pie); sacado, la de la mochila parada en el suelo
+func forma_jetpack() -> void:
+	var cap := CapsuleShape3D.new()
+	cap.radius = Jugador.RADIO if montado else 0.22
+	cap.height = Jugador.ALTO if montado else 0.62
+	forma.shape = cap
+	forma.rotation = Vector3.ZERO
+	forma.position = Vector3(0, cap.height / 2.0, 0)
+
+
+# recién puesto (subir() o V): la cápsula del personaje y, si no pisa, en el aire
+func puesto() -> void:
+	forma_jetpack()
+	en_aire = not jugador.is_on_floor() and not is_on_floor()
+	avisar("Espacio: subir · C: bajar rápido · WASD · Mayús: más rápido · E: sacárselo", 6.0, false)
+
+
+# E con el jetpack puesto: se lo saca en el suelo (en el aire, no) y lo deja parado detrás, o al lado o adelante: donde
+# quepa
+func sacarse() -> void:
+	if not is_on_floor():
+		avisar("en el aire no se puede sacar: primero aterrice")
+		return
+	montado = false
+	en_aire = false
+	hud.visible = false
+	var p0 := global_position
+	soltar_jugador(p0 + Vector3.UP * 0.02)
+	mochila_puesta(false)
+	forma_jetpack()
+	modelo.transform = Transform3D.IDENTITY
+	inclinar = Vector3.ZERO
+	llama = 0.0
+	velocity = Vector3.ZERO
+	rapidez = 0.0
+	var adelante := Vector3.FORWARD.rotated(Vector3.UP, rumbo)
+	var izq := Vector3.UP.cross(adelante)
+	for d in [-adelante * 0.6, izq * 0.6, -izq * 0.6, adelante * 0.6]:
+		global_position = suelo(p0 + d, p0.y + 1.0) + Vector3.UP * 0.02
+		if not choca_aqui():
+			break
+
+
+func avisar(s: String, segundos := 3.0, imprimir := true) -> void:
+	aviso = s
+	t_aviso = segundos
+	if imprimir:
+		print("vehiculo.gd: ", s)
+
+
+# ---------- el jetpack: lo que se ve ----------
+
+# las llamas y la luz según lo que empujan las toberas, la pose del personaje y el HUD
+func mostrar_jetpack(dt: float) -> void:
+	empuje = lerpf(empuje, llama, 1.0 - exp(-12.0 * dt))
+	var on := empuje > 0.02
+	for l in llamas:
+		l.visible = on
+		if on:
+			var r := 0.6 + 0.4 * empuje
+			l.scale = Vector3(r, (0.25 + 0.75 * empuje) * randf_range(0.85, 1.15), r)
+	for m in mat_llamas:
+		m.set_shader_parameter("fuerza", empuje)
+	if luz:
+		luz.visible = on
+		luz.light_energy = 4.0 * empuje * randf_range(0.85, 1.1)
+	if not montado:
+		return
+	var pe := jugador.peaton as Peaton
+	if en_aire:
+		pose_vuelo(dt)
+	else:
+		pe.animar(dt, rapidez, true)
+	t_aviso -= dt
+	hud.text = "jetpack · combustible %d %% · %d m sobre el suelo · %d km/h%s" % [ceili(combustible * 100.0),
+		roundi(maxf(altura, 0.0)), roundi(rapidez * 3.6), (" · " + aviso) if t_aviso > 0.0 else ""]
+	hud.modulate = Color(1.0, 0.55, 0.5) if combustible < 0.2 else Color.WHITE
+
+
+# la pose en el aire, con el jetpack puesto: las piernas colgando, un poco dobladas y meciéndose (la derecha adelante),
+# las puntas de los pies abajo y las manos en los mandos de la cintura. Mueve las articulaciones de peaton.gd como
+# sentar(), y se mezcla en ~0,15 s
+func pose_vuelo(dt: float, pe: Peaton = null) -> void:
+	if pe == null:  # el propio; red.gd pasa el de otro jugador
+		pe = jugador.peaton as Peaton
+	pe.t += dt
+	var k := 1.0 - exp(-8.0 * dt)
+	var vaiven := 0.06 * sin(pe.t * 2.1)
+	var muslo := [0.14 + vaiven, -0.1 - vaiven]
+	var rodilla := [-0.5, -0.28]
+	var pie := [-0.55, -0.6]
+	for i in 2:
+		var lado := -1.0 if i == 0 else 1.0
+		pe.muslo[i].rotation.x = lerpf(pe.muslo[i].rotation.x, muslo[i], k)
+		pe.canilla[i].rotation.x = lerpf(pe.canilla[i].rotation.x, rodilla[i], k)
+		pe.pie[i].rotation.x = lerpf(pe.pie[i].rotation.x, pie[i], k)
+		pe.hombro[i].rotation.x = lerpf(pe.hombro[i].rotation.x, 0.1, k)
+		pe.hombro[i].rotation.z = lerpf(pe.hombro[i].rotation.z, 0.16 * lado, k)
+		pe.codo[i].rotation.x = lerpf(pe.codo[i].rotation.x, 1.2, k)
+	pe.cadera.position.y = lerpf(pe.cadera.position.y, 0.95, k)
+	pe.cadera.rotation = Vector3(0.0, lerpf(pe.cadera.rotation.y, 0.0, k), 0.0)
+	pe.torso.rotation.x = lerpf(pe.torso.rotation.x, -0.04, k)
+	pe.torso.rotation.y = lerpf(pe.torso.rotation.y, 0.0, k)
+	pe.torso.scale = Vector3.ONE
+	pe.cabeza.rotation.x = lerpf(pe.cabeza.rotation.x, 0.08 + inclinar.x * 0.7, k)  # mira adelante, no al suelo
+	pe.salto = 0
+	pe.vuelta = 0.0
+
+
+# la mochila en el torso del peatón (puesta: se mueve con él) o parada en el suelo, en modelo (sacada, sin correas)
+func mochila_puesta(si: bool, pe: Peaton = null) -> void:
+	if mochila == null:
+		return
+	if pe == null and jugador:  # el propio; red.gd pasa el de otro jugador
+		pe = jugador.peaton as Peaton
+	var padre: Node3D = pe.torso if si and pe else modelo
+	if mochila.get_parent() != padre:
+		mochila.reparent(padre, false)
+	mochila.transform = Transform3D.IDENTITY if si else Transform3D(Basis(), J_EN_EL_SUELO)
+	correas.visible = si
+
+
+# El modelo, en el marco del torso de peaton.gd (la cadera en el origen, arriba +Y, la espalda hacia +Z; el torso mide
+# 0,34 m de ancho y 0,23 de fondo): dos tanques plateados con una franja roja sobre una placa oscura, unidos arriba y
+# abajo por tubos, con las toberas abajo (y en ellas las llamas y la luz); y las correas de los hombros, del pecho y de
+# la cintura, con los mandos a los lados, en un nodo aparte que se ve solo puesto.
+func jetpack() -> void:
+	asiento.position = Vector3.ZERO
+	if asiento.get_parent() == null:
+		modelo.add_child(asiento)
+	mochila = Node3D.new()
+	mochila.name = "mochila"
+	modelo.add_child(mochila)
+	correas = Node3D.new()
+	mochila.add_child(correas)
+	var plata := Color(0.8, 0.81, 0.83)
+	var rojo := Color(0.72, 0.09, 0.07)
+	var oscuro := Color(0.14, 0.14, 0.16)
+	var tobera := Color(0.22, 0.22, 0.23)
+	var calor := Color(0.42, 0.22, 0.12)  # el adentro de las toberas, tostado
+	var cromo := Color(0.72, 0.73, 0.75)
+	var negro := Color(0.06, 0.06, 0.07)
+	var metal := Malla.new()
+	var pintura := Malla.new()
+	var placa := Malla.new()
+	var cinta := Malla.new()
+	placa.bloque(Vector3(0, 0.3, 0.148), Vector3(0.3, 0.44, 0.04), oscuro)
+	for s in [-1.0, 1.0]:
+		var x: float = s * 0.085
+		metal.torno(Vector3(x, 0.05, 0.245), [Vector2(0.0, 0.0), Vector2(0.05, 0.004), Vector2(0.075, 0.03),
+			Vector2(0.075, 0.4), Vector2(0.062, 0.445), Vector2(0.034, 0.47), Vector2(0.0, 0.478)], 14, plata)
+		pintura.tubo(Vector3(x, 0.33, 0.245), Vector3(x, 0.37, 0.245), 0.078, 0.078, 14, rojo, rojo)
+		# la tobera, abierta abajo: por fuera de la garganta a la boca, y por dentro de vuelta (torno() orienta cada
+		# anillo según el sentido en que se recorre el perfil)
+		placa.torno(Vector3(x, 0, 0.245), [Vector2(0.0, 0.035), Vector2(0.03, 0.035), Vector2(0.056, -0.09),
+			Vector2(0.063, -0.09), Vector2(0.036, 0.06), Vector2(0.0, 0.06)], 12,
+			func(i: int) -> Color: return calor if i <= 2 else tobera)
+		var llama_n := Node3D.new()
+		llama_n.position = Vector3(x, -0.09, 0.245)
+		llama_n.visible = false
+		mochila.add_child(llama_n)
+		llamas.append(llama_n)
+		for capa in [[0.055, 1.0, Color(1.0, 0.72, 0.38), Color(1.0, 0.24, 0.03), 3.5], [0.028, 0.55, Color(1.0, 0.97, 0.88), Color(1.0, 0.75, 0.4), 5.0]]:
+			var cono := CylinderMesh.new()
+			cono.top_radius = 1.0
+			cono.bottom_radius = 0.0
+			cono.height = 1.0
+			cono.radial_segments = 10
+			cono.rings = 1
+			cono.cap_top = false
+			cono.cap_bottom = false
+			var mat := ShaderMaterial.new()
+			mat.shader = preload("res://shaders/llama.gdshader")
+			mat.set_shader_parameter("base", capa[2])
+			mat.set_shader_parameter("punta", capa[3])
+			mat.set_shader_parameter("energia", capa[4])
+			mat_llamas.append(mat)
+			var mi := MeshInstance3D.new()
+			mi.mesh = cono
+			mi.material_override = mat
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mi.scale = Vector3(capa[0], capa[1], capa[0])
+			mi.position.y = -0.5 * capa[1]  # la base en la tobera
+			llama_n.add_child(mi)
+	# los tubos: arriba, de un tanque al otro con la válvula al medio; al medio, bajando entre los tanques; abajo, a las
+	# toberas
+	metal.tubo(Vector3(-0.085, 0.53, 0.245), Vector3(0.085, 0.53, 0.245), 0.016, 0.016, 8, cromo, cromo)
+	metal.tubo(Vector3(0, 0.53, 0.25), Vector3(0, 0.06, 0.25), 0.02, 0.02, 8, cromo, cromo)
+	placa.tubo(Vector3(-0.1, 0.06, 0.245), Vector3(0.1, 0.06, 0.245), 0.026, 0.026, 8, tobera, tobera)
+	placa.bloque(Vector3(0, 0.555, 0.25), Vector3(0.06, 0.05, 0.06), oscuro)
+	# las correas: de los hombros por encima hasta abajo en el pecho, una cruzada en el pecho y el cinturón en la cadera
+	for s in [-1.0, 1.0]:
+		var camino := [Vector3(0.095, 0.47, 0.13), Vector3(0.1, 0.52, 0.075), Vector3(0.105, 0.565, 0.0),
+			Vector3(0.1, 0.52, -0.075), Vector3(0.09, 0.44, -0.122), Vector3(0.09, 0.14, -0.125)]
+		for i in camino.size() - 1:
+			var a: Vector3 = camino[i]
+			var b: Vector3 = camino[i + 1]
+			cinta.tubo(Vector3(s * a.x, a.y, a.z), Vector3(s * b.x, b.y, b.z), 0.016, 0.016, 6, negro, negro)
+	cinta.tubo(Vector3(-0.09, 0.34, -0.126), Vector3(0.09, 0.34, -0.126), 0.012, 0.012, 6, negro, negro)
+	cinta.bloque(Vector3(0, 0.34, -0.135), Vector3(0.05, 0.035, 0.02), cromo)
+	var n := 16
+	for i in n:
+		var a0 := TAU * i / n
+		var a1 := TAU * (i + 1) / n
+		cinta.tubo(Vector3(0.185 * cos(a0), 0.07, 0.122 * sin(a0)), Vector3(0.185 * cos(a1), 0.07, 0.122 * sin(a1)), 0.02, 0.02, 6, negro, negro)
+	cinta.bloque(Vector3(0, 0.07, -0.135), Vector3(0.07, 0.05, 0.025), cromo)  # la hebilla
+	# los mandos: un brazo de cada lado de la cintura, hacia adelante, con su empuñadura donde quedan las manos
+	# (pose_vuelo(): hombro 0,1 rad adelante y codo 1,2)
+	for s in [-1.0, 1.0]:
+		cinta.tubo(Vector3(s * 0.18, 0.08, 0.02), Vector3(s * 0.25, 0.09, -0.16), 0.014, 0.014, 6, oscuro, oscuro)
+		cinta.tubo(Vector3(s * 0.25, 0.09, -0.16), Vector3(s * 0.26, 0.1, -0.27), 0.014, 0.014, 6, oscuro, oscuro)
+		cinta.bloque(Vector3(s * 0.26, 0.135, -0.295), Vector3(0.035, 0.09, 0.035), negro)
+	pieza(mochila, metal, Vector3.ZERO, material(0.3, 0.75))
+	pieza(mochila, pintura, Vector3.ZERO, material(0.35, 0.25))
+	pieza(mochila, placa, Vector3.ZERO, material(0.5, 0.4))
+	pieza(correas, cinta, Vector3.ZERO, material(0.9))
+	luz = OmniLight3D.new()
+	luz.position = Vector3(0, -0.4, 0.25)
+	luz.light_color = Color(1.0, 0.56, 0.24)
+	luz.omni_range = 14.0  # de noche, flotando bajo, alumbra el suelo
+	luz.shadow_enabled = false
+	luz.visible = false
+	mochila.add_child(luz)
+	mochila_puesta(false)
+
+
+# ---------- --volar ----------
+
+# --vehiculo jetpack --volar N [--fuerte] [--pausa p]: despega y sube con Espacio (el 35 % de N s), avanza con W (el
+# 45 %; con --fuerte, también con Mayús) flotando, baja con C hasta 20 m sobre el suelo y aterriza flotando (hasta 120 s
+# más). Imprime la altura máxima, lo recorrido, el combustible, la rapidez de cada aterrizaje y cuánto esperó la
+# colisión. Con --pausa p congela el juego p s después de despegar (Engine.time_scale 0, como --saltos), con la cámara
+# de tres cuartos por detrás, para que --png capture el vuelo, y vuelve sin aterrizar. Con --bajar, al final se lo saca
+# (dice dónde quedaron el personaje y la mochila), camina 2 s y se lo pone otra vez (E desde lejos: lo trae).
+func prueba_vuelo() -> void:
+	await mapa.esperar()
+	med = {"espera": 0, "frena": 0, "leidas": mapa.stats["leidas"]}
+	prueba_on = true
+	impactos.clear()
+	var arbol := get_tree()
+	var s := Args.num("--volar", 20.0, 1.0, 600.0)
+	var pausa := Args.num("--pausa", -1.0, 0.0, 600.0)
+	var p0 := global_position
+	var antes := p0
+	var tiempo := 0.0
+	var cima := 0.0  # m sobre el suelo
+	var y_max := p0.y
+	var recorrido := 0.0
+	var v_max := 0.0
+	var c_min := combustible
+	var fase_v := 0
+	Input.action_press("saltar")
+	while fase_v < 4 and tiempo < s + 120.0:
+		await arbol.physics_frame
+		tiempo += get_physics_process_delta_time()
+		recorrido += Vector2(global_position.x - antes.x, global_position.z - antes.z).length()
+		antes = global_position
+		if en_aire:
+			cima = maxf(cima, altura)
+		y_max = maxf(y_max, global_position.y)
+		v_max = maxf(v_max, rapidez)
+		c_min = minf(c_min, combustible)
+		if fase_v == 0 and tiempo >= s * 0.35:
+			Input.action_release("saltar")
+			Input.action_press("adelante")
+			if Args.has("--fuerte"):
+				Input.action_press("correr")
+			fase_v = 1
+		elif fase_v == 1 and tiempo >= s * 0.8:
+			Input.action_release("adelante")
+			Input.action_release("correr")
+			Input.action_press("descender")
+			fase_v = 2
+		elif fase_v == 2 and (altura < 20.0 or not en_aire):
+			Input.action_release("descender")
+			fase_v = 3
+		elif fase_v == 3 and not en_aire:
+			fase_v = 4
+		if pausa >= 0.0 and tiempo >= pausa:
+			Engine.time_scale = 0.0
+			jugador.yaw += 0.75  # de tres cuartos, por detrás y a la izquierda
+			jugador.pitch = -0.12
+			jugador.brazo.spring_length = jugador.largo
+			print("vehiculo.gd: jetpack congelado a %.1f s: %.0f m sobre el suelo, %.1f m/s, combustible %d %%" % [tiempo,
+				altura, rapidez, ceili(combustible * 100.0)])
+			return
+	for a in ["saltar", "adelante", "correr", "descender"]:
+		Input.action_release(a)
+	prueba_on = false
+	var dice := []
+	for v in impactos:
+		dice.append("%.1f m/s%s" % [v, "" if v <= J_DURO else " (DURO: %d de daño)" % roundi((v - J_DURO) * J_DANO)])
+	print("vehiculo.gd: jetpack, %.0f s%s: subió a %.0f m sobre el suelo (%.0f m sobre la plaza), recorrió %.0f m (máx %.1f m/s), quedó a %.0f m de donde partió, en x %.1f, y %.1f, altura %.2f" % [
+		tiempo, "" if fase_v == 4 else " (SIN ATERRIZAR)", cima, y_max, recorrido, v_max,
+		Vector2(global_position.x - p0.x, global_position.z - p0.z).length(), global_position.x, -global_position.z, global_position.y])
+	print("vehiculo.gd: aterrizajes: %s; combustible %d %% (mínimo %d %%)" % [", ".join(dice) if not dice.is_empty() else "ninguno",
+		ceili(combustible * 100.0), ceili(c_min * 100.0)])
+	print("vehiculo.gd: esperando colisión %d cuadros de física, frenando por la de adelante %d; %d teselas leídas" % [
+		med["espera"], med["frena"], mapa.stats["leidas"] - med["leidas"]])
+	if not Args.has("--bajar") or fase_v < 4:
+		return
+	# --bajar: se lo saca, se aleja caminando y se lo pone otra vez
+	await arbol.physics_frame
+	usar()
+	await arbol.physics_frame
+	var jp := jugador.global_position
+	print("vehiculo.gd: se lo sacó: el personaje en x %.1f, y %.1f (%s), la mochila a %.1f m, %s" % [jp.x, -jp.z,
+		"libre" if not jugador_choca(jp) else "DENTRO DE ALGO", jp.distance_to(global_position),
+		"puesto" if montado else "en el suelo"])
+	Input.action_press("adelante")
+	await arbol.create_timer(2.0).timeout
+	Input.action_release("adelante")
+	var lejos := jugador.global_position.distance_to(global_position)
+	usar()
+	await arbol.physics_frame
+	print("vehiculo.gd: a %.1f m de la mochila, E: %s, en x %.1f, y %.1f" % [lejos, "puesto otra vez" if montado else "SIN PONER",
+		global_position.x, -global_position.z])

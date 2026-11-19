@@ -3,6 +3,10 @@
 # bicicleta o el auto (vehiculo.gd), no se mueve solo: va con el vehículo, que maneja también la cámara.
 extends CharacterBody3D
 
+signal murio  # la vida llegó a 0 (danar())
+signal danado(cantidad: float, causa: String)  # vida.gd: el destello de la barra
+signal reaparecio(donde: String)  # vida.gd: el aviso («» si fue con Tab o el mapa grande)
+
 const CAMINAR := 8.0  # m/s (de verdad, ~1,4: se siente lento en una caja de 400 m)
 const CORRER := 18.0
 # El triple salto, como el de Super Mario 64: saltar otra vez hasta VENTANA s después de caer de un salto encadena el
@@ -17,6 +21,24 @@ const ALTO := 1.75
 const RADIO := 0.3
 const SENS := 0.004
 const PELDANO := 0.4  # m: lo más alto que sube sin saltar (soleras, el borde de la plaza)
+# La vida (vida.gd la muestra abajo al centro): danar() la baja y curar() la sube, hasta VIDA_MAX. Las caídas duelen
+# según la rapidez hacia abajo al tocar el suelo (aterrizar()): nada hasta VEL_DOLOR, y de ahí el daño crece con la
+# energía (v², la altura de la caída) hasta VEL_MUERTE, que mata con la vida llena. Con REGEN_ESPERA s sin daño se
+# recupera sola, REGEN por segundo (en los carritos de completos, mucho más rápido: vida.gd). En 0 muere: cae de bruces
+# (se inclina cuerpo, el nodo del peatón; el peatón no se toca), no se mueve ni recibe daño, y a los ESPERA_MUERTO s
+# reaparece en la Plaza de Armas (plaza: el INICIO de main.gd, mirando al norte) con la vida llena, INVULNERABLE s sin
+# recibir daño y la cadena del triple salto de nuevo. Si muere montado se baja (vehiculo.gd bajar()) y el vehículo queda
+# donde estaba. Tab o el mapa grande con el personaje caído lo hacen reaparecer allá en vez de en la plaza.
+const VIDA_MAX := 100.0
+# m/s: ~7,3 m de caída (v² / 2g). Un salto cae a 4,5–7,4 m/s (el tercero, a ~10 si sube 5 m), una solera a ~2
+const VEL_DOLOR := 12.0
+const VEL_MUERTE := 23.0  # m/s: ~27 m. Entremedio, 10 m quitan ~14, 15 m ~39, 20 m ~64 y 25 m ~90
+const REGEN_ESPERA := 6.0  # s sin daño antes de que se recupere sola
+const REGEN := 4.0  # por segundo: de 10 a 100 en ~23 s
+const ESPERA_MUERTO := 2.5  # s caído antes de reaparecer
+const INVULNERABLE := 3.0  # s sin daño después de reaparecer (el peatón parpadea)
+const FUERA := 60.0  # m bajo el último suelo y sin nada abajo: cayó por un hueco de la colisión, fuera de la maqueta
+const CAIDO := 0.7  # s que tarda en quedar tendido
 
 var g: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var yaw := 0.0  # 0: mirando al norte (-Z)
@@ -30,7 +52,14 @@ var cuerpo := Node3D.new()
 var pose := -1.0
 var peaton: Node3D = preload("res://peaton.gd").new()  # el cuerpo que se ve (peaton.gd)
 var mapa: Node3D  # mapa.gd: mientras la colisión bajo el personaje no está, no cae
-var quieto := false  # viaje.gd: con la lista de lugares abierta, las teclas no lo mueven
+var _quieto := false
+# viaje.gd y plano.gd: con la lista de lugares o el mapa grande abiertos, las teclas no lo mueven; muerto, tampoco,
+# aunque se cierren (y vehiculo.gd, que lo lee, no lo deja subir con E)
+var quieto: bool:
+	get:
+		return _quieto or vida <= 0.0
+	set(v):
+		_quieto = v
 var llegar := Vector3.INF  # ir(): el punto de grilla (x, y, altura del lugar) donde aparece cuando su tesela esté lista
 var forma := CollisionShape3D.new()  # vehiculo.gd la apaga mientras va montado
 var vehiculo: Node = null  # vehiculo.gd, mientras va montado
@@ -40,6 +69,15 @@ var salto := 0  # el último salto de la cadena (1, 2 o 3; 0: ninguno)
 var en_salto := false  # en el aire por un salto (no por caerse de un borde)
 var t_suelo := 0.0  # s en el suelo desde que cayó del último salto
 var t_tecla := INF  # s desde que se apretó saltar
+var vida := VIDA_MAX
+var plaza := Vector3(0, -45, 0)  # x, y de grilla y altura del suelo donde reaparece (main.gd: INICIO y su suelo)
+var t_dano := 100.0  # s desde el último daño
+var t_muerto := 0.0  # s desde que murió
+var t_invulnerable := 0.0  # s que le quedan sin recibir daño
+var causa_muerte := ""  # la de la última muerte (vida.gd la muestra)
+var caida := 0.0  # m/s hacia abajo en el último aterrizaje (vida.gd prueba())
+var iba_montado := false  # en el cuadro de física anterior (bajado())
+var sin_forma := 0  # cuadros de física que le quedan con la cápsula apagada al bajarse (bajado())
 
 
 func _ready() -> void:
@@ -84,8 +122,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			largo = max(0.0, largo - 1.0)
 		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			largo = min(20.0, largo + 1.0)
-	elif e is InputEventKey and e.pressed and e.keycode == KEY_ESCAPE:
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	# Esc abre el menú (menu.gd), que suelta el mouse
 
 
 # aparece en el punto (x, y) de grilla, cuya altura del suelo es h (el «h» de los lugares de mapa/indice.json),
@@ -94,14 +131,21 @@ func ir(x: float, y: float, h: float) -> void:
 	if vehiculo:
 		vehiculo.ir(x, y, h)
 		return
+	var revive := vida <= 0.0  # Tab o el mapa grande con el personaje caído: reaparece allá
+	if revive:
+		revivir()
 	llegar = Vector3(x, y, h)
 	velocity = Vector3.ZERO
 	global_position = Vector3(x, h + 1.0, -y)
 	salto = 0
 	en_salto = false
+	if revive:
+		reaparecio.emit("")
 
 
 func _physics_process(dt: float) -> void:
+	vida_cuadro(dt)
+	bajado()
 	if vehiculo:
 		return  # vehiculo.gd lo lleva
 	if llegar != Vector3.INF:
@@ -112,6 +156,9 @@ func _physics_process(dt: float) -> void:
 		llegar = Vector3.INF
 	elif mapa and not mapa.solido(global_position.x, -global_position.z):
 		return  # la tesela de adelante todavía no tiene colisión: espera
+	if vida <= 0.0:
+		yacer(dt)
+		return
 	t_tecla += dt
 	if Input.is_action_just_pressed("saltar") and not quieto:
 		t_tecla = 0.0
@@ -131,16 +178,20 @@ func _physics_process(dt: float) -> void:
 	if dir.length() > 0.01:
 		cuerpo.rotation.y = lerp_angle(cuerpo.rotation.y, atan2(-dir.x, -dir.z), 1.0 - exp(-10.0 * dt))
 	var deseo := Vector3(velocity.x, 0, velocity.z) * dt  # antes de que el choque lo anule
+	var cae := 0.0 if is_on_floor() else -velocity.y  # m/s hacia abajo antes de tocar el suelo (aterrizar())
 	move_and_slide()
 	subir_cordon(deseo)
 	if is_on_floor():
+		if cae > 0.0:
+			aterrizar(cae)
 		inicio = global_position
 		if en_salto:  # cayó: desde aquí corre la ventana para el siguiente
 			en_salto = false
 			t_suelo = 0.0
-	elif global_position.y < inicio.y - 60:  # se cayó de la maqueta: vuelve al último suelo
-		global_position = inicio + Vector3.UP * 0.5
-		velocity = Vector3.ZERO
+	elif global_position.y < inicio.y - FUERA and nada_abajo():
+		# Antes volvía al último suelo. Ahora muere, como en una caída de 60 m; con suelo abajo (un barranco del
+		# Cerro, bajar con el jetpack) sigue cayendo y aterrizar() decide
+		morir("una caída fuera de la maqueta")
 
 
 # el salto que sigue en la cadena (SALTOS): el segundo o el tercero si cayó del anterior hace VENTANA s o menos; si no,
@@ -231,10 +282,146 @@ func _process(dt: float) -> void:
 	if pose >= 0.0:  # --pose R: anima como a R m/s sin moverse (capturas del peatón)
 		v = pose
 	peaton.animar(dt, v, is_on_floor())
+	if vida <= 0.0:  # de bruces, como un tablón que se vuelca desde los pies: el giro acelera hasta CAIDO
+		var f := minf(t_muerto / CAIDO, 1.0)
+		f *= f
+		cuerpo.rotation.x = -1.45 * f  # ~83°: tendido del todo, el pecho y los brazos se hunden en el suelo
+		cuerpo.position.y = 0.1 * f
 	largo_actual()
+	# recién reaparecido, parpadea; a pie el peatón siempre se ve (en el auto, vehiculo.gd lo esconde)
+	peaton.visible = t_invulnerable <= 0.0 or fmod(t_invulnerable, 0.24) > 0.08
 	brazo.rotation = Vector3(pitch, yaw, 0)
 
 
 func largo_actual() -> void:
 	brazo.spring_length = lerp(brazo.spring_length, largo, 0.2)
 	cuerpo.visible = brazo.get_hit_length() > 0.6
+
+
+# ---------- la vida (vida.gd la muestra) ----------
+
+# quita vida (las armas, las caídas, --dano); en 0, muere. Muerto o recién reaparecido (INVULNERABLE), no hace nada
+func danar(cantidad: float, causa := "") -> void:
+	if vida <= 0.0 or cantidad <= 0.0 or t_invulnerable > 0.0:
+		return
+	vida = maxf(vida - cantidad, 0.0)
+	t_dano = 0.0
+	danado.emit(cantidad, causa)
+	if vida <= 0.0:
+		morir(causa)
+
+
+# suma vida, hasta VIDA_MAX (la regeneración, los carritos de completos de vida.gd); muerto, no revive
+func curar(cantidad: float) -> void:
+	if vida <= 0.0 or cantidad <= 0.0:
+		return
+	vida = minf(vida + cantidad, VIDA_MAX)
+
+
+# la entrada de las armas, la misma en cualquier blanco: el golpe en el punto `punto` desde `desde`. A pie lo empuja un
+# poco hacia donde va el golpe (lo que pide caminar lo frena en ~0,2 s: unos 25 cm)
+func recibir_dano(cantidad: float, punto: Vector3, desde: Vector3) -> void:
+	if vida > 0.0 and t_invulnerable <= 0.0 and vehiculo == null:
+		var d := Vector3(punto.x - desde.x, 0.0, punto.z - desde.z)
+		if d.length() > 0.01:
+			velocity += d.normalized() * minf(cantidad * 0.1, 3.0)
+	danar(cantidad)
+
+
+# los relojes de la vida, en cada cuadro de física (también montado): la regeneración, la invulnerabilidad y, muerto,
+# cuándo reaparece
+func vida_cuadro(dt: float) -> void:
+	if vida <= 0.0:
+		t_muerto += dt
+		if t_muerto >= ESPERA_MUERTO:
+			reaparecer()
+		return
+	t_dano += dt
+	if llegar == Vector3.INF:  # la invulnerabilidad corre desde que aparece, no mientras espera la colisión
+		t_invulnerable = maxf(t_invulnerable - dt, 0.0)
+	if t_dano >= REGEN_ESPERA and vida < VIDA_MAX:
+		curar(REGEN * dt)
+
+
+# tocó el suelo cayendo a v m/s: bajo VEL_DOLOR nada; de ahí, el daño crece con v² (la altura) hasta VIDA_MAX en
+# VEL_MUERTE
+func aterrizar(v: float) -> void:
+	caida = v
+	if v <= VEL_DOLOR:
+		return
+	var d := VIDA_MAX * (v * v - VEL_DOLOR * VEL_DOLOR) / (VEL_MUERTE * VEL_MUERTE - VEL_DOLOR * VEL_DOLOR)
+	var m := v * v / (2.0 * g)
+	print("jugador.gd: cayó a %.1f m/s (como de %.1f m): %.0f de daño" % [v, m, d])
+	danar(d, "una caída de %.0f m" % m)
+
+
+func morir(causa := "") -> void:
+	vida = 0.0
+	t_muerto = 0.0
+	causa_muerte = causa
+	if vehiculo:
+		vehiculo.bajar()  # al lado del vehículo, que queda donde estaba (y bajado() que no quede encima)
+	salto = 0
+	en_salto = false
+	print("jugador.gd: murió%s en x %.1f, y %.1f" % [" (%s)" % causa if causa != "" else "", global_position.x, -global_position.z])
+	murio.emit()
+
+
+# muerto: sin teclas, frena y, si murió en el aire, cae (sin más daño)
+func yacer(dt: float) -> void:
+	var k := 1.0 - exp(-6.0 * dt)
+	velocity.x = lerp(velocity.x, 0.0, k)
+	velocity.z = lerp(velocity.z, 0.0, k)
+	if not is_on_floor():
+		velocity.y -= g * dt
+	move_and_slide()
+
+
+# a la Plaza de Armas, mirando al norte, por ir(): aparece cuando la colisión de la plaza esté
+func reaparecer() -> void:
+	yaw = 0.0
+	pitch = -0.3
+	cuerpo.rotation.y = 0.0
+	revivir()
+	ir(plaza.x, plaza.y, plaza.z)
+	print("jugador.gd: reaparece en la Plaza de Armas")
+	reaparecio.emit("en la Plaza de Armas")
+
+
+# de pie, con la vida llena, un rato invulnerable y la cadena del triple salto de nuevo (ir() pone dónde, y después
+# se avisa: reaparecio)
+func revivir() -> void:
+	vida = VIDA_MAX
+	t_muerto = 0.0
+	t_dano = 100.0
+	t_invulnerable = INVULNERABLE
+	cuerpo.rotation = Vector3(0.0, cuerpo.rotation.y, 0.0)
+	cuerpo.position = Vector3.ZERO
+	velocity = Vector3.ZERO
+	salto = 0
+	en_salto = false
+	t_suelo = 0.0
+	t_tecla = INF
+
+
+# Recién bajado del vehículo (E o al morir), la cápsula se apaga dos cuadros de física. vehiculo.gd bajar() la enciende
+# y mueve el nodo al costado, pero un cuerpo cinemático llega a su lugar nuevo recién en el paso de física siguiente:
+# en ese cuadro el vehículo se movía contra la cápsula todavía en el asiento, salía 1 m hacia arriba y en el siguiente
+# se iba con ella (lo que está encima de un cuerpo que se mueve va con él), sobre la cabeza del personaje. Pasaba en
+# cada bajada de la bicicleta detenida (noviembre de 2026).
+func bajado() -> void:
+	if iba_montado and vehiculo == null:
+		forma.disabled = true
+		sin_forma = 2
+	elif sin_forma > 0:
+		sin_forma -= 1
+		if sin_forma == 0 and vehiculo == null:
+			forma.disabled = false
+	iba_montado = vehiculo != null
+
+
+# nada bajo el personaje en 3 km: se cayó de la maqueta (la colisión es de una cara: de abajo no se ve el suelo)
+func nada_abajo() -> bool:
+	var q := PhysicsRayQueryParameters3D.create(global_position, global_position + Vector3.DOWN * 3000.0)
+	q.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_ray(q).is_empty()

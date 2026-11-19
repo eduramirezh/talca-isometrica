@@ -217,7 +217,9 @@ func estado_propio() -> Array:
 	var v := vehiculo
 	var vt: String = v.tipo if v and v.activo else ""
 	var montado: bool = v != null and v.montado
-	return [jugador.global_position, jugador.velocity, jugador.cuerpo.rotation.y, jugador.is_on_floor(), montado, vt,
+	# con el jetpack puesto lo mueve vehiculo.gd: is_on_floor() del personaje no cambia, y en_aire es lo que vale
+	var en_suelo: bool = not v.en_aire if montado and vt == "jetpack" else jugador.is_on_floor()
+	return [jugador.global_position, jugador.velocity, jugador.cuerpo.rotation.y, en_suelo, montado, vt,
 		v.global_position if v else Vector3.ZERO, v.rumbo if v else 0.0, v.rapidez if v else 0.0,
 		v.volante if v else 0.0, v.inclinar if v else Vector3.ZERO]
 
@@ -594,6 +596,9 @@ class Otro extends Node3D:
 				if montado and vrap > 0.3:
 					fase_biela += vrap / 4.3 * TAU * dt
 				veh.biela.rotation.x = -fase_biela
+			elif vt == "jetpack":  # las llamas mientras vuela (no viaja cuánto empuja: en el aire, algo más de la mitad)
+				veh.llama = 0.6 if montado and not en_suelo else 0.0
+				veh.mostrar_jetpack(dt)  # veh.montado es falso aquí: solo las llamas y la luz
 		# el peatón: en el asiento de la bicicleta, oculto en el auto, o caminando
 		if montado and vt == "bici":
 			if peaton.get_parent() != veh.asiento:
@@ -605,7 +610,19 @@ class Otro extends Node3D:
 				var a := -fase_biela + PI * i
 				pies.append(Veh.BIELA_C + Vector2(cos(a), sin(a)) * Veh.BIELA_R + Vector2(-0.03, 0.07) - Veh.CADERA)
 			peaton.sentar(dt, pies, 0.62, Veh.BICI_BRAZOS.x, Veh.BICI_BRAZOS.y)
+		elif montado and vt == "jetpack":  # como vehiculo.gd peaton_al_vehiculo(): en el asiento, la mochila en la espalda
+			if peaton.get_parent() != veh.asiento:
+				peaton.reparent(veh.asiento, false)
+			peaton.transform = Transform3D.IDENTITY
+			peaton.visible = true
+			veh.mochila_puesta(true, peaton)
+			if en_suelo:
+				peaton.animar(dt, vrap, true)
+			else:
+				veh.pose_vuelo(dt, peaton)
 		else:
+			if vt == "jetpack":
+				veh.mochila_puesta(false)  # sacada: parada en el suelo, en el modelo del vehículo
 			if peaton.get_parent() != cuerpo:
 				peaton.reparent(cuerpo, false)
 				peaton.transform = Transform3D.IDENTITY

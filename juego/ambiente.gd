@@ -291,11 +291,14 @@ func _unhandled_input(e: InputEvent) -> void:
 	if not (e is InputEventKey and e.pressed and not e.echo):
 		return
 	if e.physical_keycode == KEY_T:
-		objetivo += -1.0 if e.shift_pressed else 1.0
+		ir_a_hora(objetivo + (-1.0 if e.shift_pressed else 1.0))
 	elif e.physical_keycode == KEY_L:
-		objetivo = dia_o_noche(objetivo)
-	else:
-		return
+		ir_a_hora(dia_o_noche(objetivo))
+
+
+# el reloj corre hasta h (T, L y el menú de Esc, menu.gd)
+func ir_a_hora(h: float) -> void:
+	objetivo = h
 	rapidez = max(1.5, abs(objetivo - hora) / 3.0)  # una hora a 1,5 por segundo; un salto largo, en ~3 s
 	reloj_t = 4.0
 
