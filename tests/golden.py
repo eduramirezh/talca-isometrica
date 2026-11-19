@@ -18,7 +18,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PY = [sys.executable]
-PIL = ['uv', 'run', '--offline', '-q', '--with', 'pillow', 'python']   # --offline: Pillow from uv's cache (resolving online took minutes)
+PILLOW = re.search(r'^pillow==\S+', (ROOT / 'requirements.txt').read_text(), re.M).group(0)   # the pinned version
+PIL = ['uv', 'run', '--offline', '-q', '--with', PILLOW, 'python']   # --offline: Pillow from uv's cache (resolving online took minutes)
 
 # (name, argv run from pipeline/, files it writes relative to ROOT)
 CMDS = [

@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["playwright==1.63", "pillow"]
+# dependencies = ["playwright==1.63", "pillow==13.0.0"]
 # ///
 """GIF animado del mapa para mostrarlo (un correo, una presentación): se acerca a un punto, da una vuelta completa de
 día, pasa a la noche con un fundido, sigue girando de noche y vuelve fundido al primer cuadro, para que el GIF se repita

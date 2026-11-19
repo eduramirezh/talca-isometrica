@@ -5,9 +5,13 @@
 # ellos _headers: la caché de assets/); este script sube dist/ al proyecto de Cloudflare Pages con Wrangler. Se corre a
 # mano (`make deploy`) o lo corre el hook de pre-push cuando se empuja main (.githooks/pre-push).
 #
+# Wrangler es el de scripts/deploy/ (versión fija en su package.json y package-lock.json, que sube Dependabot; aparte de
+# la raíz para que make build no baje sus ~270 MB): este script corre `npm ci` ahí la primera vez y cuando cambia el
+# lockfile. Nunca `npx wrangler`, que bajaría la última versión y la correría con las credenciales de Cloudflare.
+#
 # Una sola vez (interactivo, con la cuenta de Cloudflare):
-#   npx wrangler login
-#   npx wrangler pages project create talca-isometrica --production-branch main
+#   scripts/deploy/node_modules/.bin/wrangler login
+#   scripts/deploy/node_modules/.bin/wrangler pages project create talca-isometrica --production-branch main
 #
 # Armar sin subir:
 #   DRY_RUN=1 ./scripts/deploy-cloudflare.sh      (o: make deploy DRY_RUN=1)
@@ -37,9 +41,15 @@ if [ "${DRY_RUN:-0}" != "0" ]; then
   exit 0
 fi
 
+wrangler=scripts/deploy/node_modules/.bin/wrangler
+if [ ! -x "$wrangler" ] || [ scripts/deploy/package-lock.json -nt scripts/deploy/node_modules/.package-lock.json ]; then
+  say "instalando Wrangler (npm ci en scripts/deploy/, la versión de su package-lock.json)…"
+  npm ci --prefix scripts/deploy --no-audit --no-fund --loglevel=error >/dev/null
+fi
+
 # --branch=main la marca como producción (la que sirve el dominio propio); otras ramas son vistas previas.
-say "subiendo al proyecto de Cloudflare Pages '${CF_PAGES_PROJECT}'…"
-npx --yes wrangler pages deploy "$stage" \
+say "subiendo al proyecto de Cloudflare Pages '${CF_PAGES_PROJECT}' (Wrangler $("$wrangler" --version | tail -1))…"
+"$wrangler" pages deploy "$stage" \
   --project-name="$CF_PAGES_PROJECT" \
   --branch=main \
   --commit-hash="$(git rev-parse HEAD)" \

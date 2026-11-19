@@ -1,0 +1,10 @@
+# Las herramientas geoespaciales de tools/, fuera de requirements.txt porque son pesadas y se usan poco:
+#   tools/ml_buildings.py (make edificios-ml): uv run --with-requirements requirements-geo.txt python -I tools/ml_buildings.py
+#   tools/sentinel.py: uv run tools/sentinel.py … (su encabezado PEP 723 repite estas versiones; tools/check.py lo revisa)
+# Versiones fijas (==), que Dependabot sube con un PR (.github/dependabot.yml).
+duckdb==1.5.6
+numpy==2.5.5
+pillow==13.0.0   # la misma que requirements.txt (tools/check.py lo revisa)
+pyproj==3.8.0
+rasterio==1.5.2
+shapely==2.2.0

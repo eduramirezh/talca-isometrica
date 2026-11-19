@@ -1,20 +1,24 @@
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["numpy==2.5.5", "pillow==13.0.0", "rasterio==1.5.2"]
+# ///
 """Sentinel-2 L2A sobre la comuna: lo que hay hoy, a 10 m (solo consulta; los datos quedan en raw/, fuera de git).
 
 La imagen de Esri de la ciudad es de 2015 (z18) o 2020 (z17); Sentinel-2 pasa cada 2–3 días. A 10 m no se ven casas,
 techos ni hileras de un huerto, pero sí si un potrero ya es una villa o un sitio quedó pelado. Usa el catálogo STAC
 earth-search de Element84 (COG en AWS, sin cuenta) y rasterio para leer solo la ventana de la comuna.
 
-  uv run --with rasterio --with pillow python tools/sentinel.py buscar [--desde 2026-01-01] [--hasta …] [--nubes 5] [--n 8]
+  uv run tools/sentinel.py buscar [--desde 2026-01-01] [--hasta …] [--nubes 5] [--n 8]
       # escenas de la tesela 19HBA (cubre la comuna entera), de la más nueva a la más vieja, con las nubes de la
       # tesela y, para las primeras --n, las de la comuna (de la capa SCL); --nubes: el máximo sobre la comuna
-  uv run --with rasterio --with pillow python tools/sentinel.py bajar <id|ultima> [--nubes 5]
+  uv run tools/sentinel.py bajar <id|ultima> [--nubes 5]
       # la ventana de la comuna de color (TCI), rojo (B04), infrarrojo (B08) y clases (SCL) -> raw/satelite/sentinel2/<AAAAMMDD>/
       # (ultima: la escena más nueva con menos de --nubes % de nubes sobre la comuna; ~10 MB)
-  uv run --with rasterio --with pillow python tools/sentinel.py caja x0 x1 y0 y1 [nombre] [--fecha AAAAMMDD] [--esri[=z]]
+  uv run tools/sentinel.py caja x0 x1 y0 y1 [nombre] [--fecha AAAAMMDD] [--esri[=z]]
       # una caja de metros de grilla, al norte arriba: el color y el NDVI lado a lado, a 2 m por píxel, con la caja y los
       # usos de suelo de config/usos.json encima; --esri agrega la imagen de Esri (z17 por omisión: 2020 en la ciudad)
       # -> diagnostics/s2-<nombre>.png
-  uv run --with rasterio --with pillow python tools/sentinel.py usos [--fecha AAAAMMDD] [--todos]
+  uv run tools/sentinel.py usos [--fecha AAAAMMDD] [--todos]
       # cada entrada de config/usos.json: NDVI medio y la parte que hoy se ve verde, pelada o construida; lista las de
       # campo (potrero, eriazo, huerto, viña, parcelas, bosque) que se ven construidas y las de vivienda que se ven
       # peladas o verdes, para revisarlas en la imagen (solo lee config/usos.json)

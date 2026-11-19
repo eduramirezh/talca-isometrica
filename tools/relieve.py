@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["pillow"]
+# dependencies = ["pillow==13.0.0"]
 # ///
 """Compara dos versiones de data/elevation.json: lo que el cambio de modelo de elevación mueve en la maqueta.
 

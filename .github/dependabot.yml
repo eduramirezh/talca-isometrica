@@ -1,0 +1,43 @@
+# Dependabot: los lunes, un PR por dependencia con una versión nueva (y los de seguridad cuando aparecen).
+#
+# Las versiones van fijas: == en requirements*.txt y exactas en package.json y scripts/deploy/package.json, con sus
+# package-lock.json. tools/check.py (pins, en make check y el hook de pre-commit) lo exige, y también que los
+# encabezados PEP 723 de tools/ repitan las versiones de requirements*.txt: Dependabot no los lee, así que al aceptar un
+# PR de pip hay que cambiarlos igual (make check dice cuáles). El Makefile y tests/golden.py leen requirements.txt.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories:
+      - "/"                # three.js (lo copia build.py) y ESLint (make lint)
+      - "/scripts/deploy"  # Wrangler (make deploy y el hook de pre-push)
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Santiago
+    cooldown:
+      default-days: 7      # una versión recién publicada espera una semana (lo que tarda en saberse si venía mala)
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "Dependencias"
+    ignore:
+      # three.js va en r128 a propósito: winMat() (src/js/40-three.js) reemplaza trozos del sombreador de esa versión
+      # (CLAUDE.md, Convenciones: Dependencias). Se sube a mano, revisando eso.
+      - dependency-name: three
+
+  - package-ecosystem: pip
+    directory: "/"           # requirements.txt (Pillow, Playwright) y requirements-geo.txt (tools/ml_buildings.py, sentinel.py)
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Santiago
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "Dependencias"
+    ignore:
+      # Playwright va con el Chromium de su caché (chromium_headless_shell-1243 es el de la 1.63) y las referencias de
+      # tools/regress.py y tools/hitos.py se toman con ese navegador: subirlo pide bajar otro y rehacer las referencias.
+      - dependency-name: playwright

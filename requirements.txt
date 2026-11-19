@@ -1,5 +1,7 @@
+# Versiones fijas (==), que Dependabot sube con un PR (.github/dependabot.yml); tools/check.py (pins) exige que los
+# encabezados PEP 723 de tools/ y pipeline/ digan lo mismo, y el Makefile y tests/golden.py las leen de aquí.
 # Pipeline de datos: solo biblioteca estándar de Python 3.9+ (tests/: unittest; make check los corre).
 # Lo que lee la imagen de Esri o dibuja paneles (satellite.py, golf.py, edificios.py techos|panel, diagnostics.py…):
-pillow>=10   # mejor sin instalar: uv run --with pillow python pipeline/…
-# Capturas (tools/); mejor sin instalar: uv run --with "playwright==1.63" python tools/… (CLAUDE.md, Comandos)
+pillow==13.0.0   # mejor sin instalar: uv run --with pillow==13.0.0 python pipeline/… ($(PIL) en el Makefile)
+# Capturas (tools/); mejor sin instalar: uv run tools/x.py (lee su encabezado) o $(PW) en el Makefile
 playwright==1.63   # el Chromium de la caché (chromium_headless_shell-1243) es el de la 1.63: otra versión pide otro navegador
