@@ -13,7 +13,7 @@ make check                      # revisión rápida (~1 s): JSON, marcadores, hi
 make golden [SAVE=1] [REF=shots/golden-ref]   # antes (SAVE=1) y después de tocar pipeline/: la salida de 43 comandos y los archivos que escriben, byte a byte (tests/golden.py; ~5 min, sin red salvo las capturas de golf)
 python3 tools/datadiff.py [rev | a.json b.json]   # qué cambió en los data/*.json (de una línea): claves, tamaños, elementos distintos, contra HEAD u otra versión
 make smoke                      # make lint, y carga dist/ en Chromium: falla si hay errores de consola o la generación sale vacía (~1 min; tools/screenshot.py --strict)
-make lint                       # ESLint 10.13 (package.json, versión fija; npm install) sobre el script unido: no-undef, no-redeclare, no-shadow, no-unused-vars, con el archivo y la línea de src/ (tools/lint.py, tools/eslint.config.mjs; ~3 s)
+make lint                       # ESLint 10.15 (package.json, versión fija; npm install) sobre el script unido: no-undef, no-redeclare, no-shadow, no-unused-vars, con el archivo y la línea de src/ (tools/lint.py, tools/eslint.config.mjs; ~3 s)
 make serve                      # http://localhost:8765
 make deploy [DRY_RUN=1]         # make build y publica dist/ en Cloudflare Pages: talca.eduramirez.com (scripts/deploy-cloudflare.sh)
 make site-assets                # src/site/og.jpg (Open Graph, 1200 × 630, desde el mapa), apple-touch-icon.png y los pósters del arranque poster-*.webp (tools/site_assets.py; `poster` hace solo los pósters)
