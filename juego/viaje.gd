@@ -44,6 +44,9 @@ func _ready() -> void:
 func _input(e: InputEvent) -> void:
 	if not (e is InputEventKey and e.pressed and not e.echo):
 		return
+	var red: Node = get_parent().get("red")
+	if red and red.panel.visible:
+		return  # se está escribiendo en el panel de la red (red.gd)
 	if e.keycode == KEY_TAB:
 		abrir(not panel.visible)
 		get_viewport().set_input_as_handled()

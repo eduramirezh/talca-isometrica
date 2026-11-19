@@ -51,6 +51,11 @@ const BANDERAS := {
 	"--ojo": ["x,y,z", "vp.gd: el ojo fijo (sin teléfono)"],
 	"--pantalla": ["n", "vp.gd: la pantalla de la ventana"],
 	"--lan": ["", "vp.gd: abre los puertos a la red local (el teléfono sin cable); sin ella, solo 127.0.0.1"],
+	"--servidor": ["", "red.gd: crea una partida en la red local al comenzar (L: el panel)"],
+	"--unirse": ["ip|lan", "red.gd: se une a la partida de esa IP (lan: a la primera que se anuncie)"],
+	"--nombre": ["texto", "red.gd: el nombre que ven los demás jugadores"],
+	"--puerto": ["n", "red.gd: el puerto de la partida (8790)"],
+	"--red-prueba": ["s", "red.gd: a los s segundos imprime dónde están los otros jugadores y sale (con --png, después de ella)"],
 }
 
 # lo que apaga --sin (y quién lo lee)

@@ -11,7 +11,8 @@
 # clic pone un marcador y ruta.gd traza el camino hasta él (plano.gd, que dibuja también el mapa en miniatura; N: con el
 # norte arriba). E: subir a la bicicleta o
 # al auto, o bajar (si está lejos, lo trae); V: cambiar entre los dos; montado, W/S acelera y frena (detenido,
-# retrocede), A/D gira, Espacio frena de golpe y, en la bicicleta, Q pedalea de pie (vehiculo.gd). --png guarda un cuadro
+# retrocede), A/D gira, Espacio frena de golpe y, en la bicicleta, Q pedalea de pie (vehiculo.gd). L: la red local,
+# para jugar con otros en la misma red (red.gd: crear una partida o unirse; --servidor, --unirse ip, --nombre). --png guarda un cuadro
 # (cuando el mapa terminó de cargar alrededor de la cámara) y sale; --desde x,y pone al
 # personaje en ese punto de grilla, --girar G gira la vista G grados a
 # la izquierda, --mirar P la inclina P grados, --camara L pone la cámara a L m (0: primera persona) y --caminar N camina N segundos hacia adelante antes (para revisar la colisión sin teclado).
@@ -34,6 +35,7 @@
 #   plano.gd         el mapa en miniatura y el mapa grande (M), con plano_datos.gd (datos/plano.json, de pipeline/plano.py)
 #   ruta.gd          el marcador del mapa grande y el camino hasta él, con la cinta de flechas y la columna de luz
 #   vehiculo.gd      la bicicleta y el auto (E, V), con su cámara
+#   red.gd           la red local (L, --servidor, --unirse ip): los otros jugadores, como peatones o en sus vehículos
 #   modelos/*.gd     modelos propios del juego, más detallados que los de la página. Cada uno es un Node3D que construye
 #                    lo suyo (geometría y colisión) en _ready() y puede declarar
 #                      func recortes() -> Array   # [{"poligono": PackedVector2Array([...]), "capas": ["hitos", ...]}]
@@ -57,6 +59,7 @@ var mapa: Node3D
 var viaje: CanvasLayer
 var ruta: Node3D  # ruta.gd: el marcador y el camino
 var plano: CanvasLayer  # plano.gd: el mapa en miniatura y el mapa grande (M)
+var red: Node3D  # red.gd: los otros jugadores de la red local (L)
 var recs := []  # los recortes de los modelos (recortes()): [{"poligono", "capas"}]
 
 
@@ -124,6 +127,14 @@ func _ready() -> void:
 		plano.ruta = ruta
 		plano.viaje = viaje
 		add_child(plano)
+	red = preload("res://red.gd").new()
+	red.jugador = jugador
+	red.vehiculo = vehiculo
+	red.viaje = viaje
+	red.plano = plano
+	if plano:
+		plano.red = red
+	add_child(red)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	jugador.inicio = suelo(INICIO.x, -INICIO.y) + Vector3.UP * 0.1
@@ -197,6 +208,9 @@ func png() -> void:
 	if f == "":
 		return
 	await mapa.esperar()
+	if red and Args.has("--red-prueba"):  # la captura después del informe de la red (con los otros ya a la vista)
+		while not red.prueba_lista:
+			await get_tree().process_frame
 	for i in 10:
 		await RenderingServer.frame_post_draw
 	var out := abs_path(f)
@@ -251,7 +265,7 @@ func ayuda() -> void:
 	var capa := CanvasLayer.new()
 	add_child(capa)
 	var l := Label.new()
-	l.text = "WASD: caminar · Mayús: correr · Espacio: saltar · mouse: mirar · rueda: cámara · Tab: ir a un lugar · Esc: soltar el mouse\nE: subir o bajar del vehículo (lejos, lo trae) · V: bicicleta o auto · montado, W/S: acelerar y frenar · A/D: girar · Espacio: frenar · Q: pedalear de pie\nM: mapa (un clic pone el marcador y el camino hasta él) · N: el mapa chico con el norte arriba"
+	l.text = "WASD: caminar · Mayús: correr · Espacio: saltar · mouse: mirar · rueda: cámara · Tab: ir a un lugar · Esc: soltar el mouse\nE: subir o bajar del vehículo (lejos, lo trae) · V: bicicleta o auto · montado, W/S: acelerar y frenar · A/D: girar · Espacio: frenar · Q: pedalear de pie\nM: mapa (un clic pone el marcador y el camino hasta él) · N: el mapa chico con el norte arriba · L: red local (jugar con otros)"
 	l.position = Vector2(16, 12)
 	l.add_theme_color_override("font_color", Color(1, 1, 1))
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))

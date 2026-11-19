@@ -33,6 +33,7 @@ var jugador: CharacterBody3D
 var vehiculo: CharacterBody3D
 var ruta: Node3D  # ruta.gd
 var viaje: CanvasLayer  # viaje.gd: con su lista abierta, M y N no hacen nada (se están escribiendo)
+var red: Node3D  # red.gd: los otros jugadores (flechas de su color) y, con su panel abierto, M y N no hacen nada
 var datos: RefCounted
 var norte := false  # la miniatura con el norte arriba
 var antes := Input.MOUSE_MODE_CAPTURED
@@ -304,6 +305,13 @@ func dibujar_mini(n: Node2D) -> void:
 		var m: Vector2 = t * ruta.marcador
 		if m.distance_to(c) <= RADIO - 9.0:
 			pin(n, m, 1.0)
+	# los otros jugadores (red.gd): dentro del círculo, o en su borde si están más lejos
+	if red:
+		for o in red.en_mapa():
+			var q: Vector2 = t * o[0]
+			if q.distance_to(c) > RADIO - 8.0:
+				q = c + (q - c).normalized() * (RADIO - 8.0)
+			flecha(n, q, giro_mini() - o[1], 0.75, o[2])
 	flecha(n, c, giro_mini() - rumbo(), 1.0)
 
 
@@ -362,14 +370,14 @@ static func distancia(m: float) -> String:
 
 
 # la flecha del personaje: un triángulo con muesca, apuntando según `ang` (0: arriba; positivo: a la derecha)
-func flecha(n: CanvasItem, c: Vector2, ang: float, k: float) -> void:
+func flecha(n: CanvasItem, c: Vector2, ang: float, k: float, col := C_JUGADOR) -> void:
 	var p := PackedVector2Array([Vector2(0, -11), Vector2(8, 8), Vector2(0, 3.5), Vector2(-8, 8)])
 	var q := PackedVector2Array()
 	for v in p:
 		q.append(c + (v * k).rotated(ang))
 	var borde := q.duplicate()
 	borde.append(q[0])
-	n.draw_colored_polygon(q, C_JUGADOR)
+	n.draw_colored_polygon(q, col)
 	n.draw_polyline(borde, Color(0, 0, 0, 0.8), 2.0, true)
 
 
@@ -452,6 +460,12 @@ func dibujar_grande_encima(n: Control) -> void:
 			n.draw_circle(q, 3.8, Color(1, 0.93, 0.7))
 	if ruta and ruta.activo():
 		pin(n, t * ruta.marcador, 1.4)
+	if red:
+		for o in red.en_mapa():
+			var q: Vector2 = t * o[0]
+			flecha(n, q, -o[1], 1.1, o[2])
+			n.draw_string_outline(f, q + Vector2(12, 5), o[3], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.8))
+			n.draw_string(f, q + Vector2(12, 5), o[3], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, o[2].lightened(0.45))
 	flecha(n, t * pos(), -rumbo(), 1.3)
 	# la escala
 	var m := escala_redonda(120.0 / esc)
@@ -615,6 +629,8 @@ func _input(e: InputEvent) -> void:
 		return
 	if viaje and viaje.panel.visible:
 		return  # se está escribiendo en la lista de lugares
+	if red and red.panel.visible:
+		return  # o en el panel de la red
 	if e.physical_keycode == KEY_M:
 		abrir(not grande.visible)
 		get_viewport().set_input_as_handled()
