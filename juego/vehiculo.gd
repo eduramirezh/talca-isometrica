@@ -440,7 +440,7 @@ func pedalear(dt: float) -> void:
 		var pedal := BIELA_C + Vector2(cos(a), sin(a)) * BIELA_R
 		pies.append(pedal + Vector2(-0.03, 0.07) - CADERA)
 	var fuerte := Input.is_action_pressed("impulso") and rapidez > 1.0
-	pe.sentar(dt, pies, 0.62 if not fuerte else 0.75, 1.42, 0.35)
+	pe.sentar(dt, pies, 0.62 if not fuerte else 0.75, BICI_BRAZOS.x, BICI_BRAZOS.y)
 
 
 # ---------- los modelos ----------
@@ -448,6 +448,9 @@ func pedalear(dt: float) -> void:
 # en el marco de la bicicleta (adelante, arriba), m: el eje de los pedales y la cadera del ciclista
 const BIELA_C := Vector2(-0.02, 0.29)
 const BIELA_R := 0.17
+# los hombros y los codos del ciclista (rad, peaton.gd sentar()): con ellos las manos caen en los puños del manubrio,
+# a (0,35; 1,075) y 0,24 al lado (con 1,42 y 0,35, hasta noviembre de 2026, quedaban ~20 cm delante del manubrio)
+const BICI_BRAZOS := Vector2(0.7, 1.2)
 const CADERA := Vector2(-0.24, 1.02)
 
 
@@ -545,64 +548,356 @@ func rueda(r: float, w: float, llanta: float, n_rayos: int, gruesa: bool) -> Mal
 	return m
 
 
-# una bicicleta urbana de 1,75 m (ruedas de 0,68 m, batalla 1,05): cuadro de diamante, horquilla y manubrio que giran,
-# pedales que giran con la rueda
+# Una bicicleta urbana de paseo de 1,8 m (ruedas de 28" de 0,68 m, batalla 1,05: la de TIPOS), como las que se ven en
+# las calles de Talca: cuadro de diamante de tubos redondos (superior, inferior, del asiento, de dirección, vainas y
+# tirantes), horquilla curva, dirección inclinada a 71° con 4,5 cm de avance de la horquilla, manubrio de paseo con los
+# puños hacia atrás, guardabarros, parrilla, cadena, plato y pata (plegada). Las medidas son las de un cuadro de 54 cm;
+# los colores y piezas, aproximados (no de una foto en particular). En el marco de la bicicleta (adelante, arriba, al
+# lado: _bp); ~3.000 triángulos.
+# Los nodos que se animan: ruedas (giran en X), direccion (el pivote, que gira en su Y, dentro de un nodo inclinado
+# como el tubo de dirección: la horquilla, la rueda de adelante, el manubrio y el foco giran en torno a ese eje), biela
+# (el plato y los pedales, en el eje BIELA_C) y asiento (donde se sienta el peatón: peaton.gd sentar()).
+const BICI_DIR := 71.0  # grados: el ángulo del tubo de dirección sobre el horizonte
+const BICI_AVANCE := 0.045  # m: el desplazamiento de la horquilla (de su eje al de la rueda)
+
+
+# (adelante, arriba, al lado: + a la derecha) en el marco de la bicicleta -> Vector3 del modelo (adelante es -Z)
+static func _bp(a: float, h: float, x := 0.0) -> Vector3:
+	return Vector3(x, h, -a)
+
+
+# la capa "" de src (lo de tubo(), tri(), quad()) pasa a la capa mat de dst; las otras capas, con su nombre
+static func juntar(dst: Malla, src: Malla, mat: String) -> void:
+	for k in src.capas:
+		var s: Array = src.capas[k]
+		var d: Array = dst._capa(mat if k == "" else k)
+		for i in 4:
+			d[i].append_array(s[i])
+
+
+# la malla m en otro marco (los puntos y las normales por tr)
+static func mover(m: Malla, tr: Transform3D) -> void:
+	for k in m.capas:
+		var c: Array = m.capas[k]
+		var p := PackedVector3Array()
+		var n := PackedVector3Array()
+		for v in c[0]:
+			p.append(tr * v)
+		for v in c[1]:
+			n.append((tr.basis * v).normalized())
+		c[0] = p
+		c[1] = n
+
+
+# un disco de radio r en el plano YZ, en x, de dos caras (tapas de bujes, plato, piñón)
+static func disco_x(m: Malla, c: Vector3, r: float, n: int, col: Color) -> void:
+	for i in n:
+		var a0 := TAU * i / n
+		var a1 := TAU * (i + 1) / n
+		var p0 := c + Vector3(0, cos(a0), sin(a0)) * r
+		var p1 := c + Vector3(0, cos(a1), sin(a1)) * r
+		m.tri(c, p0, p1, col, Vector3.RIGHT)
+		m.tri(c, p0, p1, col, Vector3.LEFT)
+
+
+# una franja curva de dos caras alrededor de un eje X en c (modelo): radio r, ancho w, entre los ángulos f0 y f1
+# (desde adelante, subiendo); con sección en arco, como un guardabarros o el tapacadena
+static func franja(m: Malla, c: Vector3, r: float, w: float, f0: float, f1: float, col: Color, x := 0.0) -> void:
+	var n := maxi(2, ceili(absf(f1 - f0) / 0.14))
+	var sec := [Vector2(-w / 2, -0.012), Vector2(-w / 4, -0.002), Vector2(w / 4, -0.002), Vector2(w / 2, -0.012)]
+	for i in n:
+		var g0 := lerpf(f0, f1, float(i) / n)
+		var g1 := lerpf(f0, f1, float(i + 1) / n)
+		var e0 := Vector3(0, sin(g0), -cos(g0))
+		var e1 := Vector3(0, sin(g1), -cos(g1))
+		for j in sec.size() - 1:
+			var s0: Vector2 = sec[j]
+			var s1: Vector2 = sec[j + 1]
+			var a := c + e0 * (r + s0.y) + Vector3(x + s0.x, 0, 0)
+			var b := c + e0 * (r + s1.y) + Vector3(x + s1.x, 0, 0)
+			var d := c + e1 * (r + s1.y) + Vector3(x + s1.x, 0, 0)
+			var e := c + e1 * (r + s0.y) + Vector3(x + s0.x, 0, 0)
+			var nn := ((e0 + e1) / 2 + Vector3(signf(s0.x + s1.x) * absf(s1.y - s0.y) * 8.0, 0, 0)).normalized()
+			m.quad(a, b, d, e, col, nn)
+			m.quad(a, b, d, e, col.darkened(0.25), -nn)
+
+
+# la rueda de la bicicleta, de radio r (al borde del neumático) y eje X: neumático (un toro de sección hexagonal, la
+# banda negra y los flancos café oscuro, como los de paseo), llanta de aluminio de sección en V, 32 rayos cruzados de
+# los dos flancos del buje, y en la de atrás (pinon) el piñón a la derecha
+static func rueda_bici(r: float, pinon: bool) -> Malla:
+	var goma := Malla.new()
+	var metal := Malla.new()
+	const N := 24
+	var negro := Color(0.065, 0.065, 0.065)
+	var flanco := Color(0.2, 0.16, 0.12)
+	var plata := Color(0.74, 0.75, 0.77)
+	var rayo := Color(0.6, 0.61, 0.63)
+	var rm := 0.021  # un 28 x 1,6 (42 mm)
+	var rc := r - rm
+	var E := func(t: float) -> Vector3: return Vector3(0, cos(t), sin(t))
+	for i in N:
+		var t0 := TAU * i / N
+		var t1 := TAU * (i + 1) / N
+		for j in 6:
+			var p0 := TAU * j / 6.0  # 0: hacia afuera (la banda); PI / 2: el flanco derecho
+			var p1 := TAU * (j + 1) / 6.0
+			var pts := []
+			var nrm := []
+			for q in [[t0, p0], [t1, p0], [t1, p1], [t0, p1]]:
+				var e: Vector3 = E.call(q[0])
+				var nv: Vector3 = e * cos(q[1]) + Vector3.RIGHT * sin(q[1])
+				pts.append(e * rc + nv * rm)
+				nrm.append(nv)
+			var pm := (p0 + p1) / 2
+			var col := negro if cos(pm) > 0.6 or cos(pm) < -0.6 else flanco
+			goma.tri_n(pts[0], pts[1], pts[2], nrm[0], nrm[1], nrm[2], col, col, col)
+			goma.tri_n(pts[0], pts[2], pts[3], nrm[0], nrm[2], nrm[3], col, col, col)
+	# la llanta: sección en V (radio, lado), del borde del neumático al fondo
+	var sec := [Vector2(rc - 0.012, 0.011), Vector2(rc - 0.03, 0.011), Vector2(rc - 0.042, 0.0), Vector2(rc - 0.03, -0.011),
+		Vector2(rc - 0.012, -0.011)]
+	var cen := Vector2(rc - 0.024, 0)
+	for i in N:
+		var t0 := TAU * i / N
+		var t1 := TAU * (i + 1) / N
+		var e0: Vector3 = E.call(t0)
+		var e1: Vector3 = E.call(t1)
+		for j in sec.size() - 1:
+			var s0: Vector2 = sec[j]
+			var s1: Vector2 = sec[j + 1]
+			var d := s1 - s0
+			var n2 := Vector2(d.y, -d.x).normalized()
+			if n2.dot((s0 + s1) / 2 - cen) < 0:
+				n2 = -n2
+			var na := e0 * n2.x + Vector3.RIGHT * n2.y
+			var nb := e1 * n2.x + Vector3.RIGHT * n2.y
+			var a := e0 * s0.x + Vector3.RIGHT * s0.y
+			var b := e0 * s1.x + Vector3.RIGHT * s1.y
+			var c := e1 * s1.x + Vector3.RIGHT * s1.y
+			var dd := e1 * s0.x + Vector3.RIGHT * s0.y
+			metal.tri_n(a, b, c, na, na, nb, plata, plata, plata)
+			metal.tri_n(a, c, dd, na, nb, nb, plata, plata, plata)
+	# el buje y sus pestañas
+	metal.tubo(Vector3(-0.055, 0, 0), Vector3(0.055, 0, 0), 0.007, 0.007, 6, plata, plata)  # el eje
+	metal.tubo(Vector3(-0.034, 0, 0), Vector3(0.034, 0, 0), 0.017, 0.017, 8, plata, plata)
+	for s in [-1.0, 1.0]:
+		disco_x(metal, Vector3(s * 0.031, 0, 0), 0.03, 10, plata)
+	# 32 rayos de 2 mm (más finos que un píxel a 5 m: se ven como una trama, como de verdad), cruzados: cada uno sale
+	# tangente de su pestaña, la mitad hacia adelante y la mitad hacia atrás
+	var rr := rc - 0.04
+	for i in 32:
+		var a := TAU * i / 32
+		var s := 1.0 if i % 2 == 0 else -1.0
+		var dir := 1.0 if (i / 2) % 2 == 0 else -1.0
+		var hub: Vector3 = Vector3(s * 0.031, 0, 0) + E.call(a + dir * 0.9) * 0.027
+		metal.tubo(hub, E.call(a) * rr, 0.0022, 0.0022, 3, rayo, rayo)
+	if pinon:  # el piñón (uno solo: con cambio interno en el buje, como muchas de paseo) y la tuerca del eje
+		disco_x(metal, Vector3(0.05, 0, 0), 0.038, 14, Color(0.42, 0.43, 0.45))
+		metal.tubo(Vector3(0.047, 0, 0), Vector3(0.053, 0, 0), 0.038, 0.038, 14, Color(0.35, 0.35, 0.37), Color(0.35, 0.35, 0.37))
+	var m := Malla.new()
+	juntar(m, goma, "goma")
+	juntar(m, metal, "metal")
+	return m
+
+
 func bicicleta() -> void:
 	radio_rueda = 0.34
 	var b: float = t["batalla"] / 2.0
-	var col := Color(0.12, 0.42, 0.52)
-	var oscuro := Color(0.1, 0.1, 0.11)
-	var cromo := Color(0.7, 0.71, 0.72)
-	# (adelante, arriba) -> Vector3 del modelo
-	var P := func(a: float, h: float, x := 0.0) -> Vector3: return Vector3(x, h, -a)
-	var cuadro := Malla.new()
+	var col := Color(0.12, 0.42, 0.52)  # la pintura del cuadro
+	var oscuro := Color(0.09, 0.09, 0.1)
+	var cromo := Color(0.72, 0.73, 0.75)
+	var cuero := Color(0.25, 0.16, 0.1)  # sillín y puños, café
+	var P := func(a: float, h: float, x := 0.0) -> Vector3: return _bp(a, h, x)
+	var pintura := Malla.new()
+	var metal := Malla.new()
+	var piezas := Malla.new()  # sin brillo: goma, cuero, plástico
 	var tras: Vector3 = P.call(-b, radio_rueda)
+	var dela: Vector3 = P.call(b, radio_rueda)
 	var pedal: Vector3 = P.call(BIELA_C.x, BIELA_C.y)
-	var sillin: Vector3 = P.call(-0.2, 0.86)
-	var cabeza_a: Vector3 = P.call(0.41, 0.93)
-	var cabeza_b: Vector3 = P.call(0.45, 0.76)
-	cuadro.tubo(pedal, sillin, 0.018, 0.018, 8, col, col)  # tubo del asiento
-	cuadro.tubo(sillin, cabeza_a, 0.017, 0.017, 8, col, col)  # tubo superior
-	cuadro.tubo(pedal, cabeza_b, 0.022, 0.022, 8, col, col)  # tubo inferior
-	cuadro.tubo(cabeza_b, cabeza_a, 0.024, 0.024, 8, col, col)  # tubo de dirección
-	for x in [-0.055, 0.055]:
-		cuadro.tubo(pedal + Vector3(x * 0.6, 0, 0), tras + Vector3(x, 0, 0), 0.011, 0.01, 6, col, col)  # vainas
-		cuadro.tubo(sillin + Vector3(x * 0.3, 0, 0), tras + Vector3(x, 0, 0), 0.01, 0.01, 6, col, col)  # tirantes
-	cuadro.tubo(sillin, P.call(-0.24, 0.97), 0.013, 0.013, 6, cromo, cromo)  # tija
-	cuadro.bloque(P.call(-0.25, 0.985), Vector3(0.13, 0.05, 0.26), oscuro)  # sillín
-	cuadro.bloque(P.call(-0.17, 0.985), Vector3(0.06, 0.045, 0.1), oscuro)
-	# el guardabarros de atrás y la parrilla
-	cuadro.tubo(P.call(-b - 0.05, 0.72), P.call(-b + 0.25, 0.7), 0.035, 0.035, 6, oscuro, oscuro)
-	cuadro.tubo(pedal, pedal + Vector3(0.03, 0, 0), 0.05, 0.05, 10, cromo, cromo)  # el plato
-	pieza(modelo, cuadro)
-	# la dirección: horquilla, rueda de adelante y manubrio, en torno al eje del tubo de dirección (vertical, simplificado)
-	var piv := Node3D.new()
-	piv.position = P.call(0.45, 0.0)
-	modelo.add_child(piv)
-	direccion.append(piv)
-	var dir_m := Malla.new()
-	var o := Vector3(0, 0, 0.45)  # del modelo al pivote: -P(0.45)
-	for x in [-0.045, 0.045]:
-		dir_m.tubo(cabeza_b + o + Vector3(x * 0.5, 0, 0), P.call(b, radio_rueda, x) + o, 0.012, 0.01, 6, col, col)
-	dir_m.tubo(cabeza_a + o, P.call(0.39, 1.06) + o, 0.014, 0.014, 6, cromo, cromo)  # potencia
-	var manubrio: Vector3 = P.call(0.37, 1.06) + o
-	dir_m.tubo(manubrio + Vector3(-0.29, 0, 0.04), manubrio + Vector3(0.29, 0, 0.04), 0.012, 0.012, 6, cromo, cromo)
+	# el eje de la dirección: pasa a BICI_AVANCE detrás del eje de la rueda de adelante, inclinado BICI_DIR
+	var ang := deg_to_rad(BICI_DIR)
+	var ed := Vector2(-cos(ang), sin(ang))  # (adelante, arriba) subiendo por el eje
+	var q0 := Vector2(b, radio_rueda) - Vector2(sin(ang), cos(ang)) * BICI_AVANCE
+	var EJE := func(h: float) -> Vector3:  # el punto del eje a la altura h
+		var s := (h - q0.y) / ed.y
+		return _bp(q0.x + ed.x * s, h)
+	var cab_b: Vector3 = EJE.call(0.71)  # el tubo de dirección, de 18 cm
+	var cab_a: Vector3 = EJE.call(0.89)
+	var sillin: Vector3 = P.call(-0.19, 0.84)  # la unión del tubo del asiento, el superior y los tirantes
+	var st := (sillin - pedal).normalized()  # a lo largo del tubo del asiento (73°)
+	# el cuadro: tubos redondos de acero, el inferior más grueso
+	pintura.tubo(pedal, sillin + st * 0.04, 0.016, 0.016, 8, col, col)  # del asiento
+	pintura.tubo(sillin - st * 0.01, cab_a.lerp(cab_b, 0.1), 0.015, 0.015, 8, col, col)  # superior
+	pintura.tubo(pedal, cab_b.lerp(cab_a, 0.12), 0.019, 0.017, 8, col, col)  # inferior
+	pintura.tubo(cab_b - (cab_a - cab_b).normalized() * 0.01, cab_a + (cab_a - cab_b).normalized() * 0.01, 0.021, 0.021, 8, col, col)  # de dirección
+	pintura.tubo(pedal + Vector3(-0.05, 0, 0), pedal + Vector3(0.05, 0, 0), 0.022, 0.022, 8, col, col)  # la caja del eje
 	for x in [-1.0, 1.0]:
-		dir_m.tubo(manubrio + Vector3(x * 0.2, 0, 0.04), manubrio + Vector3(x * 0.29, 0, 0.04), 0.018, 0.018, 6, oscuro, oscuro)
-	dir_m.tubo(P.call(b - 0.05, 0.72) + o, P.call(b + 0.2, 0.62) + o, 0.035, 0.035, 6, oscuro, oscuro)
-	dir_m.bloque(P.call(0.47, 0.95) + o, Vector3(0.08, 0.07, 0.04), Color(0.95, 0.93, 0.8))  # el foco
-	pieza(piv, dir_m)
-	var rd := pieza(piv, rueda(radio_rueda, 0.017, 0.88, 16, false), P.call(b, radio_rueda) + o)
-	ruedas.append(rd)
-	ruedas.append(pieza(modelo, rueda(radio_rueda, 0.017, 0.88, 16, false), tras))
-	# los pedales: dos bielas y sus pedales, en torno al eje
-	var bm := Malla.new()
+		var punta: Vector3 = tras + Vector3(x * 0.062, 0, 0)
+		var media: Vector3 = pedal.lerp(tras, 0.35) + Vector3(x * 0.055, 0, 0)  # las vainas se abren para la rueda
+		pintura.tubo(pedal + Vector3(x * 0.03, 0, 0), media, 0.011, 0.01, 6, col, col)  # vainas
+		pintura.tubo(media, punta, 0.01, 0.008, 6, col, col)
+		pintura.tubo(sillin - st * 0.03 + Vector3(x * 0.02, 0, 0), punta, 0.009, 0.008, 6, col, col)  # tirantes
+		pintura.tubo(punta + Vector3(0, -0.012, 0.02), punta + Vector3(0, 0.02, -0.02), 0.009, 0.009, 4, col, col)  # puntera
+	# la tija y el sillín (de resortes, ancho atrás): tope a 0,975 m, bajo la cadera de peaton.gd (asiento, CADERA)
+	var tope: Vector3 = sillin + st * ((0.94 - sillin.y) / st.y)
+	metal.tubo(sillin, tope, 0.012, 0.012, 6, cromo, cromo)
+	metal.tubo(tope + Vector3(0, 0, -0.06), tope + Vector3(0, 0, 0.08), 0.007, 0.007, 4, cromo, cromo)  # los rieles
+	for x in [-0.045, 0.045]:  # los resortes de atrás
+		metal.tubo(tope + Vector3(x, 0, 0.07), tope + Vector3(x, 0.03, 0.09), 0.012, 0.012, 6, oscuro, oscuro)
+	var forma := [Vector2(0.115, 0.0), Vector2(0.09, 0.025), Vector2(0.03, 0.035), Vector2(-0.03, 0.07), Vector2(-0.075, 0.088),
+		Vector2(-0.11, 0.08), Vector2(-0.125, 0.04), Vector2(-0.13, 0.0)]  # (adelante, al lado) desde el centro, una mitad
+	var contorno := PackedVector2Array()
+	for p in forma:
+		contorno.append(p)
+	for i in range(forma.size() - 2, 0, -1):
+		contorno.append(Vector2(forma[i].x, -forma[i].y))
+	var sa := -tope.z - 0.02  # el centro del sillín, adelante: 2 cm detrás de la tija (bajo la cadera, CADERA.x)
+	var h0 := 0.95
+	var h1 := 0.975
+	var S := func(p: Vector2, h: float) -> Vector3: return _bp(sa + p.x, h, p.y)
+	var idx := Geometry2D.triangulate_polygon(contorno)
+	for i in range(0, idx.size(), 3):
+		piezas.tri(S.call(contorno[idx[i]], h1), S.call(contorno[idx[i + 1]], h1), S.call(contorno[idx[i + 2]], h1), cuero, Vector3.UP)
+		piezas.tri(S.call(contorno[idx[i]], h0), S.call(contorno[idx[i + 1]], h0), S.call(contorno[idx[i + 2]], h0), oscuro, Vector3.DOWN)
+	for i in contorno.size():
+		var p0 := contorno[i]
+		var p1 := contorno[(i + 1) % contorno.size()]
+		var d := p1 - p0
+		var n2 := Vector2(d.y, -d.x).normalized()
+		if n2.dot((p0 + p1) / 2) < 0:
+			n2 = -n2
+		piezas.quad(S.call(p0, h0), S.call(p1, h0), S.call(p1, h1), S.call(p0, h1), cuero.darkened(0.2), _bp(n2.x, 0, n2.y))
+	# el guardabarros de atrás (pintado como el cuadro), con sus varillas, la parrilla y el reflectante
+	franja(pintura, tras, 0.36, 0.048, deg_to_rad(35), deg_to_rad(195), col)
+	var fin: Vector3 = tras + Vector3(0, sin(deg_to_rad(195)), -cos(deg_to_rad(195))) * 0.355
+	for x in [-1.0, 1.0]:
+		metal.tubo(tras + Vector3(x * 0.064, 0, 0), fin + Vector3(x * 0.03, 0.01, 0), 0.0035, 0.0035, 3, cromo, cromo)
+	var pa0 := -b - 0.2  # la parrilla: de -b-0,2 a -b+0,2 adelante, a 0,78 m
+	var pa1 := -b + 0.21
+	var hp := 0.78
+	for x in [-0.065, 0.0, 0.065]:
+		metal.tubo(P.call(pa0, hp, x), P.call(pa1, hp, x), 0.006, 0.006, 4, oscuro, oscuro)
+	for a in [pa0, pa0 + 0.13, pa1 - 0.12]:
+		metal.tubo(P.call(a, hp, -0.07), P.call(a, hp, 0.07), 0.005, 0.005, 4, oscuro, oscuro)
+	for x in [-1.0, 1.0]:
+		metal.tubo(tras + Vector3(x * 0.07, 0.01, 0), P.call(pa0 + 0.04, hp, x * 0.068), 0.006, 0.006, 4, oscuro, oscuro)  # patas
+		metal.tubo(P.call(pa1, hp, x * 0.065), sillin - st * 0.06 + Vector3(x * 0.03, 0, 0), 0.005, 0.005, 4, oscuro, oscuro)
+	piezas.bloque(P.call(pa0 - 0.012, hp - 0.03), Vector3(0.09, 0.04, 0.012), Color(0.7, 0.06, 0.05))  # reflectante rojo
+	# la pata, plegada junto a la vaina izquierda
+	metal.tubo(pedal + Vector3(-0.045, -0.02, 0.06), P.call(-0.42, 0.27, -0.075), 0.009, 0.007, 5, oscuro, oscuro)
+	# la cadena (fija: sus eslabones no se ven a esta escala) del plato al piñón, a la derecha
+	var xc := 0.05
 	for s in [-1.0, 1.0]:
-		var x: float = s * 0.09
-		var punta := Vector3(x, s * BIELA_R, 0)  # la derecha arriba, la izquierda abajo (en el marco de la biela)
-		bm.tubo(Vector3(x, 0, 0), punta, 0.012, 0.012, 6, cromo, cromo)
-		bm.bloque(punta + Vector3(s * 0.05, 0, 0), Vector3(0.09, 0.025, 0.07), oscuro)
-	biela = pieza(modelo, bm, pedal)
+		metal.tubo(pedal + Vector3(xc, s * 0.098, 0), tras + Vector3(xc, s * 0.04, 0), 0.0045, 0.0045, 4, Color(0.28, 0.27, 0.27),
+			Color(0.28, 0.27, 0.27))
+	# el tapacadena de paseo: una franja negra sobre el tramo de arriba y el plato
+	var tc0: Vector3 = pedal + Vector3(xc + 0.02, 0.125, 0)
+	var tc1: Vector3 = tras + Vector3(xc + 0.02, 0.07, -0.05)
+	piezas.quad(tc0 + Vector3(0, -0.035, 0), tc1 + Vector3(0, -0.025, 0), tc1, tc0, oscuro, Vector3.RIGHT)
+	piezas.quad(tc0 + Vector3(0, -0.035, 0), tc1 + Vector3(0, -0.025, 0), tc1, tc0, oscuro, Vector3.LEFT)
+	franja(piezas, pedal, 0.125, 0.025, deg_to_rad(10), deg_to_rad(150), oscuro, xc + 0.012)
+	var cuadro := Malla.new()
+	juntar(cuadro, pintura, "pintura")
+	juntar(cuadro, metal, "metal")
+	juntar(cuadro, piezas, "")
+	pieza(modelo, cuadro)
+	# la dirección: un nodo inclinado como el tubo (su Y es el eje) y adentro el pivote que gira con el volante; las
+	# piezas se escriben en el marco del modelo y se llevan al del pivote
+	var eje := Node3D.new()
+	eje.position = EJE.call(radio_rueda)
+	eje.rotation.x = PI / 2 - ang
+	modelo.add_child(eje)
+	var piv := Node3D.new()
+	eje.add_child(piv)
+	direccion.append(piv)
+	var inv := eje.transform.affine_inverse()
+	var dp := Malla.new()
+	var dm := Malla.new()
+	var dz := Malla.new()
+	# la horquilla: corona bajo el tubo de dirección y dos barras que se curvan hacia adelante hasta el eje
+	var corona: Vector3 = EJE.call(0.69)
+	dp.tubo(corona + Vector3(-0.05, 0, 0), corona + Vector3(0.05, 0, 0), 0.016, 0.016, 6, col, col)
+	# las barras: paralelas al eje y, en el último tercio, curvadas hacia adelante (el avance: u² · BICI_AVANCE)
+	var adel := _bp(sin(ang), cos(ang))  # perpendicular al eje, hacia adelante
+	for x in [-1.0, 1.0]:
+		var prev: Vector3 = corona + Vector3(x * 0.045, 0, 0)
+		for i in range(1, 6):
+			var u := i / 5.0
+			var h := lerpf(0.69, radio_rueda, u)
+			var c: Vector3 = EJE.call(h) + adel * BICI_AVANCE * u * u + Vector3(x * lerpf(0.045, 0.055, u), 0, 0)
+			dp.tubo(prev, c, lerpf(0.014, 0.009, u - 0.2), lerpf(0.014, 0.009, u), 6, col, col)
+			prev = c
+	# el tubo de la potencia (sale del tubo de dirección), la potencia hacia adelante y el manubrio de paseo: recto al
+	# centro y curvado hacia atrás hasta los puños (las manos de peaton.gd sentar() quedan ahí)
+	var cima: Vector3 = EJE.call(1.02)
+	dm.tubo(cab_a, cima, 0.013, 0.013, 6, cromo, cromo)
+	var abraz: Vector3 = _bp(0.36, 1.05)
+	dm.tubo(cima, abraz, 0.014, 0.013, 6, cromo, cromo)
+	# (al lado, arriba, atrás) desde la abrazadera: los puños en x 0,19–0,30, a (0,35; 1,075), donde las manos de
+	# BICI_BRAZOS
+	var bar := [Vector3(0, 0, 0), Vector3(0.12, 0.005, -0.02), Vector3(0.19, 0.025, 0.01), Vector3(0.3, 0.025, 0.02)]
+	for x in [-1.0, 1.0]:
+		var pts := []
+		for p in bar:
+			pts.append(abraz + Vector3(x * p.x, p.y, p.z))
+		for i in 2:
+			dm.tubo(pts[i], pts[i + 1], 0.011, 0.011, 6, cromo, cromo)
+		dz.tubo(pts[2], pts[3], 0.017, 0.017, 6, cuero, cuero)  # puño
+		disco_x(dz, pts[3], 0.017, 6, cuero.darkened(0.3))
+		var palanca: Vector3 = pts[1].lerp(pts[2], 0.7)  # el freno: maneta delante del puño
+		dm.tubo(palanca, palanca + Vector3(x * 0.08, -0.015, -0.045), 0.006, 0.006, 4, oscuro, oscuro)
+	dm.tubo(abraz + Vector3(0.07, 0.012, 0), abraz + Vector3(0.07, 0.04, 0), 0.02, 0.02, 8, cromo, cromo)  # el timbre
+	# el foco: un cilindro corto colgado del frente de la corona, con su vidrio
+	var foco: Vector3 = EJE.call(0.8) + _bp(0.05, 0)
+	dz.tubo(foco + _bp(-0.03, 0), foco + _bp(0.03, 0), 0.028, 0.032, 8, oscuro, oscuro)
+	var vid := Malla.new()
+	for i in 8:
+		var a0 := TAU * i / 8
+		var a1 := TAU * (i + 1) / 8
+		var cv: Vector3 = foco + _bp(0.031, 0)
+		vid.tri(cv, cv + Vector3(cos(a0), sin(a0), 0) * 0.03, cv + Vector3(cos(a1), sin(a1), 0) * 0.03, Color(1.0, 0.97, 0.85),
+			Vector3.FORWARD)
+	# el guardabarros de adelante y sus varillas
+	franja(dp, dela, 0.36, 0.048, deg_to_rad(-25), deg_to_rad(116), col)
+	var fd: Vector3 = dela + Vector3(0, sin(deg_to_rad(-25)), -cos(deg_to_rad(-25))) * 0.355
+	for x in [-1.0, 1.0]:
+		dm.tubo(dela + Vector3(x * 0.058, 0, 0), fd + Vector3(x * 0.03, 0.01, 0), 0.0035, 0.0035, 3, cromo, cromo)
+	var dir_m := Malla.new()
+	juntar(dir_m, dp, "pintura")
+	juntar(dir_m, dm, "metal")
+	juntar(dir_m, dz, "")
+	juntar(dir_m, vid, "")
+	mover(dir_m, inv)
+	pieza(piv, dir_m)
+	ruedas.append(pieza(piv, rueda_bici(radio_rueda, false), inv * dela))
+	ruedas.append(pieza(modelo, rueda_bici(radio_rueda, true), tras))
+	# la biela (gira en X con el eje): el plato con su araña a la derecha y las dos bielas con sus pedales; el pedal
+	# izquierdo (el pie 0 de pedalear()) va hacia adelante (-Z) con la biela en 0 y el derecho hacia atrás
+	var bm := Malla.new()
+	var plato := Color(0.66, 0.67, 0.69)
+	for i in 36:  # el plato: un anillo con dientes (38 en uno de verdad), de 10 cm
+		var a0 := TAU * i / 36
+		var a1 := TAU * (i + 1) / 36
+		var e0 := Vector3(0, cos(a0), sin(a0))
+		var e1 := Vector3(0, cos(a1), sin(a1))
+		var ro := 0.104 if i % 2 == 0 else 0.097
+		for s in [Vector3.RIGHT, Vector3.LEFT]:
+			bm.quad(Vector3(xc, 0, 0) + e0 * 0.082, Vector3(xc, 0, 0) + e0 * ro, Vector3(xc, 0, 0) + e1 * ro,
+				Vector3(xc, 0, 0) + e1 * 0.082, plato, s)
+	for i in 5:  # la araña
+		var a := TAU * i / 5 + 0.3
+		bm.tubo(Vector3(xc - 0.004, 0, 0), Vector3(xc, cos(a), sin(a)) * Vector3(1, 0.085, 0.085), 0.008, 0.006, 4, plato, plato)
+	bm.tubo(Vector3(-0.08, 0, 0), Vector3(0.08, 0, 0), 0.01, 0.01, 6, plato, plato)  # el eje
+	for s in [-1.0, 1.0]:
+		var x: float = s * 0.08
+		var punta := Vector3(x, 0, s * BIELA_R)  # s = -1: la izquierda, adelante
+		bm.tubo(Vector3(x, 0, 0), punta, 0.014, 0.01, 6, cromo, cromo)
+		bm.tubo(punta, punta + Vector3(s * 0.04, 0, 0), 0.006, 0.006, 4, cromo, cromo)
+		bm.bloque(punta + Vector3(s * 0.075, 0, 0), Vector3(0.085, 0.022, 0.065), oscuro)  # pedal de plataforma
+		bm.bloque(punta + Vector3(s * 0.075, 0, 0), Vector3(0.09, 0.012, 0.025), Color(0.85, 0.6, 0.1))  # reflectante
+	var bmm := Malla.new()
+	juntar(bmm, bm, "metal")
+	biela = pieza(modelo, bmm, pedal)
 	# el ciclista: peaton.gd con la cadera sobre el sillín
 	asiento.position = P.call(CADERA.x, CADERA.y - 0.93)
 	if asiento.get_parent() == null:

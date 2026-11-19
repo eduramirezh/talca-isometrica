@@ -20,7 +20,8 @@
 #     blancas sobre un zócalo de hormigón;
 #   - 01 (2022-05-28, CC BY-SA 4.0, desde 1 Norte): la reja roja del patio entre el campanario y el crucero.
 # Lo aproximado: el ancho exacto de las naves y del crucero, el ábside y la sacristía (no hay fotos del lado poniente),
-# la pendiente de los techos, el dibujo de los vitrales y de los relieves (siluetas), las campanas.
+# la pendiente de los techos, el dibujo de los vitrales y de los relieves (siluetas; los colores de los paños del
+# frontis son un patrón, no el dibujo real), las campanas, las hiladas de escamas del chapitel (0,55 m, a ojo).
 extends Node3D
 
 const Malla := preload("res://malla.gd")
@@ -40,7 +41,11 @@ const K := {
 	"zocalo": Color("c9c4b8"), "teja": Color("7d5a4a"), "teja_cum": Color("9a4a33"), "vidrio": Color("33404c"),
 	"vitral": Color("5b4a3a"), "puerta": Color("4a3a2c"), "fierro": Color("2e2d2b"), "chapitel": Color("50695a"),
 	"peldano": Color("bdb7ab"), "oscuro": Color("1d1b19"), "reja": Color("8f2a22"),
+	"sombra": Color("c4beb1"), "chapitel2": Color("3e5648"), "bronce": Color("6b5a3a"),
 }
+
+# los paños de color de los vitrales del frontis (foto 00: de afuera se ven oscuros, con azules, rojos y ámbar)
+const VITRALES := [Color("2f3f63"), Color("6a2a2a"), Color("8a6a2e"), Color("2f4a4f"), Color("3a3350")]
 
 var m := Malla.new()
 var f: Malla.Marco
@@ -87,7 +92,7 @@ func V2(u: float, v: float) -> Vector2:
 # una ventana de arco hundida en un muro a -> b: hueco de ancho w desde h0 hasta el arranque ha (arco de medio
 # punto encima), derrame de prof m, vitral al fondo con parteluces (nv verticales y nh horizontales)
 func ventana(a: Vector2, b: Vector2, s: float, w: float, h0: float, ha: float, prof: float, col_derrame: Color,
-		vidrio := K["vitral"], nv := 1, nh := 2, marco := 0.0) -> PackedVector2Array:
+		vidrio := K["vitral"], nv := 1, nh := 2, marco := 0.0, colores := []) -> PackedVector2Array:
 	var hq := Malla.arco(s, w, h0, ha, -1.0, 8)
 	m.derrame(f, a, b, hq, prof, col_derrame, "liso", vidrio, "vidrio")
 	var L := a.distance_to(b)
@@ -102,6 +107,20 @@ func ventana(a: Vector2, b: Vector2, s: float, w: float, h0: float, ha: float, p
 	for j in range(1, nh + 1):
 		var hj := h0 + (ha - h0) * j / (nh + 1)
 		m.moldura(f, a - o * pin, b - o * pin, s - w / 2, s + w / 2, hj - 0.03, hj + 0.03, 0.025, K["fierro"], "metal")
+	if not colores.is_empty():
+		# los paños de color entre los parteluces (solo bajo el arranque del arco), un pelo delante del vidrio
+		var W := func(su: float, h: float) -> Vector3:
+			return f.V(a.x + d.x * su - o.x * (prof - 0.008), a.y + d.y * su - o.y * (prof - 0.008), h)
+		for i in nv + 1:
+			var s0 := s - w / 2 + w * i / (nv + 1) + 0.05
+			var s1 := s - w / 2 + w * (i + 1) / (nv + 1) - 0.05
+			for j in nh + 1:
+				if (i + j) % 2 == 1:
+					continue
+				var h0j := h0 + (ha - h0) * j / (nh + 1) + 0.05
+				var h1j := h0 + (ha - h0) * (j + 1) / (nh + 1) - 0.05
+				var c: Color = colores[(i * 3 + j * 2) % colores.size()]
+				m.cara([W.call(s0, h0j), W.call(s1, h0j), W.call(s1, h1j), W.call(s0, h1j)], c, "vidrio", f.N(o.x, o.y))
 	if marco > 0:
 		# un marco blanco plano alrededor del hueco (el de las puertas de las naves laterales)
 		m.moldura(f, a, b, s - w / 2 - marco, s - w / 2, h0, ha, 0.06, K["blanco"])
@@ -110,6 +129,33 @@ func ventana(a: Vector2, b: Vector2, s: float, w: float, h0: float, ha: float, p
 	# el alféizar
 	m.moldura(f, a, b, s - w / 2 - 0.08, s + w / 2 + 0.08, h0 - 0.1, h0, 0.1, K["blanco"])
 	return hq
+
+
+# una arquivolta: el anillo de un arco de medio punto (centro s, arranque ha, radio r) de ancho e, que sale sal m del
+# muro a -> b, con su intradós y su borde; y las jambas que bajan hasta h0
+func archivolta(a: Vector2, b: Vector2, s: float, r: float, ha: float, h0: float, e: float, sal: float, col: Color, n := 10) -> void:
+	var L := a.distance_to(b)
+	var d := (b - a) / L
+	var o := Vector2(d.y, -d.x)
+	var W := func(su: float, h: float, p: float) -> Vector3:
+		return f.V(a.x + d.x * su + o.x * p, a.y + d.y * su + o.y * p, h)
+	for i in n:
+		var t0 := PI * i / n
+		var t1 := PI * (i + 1) / n
+		var c0 := Vector2(cos(t0), sin(t0))
+		var c1 := Vector2(cos(t1), sin(t1))
+		var i0 := Vector2(s, ha) + c0 * r
+		var i1 := Vector2(s, ha) + c1 * r
+		var e0 := Vector2(s, ha) + c0 * (r + e)
+		var e1 := Vector2(s, ha) + c1 * (r + e)
+		m.cara([W.call(i1.x, i1.y, sal), W.call(i0.x, i0.y, sal), W.call(e0.x, e0.y, sal), W.call(e1.x, e1.y, sal)], col, "liso", f.N(o.x, o.y))
+		var cm := (c0 + c1) / 2
+		m.cara([W.call(e1.x, e1.y, 0), W.call(e1.x, e1.y, sal), W.call(e0.x, e0.y, sal), W.call(e0.x, e0.y, 0)], col.darkened(0.06), "liso",
+			f.N(d.x * cm.x, d.y * cm.x, cm.y))
+		m.cara([W.call(i0.x, i0.y, 0), W.call(i0.x, i0.y, sal), W.call(i1.x, i1.y, sal), W.call(i1.x, i1.y, 0)], col.darkened(0.1), "liso",
+			f.N(-d.x * cm.x, -d.y * cm.x, -cm.y))
+	m.moldura(f, a, b, s - r - e, s - r, h0, ha, sal, col)
+	m.moldura(f, a, b, s + r, s + r + e, h0, ha, sal, col)
 
 
 # un vano rectangular (puerta) con hoja de madera al fondo y tableros
@@ -166,7 +212,13 @@ func frontis() -> void:
 	m.superficie(f, a, b, cont, huecos, K["blanco"])
 	m.moldura(f, a, b, 0, 14, 0.9, 1.35, 0.05, K["zocalo"])  # zócalo
 	for hq in huecos:
-		m.derrame(f, a, b, hq, 1.0, K["blanco_s"])
+		m.derrame(f, a, b, hq, 1.0, K["sombra"])
+	# cada arco enmarcado por una arquivolta lisa que sale 0,15 m sobre jambas hasta el zócalo (fotos 00, 02)
+	m.solido = false
+	for ar in ARCOS:
+		var w: float = ar[1]
+		archivolta(a, b, ar[0] - FU0, w / 2, ar[2] - w / 2, 1.35, 0.22, 0.15, K["blanco"])
+	m.solido = true
 	# el fondo de cada arco (a 1 m): puerta abajo, banda de relieves, vitral arriba
 	for ar in ARCOS:
 		var u: float = ar[0]
@@ -178,7 +230,7 @@ func frontis() -> void:
 		var pw := w - 0.9
 		var ph := 3.6 if w > 3 else 3.3
 		var hp := puerta(fa, fb, w / 2, pw, 0.9, 0.9 + ph, 0.25, K["blanco_s"])
-		var hv := ventana(fa, fb, w / 2, w - 0.7, 6.4, top - w / 2 - 0.1, 0.18, K["blanco_s"], K["vitral"], 3 if w > 3 else 2, 5)
+		var hv := ventana(fa, fb, w / 2, w - 0.7, 6.4, top - w / 2 - 0.1, 0.18, K["blanco_s"], K["vitral"], 3 if w > 3 else 2, 5, 0.0, VITRALES)
 		m.superficie(f, fa, fb, fondo, [hp, hv], K["blanco_s"])
 		# los relieves de la banda (fotos 05, 07): San Agustín al medio, un escudo en cada arco lateral
 		if w > 3:
@@ -272,6 +324,13 @@ func naves_laterales() -> void:
 		m.moldura(f, a, b, 0, 35, 0.3, 1.1, 0.04, K["zocalo"])
 		m.moldura(f, a, b, 0, 35, 6.3, 6.7, 0.07, K["blanco"])
 		m.moldura(f, a, b, 0, 35, 8.2, 8.55, 0.12, K["blanco"])
+		# los dentículos bajo la cornisa (foto 00), como los de la nave
+		m.solido = false
+		var sd := 0.2
+		while sd < 34.8:
+			m.moldura(f, a, b, sd, sd + 0.16, 8.02, 8.2, 0.1, K["blanco_s"])
+			sd += 0.45
+		m.solido = true
 		for k in 9:
 			var s := BAY * k
 			m.moldura(f, a, b, max(0.0, s - 0.3), min(35.0, s + 0.3), 0.3, 8.5, 0.1, K["blanco"])
@@ -469,21 +528,74 @@ func campanario() -> void:
 			m.derrame(f, c[0], c[1], hq, 0.45, K["blanco_s"], "liso", K["oscuro"], "pintura")
 			hs.append(hq)
 		m.muro_vanos(f, c[0], c[1], 27.6, 31.2, hs, K["blanco"])
-	m.cilindro(f, tu, tv, 0.55, 28.2, 29.3, Color("6b5a3a"), "metal", 10)
+	# la campana: un vaso que se abre en la boca, colgada de un yugo de madera
+	m.solido = false
+	m.cilindro(f, tu, tv, 0.62, 28.3, 28.55, K["bronce"], "metal", 10)
+	m.cilindro(f, tu, tv, 0.5, 28.55, 29.2, K["bronce"], "metal", 10)
+	m.cilindro(f, tu, tv, 0.32, 29.2, 29.5, K["bronce"], "metal", 8)
+	m.caja(f, tu - 1.9, tv - 0.1, tu + 1.9, tv + 0.1, 29.5, 29.75, K["puerta"], "pintura")
+	m.solido = true
 	m.caja(f, tu - 2.45, tv - 2.45, tu + 2.45, tv + 2.45, 31.2, 31.7, K["blanco"])
-	# el chapitel: una pirámide de cuatro caras algo cóncava (dos tramos) con escamas verdes, y una cruz
-	var base := m.rect(tu - 2.2, tv - 2.2, tu + 2.2, tv + 2.2)
-	var med := m.rect(tu - 1.25, tv - 1.25, tu + 1.25, tv + 1.25)
+	# el chapitel: una pirámide de cuatro caras algo cóncava (dos tramos) con escamas verdes (fotos 05, 07): hiladas de
+	# 0,55 m en dos tonos, el borde de abajo de cada una sale 6 cm; aristas oscuras, una bola y la cruz de fierro
+	m.solido = false
+	var perfil := [[31.7, 2.2], [34.6, 1.25], [39.5, 0.0]]  # (altura, medio ancho)
+	var ancho := func(h: float) -> float:
+		var k := 0 if h < 34.6 else 1
+		var t: float = (h - perfil[k][0]) / (perfil[k + 1][0] - perfil[k][0])
+		return lerpf(perfil[k][1], perfil[k + 1][1], t)
+	var cuad := func(r: float) -> Array:
+		return [V2(tu - r, tv - r), V2(tu + r, tv - r), V2(tu + r, tv + r), V2(tu - r, tv + r)]
+	var hh := 31.7
+	var fila := 0
+	while hh < 38.9:
+		var h1 := minf(hh + 0.55, 39.0)
+		if hh < 34.6 and h1 > 34.6:
+			h1 = 34.6
+		var r0: float = ancho.call(hh) + 0.06
+		var r1: float = ancho.call(h1)
+		var q0: Array = cuad.call(r0)
+		var q1: Array = cuad.call(r1)
+		var qi: Array = cuad.call(r0 - 0.06)
+		var col: Color = K["chapitel"] if fila % 2 == 0 else K["chapitel"].lightened(0.08)
+		var pend := (r0 - r1) / (h1 - hh)
+		for i in 4:
+			var j := (i + 1) % 4
+			var n: Vector2 = ((q0[i] + q0[j]) / 2 - Vector2(tu, tv)).normalized()
+			m.cara([f.V(q0[i].x, q0[i].y, hh), f.V(q0[j].x, q0[j].y, hh), f.V(q1[j].x, q1[j].y, h1), f.V(q1[i].x, q1[i].y, h1)],
+				col, "pizarra", f.N(n.x, n.y, pend))
+			# el canto de la escama, que mira abajo
+			m.cara([f.V(qi[i].x, qi[i].y, hh), f.V(qi[j].x, qi[j].y, hh), f.V(q0[j].x, q0[j].y, hh), f.V(q0[i].x, q0[i].y, hh)],
+				K["chapitel2"], "pizarra", Vector3.DOWN)
+		hh = h1
+		fila += 1
+	var qa: Array = cuad.call(ancho.call(hh))
 	for i in 4:
-		var a0 := base[i]
-		var a1 := base[(i + 1) % 4]
-		var b0 := med[i]
-		var b1 := med[(i + 1) % 4]
-		var n := ((a0 + a1) / 2 - Vector2(tu, tv)).normalized()
-		m.cara([f.V(a0.x, a0.y, 31.7), f.V(a1.x, a1.y, 31.7), f.V(b1.x, b1.y, 34.6), f.V(b0.x, b0.y, 34.6)], K["chapitel"], "pizarra", f.N(n.x * 3, n.y * 3, 1))
-		m.cara([f.V(b0.x, b0.y, 34.6), f.V(b1.x, b1.y, 34.6), f.V(tu, tv, 39.5)], K["chapitel"], "pizarra", f.N(n.x * 5, n.y * 5, 1))
-	m.caja(f, tu - 0.05, tv - 0.05, tu + 0.05, tv + 0.05, 39.4, 40.6, K["fierro"], "metal")
-	m.caja(f, tu - 0.3, tv - 0.05, tu + 0.3, tv + 0.05, 40.1, 40.2, K["fierro"], "metal")
+		var j := (i + 1) % 4
+		var n: Vector2 = ((qa[i] + qa[j]) / 2 - Vector2(tu, tv)).normalized()
+		m.cara([f.V(qa[i].x, qa[i].y, hh), f.V(qa[j].x, qa[j].y, hh), f.V(tu, tv, 39.5)], K["chapitel"], "pizarra", f.N(n.x * 5, n.y * 5, 1))
+	# las aristas: un listón oscuro en cada esquina, de la base a la punta
+	var cen := Vector2(tu, tv)
+	for i in 4:
+		var dir: Vector2 = (cuad.call(1.0)[i] - cen).normalized()
+		var t := Vector2(-dir.y, dir.x) * 0.07
+		for tramo in [[2.2, 31.7, 1.25, 34.6], [1.25, 34.6, 0.0, 39.5]]:
+			var e0: Vector2 = cen + dir * (tramo[0] * sqrt(2.0) + 0.1)
+			var e1: Vector2 = cen + dir * (tramo[2] * sqrt(2.0) + (0.1 if tramo[2] > 0 else 0.0))
+			var h0: float = tramo[1]
+			var h1: float = tramo[3]
+			m.cara([f.V(e0.x - t.x, e0.y - t.y, h0), f.V(e0.x + t.x, e0.y + t.y, h0), f.V(e1.x + t.x, e1.y + t.y, h1),
+				f.V(e1.x - t.x, e1.y - t.y, h1)], K["chapitel2"], "pizarra", f.N(dir.x, dir.y, 0.6))
+	m.cilindro(f, tu, tv, 0.2, 39.45, 39.85, K["fierro"], "metal", 8)
+	m.caja(f, tu - 0.05, tv - 0.05, tu + 0.05, tv + 0.05, 39.8, 41.0, K["fierro"], "metal")
+	m.caja(f, tu - 0.32, tv - 0.05, tu + 0.32, tv + 0.05, 40.45, 40.57, K["fierro"], "metal")
+	m.solido = true
+	# la colisión del chapitel: la pirámide simple, cuatro triángulos
+	var base := m.rect(tu - 2.2, tv - 2.2, tu + 2.2, tv + 2.2)
+	for i in 4:
+		var a0: Vector2 = base[i]
+		var a1: Vector2 = base[(i + 1) % 4]
+		m.colision.append_array([f.V(a0.x, a0.y, 31.7), f.V(tu, tv, 39.5), f.V(a1.x, a1.y, 31.7)])
 
 
 # el patio entre el campanario y el crucero, hacia 1 Norte: una reja de fierro roja sobre un murete blanco (foto 01)

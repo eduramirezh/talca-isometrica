@@ -27,7 +27,14 @@
 # Lo demás es genérico y aproximado: los colores (una paleta de fachadas del centro, elegida por el id de OSM), la
 # cantidad de ventanas, los locales y sus toldos; los letreros llevan solo los nombres que da OSM (BCI, Oriencoop,
 # Chilexpress, AFP Habitat, Banco Santander, cine Plaza), con colores supuestos. El Edificio O'Higgins (ex Banco de
-# Talca) y el BCI se dibujan con el lenguaje genérico «clásico», con lo que muestran sus fotos (zócalo, pilastras, friso).
+# Talca) y el BCI se dibujan con el lenguaje genérico «clásico», con lo que muestran sus fotos (zócalo con sus juntas,
+# pilastras de orden gigante con basa y capitel, arquitrabe y cornisa doble, friso; el pórtico bajo el frontón del BCI
+# sale más). La Intendencia lleva además la planta baja almohadillada y la balaustrada del pretil.
+# Los genéricos varían por edificio (variacion(), con el id de OSM de semilla: noviembre de 2026): la altura de la
+# planta baja, el ritmo de las bahías, el tipo de ventana (rectangular, de arco rebajado, con recercado y clave,
+# puertaventana con balconcito, pareada), balcones de fierro al medio o corridos, persianas bajadas, el remate del
+# pretil (un paño alzado escalonado o dados), las molduras blancas u oscuras, las pilastras de las esquinas, los
+# machones entre los locales, las cortinas metálicas bajadas, los toldos a listas y los letreros de bandera.
 extends Node3D
 
 const Malla := preload("res://malla.gd")
@@ -198,7 +205,44 @@ func spec(id: int, tags: Dictionary, esp: Dictionary) -> Dictionary:
 		sp[k] = esp[k]
 	if sp["estilo"] == "torre" or sp["estilo"] == "vidrio":
 		sp["pb"] = "vitrinas" if sp["estilo"] == "torre" else "vidrio"
+	variacion(sp, id, esp)
 	return sp
+
+
+# lo que cambia de un edificio genérico a otro (claves v_*): la altura de la planta baja, el tipo de ventana, el
+# ritmo de las bahías, los balcones, el remate del pretil, el color de las molduras, las pilastras de las esquinas,
+# las cortinas cerradas y los letreros de bandera. La semilla es el id de OSM: el mismo edificio sale igual en cada
+# corrida y en cada una de sus caras. Lo aproximado: todo; es el repertorio de las fachadas del centro de Talca
+# (comercio de dos pisos de los años 1930–1960, con ventanas de recercado o de arco rebajado, balcones de fierro y
+# pretiles con un paño alzado al medio), no lo que tiene cada edificio. Los que tienen fotos (config/fachadas.json con
+# friso, pilastras o zócalo alto, y los estilos propios) no varían.
+func variacion(sp: Dictionary, id: int, esp: Dictionary) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = id * 7919 + 1742
+	# se sacan siempre todos los números, en el mismo orden, aunque no se usen
+	var dhg := r.randf_range(-0.4, 0.5)
+	var tipos := ["rect", "rect", "rebajado", "alta", "par", "recercado"] if sp["estilo"] == "comercial" else ["recercado", "recercado", "rebajado", "rect", "alta"]
+	var vent: String = tipos[r.randi() % tipos.size()]
+	var vh := r.randf_range(0.56, 0.7)
+	var bal := r.randf()
+	var remate := r.randi() % 3
+	var pretil := r.randf_range(0.7, 1.25)
+	var trim: String = ["f1ede3", "f4f1ea", "", "", "8f8778"][r.randi() % 5]
+	var esq := r.randf() < 0.5
+	var cortina := r.randf_range(0.0, 0.45)
+	var bandera := r.randf() < 0.45
+	var ritmo := r.randf_range(0.85, 1.2)
+	var pilares: String = ["", "", "8a8780", "5e5a55", "b7b1a5"][r.randi() % 5]
+	var gen: bool = sp["estilo"] in ["comercial", "clasico"] and not (esp.has("friso") or esp.has("pilastras") or esp.has("zocalo_alto") or esp.has("bahia"))
+	if not gen:
+		sp.merge({"v_dhg": 0.0, "v_vent": "rect", "v_vh": 0.62, "v_balcon": 0, "v_remate": 0, "v_pretil": 0.9, "v_trim": "",
+			"v_esquinas": sp["estilo"] == "colonial", "v_cortina": 0.0, "v_bandera": false, "v_ritmo": 1.0, "v_pilares": "", "v_gen": false})
+		if sp["estilo"] == "intendencia":
+			sp["v_pretil"] = 1.1  # la balaustrada sobre la cornisa (foto de 2022, sobre los andamios)
+		return
+	sp.merge({"v_dhg": dhg, "v_vent": vent, "v_vh": vh, "v_balcon": 0 if bal < 0.55 else (1 if bal < 0.85 else 2),
+		"v_remate": remate, "v_pretil": pretil, "v_trim": trim, "v_esquinas": esq, "v_cortina": cortina if sp["pb"] == "vitrinas" else 0.0,
+		"v_bandera": bandera, "v_ritmo": ritmo, "v_pilares": pilares, "v_gen": true})
 
 
 func edificio(id: int, p: PackedVector2Array, tags: Dictionary, esp: Dictionary) -> void:
@@ -238,27 +282,36 @@ func edificio(id: int, p: PackedVector2Array, tags: Dictionary, esp: Dictionary)
 func fachada(g: Malla.Marco, a: Vector2, b: Vector2, sp: Dictionary, semilla: int) -> void:
 	rng.seed = semilla
 	var L := a.distance_to(b)
+	var d := (b - a) / L
+	var o := Vector2(d.y, -d.x)  # hacia afuera
 	var estilo: String = sp["estilo"]
 	var H: float = sp["alto"]
 	var n: int = max(1, sp["pisos"])
 	var col := Color(sp["color"])
 	var marco := Color(sp["marco"])
 	var zocalo: Color = Color(sp["zocalo"]) if sp["zocalo"] != "" else col.darkened(0.3)
+	# las molduras (bandas, cornisa, recercados): blancas, oscuras o un tono más claro que el muro
+	var trim: Color = Color(sp["v_trim"]) if sp["v_trim"] != "" else col.lightened(0.07)
 	if estilo == "vidrio":
 		muro_cortina(g, a, b, H, n)
 		return
+	var pretil: float = sp["v_pretil"]
 	var hg: float = {"comercial": 3.9, "clasico": 4.0, "deco": 4.3, "torre": 4.2, "moderno": 4.2, "colonial": 3.8, "intendencia": 4.6}.get(estilo, 3.9)
+	if sp["v_gen"]:
+		# la planta baja más alta o más baja, sin dejar pisos de menos de 2,7 m
+		hg = clampf(hg + sp["v_dhg"], 3.3, max(3.3, H - pretil - (n - 1) * 2.7))
 	if n == 1:
-		hg = H - 0.9
-	var pretil := 0.9
+		hg = H - pretil
 	var hu: float = (H - hg - pretil) / max(1, n - 1)
 	var bahia: float = {"comercial": 4.2, "clasico": 3.6, "deco": 3.4, "torre": 3.3, "moderno": 3.0, "colonial": 3.4, "intendencia": 3.3}.get(estilo, 3.6)
+	bahia *= sp["v_ritmo"]
 	if sp["bahia"] > 0:
 		bahia = sp["bahia"]
 	var nb: int = max(1, roundi(L / bahia))
 	var bw := L / nb
 	var huecos := []
 	var vidrio := Color("2e3a44")
+	var tipo: String = sp["v_vent"]
 	# los pisos de arriba: una ventana por bahía (en el moderno, una banda corrida)
 	for k in range(1, n):
 		var hf: float = hg + (k - 1) * hu
@@ -268,32 +321,72 @@ func fachada(g: Malla.Marco, a: Vector2, b: Vector2, sp: Dictionary, semilla: in
 			huecos.append(hq)
 			var s := 0.4 + 1.5
 			while s < L - 0.6:
-				m.moldura(g, a - Vector2((b - a).y, -(b - a).x).normalized() * 0.1, b - Vector2((b - a).y, -(b - a).x).normalized() * 0.1, s - 0.03, s + 0.03, hf + 0.85, hf + hu - 0.45, 0.03, Color("3c3f42"), "metal")
+				m.moldura(g, a - o * 0.1, b - o * 0.1, s - 0.03, s + 0.03, hf + 0.85, hf + hu - 0.45, 0.03, Color("3c3f42"), "metal")
 				s += 1.5
 			continue
+		# el balcón corrido del primer piso, de esquina a esquina (una losa con baranda)
+		if k == 1 and sp["v_balcon"] == 2 and tipo != "alta":
+			balcon(g, a, b, 0.4, L - 0.4, hf + 0.14, 0.75, trim)
 		for j in nb:
 			var s: float = (j + 0.5) * bw
 			var w: float = clampf(bw * (0.42 if estilo == "colonial" else 0.5), 0.9, 2.2)
-			var vh: float = hu * (0.62 if estilo != "torre" else 0.55)
+			var vh: float = hu * (sp["v_vh"] if estilo != "torre" else 0.55)
 			var h0: float = hf + (0.95 if estilo != "torre" else 1.0)
+			if tipo == "alta":
+				# puertaventana de piso a dintel, con un balconcito de fierro
+				w = clampf(bw * 0.4, 0.9, 1.5)
+				h0 = hf + 0.14
+				vh = hu - 0.14 - 0.55
 			var hq: PackedVector2Array
 			if estilo == "colonial" or estilo == "intendencia":
 				hq = Malla.arco(s, w, h0, h0 + vh - w / 2 * 0.35, w / 2 * 0.35, 6)
+			elif tipo == "rebajado":
+				hq = Malla.arco(s, w, h0, h0 + vh - w * 0.14, w * 0.14, 4)
 			else:
 				hq = PackedVector2Array([Vector2(s - w / 2, h0), Vector2(s + w / 2, h0), Vector2(s + w / 2, h0 + vh), Vector2(s - w / 2, h0 + vh)])
-			huecos.append(hq)
-			ventana(g, a, b, hq, s, w, h0, h0 + vh, marco, vidrio, estilo)
+			if tipo == "par" and w > 1.3:
+				# dos ventanas angostas por bahía, con un machón entre ellas
+				for sg in [-1.0, 1.0]:
+					var sj: float = s + sg * w * 0.3
+					var wj: float = w * 0.46
+					var hj := PackedVector2Array([Vector2(sj - wj / 2, h0), Vector2(sj + wj / 2, h0), Vector2(sj + wj / 2, h0 + vh), Vector2(sj - wj / 2, h0 + vh)])
+					huecos.append(hj)
+					ventana(g, a, b, hj, sj, wj, h0, h0 + vh, marco, vidrio, estilo)
+				m.moldura(g, a, b, s - w / 2 - 0.15, s + w / 2 + 0.15, h0 + vh + 0.08, h0 + vh + 0.24, 0.1, trim)
+			else:
+				huecos.append(hq)
+				ventana(g, a, b, hq, s, w, h0, h0 + vh, marco, vidrio, estilo)
+				if (sp["v_gen"] or estilo == "torre") and rng.randf() < 0.3:
+					# la persiana enrollable bajada a medias o casi entera, con su cajón sobre el dintel
+					var z: float = h0 + vh * rng.randf_range(0.15, 0.7)
+					var pc := Color(["d8d2c4", "efece4", "8a6f55", "b9b4a8"][rng.randi() % 4])
+					m.panel(g, a - o * 0.15, b - o * 0.15, s - w / 2, s + w / 2, z, h0 + vh, 0.0, pc, "metal")
+					m.panel(g, a - o * 0.15, b - o * 0.15, s - w / 2, s + w / 2, z, z + 0.05, 0.005, pc.darkened(0.3), "metal")
+			if tipo == "recercado" and estilo in ["comercial", "clasico"]:
+				# el recercado: jambas y un dintel con su cornisita y la clave al medio
+				for sg in [-1.0, 1.0]:
+					var e0: float = s + w / 2 if sg > 0 else s - w / 2 - 0.2
+					m.panel(g, a, b, e0, e0 + 0.2, h0 - 0.1, h0 + vh + 0.15, 0.035, trim)
+				m.moldura(g, a, b, s - w / 2 - 0.3, s + w / 2 + 0.3, h0 + vh + 0.15, h0 + vh + 0.4, 0.12, trim)
+				m.moldura(g, a, b, s - 0.14, s + 0.14, h0 + vh - 0.05, h0 + vh + 0.3, 0.08, trim.darkened(0.06))
+			elif tipo == "rebajado" and estilo in ["comercial", "clasico"]:
+				m.moldura(g, a, b, s - 0.13, s + 0.13, h0 + vh - 0.1, h0 + vh + 0.25, 0.07, trim)
+			if tipo == "alta" and estilo in ["comercial", "clasico"]:
+				balcon(g, a, b, s - w / 2 - 0.25, s + w / 2 + 0.25, hf + 0.14, 0.4, trim)
+				m.moldura(g, a, b, s - w / 2 - 0.2, s + w / 2 + 0.2, h0 + vh + 0.05, h0 + vh + 0.25, 0.12, trim)
+			elif k == 1 and sp["v_balcon"] == 1 and j == nb / 2 and nb >= 3:
+				# un balcón al medio, sobre la entrada
+				balcon(g, a, b, s - bw / 2 + 0.3, s + bw / 2 - 0.3, hf + 0.14, 0.85, trim)
 			if estilo == "torre":
 				# balcón: losa que sale 0,9 m y una baranda de fierro
 				m.moldura(g, a, b, s - w / 2 - 0.5, s + w / 2 + 0.5, hf - 0.02, hf + 0.16, 0.9, col.darkened(0.08))
 				baranda(g, a, b, s - w / 2 - 0.5, s + w / 2 + 0.5, hf + 0.16, 0.9)
 			elif estilo == "deco":
-
 				# el cuadrado escalonado del antepecho (foto «Detalle…», 2022), en un paño hundido más oscuro
 				m.panel(g, a, b, s - w / 2, s + w / 2, h0 - 1.15, h0 - 0.2, 0.004, col.darkened(0.08))
 				m.moldura(g, a, b, s - 0.32, s + 0.32, h0 - 1.0, h0 - 0.36, 0.04, col.lightened(0.08))
 				m.moldura(g, a, b, s - 0.2, s + 0.2, h0 - 0.88, h0 - 0.48, 0.08, col.lightened(0.14))
-			elif estilo == "intendencia" or estilo == "clasico":
+			elif estilo == "intendencia" or estilo == "clasico" and tipo == "rect":
 				# una cornisa sobre la ventana
 				m.moldura(g, a, b, s - w / 2 - 0.2, s + w / 2 + 0.2, h0 + vh + 0.1, h0 + vh + 0.28, 0.14, col.lightened(0.06))
 	# la planta baja
@@ -311,7 +404,17 @@ func fachada(g: Malla.Marco, a: Vector2, b: Vector2, sp: Dictionary, semilla: in
 			var hq := PackedVector2Array([Vector2(x0, 0.2), Vector2(x1, 0.2), Vector2(x1, hg - 1.1), Vector2(x0, hg - 1.1)])
 			huecos.append(hq)
 			vitrina(g, a, b, hq, x0, x1, hg)
+			# la cortina metálica: bajada entera (un local cerrado) o a medias
+			var cr := rng.randf()
+			if cr < sp["v_cortina"] * 1.6:
+				var z0: float = 0.2 if cr < sp["v_cortina"] else lerpf(0.9, hg - 1.6, rng.randf())
+				cortina(g, a - o * 0.1, b - o * 0.1, x0, x1, z0, hg - 1.1)
 			j += 1
+		if sp["v_pilares"] != "":
+			# los machones entre los locales, enchapados en piedra o pintados de otro color
+			for jj in range(0, nb + 1):
+				var sj: float = jj * bw
+				m.moldura(g, a, b, max(0.0, sj - 0.35), min(L, sj + 0.35), 0.0, hg - 1.1, 0.05, Color(sp["v_pilares"]), "granito")
 		# un letrero sobre cada local (cada dos bahías), con el nombre de OSM si lo hay; si no, un panel de color
 		var k := 0
 		var s0 := 0.25
@@ -327,9 +430,14 @@ func fachada(g: Malla.Marco, a: Vector2, b: Vector2, sp: Dictionary, semilla: in
 			m.moldura(g, a, b, s0, s1, hg - 0.95, hg - 0.25, 0.1, fondo, "pintura")
 			if texto != "":
 				rotulo(g, a, b, (s0 + s1) / 2, hg - 0.6, 0.11, texto, letra, 0.42)
+			else:
+				# una franja clara al medio del letrero, que de lejos se lee como el texto
+				m.panel(g, a, b, s0 + (s1 - s0) * 0.2, s1 - (s1 - s0) * 0.2, hg - 0.68, hg - 0.52, 0.105, fondo.lightened(0.55) if fondo.get_luminance() < 0.5 else fondo.darkened(0.6), "pintura")
 			if toldo != "" or rng.randf() < 0.3:
 				var tc := Color(toldo) if toldo != "" else Color(["7a2e26", "2f5e3e", "3a4f7a", "c9a227"][rng.randi() % 4])
-				toldo_(g, a, b, s0 + 0.1, s1 - 0.1, hg - 1.05, tc)
+				toldo_(g, a, b, s0 + 0.1, s1 - 0.1, hg - 1.05, tc, rng.randf() < 0.4)
+			if sp["v_bandera"] and rng.randf() < 0.6 and n > 1 and sp["v_balcon"] == 0 and tipo != "alta":
+				letrero_bandera(g, a, b, s1 - 0.3, hg + 0.25, fondo)
 			s0 = s1 + 0.3
 			k += 1
 	elif pb == "ventanas" or pb == "vidrio":
@@ -345,12 +453,17 @@ func fachada(g: Malla.Marco, a: Vector2, b: Vector2, sp: Dictionary, semilla: in
 				m.derrame(g, a, b, hq, 0.35, col.darkened(0.15), "liso", Color("4a3626"), "pintura")
 				if estilo == "deco" and w > 1.8:
 					# tres puertas vidriadas de marco oscuro (la entrada de los Servicios Públicos)
-					var d2 := (b - a) / L
-					var o2 := Vector2(d2.y, -d2.x)
 					for kk in 3:
 						var sk: float = s - w / 2 + w * (kk + 0.5) / 3.0
-						m.panel(g, a - o2 * 0.34, b - o2 * 0.34, sk - w / 6 + 0.1, sk + w / 6 - 0.1, 0.1, 2.7, 0.01, Color("34414b"), "vidrio")
-						m.panel(g, a - o2 * 0.34, b - o2 * 0.34, sk - 0.03, sk + 0.03, 0.1, 2.7, 0.02, Color("2a2622"), "metal")
+						m.panel(g, a - o * 0.34, b - o * 0.34, sk - w / 6 + 0.1, sk + w / 6 - 0.1, 0.1, 2.7, 0.01, Color("34414b"), "vidrio")
+						m.panel(g, a - o * 0.34, b - o * 0.34, sk - 0.03, sk + 0.03, 0.1, 2.7, 0.02, Color("2a2622"), "metal")
+				elif estilo != "deco":
+					# las dos hojas de madera con sus tableros (el portón de la casa colonial, la puerta de los clásicos)
+					var w2: float = 1.5 if estilo == "colonial" else w
+					for sg in [-1.0, 1.0]:
+						var c0: float = s + (0.0 if sg > 0 else -w2 / 2)
+						for hh in [[0.25, 1.15], [1.35, 2.25]]:
+							m.panel(g, a - o * 0.35, b - o * 0.35, c0 + 0.12, c0 + w2 / 2 - 0.12, hh[0], hh[1], 0.02, Color("5c4330"), "pintura")
 				if estilo == "deco" or estilo == "clasico":
 					# marquesina sobre la entrada (los Servicios Públicos tienen una)
 					m.moldura(g, a, b, s - w / 2 - 0.6, s + w / 2 + 0.6, 3.35, 3.55, 1.3, col.darkened(0.05))
@@ -368,46 +481,193 @@ func fachada(g: Malla.Marco, a: Vector2, b: Vector2, sp: Dictionary, semilla: in
 		m.moldura(g, a, b, 0, L, -0.9, hz, 0.05, zocalo, "liso")
 	else:
 		# un zócalo alto de piedra (el Edificio O'Higgins): una capa 12 cm delante del muro, con los mismos vanos
-		var d4 := (b - a) / L
-		var o4 := Vector2(d4.y, -d4.x) * 0.12
+		var o4 := o * 0.12
 		var hz_huecos := huecos.filter(func(hq): return hq[0].y < hz)
 		m.superficie(g, a + o4, b + o4, PackedVector2Array([Vector2(0, -0.9), Vector2(L, -0.9), Vector2(L, hz), Vector2(0, hz)]), hz_huecos, zocalo, "granito")
 		m.moldura(g, a, b, 0, L, hz - 0.05, hz + 0.1, 0.16, zocalo.lightened(0.08), "granito")
 		for hq in hz_huecos:
 			m.derrame(g, a + o4, b + o4, hq, 0.13, zocalo.darkened(0.1), "granito")
+		# las juntas horizontales de la piedra, entre los vanos
+		var hj := 0.55
+		while hj < hz - 0.3:
+			franja(g, a + o4, b + o4, hj, hj + 0.04, 0.006, zocalo.darkened(0.22), huecos)
+			hj += 0.6
+	if estilo == "intendencia":
+		# la planta baja almohadillada (foto de 2022): juntas horizontales cada 0,5 m entre los vanos
+		var hj := 1.0
+		while hj < hg - 0.3:
+			franja(g, a, b, hj, hj + 0.05, 0.006, col.darkened(0.16), huecos)
+			hj += 0.5
 	if sp["friso"] != "" and L > 12:
 		rotulo(g, a, b, L / 2, H - pretil - 0.75, 0.31, sp["friso"], Color("1c1c1c"), 0.55)
 	if sp["fronton"] and L > 12:
 		# el frontón al medio, con su tímpano (foto del BCI, 2024)
 		var w2: float = min(9.0, L * 0.4)
-		var d3 := (b - a) / L
-		var o3 := Vector2(d3.y, -d3.x)
 		var P := func(ss: float, hh: float, sal: float) -> Vector3:
-			var q: Vector2 = a + d3 * ss + o3 * sal
+			var q: Vector2 = a + d * ss + o * sal
 			return g.V(q.x, q.y, hh)
 		for sal in [0.32, -1.5]:
-			m.cara([P.call(L / 2 - w2 / 2, H, sal), P.call(L / 2 + w2 / 2, H, sal), P.call(L / 2, H + 1.6, sal)], col, "liso", g.N(o3.x, o3.y) if sal > 0 else -g.N(o3.x, o3.y))
+			m.cara([P.call(L / 2 - w2 / 2, H, sal), P.call(L / 2 + w2 / 2, H, sal), P.call(L / 2, H + 1.6, sal)], col, "liso", g.N(o.x, o.y) if sal > 0 else -g.N(o.x, o.y))
 		for sg in [-1.0, 1.0]:
 			m.cara([P.call(L / 2 + sg * w2 / 2 * 1.05, H - 0.05, 0.45), P.call(L / 2, H + 1.75, 0.45), P.call(L / 2, H + 1.75, -1.6), P.call(L / 2 + sg * w2 / 2 * 1.05, H - 0.05, -1.6)],
-				col.darkened(0.1), "liso", (g.N(d3.x * sg, d3.y * sg) * 1.6 + Vector3.UP * w2 / 2).normalized())
+				col.darkened(0.1), "liso", (g.N(d.x * sg, d.y * sg) * 1.6 + Vector3.UP * w2 / 2).normalized())
+		# la cornisa horizontal bajo el tímpano
+		m.moldura(g, a, b, L / 2 - w2 / 2 * 1.05, L / 2 + w2 / 2 * 1.05, H - 0.1, H + 0.12, 0.45, col.lightened(0.05))
 	if estilo in ["clasico", "intendencia", "colonial", "comercial"]:
 		for k in range(1, n):
 			var hf: float = hg + (k - 1) * hu
-			m.moldura(g, a, b, 0, L, hf - 0.1, hf + 0.12, 0.08, col.lightened(0.06))
+			m.moldura(g, a, b, 0, L, hf - 0.1, hf + 0.12, 0.08, trim)
+	var hc := H - pretil  # la cornisa
 	if estilo != "moderno":
-		m.moldura(g, a, b, -0.05, L + 0.05, H - pretil - 0.1, H - pretil + 0.25, 0.3 if estilo != "torre" else 0.15, col.lightened(0.07))
-	m.moldura(g, a, b, 0, L, H - 0.12, H, 0.08, col.lightened(0.04))
+		m.moldura(g, a, b, -0.05, L + 0.05, hc - 0.1, hc + 0.25, 0.3 if estilo != "torre" else 0.15, trim)
+		if estilo in ["clasico", "intendencia"] or sp["v_remate"] > 0:
+			# el arquitrabe: una segunda moldura bajo la cornisa, que la hace más pesada
+			if sp["friso"] == "":
+				m.moldura(g, a, b, 0, L, hc - 0.42, hc - 0.28, 0.12, trim.darkened(0.04))
+			m.moldura(g, a, b, -0.05, L + 0.05, hc + 0.25, hc + 0.36, 0.38 if estilo != "torre" else 0.2, trim.lightened(0.04))
+	m.moldura(g, a, b, 0, L, H - 0.12, H, 0.08, trim.lightened(0.03))
+	if estilo == "intendencia":
+		balaustrada(g, a, b, hc + 0.36, H - 0.12, nb, bw, col)
+	elif sp["v_remate"] == 1 and L > 6:
+		# un paño alzado al medio del pretil, escalonado, con un paño hundido (la fecha o el nombre de la casa)
+		var wr: float = min(L * 0.35, 6.0)
+		m.moldura(g, a, b, L / 2 - wr / 2, L / 2 + wr / 2, H - 0.12, H + 0.75, 0.08, col)
+		m.moldura(g, a, b, L / 2 - wr / 4, L / 2 + wr / 4, H + 0.75, H + 1.15, 0.08, col)
+		m.moldura(g, a, b, L / 2 - wr / 4 - 0.08, L / 2 + wr / 4 + 0.08, H + 1.15, H + 1.27, 0.14, trim)
+		m.moldura(g, a, b, L / 2 - wr / 2 - 0.08, L / 2 + wr / 2 + 0.08, H + 0.7, H + 0.82, 0.14, trim)
+		m.panel(g, a, b, L / 2 - wr / 2 + 0.35, L / 2 + wr / 2 - 0.35, H + 0.05, H + 0.55, 0.085, col.darkened(0.1))
+	elif sp["v_remate"] == 2:
+		# dados sobre el pretil, uno en cada eje de bahía
+		for j in range(0, nb + 1):
+			var s: float = clampf(j * bw, 0.25, L - 0.25)
+			m.moldura(g, a, b, s - 0.25, s + 0.25, H - 0.12, H + 0.45, 0.14, trim)
+	if sp["v_esquinas"] and estilo in ["comercial", "clasico", "colonial"]:
+		# pilastras en las dos esquinas de la fachada, del zócalo a la cornisa
+		for e in [[0.0, 0.55], [L - 0.55, L]]:
+			m.moldura(g, a, b, e[0], e[1], hz, hc - 0.1, 0.07, trim)
 	if estilo == "deco":
-		# los machones dobles escalonados entre las bahías, que suben 1,2 m sobre el pretil (Servicios Públicos)
+		# los machones dobles escalonados entre las bahías, que suben 1,2 m sobre el pretil (Servicios Públicos), con un
+		# tercer escalón angosto en los altos
 		for j in range(0, nb + 1):
 			var s: float = j * bw
 			var alto := H + (1.2 if j % 2 == 0 else 0.4)
 			m.moldura(g, a, b, max(0.0, s - 0.42), min(L, s + 0.42), hg - 0.3, alto, 0.14, col.lightened(0.10))
 			m.moldura(g, a, b, max(0.0, s - 0.25), min(L, s + 0.25), hg - 0.3, alto - 0.3, 0.3, col.lightened(0.16))
+			if j % 2 == 0:
+				m.moldura(g, a, b, max(0.0, s - 0.12), min(L, s + 0.12), alto - 0.3, alto + 0.35, 0.22, col.lightened(0.16))
 	if estilo == "intendencia" or estilo == "clasico" and (n <= 3 or sp["pilastras"]):
+		# pilastras en cada eje, con basa y capitel; las del O'Higgins y el BCI, de orden gigante desde el zócalo
+		var gigante: bool = sp["pilastras"] or sp["fronton"]
+		var hp0: float = hz + 0.1 if gigante else hg
+		var hp1: float = hc - 0.42  # bajo el arquitrabe
+		if sp["friso"] != "":
+			hp1 = H - pretil - 1.1
+		var hw := 0.25 if gigante and pb == "ventanas" else 0.3
+		var w2: float = min(9.0, L * 0.4)
 		for j in range(0, nb + 1):
 			var s: float = j * bw
-			m.moldura(g, a, b, max(0.0, s - 0.3), min(L, s + 0.3), hg, H - pretil - 0.1, 0.1, col.lightened(0.05))
+			var sal := 0.1
+			if sp["fronton"] and abs(s - L / 2) < w2 / 2 + 0.5:
+				sal = 0.2  # el pórtico bajo el frontón sale más
+			m.moldura(g, a, b, max(0.0, s - hw), min(L, s + hw), hp0, hp1, sal, col.lightened(0.05))
+			m.moldura(g, a, b, max(0.0, s - hw - 0.1), min(L, s + hw + 0.1), hp1 - 0.3, hp1, sal + 0.07, trim)
+			if gigante:
+				m.moldura(g, a, b, max(0.0, s - hw - 0.08), min(L, s + hw + 0.08), hp0, hp0 + 0.35, sal + 0.05, trim.darkened(0.05))
+
+
+# una banda horizontal (junta, moldura) de h0 a h1 a lo largo de a -> b que se corta en los vanos que cruza
+func franja(g: Malla.Marco, a: Vector2, b: Vector2, h0: float, h1: float, sal: float, col: Color, huecos: Array) -> void:
+	var L := a.distance_to(b)
+	var tramos := [[0.0, L]]
+	for hq in huecos:
+		var s0 := INF
+		var s1 := -INF
+		var z0 := INF
+		var z1 := -INF
+		for p in hq:
+			s0 = min(s0, p.x); s1 = max(s1, p.x); z0 = min(z0, p.y); z1 = max(z1, p.y)
+		if z1 < h0 or z0 > h1:
+			continue
+		var nuevos := []
+		for t in tramos:
+			if s1 <= t[0] or s0 >= t[1]:
+				nuevos.append(t)
+				continue
+			if s0 - 0.05 > t[0]:
+				nuevos.append([t[0], s0 - 0.05])
+			if s1 + 0.05 < t[1]:
+				nuevos.append([s1 + 0.05, t[1]])
+		tramos = nuevos
+	for t in tramos:
+		if t[1] - t[0] > 0.1:
+			m.panel(g, a, b, t[0], t[1], h0, h1, sal, col)
+
+
+# un balcón de fierro: la losa bajo h, que sale sal m, el pasamanos y barrotes cada 16 cm al frente y a los lados
+func balcon(g: Malla.Marco, a: Vector2, b: Vector2, s0: float, s1: float, h: float, sal: float, losa: Color) -> void:
+	var c := Color(0.17, 0.18, 0.19)
+	m.moldura(g, a, b, s0, s1, h - 0.16, h, sal, losa)
+	m.moldura(g, a, b, s0, s1, h + 0.92, h + 0.97, sal, c, "metal", sal - 0.05)
+	m.moldura(g, a, b, s0, s1, h + 0.05, h + 0.09, sal - 0.01, c, "metal", sal - 0.04)
+	var x := s0 + 0.08
+	while x < s1 - 0.04:
+		m.panel(g, a, b, x - 0.02, x + 0.02, h, h + 0.92, sal - 0.025, c, "metal")
+		x += 0.16
+	var d := (b - a).normalized()
+	var o := Vector2(d.y, -d.x)
+	for e in [[s0 + 0.025, -1.0], [s1 - 0.025, 1.0]]:
+		var a2: Vector2 = a + d * e[0]
+		var b2: Vector2 = a2 + o * sal
+		var sg: float = e[1]
+		m.moldura(g, a2, b2, 0.0, sal, h + 0.92, h + 0.97, 0.025, c, "metal", -0.025)
+		var y := 0.12
+		while y < sal - 0.03:
+			if sg > 0:
+				m.panel(g, b2, a2, sal - y - 0.02, sal - y + 0.02, h, h + 0.92, 0.026, c, "metal")
+			else:
+				m.panel(g, a2, b2, y - 0.02, y + 0.02, h, h + 0.92, 0.026, c, "metal")
+			y += 0.16
+
+
+# la cortina metálica de un local, bajada de z1 a z0 delante del vidrio: un paño gris con sus pliegues y la barra de abajo
+func cortina(g: Malla.Marco, a: Vector2, b: Vector2, x0: float, x1: float, z0: float, z1: float) -> void:
+	var c := Color(0.62, 0.63, 0.63)
+	m.panel(g, a, b, x0 + 0.02, x1 - 0.02, z0, z1, 0.0, c, "metal")
+	var h := z1 - 0.3
+	while h > z0 + 0.2:
+		m.panel(g, a, b, x0 + 0.02, x1 - 0.02, h, h + 0.04, 0.008, c.darkened(0.25), "metal")
+		h -= 0.45
+	m.panel(g, a, b, x0 + 0.02, x1 - 0.02, z0, z0 + 0.08, 0.012, Color(0.3, 0.31, 0.32), "metal")
+
+
+# un letrero de bandera: una caja angosta perpendicular al muro, en s, desde h, con un paño claro en cada cara
+func letrero_bandera(g: Malla.Marco, a: Vector2, b: Vector2, s: float, h: float, fondo: Color) -> void:
+	var d := (b - a).normalized()
+	var o := Vector2(d.y, -d.x)
+	var a2 := a + d * s
+	var b2 := a2 + o * 1.1
+	m.moldura(g, a2, b2, 0.0, 0.25, h + 0.35, h + 0.45, 0.02, Color(0.2, 0.21, 0.22), "metal", -0.02)  # la ménsula
+	m.moldura(g, a2, b2, 0.15, 1.05, h, h + 0.8, 0.05, fondo, "pintura", -0.05)
+	var claro := fondo.lightened(0.6) if fondo.get_luminance() < 0.5 else fondo.darkened(0.55)
+	m.panel(g, a2, b2, 0.3, 0.9, h + 0.3, h + 0.5, 0.052, claro, "pintura")
+	m.panel(g, b2, a2, 0.15, 0.75, h + 0.3, h + 0.5, 0.052, claro, "pintura")
+
+
+# la balaustrada del pretil de la Intendencia: dados en cada eje, pasamanos y balaustres (paños claros sobre un fondo
+# en sombra; de cerca se leen como balaustres, con 2 triángulos cada uno)
+func balaustrada(g: Malla.Marco, a: Vector2, b: Vector2, h0: float, h1: float, nb: int, bw: float, col: Color) -> void:
+	var L := a.distance_to(b)
+	m.panel(g, a, b, 0.0, L, h0, h1 - 0.12, 0.004, col.darkened(0.35))
+	for j in range(0, nb + 1):
+		var s: float = clampf(j * bw, 0.3, L - 0.3)
+		m.moldura(g, a, b, s - 0.3, s + 0.3, h0, h1 + 0.1, 0.12, col.lightened(0.06))
+		if j == nb:
+			break
+		var x := s + 0.5
+		while x < (j + 1) * bw - 0.5:
+			m.panel(g, a, b, x - 0.07, x + 0.07, h0 + 0.05, h1 - 0.17, 0.05, col.lightened(0.04))
+			x += 0.3
+	m.moldura(g, a, b, 0.0, L, h1 - 0.17, h1, 0.12, col.lightened(0.06))
 
 
 # una ventana hundida: derrame, vidrio, marco con un montante y un travesaño, alféizar
@@ -466,8 +726,8 @@ func rotulo(g: Malla.Marco, a: Vector2, b: Vector2, s: float, h: float, o: float
 	l.look_at(l.position - g.N(ou.x, ou.y), Vector3.UP)
 
 
-# un toldo de lona inclinado, de s0 a s1, colgado a h, que sale 1,3 m y baja 0,6 m, con faldón
-func toldo_(g: Malla.Marco, a: Vector2, b: Vector2, s0: float, s1: float, h: float, col: Color) -> void:
+# un toldo de lona inclinado, de s0 a s1, colgado a h, que sale 1,3 m y baja 0,6 m, con faldón (liso o a listas)
+func toldo_(g: Malla.Marco, a: Vector2, b: Vector2, s0: float, s1: float, h: float, col: Color, rayado := false) -> void:
 	var L := a.distance_to(b)
 	var d := (b - a) / L
 	var o := Vector2(d.y, -d.x)
@@ -476,8 +736,14 @@ func toldo_(g: Malla.Marco, a: Vector2, b: Vector2, s0: float, s1: float, h: flo
 		return g.V(q.x, q.y, hh)
 	var antes := m.solido
 	m.solido = false
-	m.cara([P.call(s0, 0.02, h), P.call(s1, 0.02, h), P.call(s1, 1.3, h - 0.6), P.call(s0, 1.3, h - 0.6)], col, "tela", g.N(o.x, o.y, 2.2))
-	m.cara([P.call(s0, 1.3, h - 0.6), P.call(s1, 1.3, h - 0.6), P.call(s1, 1.3, h - 0.85), P.call(s0, 1.3, h - 0.85)], col.darkened(0.1), "tela", g.N(o.x, o.y))
+	# rayado: listas de 0,5 m del color y blancas, a lo largo
+	var k := maxi(1, roundi((s1 - s0) / 0.5)) if rayado else 1
+	for i in k:
+		var t0: float = lerpf(s0, s1, float(i) / k)
+		var t1: float = lerpf(s0, s1, float(i + 1) / k)
+		var c: Color = col if i % 2 == 0 else Color("efebe0")
+		m.cara([P.call(t0, 0.02, h), P.call(t1, 0.02, h), P.call(t1, 1.3, h - 0.6), P.call(t0, 1.3, h - 0.6)], c, "tela", g.N(o.x, o.y, 2.2))
+		m.cara([P.call(t0, 1.3, h - 0.6), P.call(t1, 1.3, h - 0.6), P.call(t1, 1.3, h - 0.85), P.call(t0, 1.3, h - 0.85)], c.darkened(0.1), "tela", g.N(o.x, o.y))
 	for sg in [[s0, -1.0], [s1, 1.0]]:
 		m.cara([P.call(sg[0], 0.02, h), P.call(sg[0], 1.3, h - 0.6), P.call(sg[0], 1.3, h - 0.85)], col.darkened(0.15), "tela", g.N(d.x * sg[1], d.y * sg[1]))
 	m.solido = antes

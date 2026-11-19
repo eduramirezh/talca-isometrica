@@ -604,7 +604,7 @@ class Otro extends Node3D:
 			for i in 2:
 				var a := -fase_biela + PI * i
 				pies.append(Veh.BIELA_C + Vector2(cos(a), sin(a)) * Veh.BIELA_R + Vector2(-0.03, 0.07) - Veh.CADERA)
-			peaton.sentar(dt, pies, 0.62, 1.42, 0.35)
+			peaton.sentar(dt, pies, 0.62, Veh.BICI_BRAZOS.x, Veh.BICI_BRAZOS.y)
 		else:
 			if peaton.get_parent() != cuerpo:
 				peaton.reparent(cuerpo, false)

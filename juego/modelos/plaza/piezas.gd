@@ -173,6 +173,22 @@ func quiosco(c2: Vector2) -> void:
 		var t := TAU * k / 48
 		var b := C + Vector3(cos(t) * 3.9, 3.8, sin(t) * 3.9)
 		fe.tubo(b, b + Vector3.UP * 0.22, 0.015, 0.004, 3, HIERRO, HIERRO)
+	# las barandas de la escalera: un paño calado que sigue los peldaños, pasamanos y un pilar con remate abajo
+	# (aproximado: las fotos de 2013 y 2014 no las muestran de cerca)
+	var x0 := c2.x + xf - 0.05
+	for s in [-1.0, 1.0]:
+		var yb: float = c2.y + s * 1.42
+		var lo := Malla.P(x0 + 1.75, yb, PAV + 0.27)   # sobre el primer peldaño
+		var hi := Malla.P(x0 + 0.1, yb, D + 0.02)      # en la cornisa del basamento
+		var nn := Vector3(0, 0, -s)
+		var largo := lo.distance_to(hi)
+		baranda.quad(lo, hi, hi + Vector3.UP * 0.82, lo + Vector3.UP * 0.82, Color.WHITE, nn,
+			[Vector2(0, 1), Vector2(largo / 1.2, 1), Vector2(largo / 1.2, 0), Vector2(0, 0)])
+		fe.tubo(lo + Vector3.UP * 0.85, hi + Vector3(-0.12, 0.85, 0), 0.03, 0.03, 6, HIERRO, HIERRO)
+		fe.tubo(lo + Vector3.UP * 0.02, hi + Vector3.UP * 0.02, 0.025, 0.025, 4, HIERRO, HIERRO)
+		fe.torno(lo + Vector3(0.12, -0.04, 0), [Vector2(0.07, 0), Vector2(0.07, 0.12), Vector2(0.045, 0.2), Vector2(0.04, 0.85),
+			Vector2(0.07, 0.9), Vector2(0.07, 0.96), Vector2(0.03, 1.02), Vector2(0.06, 1.08), Vector2(0.0, 1.15)], 8, HIERRO)
+		p.colision.quad(lo + Vector3.DOWN * 0.1, hi, hi + Vector3.UP * 0.9, lo + Vector3.UP * 0.9, Color.WHITE, nn)
 	p.instancia(fe.malla(m_hierro))
 	p.instancia(baranda.malla(Mat.textura(Tx.filigrana())))
 	p.instancia(arcos.malla(Mat.textura(Tx.arco())))
@@ -265,6 +281,27 @@ func pileta_central(c2: Vector2) -> void:
 	plato.plano(d1, PAV + 0.75 + 1.6, Color.WHITE)
 	plato.plano(d2, PAV + 0.75 + 2.62, Color.WHITE)
 	p.instancia(plato.malla(Mat.plaza("agua", {"alfa": 0.7})), Transform3D.IDENTITY, false)
+	# las ménsulas bajo los dos platos (ocho y seis volutas de fierro) y el borde de cada plato, festoneado
+	var men := Malla.new()
+	for pl_ in [[8, 0.16, 1.28, 0.62, 1.42, 0.86, 1.5], [6, 0.1, 2.36, 0.33, 2.47, 0.46, 2.53]]:
+		for k in pl_[0]:
+			var e := Vector3(cos(TAU * k / pl_[0]), 0, sin(TAU * k / pl_[0]))
+			var q0: Vector3 = b + e * pl_[1] + Vector3.UP * pl_[2]
+			var q1: Vector3 = b + e * pl_[3] + Vector3.UP * pl_[4]
+			var q2: Vector3 = b + e * pl_[5] + Vector3.UP * pl_[6]
+			men.tubo(q0, q1, 0.035, 0.03, 5, VERDE_PILETA * 0.85, VERDE_PILETA * 0.85)
+			men.tubo(q1, q2, 0.03, 0.02, 5, VERDE_PILETA * 0.85, VERDE_PILETA * 0.85)
+	for pl_ in [[1.0, 1.6, 20], [0.55, 2.62, 14]]:
+		for k in pl_[2]:
+			var t: float = TAU * (k + 0.5) / pl_[2]
+			men.torno(b + Vector3(cos(t) * pl_[0], pl_[1] - 0.05, sin(t) * pl_[0]), [Vector2(0.0, 0.0), Vector2(0.05, 0.02),
+				Vector2(0.05, 0.06), Vector2(0.0, 0.09)], 5, VERDE_PILETA)
+	p.instancia(men.malla(m_hierro))
+	# el agua que rebalsa de cada plato: dos cortinas (el sombreador de agua con `cae`). Licencia, como el agua.
+	var cort := Malla.new()
+	cortina(cort, b, 1.03, 1.62, 0.55 - 0.75, 0.16)
+	cortina(cort, b, 0.58, 2.66, 1.6, 0.06)
+	p.instancia(cort.malla(Mat.plaza("agua", {"cae": 1.0})), Transform3D.IDENTITY, false)
 
 
 # un tazón redondo de piedra con el interior azul y agua: borde de alto h y grueso g, con una moldura volada arriba
@@ -288,16 +325,37 @@ func tazon(C: Vector3, R: float, h: float, g: float) -> void:
 	p.ocupar(Vector2(C.x, -C.z), R + 0.8)
 
 
+# una cortina de agua que cae del borde de un plato: un cono abierto de radio r en y0 (sobre b) hasta y1, abriéndose
+# `abre` m (uv.y = 0 arriba, para que las franjas bajen)
+func cortina(m: Malla, b: Vector3, r: float, y0: float, y1: float, abre: float) -> void:
+	var h := y0 - y1
+	m.torno(b, [Vector2(r, y0), Vector2(r + abre * 0.45, y0 - h * 0.35), Vector2(r + abre, y1)], 24, Color.WHITE, 0.0, true)
+
+
 # Las piletas norte y poniente (OSM n11021259067, n3428801896): no hay fotos de ellas. Tazones de 5,2 m pintados de
 # azul por dentro (la poniente se ve azul en la imagen de Esri) con un surtidor de piedra al medio, como en el hito.
 func pileta_chica(c2: Vector2) -> void:
 	var C := Malla.P(c2.x, c2.y, p.PAV)
 	tazon(C, 2.6, 0.6, 0.3)
+	# el surtidor: un fuste de piedra con una taza chica arriba que rebalsa (la taza es aproximada: no hay fotos)
 	var m := Malla.new()
-	m.torno(C + Vector3.UP * 0.2, [Vector2(0.35, 0), Vector2(0.35, 0.5), Vector2(0.25, 0.6), Vector2(0.15, 1.4), Vector2(0.3, 1.5),
-		Vector2(0.3, 1.6), Vector2(0.1, 1.65), Vector2(0.06, 1.9), Vector2(0.0, 1.95)], 12, PIEDRA * 1.05)
+	m.torno(C + Vector3.UP * 0.2, [Vector2(0.38, 0), Vector2(0.38, 0.12), Vector2(0.3, 0.2), Vector2(0.3, 0.32), Vector2(0.2, 0.42),
+		Vector2(0.15, 0.85), Vector2(0.2, 0.92), Vector2(0.62, 1.04), Vector2(0.66, 1.12), Vector2(0.62, 1.14), Vector2(0.15, 1.08),
+		Vector2(0.1, 1.12), Vector2(0.14, 1.22), Vector2(0.06, 1.38), Vector2(0.09, 1.44), Vector2(0.0, 1.52)], 14, PIEDRA * 1.05)
 	p.instancia(m.malla(Mat.plaza("piedra")))
-
+	var d := PackedVector2Array()
+	for k in 16:
+		d.append(c2 + Vector2.from_angle(TAU * k / 16) * 0.6)
+	var a := Malla.new()
+	a.plano(d, p.PAV + 0.2 + 1.11, Color.WHITE)
+	p.instancia(a.malla(Mat.plaza("agua", {"alfa": 0.7})), Transform3D.IDENTITY, false)
+	var cort := Malla.new()
+	cortina(cort, C + Vector3.UP * 0.2, 0.67, 1.12, 0.2, 0.1)
+	p.instancia(cort.malla(Mat.plaza("agua", {"cae": 1.0})), Transform3D.IDENTITY, false)
+	var cil := CylinderShape3D.new()
+	cil.radius = 0.4
+	cil.height = 1.2
+	p.formas.append([cil, Transform3D(Basis(), C + Vector3.UP * 0.6)])
 
 
 # ---- memoriales ----
@@ -393,9 +451,12 @@ func spano(c2: Vector2) -> void:
 
 
 # Monseñor Manuel Larraín, obispo de Talca de 1939 a 1966 (OSM n11021259030, estatua de 1972–1973; foto de 2005 «Talca
-# plaza armas larrain», del escultor G. Albridi según la firma en la base): de pie, con sotana abotonada, muceta y
-# cruz pectoral, sobre una base de piedra con la firma y una grada. Una figura simplificada (tornos y tubos) de 2,3 m;
-# mira hacia el centro de la plaza (la foto no dice hacia dónde).
+# plaza armas larrain», del escultor G. Albridi según la firma en la base): de pie, con sotana abotonada, faja, muceta y
+# cruz pectoral, sobre una base de piedra con la firma y una grada. Una figura de 2,2 m hecha de secciones elípticas
+# (loft()): la sotana que se abre hacia el ruedo con los zapatos asomando, la muceta sobre los hombros, las mangas que
+# salen de ella y las manos juntas delante de la cintura, el cuello y la cabeza con nariz, orejas y solideo. Aproximado:
+# la pose de los brazos (la foto la muestra de lejos) y las proporciones; mira hacia el centro de la plaza (la foto no
+# dice hacia dónde).
 func larrain(c2: Vector2) -> void:
 	var PAV: float = p.PAV
 	var gris := Color(0.64, 0.63, 0.6)
@@ -404,27 +465,59 @@ func larrain(c2: Vector2) -> void:
 	var ang := atan2(-c2.x, c2.y)  # el frente (+Z local) hacia el centro
 	var bs := Basis(Vector3.UP, ang)
 	var L := func(x: float, y: float, z: float) -> Vector3: return C + bs * Vector3(x, y, z)
+	# la grada, el dado con la placa y una cornisa que lo remata
 	m.bloque(L.call(0, 0.15, 0), Vector3(1.8, 0.36, 1.8), gris * 0.85, ang)
-	m.bloque(L.call(0, 0.62, 0), Vector3(1.25, 0.58, 0.9), gris, ang)
+	m.bloque(L.call(0, 0.37, 0), Vector3(1.37, 0.08, 1.02), gris * 0.95, ang)
+	m.bloque(L.call(0, 0.64, 0), Vector3(1.25, 0.5, 0.9), gris, ang)
+	m.bloque(L.call(0, 0.9, 0), Vector3(1.35, 0.06, 1.0), gris * 1.04, ang)
 	var f := Malla.new()
-	var pie := Vector3(0, 0.92, 0)
-	f.bloque(pie + Vector3.UP * 0.05, Vector3(0.6, 0.1, 0.5), gris)
-	f.torno(pie + Vector3.UP * 0.1, [Vector2(0.38, 0), Vector2(0.36, 0.12), Vector2(0.3, 0.6), Vector2(0.25, 1.05), Vector2(0.22, 1.32),
-		Vector2(0.24, 1.42), Vector2(0.25, 1.6), Vector2(0.2, 1.72), Vector2(0.08, 1.8), Vector2(0.07, 1.86), Vector2(0.0, 1.86)], 14, gris)
-	f.torno(pie + Vector3.UP * 1.38, [Vector2(0.35, 0), Vector2(0.33, 0.08), Vector2(0.27, 0.28), Vector2(0.14, 0.4), Vector2(0.0, 0.42)], 14, gris * 1.02)
-	f.torno(pie + Vector3.UP * 1.84, [Vector2(0.0, 0), Vector2(0.08, 0.04), Vector2(0.105, 0.14), Vector2(0.1, 0.24), Vector2(0.06, 0.3), Vector2(0.0, 0.31)], 12, gris * 1.04)
+	var pie := Vector3(0, 0.93, 0)
+	var g1 := gris * 1.03
+	var g2 := gris * 0.94  # lo que va en sombra o es de otra tela: la faja, los zapatos, el solideo
+	g1.a = 1.0
+	g2.a = 1.0
+	f.bloque(pie + Vector3(0, 0.04, 0.02), Vector3(0.78, 0.08, 0.66), gris * 0.9)  # el plinto de la figura
+	pie += Vector3.UP * 0.08
+	# los zapatos, bajo el ruedo
 	for s in [-1.0, 1.0]:
-		var hombro := pie + Vector3(s * 0.27, 1.6, 0.0)
-		var codo := pie + Vector3(s * 0.31, 1.25, 0.06)
-		var mano := pie + Vector3(s * 0.29, 0.98, 0.14)
-		f.tubo(hombro, codo, 0.075, 0.07, 8, gris, gris)
-		f.tubo(codo, mano, 0.07, 0.06, 8, gris, gris)
-		f.torno(mano + Vector3.DOWN * 0.06, [Vector2(0.0, 0), Vector2(0.05, 0.04), Vector2(0.045, 0.1), Vector2(0.0, 0.12)], 8, gris)
-	# la cruz pectoral
-	f.bloque(pie + Vector3(0, 1.4, 0.27), Vector3(0.04, 0.18, 0.03), gris * 0.9)
-	f.bloque(pie + Vector3(0, 1.44, 0.27), Vector3(0.12, 0.04, 0.03), gris * 0.9)
-	for k in 9:
-		f.bloque(pie + Vector3(0, 0.35 + k * 0.13, 0.345 - 0.012 * k), Vector3(0.03, 0.03, 0.02), gris * 0.88)
+		f.bloque(pie + Vector3(s * 0.11, 0.05, 0.2), Vector3(0.12, 0.1, 0.24), g2)
+	# la sotana: de [y, rx, rz, dz] (alto, semiejes y avance del centro), del ruedo a los hombros
+	var sotana := [[0.0, 0.31, 0.27, 0.0], [0.08, 0.3, 0.26, 0.0], [0.5, 0.26, 0.21, -0.01], [0.95, 0.22, 0.17, -0.02],
+		[1.12, 0.205, 0.15, -0.02], [1.35, 0.22, 0.155, -0.01], [1.55, 0.23, 0.15, -0.01]]
+	loft(f, pie, sotana, 14, gris)
+	# los botones, por el frente de la sotana hasta la muceta
+	for k in 12:
+		var y := 0.12 + k * 0.105
+		var z := _frente(sotana, y) + 0.012
+		f.bloque(pie + Vector3(0, y, z), Vector3(0.035, 0.035, 0.03), g2)
+	# la faja en la cintura
+	loft(f, pie, [[1.06, 0.215, 0.162, -0.02], [1.08, 0.225, 0.172, -0.02], [1.17, 0.218, 0.165, -0.02], [1.19, 0.205, 0.152, -0.02]], 14, g2)
+	# la muceta: una esclavina corta y redonda sobre los hombros
+	loft(f, pie, [[1.26, 0.3, 0.215, 0.0], [1.3, 0.305, 0.22, 0.0], [1.5, 0.295, 0.2, 0.0], [1.62, 0.265, 0.17, -0.01],
+		[1.7, 0.2, 0.135, -0.01], [1.76, 0.1, 0.09, 0.0], [1.77, 0.0, 0.0, 0.0]], 14, g1)
+	# el cuello y la cabeza (algo adelantada), con el solideo arriba
+	f.tubo(pie + Vector3(0, 1.72, 0.0), pie + Vector3(0, 1.86, 0.015), 0.065, 0.06, 8, gris, gris)
+	loft(f, pie, [[1.83, 0.055, 0.065, 0.025], [1.87, 0.08, 0.095, 0.02], [1.94, 0.093, 0.11, 0.015], [2.02, 0.092, 0.108, 0.01],
+		[2.08, 0.078, 0.092, 0.005], [2.12, 0.05, 0.06, 0.0], [2.135, 0.0, 0.0, 0.0]], 12, g1)
+	loft(f, pie, [[2.075, 0.083, 0.097, 0.003], [2.1, 0.07, 0.083, 0.0], [2.125, 0.04, 0.048, 0.0], [2.14, 0.0, 0.0, 0.0]], 12, g2)
+	f.bloque(pie + Vector3(0, 1.955, 0.12), Vector3(0.034, 0.06, 0.04), gris)               # la nariz
+	f.bloque(pie + Vector3(0, 1.905, 0.105), Vector3(0.06, 0.012, 0.02), g2)                # la boca
+	for s in [-1.0, 1.0]:
+		f.bloque(pie + Vector3(s * 0.095, 1.96, 0.0), Vector3(0.025, 0.06, 0.04), gris)      # las orejas
+		f.bloque(pie + Vector3(s * 0.035, 1.99, 0.105), Vector3(0.035, 0.014, 0.012), g2)    # los ojos (una sombra)
+	# las mangas: salen de bajo la muceta y juntan las manos delante de la cintura
+	for s in [-1.0, 1.0]:
+		var hombro := pie + Vector3(s * 0.25, 1.52, 0.0)
+		var codo := pie + Vector3(s * 0.27, 1.24, 0.04)
+		var puno := pie + Vector3(s * 0.1, 1.17, 0.2)
+		f.tubo(hombro, codo, 0.075, 0.075, 8, gris, gris)
+		f.tubo(codo, puno, 0.075, 0.068, 8, gris, gris)
+		f.tubo(puno, puno + (puno - codo).normalized() * 0.03, 0.068, 0.03, 8, gris, gris)
+	f.bloque(pie + Vector3(0, 1.16, 0.25), Vector3(0.15, 0.1, 0.09), g1)  # las manos juntas
+	# la cruz pectoral, sobre la muceta
+	var zc := 0.2 + 0.018
+	f.bloque(pie + Vector3(0, 1.4, zc), Vector3(0.04, 0.2, 0.03), g2)
+	f.bloque(pie + Vector3(0, 1.44, zc), Vector3(0.13, 0.04, 0.03), g2)
 	var mf := f.malla(Mat.plaza("piedra", {"rugoso": 0.75}))
 	var mb := m.malla(Mat.plaza("piedra", {"sillar": Vector2(0.0, 0.0)}))
 	p.instancia(mb)
@@ -432,7 +525,7 @@ func larrain(c2: Vector2) -> void:
 	var l := Label3D.new()
 	l.text = "MONS. MANUEL LARRAÍN\nOBISPO DE TALCA\n1939 - 1966\n\"VEN SEÑOR JESÚS\""
 	l.font_size = 36
-	l.pixel_size = 0.0028
+	l.pixel_size = 0.0025
 	l.modulate = Color(0.3, 0.3, 0.3)
 	l.outline_size = 0
 	l.shaded = true
@@ -442,6 +535,50 @@ func larrain(c2: Vector2) -> void:
 	caja.size = Vector3(1.8, 3.4, 1.8)
 	p.formas.append([caja, Transform3D(bs, C + Vector3.UP * 1.7)])
 	p.ocupar(c2, 1.4)
+
+
+# un sólido de secciones elípticas en torno a un eje vertical por b (las figuras): secciones [y, rx, rz, dz] de abajo
+# arriba (rx a lo ancho, rz de frente, dz el avance del centro hacia +Z), k lados, normales suaves
+static func loft(m: Malla, b: Vector3, secciones: Array, k: int, col: Color) -> void:
+	var anillo := func(s: Array, t: float) -> Vector3:
+		return b + Vector3(cos(t) * s[1], s[0], s[3] + sin(t) * s[2])
+	for i in secciones.size() - 1:
+		var s0: Array = secciones[i]
+		var s1: Array = secciones[i + 1]
+		for j in k:
+			var t0 := TAU * j / k
+			var t1 := TAU * (j + 1) / k
+			var a: Vector3 = anillo.call(s0, t0)
+			var bb: Vector3 = anillo.call(s0, t1)
+			var d: Vector3 = anillo.call(s1, t1)
+			var e: Vector3 = anillo.call(s1, t0)
+			var n0 := _normal_elipse(s0, s1, t0)
+			var n1 := _normal_elipse(s0, s1, t1)
+			if (a - bb).length() > 1e-6:
+				m.tri_n(a, bb, d, n0, n1, n1, col, col, col)
+			if (d - e).length() > 1e-6:
+				m.tri_n(a, d, e, n0, n1, n0, col, col, col)
+
+
+static func _normal_elipse(s0: Array, s1: Array, t: float) -> Vector3:
+	var rx := maxf((s0[1] + s1[1]) / 2, 1e-3)
+	var rz := maxf((s0[2] + s1[2]) / 2, 1e-3)
+	var h := Vector3(cos(t) / rx, 0, sin(t) / rz).normalized()
+	var dr: float = (s0[1] - s1[1] + s0[2] - s1[2]) / 2  # cuánto se cierra subiendo
+	var dy := maxf(s1[0] - s0[0], 1e-3)
+	return (h * dy + Vector3.UP * dr).normalized()
+
+
+# el frente (z) de una sección de la sotana a la altura y, interpolado
+static func _frente(secciones: Array, y: float) -> float:
+	for i in secciones.size() - 1:
+		var s0: Array = secciones[i]
+		var s1: Array = secciones[i + 1]
+		if y <= s1[0]:
+			var t: float = (y - s0[0]) / maxf(s1[0] - s0[0], 1e-4)
+			return lerpf(s0[2] + s0[3], s1[2] + s1[3], t)
+	var u: Array = secciones[-1]
+	return u[2] + u[3]
 
 
 # ---- faroles, escaños y basureros ----
