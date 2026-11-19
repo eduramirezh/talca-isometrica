@@ -83,6 +83,8 @@ uv run --with pillow python pipeline/golf.py [panel]   # el pasto cortado y las 
 python pipeline/usos.py importar comuna      # rehace las entradas de OSM de config/usos.json (requiere raw/osm/map-comuna.json, make osm)
 python pipeline/usos.py blancos 0.5 --osm comuna   # manzanas «sin información» que ningún uso cubre todavía
 python pipeline/usos.py check                # revisa config/usos.json (fuente, confianza, hitos, superposiciones, cobertura; ~8 s)
+python pipeline/gis.py exportar [carpeta] [--wgs84]   # data/ y config/ -> gis/talca.gpkg (GeoPackage, biblioteca estándar) y gis/talca.qgs (QGIS 3.34 o más: estilos, la imagen de Esri de fondo), en metros de grilla con el sistema de referencia exacto de common.loc (WKT2: `gis.py crs`); sin raw/, ~1,5 s
+python pipeline/gis.py importar [gis/talca.gpkg] [--escribir]   # la capa usos editada en QGIS -> config/usos*.json (cambios, nuevas al final de usos.json; las borradas solo se avisan); luego usos.py check y make build
 python pipeline/usos.py bc [--rehacer]       # bc (un punto de su manzana) en las entradas con bi; --rehacer: los bi que ya no lo contienen (cambiaron las manzanas)
 python pipeline/usos.py osm todo w123 [--eps 1.5]   # polígono de OSM en metros de grilla, para una entrada a mano
 python -I pipeline/fuentes_cl.py fetch ciren|ciren-tabla|ciren-uso|conaf|minvu|censo2024 [carpeta]   # fuentes chilenas -> raw/cl/<fuente>/ (no reemplaza lo que hay); `info`: qué hay y cuánto cae en la comuna

@@ -81,6 +81,7 @@ pipeline/
   process_geometry.py    manzanas + calles + trazados -> data/geometry.json
   elevation.py           elevación Copernicus GLO-30 -> data/elevation.json (--srtm: la de antes, para comparar)
   geotiff.py             lector de GeoTIFF de elevación (float32, DEFLATE, predictores 1–3) con la biblioteca estándar
+  gis.py                 las capas a un GeoPackage y un proyecto de QGIS en metros de grilla (sistema de referencia exacto), y de vuelta los usos editados ahí
   pois.py                catálogo de lugares y recorridos -> data/pois.json + pois.csv
   geocode.py             geocodificador de la numeración de Talca y validador
   grilla.py              el giro de la grilla de una ciudad (el rumbo dominante de sus calles alrededor de la plaza), para otra comuna

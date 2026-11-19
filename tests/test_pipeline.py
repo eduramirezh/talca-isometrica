@@ -6,7 +6,9 @@
     automático»);
   - geom.py: dec(enc()), in_ring against pip over 10 000 random points of the commune, clip_line's cut points on the
     ring; common.loc/unloc are inverse;
-  - cli.py: arguments, flags and the errors that end with the usage.
+  - cli.py: arguments, flags and the errors that end with the usage;
+  - gis.py: GeoPackage geometries written and read back, the grid's PROJ operation is common.loc, and a vertex taken
+    to EPSG:4326 and back rounds to the same integer metre.
 Standard library only; ~0.2 s. The tests that need raw/ (the commune's limit) or node are skipped without them.
 """
 import contextlib, io, json, math, random, shutil, subprocess, sys, unittest
@@ -14,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'pipeline'))
-import cli, geom, common, edificios
+import cli, geom, common, edificios, gis
 
 LIMIT = common.RAW / 'osm' / 'comuna-talca.json'
 
@@ -117,6 +119,27 @@ class Geom(unittest.TestCase):
         rows = geom.scanlines([r], -0.5, 1, 12)
         for j in range(12):
             self.assertEqual(rows.get(j, []), geom.crossings_at(r, -0.5 + j) if -0.5 + j >= 0 else [])
+
+class Gis(unittest.TestCase):
+    def test_geometry_blobs(self):
+        ring = [(0.0, 0.0), (10.5, 0.0), (10.5, 7.0), (0.0, 7.0)]; hole = [(2.0, 2.0), (3.0, 2.0), (3.0, 3.0)]
+        for kind, g, back in [('POINT', (1.5, -2.0), (1.5, -2.0)), ('LINESTRING', ring, ring), ('POLYGON', [ring, hole], [ring, hole]),
+                              ('MULTIPOLYGON', [[ring], [hole]], [[ring], [hole]])]:
+            xy = [g] if kind == 'POINT' else ring
+            self.assertEqual(gis.read_gpb(gis.gpb(gis.SRS, kind, g, xy)), (kind, back))
+
+    def test_grid_operation_is_loc(self):
+        o = dict(kv.split('=') for kv in gis.grid_proj().split()[1:]); o = {k[1:]: float(v) for k, v in o.items()}
+        rnd = random.Random(5)
+        for _ in range(500):
+            lon, lat = rnd.uniform(-71.75, -71.45), rnd.uniform(-35.55, -35.3); x, y = common.loc(lon, lat)
+            self.assertLess(abs(o['xoff'] + o['s11']*lon + o['s12']*lat - x), 1e-6)
+            self.assertLess(abs(o['yoff'] + o['s21']*lon + o['s22']*lat - y), 1e-6)
+
+    def test_wgs84_round_trip(self):
+        rnd = random.Random(9); R = [[rnd.randint(-4900, 15800), rnd.randint(-10800, 13000)] for _ in range(2000)]
+        ll = [common.unloc(x, y) for x, y in R]
+        self.assertEqual(gis.ring_back([(lo, la) for la, lo in ll], True), R)
 
 class Cli(unittest.TestCase):
     """pipeline/cli.py: a command's signature is its syntax."""
