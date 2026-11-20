@@ -5,6 +5,3 @@ plaza.glb.import
 plaza.json
 datos/
 mapa/
-# musica/: la pista de la Torre Talca (musica.gd) es de quien la ponga: solo va en git el .gdignore
-musica/*
-!musica/.gdignore
