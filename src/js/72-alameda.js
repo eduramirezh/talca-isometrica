@@ -8,14 +8,15 @@ const ALAM=(()=>{const g=[];streets.forEach(s=>{if(/Alameda/.test(s.name||''))fo
 // Each strip is a linear park: a gravel paseo down the middle with lawn edging, a cross walk and a round plaza at
 // mid-block (around the landmark when one stands in the strip, else a fountain or a plinth), benches and lamps along
 // the paseo, and four staggered rows of big trees. alamedaGround() lays the flat parts (draped by buildBase),
-// alamedaPark() the objects and the trees.
-const ALAM_LAMPS=[];
+// alamedaPark() the objects and the trees. A stretch in ALAM_OWN gets none of it: a landmark draws its park (between 3
+// and 4 Oriente the fenced playground fills the middle, where the paseo and the round plaza would go: hitos/juegos-alameda.js)
+const ALAM_LAMPS=[],ALAM_OWN=new Set();
 function alamedaPlan(bi){const b=blocks[bi];if(b._al)return b._al;
   const [x0,y0,x1,y1]=b.bb,cy=(y0+y1)/2;let px=(x0+x1)/2,lm=null;
   for(const k in MODELS){const m=MODELS[k];if(m.x>x0&&m.x<x1&&Math.abs(m.y-cy)<20){px=m.x;lm=k;}}
   return b._al={x0:x0+5,x1:x1-5,y0:y0+3,y1:y1-3,cy,px,lm,pr:lm?11:8};}
 function alamedaGround(B){const box=(x0,y0,x1,y1)=>[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
-  ALAM.forEach(bi=>{const a=alamedaPlan(bi);if(a.x1-a.x0<20)return;const {x0,x1,cy,px,pr}=a;
+  ALAM.forEach(bi=>{const a=alamedaPlan(bi);if(a.x1-a.x0<20||ALAM_OWN.has(bi))return;const {x0,x1,cy,px,pr}=a;
     const ye=Y_LAYER.alamEdge,yg=Y_LAYER.alamGravel;
     B.quadXY(box(x0,cy-6.5,x1,cy+6.5),ye,PAL.edging);B.quadXY(box(px-4.5,a.y0,px+4.5,a.y1),ye,PAL.edging);B.flat(ngon(px,cy,pr+2,20),ye,PAL.edging);
     B.quadXY(box(x0,cy-4.5,x1,cy+4.5),yg,PAL.gravel);B.quadXY(box(px-2.5,a.y0,px+2.5,a.y1),yg,PAL.gravel);B.flat(ngon(px,cy,pr,20),yg,PAL.gravel);});
@@ -23,7 +24,7 @@ function alamedaGround(B){const box=(x0,y0,x1,y1)=>[[x0,y0],[x1,y0],[x1,y1],[x0,
 // alamedaPark(B, bis): the stretches of the Alameda in bis (blocks of ALAM; their trees test the city's lots, so boot
 // calls it once the lots around each stretch are laid)
 function alamedaPark(B,bis){const TR=[],C=hex,stone=C('#D2CAB8'),iron=C('#3B4240'),wood=C('#7A5A3E');
-  bis.forEach(bi=>{const b=blocks[bi],a=alamedaPlan(bi),r=rng(bi*53+11);if(a.x1-a.x0<20)return;const {x0,x1,cy,px,pr}=a;
+  bis.forEach(bi=>{const b=blocks[bi],a=alamedaPlan(bi),r=rng(bi*53+11);if(a.x1-a.x0<20||ALAM_OWN.has(bi))return;const {x0,x1,cy,px,pr}=a;
     if(!a.lm){B.dy=groundMin(ngon(px,cy,6,8));
       if(r()<.5){B.prism(ngon(px,cy,5.5,16),0.3,0.95,stone,PAL.water2);B.prism(ngon(px,cy,1.1,8),0.95,2.6,stone,C('#E6E0D2'));}
       else{B.prism(rotRect(px,cy,3.2,3.2),0.3,3.4,stone,stone);B.prism(ngon(px,cy,.7,8),3.4,5.6,C('#56614F'),C('#56614F'));}}

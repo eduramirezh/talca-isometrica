@@ -9,10 +9,10 @@
 #
 # Dos maneras de llenarla, que se pueden mezclar:
 #   - por material del patrón (materiales.gd patron(): ladrillo, baldosa…), en el marco: cara(), piso(), muro(),
-#     prisma(), caja(), cilindro(), piramide(), muro_vanos(), superficie(), derrame(), panel(), moldura(); las caras van
-#     también a la colisión mientras `solido`, y construir() deja el MeshInstance3D y su StaticBody3D (catedral.gd,
-#     fachadas.gd, calles.gd, raices.gd, torre_talca.gd). Para los vanos de una fachada por la coordenada del marco:
-#     s_de() y huecos_de();
+#     prisma(), caja(), cilindro(), piramide(), muro_vanos(), superficie(), derrame(), panel(), moldura() y capa() (una
+#     capa plana apoyada en el relieve, con suelo.gd); las caras van también a la colisión mientras `solido`, y
+#     construir() deja el MeshInstance3D y su StaticBody3D (catedral.gd, fachadas.gd, calles.gd, raices.gd,
+#     torre_talca.gd, juegos_alameda.gd). Para los vanos de una fachada por la coordenada del marco: s_de() y huecos_de();
 #   - en Godot, con UV, para un material que se da al final (malla(mat)): tri(), tri_n(), quad(), plano(), muros(),
 #     prisma_uv(), bloque(), torno(), tubo() (las piezas de la plaza: plaza.gd, plaza/*.gd), en la capa "".
 #
@@ -304,6 +304,34 @@ func moldura(f: Marco, a: Vector2, b: Vector2, s0: float, s1: float, h0: float, 
 	prisma(f, q, h0, h1, col, mat, true, null, "", h0 > 0.5)
 
 
+# una capa plana sobre el relieve: el polígono pol ([u, v] del marco f) a off m sobre el suelo S (modelos/entorno/
+# suelo.gd), cortado por los triángulos del terreno y apoyado en ellos, cada vértice a su altura (modelos/raices.gd,
+# modelos/juegos_alameda.gd)
+func capa(f: Marco, S: RefCounted, pol: Array, off: float, col: Color, mat := "liso") -> void:
+	var gp := PackedVector2Array()
+	for q in pol:
+		gp.append(f.punto(q[0], q[1]))
+	if Geometry2D.is_polygon_clockwise(gp):
+		gp.reverse()
+	var x0 := INF
+	var y0 := INF
+	var x1 := -INF
+	var y1 := -INF
+	for p in gp:
+		x0 = minf(x0, p.x); y0 = minf(y0, p.y); x1 = maxf(x1, p.x); y1 = maxf(y1, p.y)
+	var alt := func(u: float, v: float) -> float:
+		var g := f.punto(u, v)
+		return S.E(g.x, g.y) - f.base + off
+	for t in S.triangulos(x0, y0, x1, y1):
+		for pz in Geometry2D.intersect_polygons(gp, t):
+			if Geometry2D.is_polygon_clockwise(pz):
+				continue
+			var pu := PackedVector2Array()
+			for p in pz:
+				pu.append(f.L(p.x, p.y))
+			piso(f, pu, 0.0, col, mat, alt)
+
+
 # El CollisionShape3D de una forma cóncava, sin que la arme dos veces. Con la depuración (el binario de siempre, no una
 # exportación de lanzamiento), set_shape() le pasa a la forma el color de depuración del CollisionShape3D, y una
 # ConcavePolygonShape3D que cambia de color le manda de nuevo sus caras al servidor de física, que rehace su árbol: con
@@ -323,14 +351,16 @@ static func concava(caras: PackedVector3Array) -> ConcavePolygonShape3D:
 	return s
 
 
-# solo la colisión (sin malla): para un constructor que junta formas simples (las cajas de los edificios y los autos)
-func construir_colision(padre: Node3D, nombre: String) -> void:
+# solo la colisión (sin malla): para un constructor que junta formas simples (las cajas de los edificios y los autos);
+# devuelve el cuerpo (null si no hay caras), para marcarlo (la meta «tobogan» de modelos/juegos_alameda.gd)
+func construir_colision(padre: Node3D, nombre: String) -> StaticBody3D:
 	if colision.is_empty():
-		return
+		return null
 	var cuerpo := StaticBody3D.new()
 	cuerpo.name = nombre
 	cuerpo.add_child(colisionador(concava(colision)))
 	padre.add_child(cuerpo)
+	return cuerpo
 
 
 func construir(padre: Node3D, nombre: String, sombra := true) -> MeshInstance3D:

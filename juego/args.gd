@@ -19,6 +19,7 @@ const BANDERAS := {
 	"--mirar": ["grados", "main.gd: inclina la vista (+ arriba)"],
 	"--camara": ["m", "main.gd: el largo del brazo de la cámara (0: primera persona)"],
 	"--caminar": ["s", "main.gd: camina hacia adelante antes de --png"],
+	"--resbalar": ["", "jugador.gd: imprime cada bajada por un tobogán (desde dónde, hasta dónde, la rapidez máxima y al salir)"],
 	"--vehiculo": ["bici|auto|jetpack", "main.gd: sube a la bicicleta o al auto, o se pone el jetpack, al comenzar (vehiculo.gd)"],
 	"--conducir": ["s", "vehiculo.gd: acelera s segundos e imprime dónde terminó y contra qué chocó (con --vehiculo)"],
 	"--volante": ["v", "vehiculo.gd: con --conducir, gira (-1 izquierda … 1 derecha)"],
