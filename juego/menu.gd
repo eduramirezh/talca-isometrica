@@ -1,7 +1,7 @@
 # El menú de Esc: pausa el juego y ofrece seguir, ir a un lugar (viaje.gd, lo mismo que Tab), el mapa grande (plano.gd,
 # M), volver a la Plaza de Armas, pasar del día a la noche (ambiente.gd, L), la red local (red.gd, J), mostrar u ocultar
-# la ayuda de arriba a la izquierda, la pantalla completa, el personaje (la persona o el perro: jugador.gd
-# cambiar_personaje()) y salir. Esc lo abre y lo cierra (antes solo soltaba el mouse:
+# la ayuda de arriba a la izquierda, la pantalla completa, el personaje (la persona, el perro o la gata Watata: jugador.gd
+# cambiar_personaje(), uno tras otro) y salir. Esc lo abre y lo cierra (antes solo soltaba el mouse:
 # abierto, el mouse queda suelto igual). Las flechas y Enter recorren los botones.
 #
 # En una partida en red no pausa, porque los demás siguen jugando: deja quieto al personaje (jugador.quieto, que respetan
@@ -23,6 +23,7 @@ var botones: Array[Button] = []
 var b_ayuda: Button
 var b_pantalla: Button
 var b_personaje: Button
+const NOMBRES := {"persona": "persona", "perro": "perro", "gata": "Watata (gata)"}  # cómo dice el botón cada cuerpo de jugador.gd CUERPOS
 var b_plano: Button
 var b_red: Button
 var b_viaje: Button  # «ir a un lugar» y «volver a la plaza»: no están mientras no se viaja (viajes())
@@ -194,9 +195,11 @@ func alternar_pantalla() -> void:
 	textos()
 
 
+# el siguiente cuerpo de jugador.gd CUERPOS (la persona, el perro, la gata y otra vez la persona)
 func alternar_personaje() -> void:
 	var j: Node = main.jugador
-	j.cambiar_personaje("perro" if j.personaje == "persona" else "persona")
+	var todos: Array = preload("res://jugador.gd").CUERPOS.keys()
+	j.cambiar_personaje(todos[(todos.find(j.personaje) + 1) % todos.size()])
 	textos()
 
 
@@ -204,7 +207,7 @@ func textos() -> void:
 	b_ayuda.text = "Ayuda en pantalla: %s" % ("sí" if main.ayuda_texto.visible else "no")
 	var completa := DisplayServer.window_get_mode() in [DisplayServer.WINDOW_MODE_FULLSCREEN, DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN]
 	b_pantalla.text = "Pantalla completa: %s" % ("sí" if completa else "no")
-	b_personaje.text = "Personaje: %s" % (main.jugador.personaje if main.jugador else "persona")
+	b_personaje.text = "Personaje: %s" % NOMBRES.get(main.jugador.personaje if main.jugador else "persona", "persona")
 	b_personaje.disabled = main.jugador == null
 
 

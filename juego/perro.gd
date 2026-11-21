@@ -21,11 +21,20 @@
 # hecho un ovillo en la voltereta (el tercero). La boca abierta jadeando con la lengua afuera, la cola que se mueve más
 # cuando está quieto y las orejas que se van hacia atrás al correr. El arma, en el hocico (mano[DER]): la pistola y el
 # rifle de lado, a lo pandillero, y el cuchillo atravesado como un hueso.
+#
+# El pelaje no va en colores por vértice: terminar() escribe en UV y UV2 dónde está cada punto con el perro de pie y su
+# zona (_zona), y shaders/pelaje_perro.gdshader lo pinta por píxel (con pelo.gdshaderinc, que comparte con la gata). Los
+# ojos son nodos propios (ojos) con shaders/ojo.gdshader: iris café, pupila redonda y brillo de córnea; parpadean
+# (parpadear()) y muerto quedan cerrados.
 extends "res://peaton.gd"
 
-const TONOS := {"pelo": "c8955f", "crema": "ecdfc8", "blanco": "f2eee6", "lomo": "ae7a46", "hocico": "3b3533",
-	"mascara": "6a4f3a", "punta": "4e3626", "nariz": "1a1716", "ojos": "120d0b", "lengua": "d2707c", "boca": "6a3036",
-	"oido": "dcb397", "collar": "26272a", "metal": "c2bba9", "una": "35302b"}
+# los colores lisos (por vértice); los del pelaje están en shaders/pelaje_perro.gdshader
+const TONOS := {"crema": "ecdfc8", "nariz": "1a1716", "lengua": "d2707c", "boca": "6a3036", "collar": "26272a",
+	"metal": "c2bba9", "una": "35302b"}
+const PELAJE_PERRO := preload("res://shaders/pelaje_perro.gdshader")
+const OJO_SH := preload("res://shaders/ojo.gdshader")
+const OJO_PERRO := Vector3(0.039, 0.047, -0.113)  # el centro del ojo derecho, en el marco de la cabeza (sin su escala)
+const OJO_PERRO_R := Vector3(0.0145, 0.0135, 0.0105)
 const CENTRO := 0.45  # m: el tronco (su nodo) sobre el suelo, de pie
 const PISA := 0.027  # m: el nudo de la mano o el pie sobre el suelo cuando pisa (el grosor de la almohadilla)
 const L_DEL := [0.17, 0.19, 0.07]  # m: húmero, antebrazo y metacarpo
@@ -49,19 +58,37 @@ var cola: Array[Node3D] = []
 var patas := []  # por pata: {"n": [cuatro nodos], "l": [tres largos], "s": +1 la rodilla adelante, -1 el codo atrás}
 var aire := 0.0  # 0 en el suelo … 1 en el aire (la mezcla de las poses)
 var inclinacion := 0.0  # rad: el cabeceo del tronco, sin la voltereta (vuelta)
-var _tinte: Callable  # el color del pelo del hueso que se arma (terminar()): (punto local, punto en el marco del perro)
+var _zona: Callable  # (material, punto local, punto en el marco del perro) -> Vector4: las coordenadas del dibujo del pelaje y su zona (terminar())
+var ojos: Array[Node3D] = []  # cada uno con su elipsoide en el origen: parpadea achatándose en Y (parpadear())
+var parpadeo := -1.0  # s desde que empezó a parpadear (-1: no)
+var t_parpadeo := 2.0  # s hasta el próximo
+var lento := false  # el parpadeo en curso es lento (la gata, sentada o echada)
+var caida := 0.0  # tendido(): 0 de pie … 1 tendido
+var t_caida := INF  # s desde el último tendido(): muerto mientras se lo siguen llamando
+var _rng := RandomNumberGenerator.new()
+# el tamaño, para el paso de animar(): gata.gd, que lo extiende, es más chica. talla multiplica los largos del paso (la
+# zancada, lo que sube cada pata, el bote, las poses en el aire), y la frecuencia crece como 1/√talla (un animal más chico
+# da más pasos a la misma rapidez)
+var centro := CENTRO
+var pisada: Array = PISADA
+var talla := 1.0
 
 
 func _ready() -> void:
 	for k in TONOS:
 		mats[k] = material_perro(k)
+	mats["pelo"] = material_pelaje(PELAJE_PERRO)
+	mats["oido"] = mats["pelo"]
+	mats["ojo"] = material_ojo(OJO_PERRO_R, Color("a4713a"), Color("5a3819"), Vector2(0.3, 0.85), true)
+	_rng.randomize()
+	t_parpadeo = _rng.randf_range(1.0, 4.0)
 	tronco.position.y = CENTRO
 	add_child(tronco)
 	torso.position.z = -0.02  # la mitad de adelante (el pecho)
 	cadera.position.z = 0.02  # la de atrás (el lomo y la grupa)
 	tronco.add_child(torso)
 	tronco.add_child(cadera)
-	_tinte = pelaje
+	_zona = zona_cuerpo
 	empezar()
 	suave("pelo", [Z(-0.375, -0.02, 0.03, 0.05), Z(-0.36, -0.01, 0.075, 0.1), Z(-0.32, 0.0, 0.105, 0.135),
 		Z(-0.25, -0.012, 0.118, 0.152), Z(-0.16, -0.012, 0.12, 0.145), Z(-0.06, 0.0, 0.115, 0.13), Z(0.03, 0.012, 0.106, 0.114),
@@ -91,49 +118,37 @@ func material_perro(k: String) -> StandardMaterial3D:
 	match k:
 		"nariz":
 			m.roughness = 0.3
-		"ojos":
-			m.roughness = 0.12
 		"lengua", "boca":
 			m.roughness = 0.4
 		"metal":
 			m.roughness = 0.35
 			m.metallic = 0.7
-		"oido":
-			m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return m
 
 
-# el color del pelo en el punto q (en el marco del perro, de pie, sin animar): café claro, el lomo más oscuro, el vientre,
-# el pecho y la garganta crema, el hocico gris oscuro y la punta de las orejas oscura
-func pelaje(_local: Vector3, q: Vector3) -> Color:
-	var c := Color(TONOS["pelo"])
-	var cuerpo := absf(q.x) < 0.14 and q.z > -0.4 and q.z < 0.4 and q.y > 0.2 and q.y < 0.62
-	if cuerpo:
-		c = c.lerp(Color(TONOS["lomo"]), 0.45 * smoothstep(0.5, 0.58, q.y))
-		c = c.lerp(Color(TONOS["crema"]), 0.7 * smoothstep(0.34, 0.29, q.y) * smoothstep(0.3, 0.1, q.z))
-		c = c.lerp(Color(TONOS["crema"]), 0.6 * smoothstep(-0.31, -0.37, q.z) * smoothstep(0.55, 0.45, q.y) * smoothstep(0.07, 0.02, absf(q.x)))
-	# el cuello: la garganta (adelante y abajo de su eje, de (0, 0.47, -0.25) a (0, 0.69, -0.42)) crema
-	if q.z < -0.22 and q.y > 0.42 and q.y < 0.74 and q.z > -0.48:
-		var gar := (q - Vector3(0, 0.47, -0.25)).dot(Vector3(0, -0.61, -0.79))
-		c = c.lerp(Color(TONOS["crema"]), 0.85 * smoothstep(0.0, 0.05, gar))
-	if q.y > 0.6 and q.z < -0.38:  # la cabeza
-		for x in [-0.04, 0.04]:  # la sombra de los ojos
-			var d := Vector2(q.x - x, (q.y - 0.735) * 1.3).length() + absf(q.z + 0.535) * 0.5
-			c = c.lerp(Color(TONOS["mascara"]), 0.7 * smoothstep(0.05, 0.02, d))
-		c = c.lerp(Color(TONOS["hocico"]), smoothstep(-0.53, -0.58, q.z))
-		c = c.lerp(Color(TONOS["crema"]), 0.35 * smoothstep(0.66, 0.62, q.y) * smoothstep(-0.48, -0.53, q.z) * (1.0 - smoothstep(-0.56, -0.6, q.z)))
-	if q.y > 0.8:  # las puntas de las orejas
-		c = c.lerp(Color(TONOS["punta"]), smoothstep(0.84, 0.9, q.y))
-	return c
+# el pelaje (shaders/pelaje_perro.gdshader o pelaje_gata.gdshader), que pinta lo que terminar() escribe con _zona
+func material_pelaje(sh: Shader) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	return m
 
 
-# las patas: blancas desde el carpo (o el corvejón) a la mano; la de largo d desde arriba, con el blanco desde b
-func pata_tinte(desde: float, b: float) -> Callable:
-	return func(local: Vector3, q: Vector3) -> Color:
-		var d := desde - local.y
-		var c := pelaje(local, q)
-		c = c.lerp(Color(TONOS["crema"]), 0.4 * smoothstep(b - 0.12, b - 0.02, d))
-		return c.lerp(Color(TONOS["blanco"]), smoothstep(b - 0.03, b + 0.02, d))
+# los ojos (shaders/ojo.gdshader): sus radios, el iris junto a la pupila y en el borde, cuánto se abre la pupila de día
+# y de noche, y si es redonda (si no, una rendija)
+func material_ojo(r: Vector3, adentro: Color, afuera: Color, pupila: Vector2, redonda: bool) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = OJO_SH
+	m.set_shader_parameter("radio", Vector2(r.x, r.y))
+	m.set_shader_parameter("iris_adentro", Vector3(adentro.r, adentro.g, adentro.b))
+	m.set_shader_parameter("iris_afuera", Vector3(afuera.r, afuera.g, afuera.b))
+	m.set_shader_parameter("pupila", pupila)
+	m.set_shader_parameter("redonda", redonda)
+	return m
+
+
+# la zona 0 de los pelajes: el punto en el marco del animal, de pie
+func zona_cuerpo(_k: String, _l: Vector3, q: Vector3) -> Vector4:
+	return Vector4(q.x, q.y, q.z, 0.0)
 
 
 # el cuello (de la cruz a la nuca), el collar, la cabeza con sus orejas, la mandíbula y la lengua
@@ -146,10 +161,8 @@ func armar_cuello() -> void:
 	# el collar: una banda un poco más ancha que el cuello, una argolla abajo y la placa colgando de ella
 	var eje := Vector3(0, 0.8, -0.6)
 	var c0 := Vector3(0, 0.045, -0.034)
-	_tinte = func(_l: Vector3, _q: Vector3) -> Color: return Color(colores.get("collar", colores.get("polera", TONOS["collar"])))
-	cadena("pelo", [[c0 - eje * 0.016, 0.071, 0.076], [c0 - eje * 0.012, 0.075, 0.08], [c0 + eje * 0.012, 0.075, 0.08],
+	cadena("collar", [[c0 - eje * 0.016, 0.071, 0.076], [c0 - eje * 0.012, 0.075, 0.08], [c0 + eje * 0.012, 0.075, 0.08],
 		[c0 + eje * 0.016, 0.071, 0.076]], false, false)
-	_tinte = pelaje
 	var abajo := Vector3(0, -0.6, -0.8)
 	tubo("metal", c0 + abajo * 0.078 - Vector3(0.008, 0, 0), c0 + abajo * 0.078 + Vector3(0.008, 0, 0), 0.006, 0.006, 6)
 	elipsoide("metal", c0 + abajo * 0.083 + Vector3(0, -0.022, -0.004), Vector3(0.015, 0.017, 0.004), 10, 5)
@@ -166,13 +179,22 @@ func armar_cuello() -> void:
 	elipsoide("nariz", Vector3(0, -0.002, -0.253), Vector3(0.02, 0.015, 0.012), 10, 5)
 	elipsoide("boca", Vector3(0, -0.034, -0.15), Vector3(0.026, 0.006, 0.09), 8, 4)  # el paladar
 	for lado in [-1.0, 1.0]:
-		elipsoide("ojos", Vector3(0.037 * lado, 0.046, -0.112), Vector3(0.013, 0.012, 0.009), 10, 5)
 		var o := Node3D.new()
 		o.position = Vector3(0.045 * lado, 0.08, -0.005)
 		o.rotation = Vector3(0.15, 0.0, -0.3 * lado)
 		cabeza.add_child(o)
 		orejas.append(o)
 	terminar(cabeza)
+	for lado in [-1.0, 1.0]:  # los ojos, hacia adelante y un poco afuera
+		var o := Node3D.new()
+		o.position = Vector3(OJO_PERRO.x * lado, OJO_PERRO.y, OJO_PERRO.z)
+		o.rotation.y = -0.3 * lado
+		cabeza.add_child(o)
+		ojos.append(o)
+		empezar()
+		elipsoide("ojo", Vector3.ZERO, OJO_PERRO_R, 16, 8)
+		terminar(o)
+	_zona = func(k: String, _l: Vector3, q: Vector3) -> Vector4: return Vector4(q.x, q.y, q.z, 2.0 if k == "oido" else 4.0)
 	for o in orejas:
 		empezar()
 		cadena("pelo", [[Vector3(0, -0.015, 0.002), 0.036, 0.017], [Vector3(0, 0.03, 0.002), 0.035, 0.013], [Vector3(0, 0.07, 0.004), 0.023, 0.009],
@@ -182,14 +204,14 @@ func armar_cuello() -> void:
 	mandibula.position = Vector3(0, -0.036, -0.06)
 	cabeza.add_child(mandibula)
 	empezar()
-	_tinte = func(_l: Vector3, _q: Vector3) -> Color: return Color(TONOS["hocico"]).lerp(Color(TONOS["pelo"]), 0.25)
+	_zona = func(_k: String, _l: Vector3, q: Vector3) -> Vector4: return Vector4(q.x, q.y, q.z, 1.0)
 	suave("pelo", [Z(0.03, -0.008, 0.048, 0.03), Z(-0.04, -0.012, 0.039, 0.022), Z(-0.11, -0.01, 0.03, 0.016), Z(-0.165, -0.006, 0.02, 0.012),
 		Z(-0.178, -0.005, 0.01, 0.007)], 10, 2.2)
-	_tinte = pelaje
 	elipsoide("boca", Vector3(0, 0.008, -0.08), Vector3(0.024, 0.006, 0.085), 8, 4)
 	for lado in [-1.0, 1.0]:  # los colmillos de abajo
 		elipsoide("crema", Vector3(0.02 * lado, 0.012, -0.15), Vector3(0.004, 0.009, 0.004), 6, 3)
 	terminar(mandibula)
+	_zona = zona_cuerpo  # después de terminar(), que es donde se lee: antes de que fuera así, la mandíbula salía del color del pelo
 	lengua.position = Vector3(0, 0.012, -0.02)
 	mandibula.add_child(lengua)
 	empezar()
@@ -210,16 +232,14 @@ func armar_cola() -> void:
 		padre.add_child(c)
 		cola.append(c)
 		empezar()
-		var desde := k * 0.1
-		_tinte = func(local: Vector3, q: Vector3) -> Color:
-			return pelaje(local, q).lerp(Color(TONOS["crema"]), smoothstep(0.24, 0.34, desde + local.z))
+		_zona = func(_k: String, _l: Vector3, q: Vector3) -> Vector4: return Vector4(q.x, q.y, q.z, 3.0)
 		var secs := [[Vector3(0, 0, -0.02 if k == 0 else -0.012), radios[k], radios[k]], [Vector3(0, 0, 0.1), radios[k + 1], radios[k + 1]]]
 		if k == 3:
 			secs.append([Vector3(0, 0, 0.13), 0.004, 0.004])
 		cadena("pelo", secs, k == 0, k == 3)
 		terminar(c)
 		padre = c
-	_tinte = pelaje
+	_zona = zona_cuerpo
 
 
 # la pata i: tres huesos y la mano o el pie, colgando de su articulación (el hombro en el pecho, la cadera en la grupa)
@@ -236,10 +256,10 @@ func armar_pata(i: int) -> void:
 		arriba.position = Vector3(0.078 * lado, 0.0, 0.23)
 		cadera.add_child(arriba)
 	n.append(arriba)
-	var total: float = l[0] + l[1] + l[2]
-	var blanco := total - (0.05 if adelante else 0.1)  # el blanco: desde un poco sobre el carpo (o el corvejón)
+	# el blanco desde un poco sobre el carpo (o el corvejón): de pie y sin animar, las patas cuelgan derechas, así que en
+	# pelaje_perro.gdshader es lo que queda bajo una altura
+	_zona = zona_cuerpo
 	empezar()
-	_tinte = pata_tinte(0.0, blanco)
 	if adelante:  # el hombro (la escápula, ancha) y el brazo
 		cadena("pelo", [[Vector3(-0.02 * lado, 0.09, 0.04), 0.03, 0.05], [Vector3(-0.008 * lado, 0.05, 0.01), 0.048, 0.074],
 			[Vector3(0, -0.03, -0.004), 0.054, 0.07], [Vector3(0, -0.11, 0.008), 0.046, 0.054], [Vector3(0, -0.17, 0.018), 0.034, 0.038],
@@ -253,7 +273,6 @@ func armar_pata(i: int) -> void:
 	arriba.add_child(medio)
 	n.append(medio)
 	empezar()
-	_tinte = pata_tinte(l[0], blanco)
 	if adelante:  # el antebrazo, con la punta del codo atrás
 		cadena("pelo", [[Vector3(0, 0.03, 0.014), 0.035, 0.04], [Vector3(0, -0.04, 0.0), 0.034, 0.038], [Vector3(0, -0.13, -0.003), 0.027, 0.029],
 			[Vector3(0, -0.195, 0.0), 0.023, 0.025]])
@@ -268,7 +287,6 @@ func armar_pata(i: int) -> void:
 	medio.add_child(abajo)
 	n.append(abajo)
 	empezar()
-	_tinte = pata_tinte(l[0] + l[1], blanco)
 	cadena("pelo", [[Vector3(0, 0.014, 0.003), 0.023, 0.026], [Vector3(0, -l[2] * 0.5, 0.0), 0.021, 0.022], [Vector3(0, -l[2] - 0.004, -0.004), 0.022, 0.023]])
 	terminar(abajo)
 	var mn := Node3D.new()
@@ -276,7 +294,6 @@ func armar_pata(i: int) -> void:
 	abajo.add_child(mn)
 	n.append(mn)
 	empezar()
-	_tinte = pata_tinte(total, blanco)
 	# la mano: plana, más larga que ancha, con cuatro dedos y sus uñas oscuras
 	elipsoide("pelo", Vector3(0, -0.006, -0.018), Vector3(0.033, 0.022, 0.042), 10, 5)
 	for d in [-1.5, -0.5, 0.5, 1.5]:
@@ -286,7 +303,6 @@ func armar_pata(i: int) -> void:
 		elipsoide("una", Vector3(x * 1.05, -0.018, z - 0.013), Vector3(0.004, 0.005, 0.006), 6, 3)
 	terminar(mn)
 	patas.append({"n": n, "l": l, "s": -1.0 if adelante else 1.0})
-	_tinte = pelaje
 
 
 # ---------------------------------------------------------------- mallas
@@ -349,29 +365,52 @@ func cadena(mat: String, pts: Array, tapa0 := true, tapa1 := true) -> void:
 	loft(mat, secs, 16, 2.0, tapa0, tapa1)
 
 
-# como el de peaton.gd, con colores por vértice: los de "pelo" de _tinte (en el marco del perro de pie), los demás lisos
+# como el de peaton.gd, pero el pelo (y el adentro de las orejas) no lleva color: lleva en UV y UV2 las coordenadas de su
+# dibujo y su zona (_zona), que pinta el pelaje (pelaje_perro.gdshader, pelaje_gata.gdshader); los ojos, nada (ojo.gdshader
+# usa el vértice); lo demás, su color liso por vértice (tono()). _zona se lee aquí, no al agregar cada pieza: una pieza de
+# otro color en el mismo hueso va con otro material
 func terminar(padre: Node3D) -> void:
 	var a_raiz := en_raiz(padre)
 	var am := ArrayMesh.new()
 	for k in _sup:
 		var s: Array = _sup[k]
-		var cols := PackedColorArray()
-		cols.resize(s[0].size())
-		for i in s[0].size():
-			var v: Vector3 = s[0][i]
-			cols[i] = _tinte.call(v, a_raiz * v) if k == "pelo" and _tinte.is_valid() else Color(TONOS[k])
+		var nv: int = s[0].size()
 		var a := []
 		a.resize(Mesh.ARRAY_MAX)
 		a[Mesh.ARRAY_VERTEX] = s[0]
 		a[Mesh.ARRAY_NORMAL] = s[1]
-		a[Mesh.ARRAY_COLOR] = cols
 		a[Mesh.ARRAY_INDEX] = s[2]
+		if k == "pelo" or k == "oido":
+			var uv := PackedVector2Array()
+			var uv2 := PackedVector2Array()
+			uv.resize(nv)
+			uv2.resize(nv)
+			for i in nv:
+				var v: Vector3 = s[0][i]
+				var z: Vector4 = _zona.call(k, v, a_raiz * v)
+				uv[i] = Vector2(z.x, z.y)
+				uv2[i] = Vector2(z.z, z.w)
+			a[Mesh.ARRAY_TEX_UV] = uv
+			a[Mesh.ARRAY_TEX_UV2] = uv2
+		elif k != "ojo":
+			var cols := PackedColorArray()
+			cols.resize(nv)
+			cols.fill(tono(k))
+			a[Mesh.ARRAY_COLOR] = cols
 		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
 		am.surface_set_material(am.get_surface_count() - 1, mats[k])
 	var mi := MeshInstance3D.new()
 	mi.mesh = am
 	padre.add_child(mi)
 	_sup = {}
+
+
+# el color liso de lo que no es pelo; el collar, el de colores (en los otros jugadores, su color de red.gd). Hasta
+# noviembre de 2026 el collar era pelo con su propio color, que terminar() no alcanzaba a leer: salía café como el cuello
+func tono(k: String) -> Color:
+	if k == "collar":
+		return Color(colores.get("collar", colores.get("polera", TONOS["collar"])))
+	return Color(TONOS[k])
 
 
 # la transformación de n en el marco del perro (sin pasar por la escena: sirve antes de agregarlo)
@@ -416,6 +455,7 @@ func pata(i: int, meta: Vector3, abajo: float, dedos: float) -> void:
 
 func animar(dt: float, rapidez: float, en_suelo: bool) -> void:
 	t += dt
+	t_caida += dt
 	t_salto += dt
 	t_golpe += dt
 	patada *= exp(-16.0 * dt)
@@ -426,16 +466,16 @@ func animar(dt: float, rapidez: float, en_suelo: bool) -> void:
 	var mov := smoothstep(0.15, 1.0, rapidez)
 	var trote := smoothstep(2.0, 5.0, rapidez)
 	var galope := smoothstep(9.0, 14.0, rapidez)
-	var frec := 0.9 + 0.32 * minf(rapidez, 8.0) + 0.04 * maxf(rapidez - 8.0, 0.0)  # ciclos por segundo
+	var frec := (0.9 + 0.32 * minf(rapidez, 8.0) + 0.04 * maxf(rapidez - 8.0, 0.0)) / sqrt(talla)  # ciclos por segundo
 	if en_suelo:
 		fase = fposmod(fase + dt * frec * smoothstep(0.02, 0.4, rapidez), 1.0)
 	var duty := lerpf(lerpf(0.65, 0.5, trote), 0.38, galope)  # la parte del ciclo que cada pata pisa
-	var largo := minf(rapidez * duty / frec, lerpf(0.5, 0.6, trote) + 0.2 * galope) * mov
-	var alto := lerpf(lerpf(0.05, 0.08, trote), 0.12, galope) * mov
+	var largo := minf(rapidez * duty / frec, (lerpf(0.5, 0.6, trote) + 0.2 * galope) * talla) * mov
+	var alto := lerpf(lerpf(0.05, 0.08, trote), 0.12, galope) * mov * talla
 	# el tronco: el bote (dos por ciclo al paso y al trote, uno al galope), el cabeceo y el lomo que se dobla al galope
 	var ciclo := TAU * fase
-	var bote := (-0.006 * (1.0 - trote) - 0.014 * trote * (1.0 - galope)) * cos(2.0 * ciclo) * mov + 0.03 * sin(ciclo) * galope
-	var y := CENTRO - (0.012 * trote + 0.02 * galope) * mov + bote
+	var bote := ((-0.006 * (1.0 - trote) - 0.014 * trote * (1.0 - galope)) * cos(2.0 * ciclo) * mov + 0.03 * sin(ciclo) * galope) * talla
+	var y := centro - (0.012 * trote + 0.02 * galope) * mov * talla + bote
 	var cabeceo := 0.08 * cos(ciclo - TAU * 0.19) * galope
 	var doblez := 0.15 * cos(ciclo - TAU * 0.63) * galope  # + encogido (el lomo arqueado), - estirado
 	var ladeo := 0.03 * sin(ciclo) * mov * (1.0 - galope)
@@ -446,16 +486,16 @@ func animar(dt: float, rapidez: float, en_suelo: bool) -> void:
 	var cabeceo_aire := 0.3 * (1.0 - smoothstep(0.1, 0.6, t_salto)) - 0.2 * smoothstep(0.4, 1.0, t_salto)
 	var doblez_aire := 0.0
 	if salto == 2:
-		pose_aire = [Vector3(0, -0.2, -0.56), Vector3(0, -0.26, 0.6)]
+		pose_aire = [Vector3(0, -0.2, -0.56) * talla, Vector3(0, -0.26, 0.6) * talla]
 		flex_aire = 0.0
 		doblez_aire = -0.12
 	elif salto == 3 and u < 0.92:
-		pose_aire = [Vector3(0, -0.16, -0.18), Vector3(0, -0.17, 0.12)]
+		pose_aire = [Vector3(0, -0.16, -0.18) * talla, Vector3(0, -0.17, 0.12) * talla]
 		flex_aire = 1.0
 		doblez_aire = 0.25
 		cabeceo_aire = 0.0
 	else:
-		pose_aire = [Vector3(0, -0.25, -0.38), Vector3(0, -0.36, 0.42)]
+		pose_aire = [Vector3(0, -0.25, -0.38) * talla, Vector3(0, -0.36, 0.42) * talla]
 	if salto == 3:
 		vuelta = -TAU * u * u * (3.0 - 2.0 * u)
 	else:
@@ -463,7 +503,7 @@ func animar(dt: float, rapidez: float, en_suelo: bool) -> void:
 	var sujeta := 0.0  # cuánto manda el arma sobre la cabeza
 	if arma and salto != 3:
 		sujeta = 1.0 if tipo_arma == "rifle" else maxf(alza, 0.35)
-	tronco.position.y = lerpf(tronco.position.y, lerpf(y, CENTRO, aire), k)
+	tronco.position.y = lerpf(tronco.position.y, lerpf(y, centro, aire), k)
 	tronco.position.z = lerpf(tronco.position.z, 0.0, k)
 	inclinacion = lerpf(inclinacion, lerpf(cabeceo, cabeceo_aire, aire), k)
 	tronco.rotation = Vector3(inclinacion + vuelta, 0.0, lerpf(tronco.rotation.z, ladeo * (1.0 - aire), k))
@@ -474,10 +514,11 @@ func animar(dt: float, rapidez: float, en_suelo: bool) -> void:
 	torso.scale = Vector3(1.0 + resp, 1.0 + resp, 1.0)
 	# las patas: del paso al aire, en el marco del perro
 	var al_tronco := tronco.transform
+	var metas := []  # por pata: [dónde pisa, el ángulo del hueso de abajo, el de la mano] (pata())
 	for i in 4:
 		var desf: float = lerpf(lerpf(AL_PASO[i], AL_TROTE[i], trote), AL_GALOPE[i], galope)
 		var w := fposmod(fase + desf, 1.0)
-		var meta: Vector3 = PISADA[i]
+		var meta: Vector3 = pisada[i]
 		var flex := 0.0
 		if w < duty:
 			meta.z += -largo * (0.5 - w / duty)
@@ -486,22 +527,28 @@ func animar(dt: float, rapidez: float, en_suelo: bool) -> void:
 			meta.z += largo * (0.5 - smoothstep(0.0, 1.0, s))
 			meta.y += alto * sin(PI * s)
 			flex = sin(PI * s) * mov
-		var en_aire_: Vector3 = al_tronco * (Vector3(PISADA[i].x, 0, 0) + pose_aire[0 if i < 2 else 1])
+		var en_aire_: Vector3 = al_tronco * (Vector3(pisada[i].x, 0, 0) + pose_aire[0 if i < 2 else 1])
 		meta = meta.lerp(en_aire_, aire)
 		flex = lerpf(flex, flex_aire, aire)
 		var adelante := i < 2
 		var abajo: float = ANGULO_ABAJO[0 if adelante else 1] - (1.5 if adelante else 0.6) * flex
-		pata(i, meta, abajo, -(0.9 if adelante else 0.5) * flex)
+		metas.append([meta, abajo, -(0.9 if adelante else 0.5) * flex])
+	postura(dt, metas)
+	for i in 4:
+		pata(i, metas[i][0], metas[i][1], metas[i][2])
 	# el cuello y la cabeza: más bajos al correr, mirando alrededor quieto, hacia la mira con el arma; el tajo sacude
 	var golpe := 0.0  # el tajo: la cabeza adelante y sacudiéndose (t_golpe es INF sin tajo: sin(INF) no es un número)
 	var sacude := 0.0
 	if tipo_arma == "cuchillo" and t_golpe < GOLPE + 0.1:
 		golpe = 1.0 - smoothstep(0.0, GOLPE + 0.1, t_golpe)
 		sacude = 0.55 * sin(t_golpe * 38.0) * golpe
-	var mira_x := -0.25 * trote * mov + 0.1 * (1.0 - mov) - 0.4 * aire * float(salto == 2)
+	# en la voltereta, hecho ovillo, la cabeza metida hacia el pecho. La cabeza no sigue a vuelta: va de 0 a -2π, y
+	# restarle la mitad (como hasta noviembre de 2026) la dejaba media vuelta girada, el hocico hacia atrás, al terminar
+	var ovillo := aire * float(salto == 3 and u < 0.92)
+	var mira_x := -0.25 * trote * mov + 0.1 * (1.0 - mov) - 0.4 * aire * float(salto == 2) - 0.45 * ovillo
 	cuello.rotation.x = lerpf(cuello.rotation.x, mira_x - 0.35 * golpe, k)
 	cuello.rotation.y = lerpf(cuello.rotation.y, 0.35 * sin(t * 0.37) * sin(t * 0.13) * (1.0 - mov) * (1.0 - sujeta) + sacude, k)
-	var cab_x := 0.15 * trote * mov - 0.6 * cabeceo + mira * 0.7 * sujeta + patada * 0.8 - (cabeceo_aire + vuelta) * aire * 0.5
+	var cab_x := 0.15 * trote * mov - 0.6 * cabeceo + mira * 0.7 * sujeta + patada * 0.8 - cabeceo_aire * aire * 0.5 - 0.5 * ovillo
 	if recarga >= 0.0:
 		cab_x -= 0.5 * smoothstep(0.0, 0.25, recarga) * (1.0 - smoothstep(0.75, 1.0, recarga))
 	cabeza.rotation.x = lerpf(cabeza.rotation.x, cab_x, k)
@@ -525,7 +572,43 @@ func animar(dt: float, rapidez: float, en_suelo: bool) -> void:
 		var vel := 10.0 if mov < 0.5 else 6.0
 		c.rotation.x = lerpf(c.rotation.x, alza_cola if j == 0 else -0.16 + 0.1 * mov, k)
 		c.rotation.y = 0.5 * meneo * sin(t * vel - j * 0.8) + 0.12 * sin(ciclo) * trote * float(j == 0)
+	ojos_animar(dt)
 	boca_arma(dt)
+
+
+# los ojos al final de animar(): el perro parpadea con los ojos abiertos; la gata los entorna echada y parpadea lento
+func ojos_animar(dt: float) -> void:
+	parpadear(dt, 1.0)
+
+
+# un parpadeo cada 2 a 5 s (con lentos, a veces uno lento de 1,5 s, y más espaciados), con los ojos abiertos a ap (0
+# cerrados … 1); muerto (tendido() en el último 0,2 s), cerrados
+func parpadear(dt: float, ap: float, lentos := false) -> void:
+	t_parpadeo -= dt
+	if parpadeo < 0.0 and t_parpadeo <= 0.0:
+		parpadeo = 0.0
+		lento = lentos and _rng.randf() < 0.5
+		t_parpadeo = _rng.randf_range(2.0, 5.0) * (1.6 if lentos else 1.0)
+	if parpadeo >= 0.0:
+		parpadeo += dt
+		var u := parpadeo / (1.5 if lento else 0.18)
+		ap *= 1.0 - smoothstep(0.0, 0.35, u) * (1.0 - smoothstep(0.6, 1.0, u))
+		if u >= 1.0:
+			parpadeo = -1.0
+	if muerto():
+		ap = 0.0
+	for o in ojos:
+		o.scale.y = maxf(ap, 0.06)
+
+
+func muerto() -> bool:
+	return caida > 0.0 and t_caida < 0.2
+
+
+# después de calcular el paso y antes de resolver las patas: el tronco ya tiene su pose y metas, por pata, [dónde pisa,
+# el ángulo del hueso de abajo, el de la mano] (pata()). El perro no cambia nada; gata.gd se sienta y se echa aquí
+func postura(_dt: float, _metas: Array) -> void:
+	pass
 
 
 # el arma en el hocico: de lado (la pistola y el rifle) o atravesado (el cuchillo); en alto, la boca del arma hacia
@@ -586,6 +669,7 @@ func sentar(dt: float, pies: Array, incl: float, _hombros: float, _codos: float)
 	for j in cola.size():
 		cola[j].rotation.x = lerpf(cola[j].rotation.x, 1.1 if j == 0 else 0.05, k)
 		cola[j].rotation.y = 0.15 * sin(t * 6.0 - j * 0.8)
+	parpadear(dt, 1.0)
 
 
 # Con el jetpack en el aire (vehiculo.gd pose_vuelo()): estirado como un superhéroe, las manos adelante, las patas atrás,
@@ -620,12 +704,16 @@ func volar(dt: float, inclinar: Vector3) -> void:
 	for j in cola.size():
 		cola[j].rotation.x = lerpf(cola[j].rotation.x, -0.25 if j == 0 else 0.0, k)
 		cola[j].rotation.y = 0.12 * sin(t * 13.0 - j * 1.1)
+	parpadear(dt, 0.8)
 
 
 # ---------------------------------------------------------------- lo que leen los demás
 
-# muerto (jugador.gd, red.gd): de costado, desde las patas; f de 0 (de pie) a 1 (tendido)
+# muerto (jugador.gd, red.gd): de costado, desde las patas, y con los ojos cerrados (parpadear()); f de 0 (de pie) a 1
+# (tendido)
 func tendido(n: Node3D, f: float) -> void:
+	caida = f
+	t_caida = 0.0
 	n.rotation.x = 0.0
 	n.rotation.z = 1.5 * f
 	n.position.y = 0.12 * f
@@ -643,8 +731,9 @@ func portabandera() -> Transform3D:
 	return tronco.global_transform * Transform3D(Basis(Vector3.RIGHT, 0.35), Vector3(0.07, 0.06, 0.2))
 
 
+# cabeza: adonde apunta la prueba de los tiros a la cabeza (red.gd apuntar(), --red-cabeza), en el marco del perro
 func medidas() -> Dictionary:
-	return {"ojo": 0.95, "etiqueta": 1.3, "radio": 0.26, "alto": 1.15,
+	return {"ojo": 0.95, "etiqueta": 1.3, "radio": 0.26, "alto": 1.15, "cabeza": Vector3(0, 0.67, -0.53),
 		"blanco": Transform3D(Basis(Vector3.RIGHT, PI / 2), Vector3(0, 0.47, -0.08))}
 
 

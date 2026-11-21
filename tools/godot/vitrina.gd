@@ -3,22 +3,27 @@
 # con cuatro vistas alrededor del modelo (o --vistas N), cada una de --size.
 #
 #   tools/godot_oculto.sh --path juego -s $PWD/tools/godot/vitrina.gd -- <que> --png shots/v.png [--size 640x480]
-#       [--vistas 4] [--alto 15] [--dist D] [--rapidez 3] [--t 0.4] [--color 3b6fa0] [--noche]
+#       [--vistas 4] [--alto 15] [--dist D] [--centro x,y,z] [--rapidez 3] [--t 0.4] [--color 3b6fa0] [--noche]
 #
 # <que>:
-#   peaton | perro      el peatón de peaton.gd o el perro de perro.gd, animado --t s a --rapidez m/s (0 quieto, 1,5
-#                       camina, 8 corre, 18 galopa); --aire: en el aire, --salto n: en el salto n del triple salto (con
-#                       --t, cuánto después de saltar: la voltereta del tercero a ~0,4)
+#   peaton | perro | gata
+#                       el peatón de peaton.gd, el perro de perro.gd o la gata de gata.gd, animado --t s a --rapidez m/s
+#                       (0 quieto, 1,5 camina, 8 corre, 18 galopa; la gata, quieta más de 1,2 s, se sienta, y más de 14 s,
+#                       se echa); --aire: en el aire, --salto n: en el salto n del triple salto (con --t, cuánto después
+#                       de saltar: la voltereta del tercero a ~0,4)
 #   bici | auto         el vehículo de vehiculo.gd (armar())
-#   bici:quien          la bicicleta con el peatón o el perro (quien: peaton o perro) pedaleando --t s (sentar())
-#   jetpack:quien       el peatón o el perro con el jetpack puesto, en vuelo (volar())
+#   bici:quien          la bicicleta con el peatón, el perro o la gata (quien: peaton, perro o gata) pedaleando --t s
+#                       (sentar())
+#   jetpack:quien       el peatón, el perro o la gata con el jetpack puesto, en vuelo (volar())
 #   auto:N              el auto N de modelos/entorno/auto.gd (0 sedán … 6 camión), del color --color
 #   autos               los siete en fila
 #   arbol:especie[:v]   un árbol de modelos/plaza/arboles.gd (palmera, cedro, araucaria, frondoso, podado, cordyline,
 #                       arbusto, agapanto, alamo), la variante v
 #   arboles             todas las especies en fila
 # --alto: grados sobre el horizonte de la cámara; --dist: su distancia (si no, del tamaño del modelo); --azimut: los grados
-# de la primera vista alrededor del modelo (30; 90: de costado, desde la derecha).
+# de la primera vista alrededor del modelo (30; 90: de costado, desde la derecha); --centro: el punto que mira la cámara,
+# en m desde el pie del modelo (si no, el centro de su caja; para acercarse a una parte, como la cara de la gata:
+# --centro 0,0.3,-0.25 --dist 0.35).
 extends SceneTree
 
 const Args := preload("res://args.gd")
@@ -62,6 +67,9 @@ func _correr() -> void:
 	print("vitrina.gd: %s, caja %s" % [que, caja])
 	var c := caja.get_center()
 	var r := maxf(caja.size.length() * 0.5, 0.5)
+	if arg("--centro", "") != "":
+		var p := arg("--centro", "").split_floats(",")
+		c = Vector3(p[0], p[1], p[2])
 	var cam := Camera3D.new()
 	cam.fov = 40
 	raiz.add_child(cam)
@@ -101,6 +109,7 @@ func escena(noche: bool) -> void:
 		env.ambient_light_energy = 0.15
 		pm.sky_top_color = Color(0.02, 0.03, 0.08)
 		pm.sky_horizon_color = Color(0.05, 0.06, 0.12)
+	RenderingServer.global_shader_parameter_set("noche", 1.0 if noche else 0.0)  # el de ambiente.gd: ventanas, pupilas de la gata
 	var we := WorldEnvironment.new()
 	we.environment = env
 	raiz.add_child(we)
@@ -124,7 +133,7 @@ func construir(que: String) -> Node3D:
 	var n := Node3D.new()
 	raiz.add_child(n)
 	match p[0]:
-		"peaton", "perro":
+		"peaton", "perro", "gata":
 			var pe: Node3D = load("res://%s.gd" % p[0]).new()
 			n.add_child(pe)
 			await process_frame

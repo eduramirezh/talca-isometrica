@@ -1,5 +1,5 @@
-# El personaje: una cápsula de 1,75 m (la colisión; lo que se ve es peaton.gd, animado según la velocidad, o el perro de
-# perro.gd: --personaje perro o el menú de Esc, cambiar_personaje()) con una cámara en tercera persona sobre un brazo (SpringArm3D) que se acorta
+# El personaje: una cápsula de 1,75 m (la colisión; lo que se ve es peaton.gd, animado según la velocidad, el perro de
+# perro.gd o la gata de gata.gd: --personaje perro|gata o el menú de Esc, cambiar_personaje()) con una cámara en tercera persona sobre un brazo (SpringArm3D) que se acorta
 # cuando un muro se interpone. La rueda lo acorta hasta 0: primera persona, sin cuerpo a la vista. Montado en la
 # bicicleta o el auto (vehiculo.gd), no se mueve solo: va con el vehículo, que maneja también la cámara.
 extends CharacterBody3D
@@ -54,9 +54,9 @@ var brazo := SpringArm3D.new()
 var cam := Camera3D.new()
 var cuerpo := Node3D.new()
 var pose := -1.0
-const CUERPOS := {"persona": preload("res://peaton.gd"), "perro": preload("res://perro.gd")}
+const CUERPOS := {"persona": preload("res://peaton.gd"), "perro": preload("res://perro.gd"), "gata": preload("res://gata.gd")}
 var personaje := "persona"  # el cuerpo que se ve: una clave de CUERPOS
-var peaton: Node3D = CUERPOS[personaje].new()  # el cuerpo que se ve (peaton.gd, o perro.gd, que lo extiende)
+var peaton: Node3D = CUERPOS[personaje].new()  # el cuerpo que se ve (peaton.gd, o perro.gd, que lo extiende, o gata.gd, que extiende al perro)
 var mapa: Node3D  # mapa.gd: mientras la colisión bajo el personaje no está, no cae
 var _quieto := false
 # viaje.gd y plano.gd: con la lista de lugares o el mapa grande abiertos, las teclas no lo mueven; muerto, tampoco,
@@ -327,14 +327,21 @@ func _process(dt: float) -> void:
 	brazo.rotation = Vector3(pitch, yaw, 0)
 
 
-# la altura del brazo de la cámara a pie (la de los ojos de la persona, más baja con el perro)
+# la altura del brazo de la cámara a pie (la de los ojos de la persona, más baja con el perro y la gata)
 func ojo() -> float:
 	return peaton.medidas()["ojo"]
 
 
+# el largo del brazo de la cámara a pie que corresponde al cuerpo (medidas() «brazo»: 5 m la persona y el perro, menos la
+# gata, que es mucho más chica)
+func brazo_de(pe: Node3D) -> float:
+	return pe.medidas().get("brazo", 5.0)
+
+
 # Otro cuerpo (una clave de CUERPOS), en el mismo lugar y pose que el de ahora (a pie, en la bicicleta o con el jetpack):
 # las armas que el de ahora tiene en la mano (o en el hocico) salen antes de soltarlo, porque son de armas.gd, que se
-# las pasa al nuevo con sostener() en el cuadro siguiente; la mochila del jetpack vuelve al vehículo y pasa a su montura
+# las pasa al nuevo con sostener() en el cuadro siguiente; la mochila del jetpack vuelve al vehículo y pasa a su montura.
+# El brazo de la cámara a pie se escala con el del cuerpo (brazo_de()): la rueda lo ajusta igual, en proporción
 func cambiar_personaje(cual: String) -> void:
 	if cual == personaje or not CUERPOS.has(cual):
 		return
@@ -348,6 +355,11 @@ func cambiar_personaje(cual: String) -> void:
 			m.remove_child(c)
 	peaton = CUERPOS[cual].new()
 	personaje = cual
+	var escala := brazo_de(peaton) / brazo_de(viejo)
+	if vehiculo == null:
+		largo *= escala
+	else:
+		largo_a_pie *= escala
 	if padre:
 		padre.add_child(peaton)
 		peaton.transform = viejo.transform
