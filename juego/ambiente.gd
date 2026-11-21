@@ -1,16 +1,21 @@
 # Cielo, luz, sombras, niebla, posproceso y la hora del día (main.gd lo agrega a la escena, después de recortar el glb).
 #
-# El sol está donde está en Talca (35,43° S, 71,67° O; UTC−3, la hora de verano) el día y la hora de FECHA y HORA: por
-# omisión, el 15 de enero a las 17:00 (el sol a ~45°, al poniente nor-poniente). La tecla T avanza una hora (Mayús+T
+# El sol está donde está en Talca (35,43° S, 71,67° O) el día y a la hora del juego. Jugando, son los del computador, y
+# el reloj corre con el suyo (al_reloj(); la diferencia con UTC, la de Chile ese día: utc_chile()); en una partida de la
+# red local, los del anfitrión (la_hora()). Con --hora, o en una captura o una toma (FIJA: --png, --fps, --cine,
+# --trailer, --vp), la hora queda quieta, para que salga igual cada vez: el 15 de enero a las 17:00 (UTC−3, la hora de
+# verano; el sol a ~45°, al poniente nor-poniente) o la pedida. La tecla T avanza una hora (Mayús+T
 # retrocede) y L pasa del día a la noche o de la noche al día (el reloj corre hacia adelante, en ~3 s, hasta la noche
-# cerrada o hasta la hora de día del comienzo), con atardecer, crepúsculo y noche: de noche la luz es la de la luna, las ventanas se encienden y los
+# cerrada o hasta la hora de día del comienzo; con el reloj, hasta la suya si es de día), con atardecer, crepúsculo y noche: de noche la luz es la de la luna, las ventanas se encienden y los
 # faroles de la plaza alumbran. El cielo es shaders/cielo.gdshader (nubes, la cordillera, estrellas) y también da la luz
 # ambiente y los reflejos. Las capas del glb toman su material de materiales.gd (shaders/capa.gdshader): la textura,
 # las ventanas y el brillo de cada superficie, sobre el color por vértice de la maqueta. Hasta noviembre de 2026, más
 # allá de la caja de 400 m de plaza.glb había una ciudad inventada de bloques bajos; ahora está la comuna (mapa.gd).
 #
-#   --hora 20.5      la hora al comenzar (decimal, hora de verano)
+#   --hora 20.5      la hora al comenzar, quieta (decimal, hora de verano)
 #   --dia 172        el día del año (1 = 1 de enero)
+#   --reloj ahora    la hora del computador también en una captura; --reloj 2026-07-15T18:30, la de ese momento como si
+#                    fuera la del computador, que corre desde ahí (para ver el invierno sin cambiar el reloj)
 #   --calidad baja   sin SSIL, SSAO ni sombras blandas (para máquinas más lentas)
 #   --sin a,b        apaga partes para medir su costo con --fps (modelos/calles.gd): ssil, ssao, glow, niebla,
 #                    sombras, blandas, lejos (las teselas de lejos.glb), nubes
@@ -21,14 +26,24 @@ const Args := preload("res://args.gd")
 const Glb := preload("res://glb.gd")
 const LAT := -35.4265
 const LON := -71.666
-const UTC := -3.0
+const UTC := -3.0  # la hora de verano: la de --hora y las capturas
 const GIRO := 5.0  # grados: la grilla está girada; el norte verdadero queda 5° al poniente del norte de la grilla
+const FIJA := ["--png", "--fps", "--cine", "--trailer", "--vp"]  # la hora quieta de siempre (salvo con --reloj)
 
 var dia := 15
 var hora := 17.0
 var objetivo := 17.0
 var hora_dia := 17.0  # adonde va L de noche: la hora del comienzo si es de día, si no las 17:00
 var rapidez := 1.5  # horas por segundo hacia objetivo
+var utc := UTC  # la diferencia con UTC de la hora del juego (sol_en())
+var fija := false  # --hora o una captura: la hora no corre ni la cambia el anfitrión
+var corre := false  # la hora corre con el reloj del computador (al_reloj()) o con el del anfitrión (la_hora())
+var real := 17.0  # la hora de ese reloj en t_reloj, sin lo que la movieron T y L
+var t_reloj := 0.0  # Time.get_unix_time_from_system() del último paso del reloj
+var simulado := NAN  # --reloj aaaa-mm-ddThh:mm: los segundos entre esa fecha y la del computador
+var de := ""  # de quién es la hora mientras nadie la mueve aquí («computador», «anfitrión»; texto_hora())
+var con_anfitrion := false  # ya llegó la hora del anfitrión de la partida (la primera salta; las que siguen, corren)
+var red: Node  # red.gd (main.gd): si es el anfitrión de una partida, manda la hora a los demás
 var env: Environment
 var sky: Sky
 var cielo: ShaderMaterial
@@ -39,8 +54,22 @@ var reloj: Label
 var reloj_t := 0.0
 
 
+func _init() -> void:
+	name = "ambiente"  # la_hora() busca este nodo por su ruta: tiene que llamarse igual en todos
+
+
 func _ready() -> void:
-	hora = Args.num("--hora", hora, 0.0, 24.0)
+	fija = Args.has("--hora") or (not Args.has("--reloj") and FIJA.any(func(f: String) -> bool: return Args.has(f)))
+	if fija:
+		hora = Args.num("--hora", hora, 0.0, 24.0)
+	else:
+		var s := Args.texto("--reloj", "ahora")
+		if s != "ahora":
+			if RegEx.create_from_string("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$").search(s):
+				simulado = Time.get_unix_time_from_datetime_string(s + ":00") - Time.get_unix_time_from_system()
+			else:
+				push_warning("ambiente.gd: --reloj espera ahora o aaaa-mm-ddThh:mm, no «%s»" % s)
+		al_reloj()
 	dia = int(Args.num("--dia", dia, 1, 366))
 	objetivo = hora
 	if sol_en(dia, fposmod(hora, 24.0)).y > 0.1:
@@ -54,6 +83,7 @@ func _ready() -> void:
 	hud()
 	poner_hora(hora)
 	apagar(Array(Args.sin_()))
+	multiplayer.peer_connected.connect(_llego)
 
 
 # sombras y antialiasing (en tiempo de ejecución, para no tocar project.godot)
@@ -231,7 +261,7 @@ func sol_en(d: int, h: float) -> Vector3:
 	var b := deg_to_rad(360.0 / 365.0 * (d - 81))
 	var decl := deg_to_rad(23.44) * sin(b)
 	var eot := 9.87 * sin(2 * b) - 7.53 * cos(b) - 1.5 * sin(b)  # minutos
-	var solar := h + (4.0 * (LON - 15.0 * UTC) + eot) / 60.0
+	var solar := h + (4.0 * (LON - 15.0 * utc) + eot) / 60.0
 	var hra := deg_to_rad(15.0 * (solar - 12.0))
 	var phi := deg_to_rad(LAT)
 	var e := -cos(decl) * sin(hra)
@@ -296,18 +326,29 @@ func _unhandled_input(e: InputEvent) -> void:
 		ir_a_hora(dia_o_noche(objetivo))
 
 
-# el reloj corre hasta h (T, L y el menú de Esc, menu.gd)
+# el reloj corre hasta h (T, L y el menú de Esc, menu.gd); el anfitrión de una partida se la manda a los demás
 func ir_a_hora(h: float) -> void:
+	correr_a(h)
+	de = ""
+	if red and red.anfitrion():
+		la_hora.rpc(paquete())
+
+
+func correr_a(h: float) -> void:
 	objetivo = h
 	rapidez = max(1.5, abs(objetivo - hora) / 3.0)  # una hora a 1,5 por segundo; un salto largo, en ~3 s
 	reloj_t = 4.0
 
 
 # La hora a la que lleva L desde h (siempre hacia adelante, para pasar por el atardecer o el amanecer): si en h el sol
-# está bajo el horizonte, la próxima hora_dia; si no, la noche cerrada (noche = 1 en poner_hora) y un cuarto de hora más.
+# está bajo el horizonte, la próxima hora_dia (con el reloj, la suya si es de día); si no, la noche cerrada (noche = 1
+# en poner_hora) y un cuarto de hora más.
 func dia_o_noche(h: float) -> float:
 	if sol_en(dia, fposmod(h, 24.0)).y < 0.0:
-		var d := fposmod(hora_dia - h, 24.0)
+		var vuelta := hora_dia
+		if corre and sol_en(dia, fposmod(real, 24.0)).y > 0.1:
+			vuelta = real
+		var d := fposmod(vuelta - h, 24.0)
 		return h + (d if d > 0.0 else 24.0)
 	var t := h
 	for i in 96:  # 24 h en pasos de 15 minutos
@@ -318,12 +359,128 @@ func dia_o_noche(h: float) -> float:
 
 
 func _process(dt: float) -> void:
+	if corre:
+		var t := Time.get_unix_time_from_system()
+		if abs(t - t_reloj) >= 1.0:  # cada segundo (el sol se mueve 0,004°); si el reloj del computador salta, con él
+			var a := (t - t_reloj) / 3600.0
+			t_reloj = t
+			real += a
+			hora += a
+			objetivo += a
+			poner_hora(hora)
 	if hora != objetivo:
 		hora = move_toward(hora, objetivo, dt * rapidez)
 		poner_hora(hora)
 	if reloj:
 		reloj_t = max(reloj_t - dt, 0.0)
 		reloj.modulate.a = clampf(reloj_t, 0.0, 1.0) * 0.6 + 0.4
+
+
+# ---------- el reloj del computador ----------
+
+# la hora y el día del computador (o los de --reloj, que corren desde que partió el juego) y su diferencia con UTC;
+# desde ahí, la hora corre con su reloj (_process)
+func al_reloj() -> void:
+	var ahora := Time.get_unix_time_from_system()
+	var f := Time.get_datetime_dict_from_system()
+	var u := snappedf((Time.get_unix_time_from_datetime_dict(f) - ahora) / 3600.0, 0.25)
+	if not is_nan(simulado):
+		f = Time.get_datetime_dict_from_unix_time(int(ahora + simulado))
+		u = NAN
+	utc = utc_chile(f, u)
+	dia = dia_del_ano(f)
+	real = f["hour"] + f["minute"] / 60.0 + f["second"] / 3600.0
+	hora = real
+	corre = true
+	t_reloj = ahora
+	de = "computador"
+
+
+# La diferencia con UTC de la hora de Chile continental en la fecha f: la del computador (u) si es una de las dos de
+# Chile (−3, la de verano, o −4); si no (un computador con otra zona, o una fecha de --reloj), la regla de Chile desde
+# 2023: la de invierno desde el primer domingo desde el 2 de abril hasta el primer domingo desde el 2 de septiembre. Así
+# las 18:00 del computador son las 18:00 de Talca, con el sol de esa hora.
+static func utc_chile(f: Dictionary, u := NAN) -> float:
+	if u == -3.0 or u == -4.0:
+		return u
+	var y: int = f["year"]
+	var d := _fecha(y, f["month"], f["day"])
+	return -4.0 if d >= _domingo(y, 4) and d < _domingo(y, 9) else -3.0
+
+
+static func dia_del_ano(f: Dictionary) -> int:
+	return roundi((_fecha(f["year"], f["month"], f["day"]) - _fecha(f["year"], 1, 1)) / 86400.0) + 1
+
+
+# las 0 h de una fecha, en segundos desde 1970 (como en UTC: sirve para contar días)
+static func _fecha(y: int, m: int, d: int) -> int:
+	return Time.get_unix_time_from_datetime_dict({"year": y, "month": m, "day": d})
+
+
+# el primer domingo desde el 2 de ese mes
+static func _domingo(y: int, m: int) -> int:
+	var d := _fecha(y, m, 2)
+	var wd: int = Time.get_datetime_dict_from_unix_time(d)["weekday"]  # 0: domingo
+	return d + (7 - wd) % 7 * 86400
+
+
+# la hora del juego en palabras (red.gd prueba())
+func texto_hora() -> String:
+	var h := fposmod(hora, 24.0)
+	return "%02d:%02d:%02d del día %d, UTC%+d, %s%s" % [int(h), int(h * 60.0) % 60, int(h * 3600.0) % 60, dia, int(utc),
+		"corre" if corre else "quieta", "" if de == "" else ", la del " + de]
+
+
+# ---------- la hora en la red local ----------
+# El anfitrión de una partida (red.gd) manda su hora a cada uno que llega y a todos cuando la mueve (T, L, el menú): la
+# de su reloj, adonde va, el día, la diferencia con UTC y si corre. El que llega la toma de una vez y las que siguen las
+# corre como con T, salvo con --hora o en una captura (fija). Cada uno puede mover la suya con T y L, solo para él, hasta
+# que el anfitrión mueva la de él; al salir de la partida vuelve a la del computador. Este nodo («ambiente») tiene su
+# propia rpc, así que no corre la numeración de las de red.gd; una copia del juego sin ella deja un error en su consola
+# cada vez que le llega y sigue con su hora.
+
+func _llego(id: int) -> void:
+	if red and red.anfitrion():
+		la_hora.rpc_id(id, paquete())
+
+
+func paquete() -> Array:
+	var a := (Time.get_unix_time_from_system() - t_reloj) / 3600.0 if corre else 0.0  # lo que corrió desde el último paso
+	return [real + a, objetivo + a, dia, utc, corre]
+
+
+@rpc("authority", "call_remote", "reliable")
+func la_hora(e: Array) -> void:
+	if fija or e.size() < 5:  # una copia más nueva puede mandar más valores, agregados al final
+		return
+	real = e[0]
+	dia = int(e[2])
+	utc = e[3]
+	corre = e[4]
+	t_reloj = Time.get_unix_time_from_system()
+	de = "anfitrión"
+	if con_anfitrion:
+		correr_a(e[1])
+	else:
+		con_anfitrion = true
+		var antes := hora
+		hora = e[1]
+		objetivo = hora
+		poner_hora(hora)
+		if red and absf(fposmod(hora - antes + 12.0, 24.0) - 12.0) > 1.0 / 60.0:  # el sol saltó: se dice por qué
+			var h := fposmod(hora, 24.0)
+			red.avisar("La hora es la del anfitrión: %02d:%02d" % [int(h), int(fmod(h, 1.0) * 60.0)])
+
+
+# red.gd salio (salir, y también crear o unirse a otra): de vuelta a la hora del computador, por el camino más corto
+func salio() -> void:
+	if not con_anfitrion:
+		return
+	con_anfitrion = false
+	var h := hora
+	al_reloj()
+	hora = h
+	correr_a(real + 24.0 * roundf((h - real) / 24.0))
 
 
 func hud() -> void:
