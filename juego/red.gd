@@ -3,7 +3,8 @@
 # nombre encima, y como flechas de color en los mapas (plano.gd).
 #
 # J abre el panel: el nombre, «Crear partida», las partidas que se anuncian en la red (doble clic: unirse), una IP a
-# mano y, en una partida, la lista de jugadores (doble clic: ir donde está). Esc o J lo cierra.
+# mano y, en una partida, la lista de jugadores (doble clic: ir donde está, salvo jugando captura la bandera:
+# jugador.sin_viajes). Esc o J lo cierra.
 #
 #   Godot --path juego -- --servidor [--nombre Ana]          # crea la partida al comenzar
 #   Godot --path juego -- --unirse 192.168.1.20 [--nombre Bea] # se une a esa IP («lan»: a la primera que se anuncie)
@@ -81,6 +82,7 @@ var ip_edit := LineEdit.new()
 var unirse_btn := Button.new()
 var estado_lbl := Label.new()
 var lista_jugadores := ItemList.new()
+var jugadores_lbl := Label.new()  # sobre lista_jugadores: si el doble clic lleva (refrescar())
 var ids_lista := []  # los ids de ENet en el orden de lista_jugadores
 var caja_panel := VBoxContainer.new()  # lo de adentro del panel (bandera.gd agrega ahí captura la bandera)
 var antes := Input.MOUSE_MODE_CAPTURED
@@ -454,9 +456,8 @@ func armar_panel() -> void:
 	fila_ip.add_child(unirse_btn)
 	caja.add_child(fila_ip)
 	caja.add_child(estado_lbl)
-	var lj := Label.new()
-	lj.text = "Jugadores (doble clic: ir donde está)"
-	caja.add_child(lj)
+	jugadores_lbl.text = "Jugadores (doble clic: ir donde está)"
+	caja.add_child(jugadores_lbl)
 	lista_jugadores.custom_minimum_size.y = 110
 	lista_jugadores.item_activated.connect(ir_a)
 	caja.add_child(lista_jugadores)
@@ -562,6 +563,7 @@ func refrescar() -> void:
 		estado_lbl.text = "Conectando a %s…" % conectando
 	else:
 		estado_lbl.text = "Sin partida" + ("" if escucha.is_bound() else " (no se pueden escuchar anuncios: use la IP)")
+	jugadores_lbl.text = "Jugadores" + (" (doble clic: ir donde está)" if jugador == null or jugador.sin_viajes == "" else "")
 	lista_jugadores.clear()
 	ids_lista.clear()
 	if jugador:

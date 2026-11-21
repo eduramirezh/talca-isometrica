@@ -8,7 +8,8 @@
 #   acerca, abre centrado en el personaje, con los nombres de las calles y de los lugares de cerca. Un clic pone el
 #   marcador (sobre un lugar, en el lugar, con su nombre); un clic sobre el marcador o el botón derecho lo quita. Un
 #   doble clic lleva ahí al personaje (o al vehículo en que va), y Enter, al marcador: ir_a(). M o Esc lo cierran y
-#   devuelven el mouse a la cámara, como viaje.gd (Tab).
+#   devuelven el mouse a la cámara, como viaje.gd (Tab). Jugando captura la bandera (jugador.sin_viajes, bandera.gd)
+#   no se viaja: la ayuda no lo ofrece, el doble clic es un clic y Enter solo avisa por qué.
 #
 # El camino y lo que se ve en el mundo (la cinta y la columna de luz) son de ruta.gd. Lo que no cambia de un cuadro a
 # otro se dibuja una vez: las calles y los rellenos van en un Node2D en metros de grilla (Mundo) que se vuelve a dibujar
@@ -183,7 +184,9 @@ func _ready() -> void:
 	grande_encima.set_anchors_preset(Control.PRESET_FULL_RECT)
 	grande_encima.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	grande.add_child(grande_encima)
-	ayuda.text = "Clic: poner el marcador · clic en el marcador o botón derecho: quitarlo · doble clic: ir ahí · Enter: ir al marcador · arrastrar: mover · rueda: acercar · M o Esc: cerrar"
+	texto_ayuda()
+	if jugador:
+		jugador.viajes_cambio.connect(texto_ayuda)
 	estilo(ayuda, 18)
 	ayuda.position = Vector2(16, 12)
 	grande.add_child(ayuda)
@@ -213,6 +216,13 @@ static func estilo(l: Label, tam: int) -> void:
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	l.add_theme_constant_override("outline_size", 5)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+# la ayuda de arriba del mapa grande: sin los viajes mientras no se viaja (jugador.sin_viajes)
+func texto_ayuda() -> void:
+	var viaja: bool = jugador == null or jugador.sin_viajes == ""
+	ayuda.text = "Clic: poner el marcador · clic en el marcador o botón derecho: quitarlo%s · arrastrar: mover · rueda: acercar · M o Esc: cerrar" % (
+		" · doble clic: ir ahí · Enter: ir al marcador" if viaja else "")
 
 
 func _exit_tree() -> void:
@@ -654,8 +664,12 @@ func clic(en: Vector2) -> void:
 	ruta.marcar(t.affine_inverse() * en)
 
 
-# Doble clic: ir ahí (sobre un lugar, al lugar). El primer clic ya puso o quitó el marcador: vuelve a como estaba.
+# Doble clic: ir ahí (sobre un lugar, al lugar). El primer clic ya puso o quitó el marcador: vuelve a como estaba. Si no
+# se viaja (captura la bandera), queda lo del primer clic
 func doble_clic(en: Vector2) -> void:
+	if jugador and jugador.sin_viajes != "":
+		deshacer = []
+		return
 	if ruta and deshacer.size() == 3 and Time.get_ticks_msec() / 1000.0 - deshacer[2] < 1.0:
 		if deshacer[0] == Vector2.INF:
 			ruta.quitar()
@@ -699,7 +713,7 @@ func ir_a(p: Vector2, h := NAN, pegar := true, nombre := "") -> void:
 func _input(e: InputEvent) -> void:
 	if datos == null or not (e is InputEventKey and e.pressed and not e.echo):
 		return
-	if grande.visible and e.keycode == KEY_TAB:
+	if grande.visible and e.keycode == KEY_TAB and (jugador == null or jugador.sin_viajes == ""):  # si no se viaja, viaje.gd avisa
 		# Tab con el mapa abierto: lo cierra y deja que viaje.gd abra su lista, con el mouse suelto (si viaje.gd la
 		# abrió antes que esto, se le devuelve el mouse de antes del mapa para cuando la cierre)
 		var m := antes

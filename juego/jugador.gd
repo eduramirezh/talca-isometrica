@@ -9,6 +9,7 @@ signal danado(cantidad: float, causa: String)  # vida.gd: el destello de la barr
 signal reaparecio(donde: String)  # vida.gd: el aviso («» si fue con Tab o el mapa grande)
 signal no_viaja(por_que: String)  # viajar() no lo llevó (main.gd lo muestra en el mapa chico)
 signal cambio_personaje(cual: String)  # cambiar_personaje() (red.gd se lo dice a los demás: traje())
+signal viajes_cambio  # sin_viajes cambió: el menú, la lista de lugares, los mapas, la red y la ayuda quitan o devuelven los viajes
 
 const CAMINAR := 8.0  # m/s (de verdad, ~1,4: se siente lento en una caja de 400 m)
 const CORRER := 18.0
@@ -83,12 +84,18 @@ var causa_muerte := ""  # la de la última muerte (vida.gd la muestra)
 var caida := 0.0  # m/s hacia abajo en el último aterrizaje (vida.gd prueba())
 var iba_montado := false  # en el cuadro de física anterior (bajado())
 # captura la bandera (bandera.gd), en una partida: cuánto espera muerto, dónde reaparece (x, y de grilla y altura del
-# suelo; INF: en la plaza), por qué no viaja con Tab, el mapa, el menú ni la red ("": viaja) y si lleva una bandera
-# (vehiculo.gd: entonces solo a pie o en bicicleta)
+# suelo; INF: en la plaza), por qué no viaja con Tab, el mapa, el menú ni la red ("": viaja; los que ofrecen un viaje
+# lo quitan mientras tanto: viajes_cambio), si lleva una bandera (vehiculo.gd: entonces solo a pie o en bicicleta) y
+# por qué no puede ponerse el jetpack ("": puede; vehiculo.gd: puesto, baja solo y se lo saca en el suelo)
 var espera_muerto := ESPERA_MUERTO
 var reaparece_en := Vector3.INF
-var sin_viajes := ""
+var sin_viajes := "":
+	set(v):
+		if v != sin_viajes:
+			sin_viajes = v
+			viajes_cambio.emit()
 var con_bandera := false
+var sin_jetpack := ""
 var sin_forma := 0  # cuadros de física que le quedan con la cápsula apagada al bajarse (bajado())
 
 
@@ -143,7 +150,8 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 # un viaje que pide el jugador (Tab, el mapa grande, el menú, la red): ir(), salvo en una partida de captura la
-# bandera (sin_viajes), donde avisa por qué no (no_viaja) y devuelve falso
+# bandera (sin_viajes), donde avisa por qué no (no_viaja) y devuelve falso. Los que ofrecen un viaje lo quitan mientras
+# tanto; esto queda por si uno se pide con un panel que ya estaba abierto
 func viajar(x: float, y: float, h: float) -> bool:
 	if sin_viajes != "":
 		no_viaja.emit(sin_viajes)

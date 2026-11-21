@@ -193,6 +193,7 @@ func _ready() -> void:
 	if plano:
 		plano.bandera = bandera
 		jugador.no_viaja.connect(plano.avisar)  # Tab, el mapa, el menú o la red en captura la bandera
+		vehiculo.no_deja.connect(plano.avisar)  # con una bandera o mientras se prepara, el vehículo que no se puede
 	var blancos := preload("res://blancos.gd").new()
 	blancos.mapa = mapa
 	add_child(blancos)
@@ -323,7 +324,7 @@ func png() -> void:
 	if red and (Args.has("--red-prueba") or Args.has("--red-tiros") or Args.has("--red-foto")):  # la captura después del informe de la red (con los otros ya a la vista)
 		while not red.prueba_lista:
 			await get_tree().process_frame
-	if bandera and (Args.has("--ctf-prueba") or Args.has("--ctf-robar")):  # después de la prueba de captura la bandera
+	if bandera and (Args.has("--ctf-prueba") or Args.has("--ctf-robar") or Args.has("--ctf-preparar")):  # después de la prueba de captura la bandera
 		while not bandera.prueba_lista:
 			await get_tree().process_frame
 	for i in 10:
@@ -389,10 +390,18 @@ func ayuda() -> void:
 	var capa := CanvasLayer.new()
 	add_child(capa)
 	var l := Label.new()
-	l.text = "WASD: caminar · Mayús: correr · Espacio: saltar (tres seguidos: triple salto) · mouse: mirar · rueda: cámara · Tab: ir a un lugar · Esc: menú\nE: subir o bajar del vehículo (lejos, lo trae) · V: bicicleta, auto o jetpack · montado, W/S: acelerar y frenar · A/D: girar · Espacio: frenar · Q: pedalear de pie\nJetpack: Espacio sube · C baja rápido · WASD lo mueve · Mayús: más rápido · se recarga en el suelo\nM: mapa (un clic pone el marcador y el camino hasta él; doble clic: ir ahí) · N: el mapa chico con el norte arriba · J: red local (jugar con otros; captura la bandera: B pone la tuya)\nVida (abajo): las caídas de más de ~7 m duelen y de ~27 m matan; se recupera sola, y rápido comiendo un completo en los carritos de 5 y 6 Oriente\n1: cuchillo · 2: pistola · 3: rifle (otra vez o 0: guardar) · clic: disparar · botón derecho: apuntar · R: recargar"
 	l.position = Vector2(16, 12)
 	l.add_theme_color_override("font_color", Color(1, 1, 1))
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	l.add_theme_constant_override("outline_size", 4)
 	capa.add_child(l)
 	ayuda_texto = l
+	texto_ayuda()
+	jugador.viajes_cambio.connect(texto_ayuda)
+
+
+# las teclas, arriba a la izquierda; sin los viajes (Tab, el doble clic del mapa) mientras no se viaja (jugador.sin_viajes)
+func texto_ayuda() -> void:
+	var viaja: bool = jugador.sin_viajes == ""
+	ayuda_texto.text = "WASD: caminar · Mayús: correr · Espacio: saltar (tres seguidos: triple salto) · mouse: mirar · rueda: cámara%s · Esc: menú\nE: subir o bajar del vehículo (lejos, lo trae) · V: bicicleta, auto o jetpack · montado, W/S: acelerar y frenar · A/D: girar · Espacio: frenar · Q: pedalear de pie\nJetpack: Espacio sube · C baja rápido · WASD lo mueve · Mayús: más rápido · se recarga en el suelo\nM: mapa (un clic pone el marcador y el camino hasta él%s) · N: el mapa chico con el norte arriba · J: red local (jugar con otros; captura la bandera: B pone la tuya)\nVida (abajo): las caídas de más de ~7 m duelen y de ~27 m matan; se recupera sola, y rápido comiendo un completo en los carritos de 5 y 6 Oriente\n1: cuchillo · 2: pistola · 3: rifle (otra vez o 0: guardar) · clic: disparar · botón derecho: apuntar · R: recargar" % [
+		" · Tab: ir a un lugar" if viaja else "", "; doble clic: ir ahí" if viaja else ""]

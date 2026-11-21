@@ -40,6 +40,8 @@ const Jugador := preload("res://jugador.gd")
 const Peaton := preload("res://peaton.gd")
 const Musica := preload("res://musica.gd")
 
+signal no_deja(por_que: String)  # captura la bandera no lo deja (con una bandera, sin jetpack): main.gd lo muestra en el mapa chico, porque el HUD de aquí se ve solo montado
+
 const CERCA := 6.0  # m: E sube a un vehículo a esta distancia; más lejos, lo trae
 const SEGUIR := 1.2  # s sin mover el mouse para que la cámara vuelva detrás del vehículo
 const PISO := 40.0  # grados: más empinado es un muro (más el cabeceo del vehículo: apoyar())
@@ -69,7 +71,8 @@ const TIPOS := {
 # la cámara, como a pie, acelerando de a poco (J_ACEL_H) y, sin teclas, deslizándose (J_ROCE_H); Mayús (o Q) más rápido.
 # El combustible se gasta mientras empuja y se recarga en el suelo; sin combustible en el aire cae, sin mando. No sube
 # más de J_TECHO m sobre lo que tiene debajo (un rayo, que da también la altura del HUD). Tocar el suelo bajando a más
-# de J_DURO m/s hace daño: jugador.danar(), si existe (lo agrega la barra de vida).
+# de J_DURO m/s hace daño: jugador.danar(), si existe (lo agrega la barra de vida). En captura la bandera, mientras se
+# prepara (jugador.sin_jetpack, bandera.gd), no se pone, y el que lo llevaba baja solo y se lo saca en el suelo.
 const J_SUBE := 10.0  # m/s hacia arriba con Espacio
 const J_FLOTA := 2.0  # m/s hacia abajo en el aire sin tocar nada (la flotación)
 const J_BAJA := 15.0  # m/s hacia abajo con C: soltarla ~20 m sobre el suelo para llegar flotando
@@ -137,6 +140,7 @@ var luz: OmniLight3D
 var aviso := ""  # un mensaje en el HUD durante t_aviso s
 var t_aviso := 0.0
 var musica: Node  # musica.gd: despegar desde el techo de la Torre Talca pone la música (null en el de otro jugador)
+var bajando_solo := false  # puesto y sin jetpack (jugador.sin_jetpack): baja solo (volar())
 var impactos: Array[float] = []  # --volar: la rapidez hacia abajo de cada aterrizaje
 
 # --conducir: lo medido mientras anda
@@ -199,7 +203,10 @@ func usar() -> void:
 		bajar()
 		return
 	if jugador.con_bandera and tipo != "bici":  # captura la bandera (bandera.gd): en auto se ocultaría, en jetpack volaría
-		avisar("con una bandera, solo a pie o en bicicleta (V: cambiar)")
+		no_deja_por("Con una bandera, solo a pie o en bicicleta (V: cambiar)")
+		return
+	if tipo == "jetpack" and jugador.sin_jetpack != "":  # la preparación (bandera.gd): la bandera no quedaría donde se llega a pie
+		no_deja_por(jugador.sin_jetpack + " (V: cambiar)")
 		return
 	if not activo or tipo == "jetpack" or global_position.distance_to(jugador.global_position) > CERCA:
 		traer()
@@ -207,16 +214,20 @@ func usar() -> void:
 
 
 # V: el que sigue en TIPOS (bicicleta, auto, jetpack), donde esté (montado o no); con el jetpack puesto, solo en el
-# suelo (una bicicleta a 100 m de altura caería con el personaje encima)
+# suelo (una bicicleta a 100 m de altura caería con el personaje encima). Sin jetpack (jugador.sin_jetpack), se lo salta
 func cambiar() -> void:
 	if montado and tipo == "jetpack" and en_aire:
 		avisar("en el aire no se puede cambiar: primero aterrice")
 		return
 	var ts := TIPOS.keys()
 	if montado and jugador.con_bandera and tipo == "bici":
-		avisar("con una bandera, solo a pie o en bicicleta")
+		no_deja_por("Con una bandera, solo a pie o en bicicleta")
 		return
-	armar(ts[(ts.find(tipo) + 1) % ts.size()])
+	var sig: String = ts[(ts.find(tipo) + 1) % ts.size()]
+	if sig == "jetpack" and jugador.sin_jetpack != "":
+		sig = ts[(ts.find(sig) + 1) % ts.size()]
+		no_deja_por(jugador.sin_jetpack)
+	armar(sig)
 	if montado:
 		peaton_al_vehiculo()
 		jugador.largo = t["brazo"]
@@ -1273,9 +1284,19 @@ func _unhandled_input(e: InputEvent) -> void:
 # la física del jetpack (puesto o en el suelo, sacado), en vez de la de las ruedas: ver «el jetpack», arriba
 func volar(dt: float) -> void:
 	var en_suelo := is_on_floor()
-	var mando: bool = montado and not jugador.quieto
+	# sin jetpack (captura la bandera, jugador.sin_jetpack) y puesto: en el suelo se lo saca; en el aire no se maneja y
+	# baja solo, rápido hasta 20 m sobre lo de abajo y flotando el resto, como soltando C a tiempo
+	var vetado: bool = montado and jugador.sin_jetpack != ""
+	if vetado and en_suelo:
+		sacarse()
+		no_deja_por(jugador.sin_jetpack + ": te lo sacaste")
+		vetado = false
+	elif vetado and not bajando_solo:
+		no_deja_por(jugador.sin_jetpack + ": baja solo al suelo")
+	bajando_solo = vetado
+	var mando: bool = montado and not jugador.quieto and not vetado
 	var sube := mando and Input.is_action_pressed("saltar")
-	var baja := mando and Input.is_action_pressed("descender")
+	var baja := (mando and Input.is_action_pressed("descender")) or (vetado and altura > 20.0)
 	var fuerte := mando and (Input.is_action_pressed("correr") or Input.is_action_pressed("impulso"))
 	var v2 := Input.get_vector("izquierda", "derecha", "adelante", "atras") if mando else Vector2.ZERO
 	var dir := Vector3(v2.x, 0, v2.y).rotated(Vector3.UP, jugador.yaw)
@@ -1448,6 +1469,13 @@ func avisar(s: String, segundos := 3.0, imprimir := true) -> void:
 	t_aviso = segundos
 	if imprimir:
 		print("vehiculo.gd: ", s)
+
+
+# lo que captura la bandera no deja: en el HUD (con el jetpack puesto) y en el mapa chico (no_deja), que se ve también a
+# pie, en bicicleta y en auto
+func no_deja_por(s: String) -> void:
+	avisar(s)
+	no_deja.emit(s)
 
 
 # ---------- el jetpack: lo que se ve ----------

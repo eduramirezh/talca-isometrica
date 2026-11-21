@@ -6,6 +6,7 @@
 #
 # En una partida en red no pausa, porque los demás siguen jugando: deja quieto al personaje (jugador.quieto, que respetan
 # también los vehículos y las armas) y se traga las teclas del juego. Corre también en pausa (PROCESS_MODE_ALWAYS).
+# Jugando captura la bandera (jugador.sin_viajes, bandera.gd) no están «ir a un lugar» ni «volver a la plaza».
 #
 # Esc y los otros paneles: con la lista de lugares, el mapa grande o el panel de la red abiertos, Esc los cierra a ellos.
 # Godot llama _input en el orden inverso del árbol, así que este (el último que main.gd agrega) la ve primero: si uno de
@@ -24,6 +25,8 @@ var b_pantalla: Button
 var b_personaje: Button
 var b_plano: Button
 var b_red: Button
+var b_viaje: Button  # «ir a un lugar» y «volver a la plaza»: no están mientras no se viaja (viajes())
+var b_plaza: Button
 var antes := Input.MOUSE_MODE_CAPTURED
 var en_red := false  # abierto durante una partida en red (sin pausa)
 
@@ -61,9 +64,9 @@ func _ready() -> void:
 	caja.add_child(espacio(6))
 
 	boton("Seguir jugando", "Esc", cerrar)
-	boton("Ir a un lugar…", "Tab", func(): cerrar_y(func(): main.viaje.abrir(true)))
+	b_viaje = boton("Ir a un lugar…", "Tab", func(): cerrar_y(func(): main.viaje.abrir(true)))
 	b_plano = boton("Mapa", "M", func(): cerrar_y(func(): main.plano.abrir(true)))
-	boton("Volver a la Plaza de Armas", "", volver_a_la_plaza)
+	b_plaza = boton("Volver a la Plaza de Armas", "", volver_a_la_plaza)
 	boton("Día o noche", "L", func(): cerrar_y(func(): main.ambiente.ir_a_hora(main.ambiente.dia_o_noche(main.ambiente.objetivo))))
 	b_red = boton("Red local…", "J", func(): cerrar_y(func(): main.red.abrir(true)))
 	caja.add_child(espacio(4))
@@ -73,6 +76,8 @@ func _ready() -> void:
 	caja.add_child(espacio(4))
 	boton("Salir del juego", "", func(): get_tree().quit())
 	visible = false
+	if main.jugador:
+		main.jugador.viajes_cambio.connect(viajes)
 
 
 func espacio(alto: float) -> Control:
@@ -137,6 +142,7 @@ func abrir(si: bool) -> void:
 			j.quieto = true
 		b_plano.disabled = main.plano == null  # --sin plano
 		b_red.disabled = main.red == null
+		viajes()
 		textos()
 		botones[0].grab_focus()
 	else:
@@ -152,6 +158,15 @@ func abrir(si: bool) -> void:
 
 func cerrar() -> void:
 	abrir(false)
+
+
+# los viajes, si el personaje viaja (jugador.sin_viajes); también con el menú abierto, si empieza o termina una partida
+func viajes() -> void:
+	var si: bool = main.jugador == null or main.jugador.sin_viajes == ""
+	b_viaje.visible = si
+	b_plaza.visible = si
+	if visible and get_viewport().gui_get_focus_owner() == null:
+		botones[0].grab_focus()
 
 
 # cierra el menú (y la pausa) y después abre lo que se eligió, que guarda el mouse tomado para cuando se cierre
