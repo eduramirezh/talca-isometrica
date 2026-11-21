@@ -165,6 +165,7 @@ juego/modelos/plaza.gd   la Plaza de Armas del juego en detalle (árboles, quios
 juego/modelos/raices.gd  el Edificio Raíces (3 Oriente 1645) de cerca: balcones con baranda de vidrio, ventanas hundidas, hall, azoteas, jardín y reja; se arma cuando llega su tesela
 juego/malla.gd, materiales.gd   el constructor de mallas y los materiales de todos los modelos del juego (shaders/: capa, patron, plaza/)
 juego/args.gd, fps.gd, glb.gd   las banderas de la línea de comandos, el arnés de --fps y lo que tools/export.py escribe en juego/mapa/indice.json (capas, luces, lugares, teselas)
+juego/modelos/torre_talca.gd   la Torre Talca de cerca: ventanas y cintas hundidas, planta baja vidriada, azotea, sala de máquinas y el letrero (su techo lo reconoce musica.gd)
 tools/check.py           revisión rápida del repo (make check), con las trampas de config/ y data/ que se pueden comprobar; .githooks/pre-commit la corre antes de cada commit (make hooks)
 tools/datadiff.py        qué cambió en los data/*.json (de una línea): claves, tamaños y elementos distintos contra HEAD u otra versión
 tests/                   pruebas del pipeline que corre make check (test_pipeline.py: huellas en Python y en la plantilla, geometría, línea de comandos) y golden.py (make golden: la salida de cada comando del pipeline, antes y después de un cambio)
