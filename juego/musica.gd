@@ -9,8 +9,8 @@
 #
 # «Sobre la torre» es despegar (Espacio en el suelo, vehiculo.gd volar()) con los pies dentro de su planta (PLANTA, la
 # de OSM w310246574 en metros de grilla, como en el hito) y más alto que SOBRE m: los muros llegan al suelo, así que
-# dentro de la planta solo se puede estar en el techo (a 37,2 m sobre la explanada de la plaza), en la sala de
-# máquinas o en el marco del letrero.
+# dentro de la planta solo se puede estar en la azotea (a 36,3 m sobre la explanada de la plaza, dentro del pretil de
+# modelos/torre_talca.gd), en la sala de máquinas o en el marco del letrero.
 #
 #   var m := preload("res://musica.gd").new(); add_child(m)
 #   m.despegue(global_position)   # vehiculo.gd, al despegar del suelo con el jetpack
