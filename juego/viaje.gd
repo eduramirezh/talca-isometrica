@@ -2,7 +2,8 @@
 # lugares de la página (mapa/indice.json, «lugares»: los de pipeline/pois.py, con su punto de grilla y la altura del
 # suelo), que se filtra escribiendo; Enter o un doble clic lleva al personaje ahí (jugador.gd ir(): aparece cuando la
 # tesela del lugar tenga su colisión, mapa.gd). Esc o Tab la cierra. El punto de un lugar es su dirección: suele caer en
-# la vereda o en el borde del recinto, no al medio (trampa «El punto del lugar no es el centro del hito»).
+# la vereda o en el borde del recinto, no al medio (trampa «El punto del lugar no es el centro del hito»). Jugando
+# captura la bandera (jugador.sin_viajes, bandera.gd) Tab no la abre, solo avisa por qué, y si estaba abierta se cierra.
 extends CanvasLayer
 
 const Glb := preload("res://glb.gd")
@@ -39,6 +40,9 @@ func _ready() -> void:
 	filtro.text_changed.connect(func(_t): llenar())
 	filtro.text_submitted.connect(func(_t): elegir(0 if lista.get_selected_items().is_empty() else lista.get_selected_items()[0]))
 	lista.item_activated.connect(elegir)
+	var j := jugador()
+	if j:
+		j.viajes_cambio.connect(func(): if panel.visible and j.sin_viajes != "": abrir(false))
 
 
 func _input(e: InputEvent) -> void:
@@ -63,6 +67,9 @@ func _input(e: InputEvent) -> void:
 
 func abrir(si: bool) -> void:
 	var j := jugador()
+	if si and j and j.sin_viajes != "":
+		j.no_viaja.emit(j.sin_viajes)
+		return
 	panel.visible = si
 	if j:
 		j.quieto = si

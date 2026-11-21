@@ -1,14 +1,18 @@
 # Captura la bandera: un modo de la red local (red.gd) para dos o más jugadores, cada uno con su bandera.
 #
 # El anfitrión lo prepara en el panel de la red (J): cada uno pone su bandera con B donde quiera defenderla (puede
-# moverla mientras se prepara; el que no la puso, la tiene donde esté al empezar), y el anfitrión empieza. Jugando, se
+# moverla mientras se prepara; el que no la puso, la tiene donde esté al empezar), y el anfitrión empieza. Mientras se
+# prepara no hay jetpack (jugador.gd sin_jetpack, vehiculo.gd): con él una bandera quedaría en un techo, y con una
+# bandera no se vuela (abajo), así que nadie la sacaría de ahí; tampoco jugando para el que no ha puesto la suya. Al
+# empezar, cada uno parte en su bandera (a_mi_bandera(): su juego lo lleva, como al reaparecer). Jugando, se
 # toma una bandera ajena pasando junto a ella (a pie o en bicicleta: TOMAR m) y se anota llevándola a la propia
 # (ANOTAR m de su base), siempre que la propia esté en su lugar: +1 al que anota, y la bandera vuelve a su base. Gana
 # el primero que llega a `meta` puntos (el anfitrión la elige; 0: sin límite). Con una bandera, solo a pie o en
 # bicicleta (vehiculo.gd: en auto se ocultaría, en jetpack volaría sobre todo); si el que la lleva muere, queda en el
 # suelo donde cayó: su dueño la devuelve tocándola, otro la puede tomar, y si nadie la toca vuelve sola a los VUELTA s.
 # El que muere reaparece en su bandera a los `reaparecer` s (jugador.gd reaparece_en, espera_muerto; vida.gd lleva la
-# cuenta), y mientras se juega no se viaja (jugador.gd sin_viajes: Tab, el mapa grande, el menú y la red).
+# cuenta), y mientras se juega no se viaja (jugador.gd sin_viajes: Tab, el mapa grande, el menú y la red quitan sus
+# viajes).
 #
 # Quién decide: el anfitrión. Lo demás de red.gd no tiene autoridad (cada uno simula lo suyo), pero una bandera no
 # puede estar en dos manos: cada uno le pide al anfitrión tomar, anotar, soltar o devolver (tramite(), confiable; el
@@ -28,6 +32,8 @@
 #   --ctf-prueba: toma la bandera ajena más cercana, la lleva a la propia (anota), toma otra vez, muere con ella y
 #   espera la reaparición; imprime cada paso (con --png, la captura sale después)
 #   --ctf-robar s: toma la bandera ajena más cercana y se queda con ella s segundos (la regla de la propia en su lugar)
+#   --ctf-preparar: el anfitrión (--servidor, sin --ctf) sube con el jetpack, prepara (baja solo y se lo saca), pone la
+#   suya, prueba ponerse el jetpack, se aleja, empieza (vuelve a su bandera) y prueba viajar; imprime cada paso
 extends Node3D
 
 const Args := preload("res://args.gd")
@@ -44,6 +50,8 @@ const LLEVADA := 0.45  # la escala de la bandera en la espalda
 const PEDIR_CADA := 0.5  # s entre dos pedidos iguales (cada cuadro junto a una bandera pediría tomarla)
 const FARO_DESDE := 35.0  # m de la cámara: más cerca, la columna de luz no se dibuja (la propia, a los pies, tapaba la vista)
 const NO_VIAJA := "En captura la bandera no se viaja: a pie, en bicicleta o en auto"
+const SIN_JETPACK := "Mientras se prepara, sin jetpack"
+const SIN_JETPACK_NI_BANDERA := "Sin jetpack hasta que pongas tu bandera (B)"
 
 var red: Node3D  # red.gd
 var jugador: CharacterBody3D  # jugador.gd
@@ -95,6 +103,8 @@ func _ready() -> void:
 		prueba()
 	elif Args.has("--ctf-robar"):
 		prueba_robar()
+	elif Args.has("--ctf-preparar"):
+		prueba_preparar()
 
 
 # ---------- quién es quién ----------
@@ -244,14 +254,31 @@ func aplicar(e: Dictionary) -> void:
 	if fase == "jugar" and antes != "jugar":
 		t_pedido.clear()
 	ajustar_jugador()
+	if e["evento"].size() == 3 and e["evento"][0] == "empieza":
+		a_mi_bandera()
+
+
+# al empezar (también otra ronda), cada uno parte en su bandera: lo lleva su juego, como al reaparecer (jugador.gd ir(),
+# que no mira sin_viajes y espera la colisión de allá; montado, con el vehículo). El que la tiene donde está, no se mueve
+func a_mi_bandera() -> void:
+	var mia = banderas.get(yo())
+	if mia == null:
+		return
+	var b: Vector3 = mia["base"]
+	var lejos := jugador.global_position.distance_to(b)
+	if lejos < TOMAR:
+		return
+	jugador.ir(b.x, -b.z, b.y)
+	print("bandera.gd: a tu bandera, en x %.1f, y %.1f (estaba a %.0f m)" % [b.x, -b.z, lejos])
 
 
 # lo que cambia en el personaje: no viaja, espera más muerto y reaparece en su bandera; con una, solo a pie o en
-# bicicleta; el camino a la propia mientras lleva una
+# bicicleta; sin jetpack mientras se prepara (y jugando, sin la propia puesta); el camino a la propia mientras lleva una
 func ajustar_jugador() -> void:
 	var jugando := fase == "jugar"
 	var mia = banderas.get(yo())
 	jugador.sin_viajes = NO_VIAJA if jugando else ""
+	jugador.sin_jetpack = SIN_JETPACK if fase == "preparar" else SIN_JETPACK_NI_BANDERA if jugando and mia == null else ""
 	jugador.espera_muerto = reaparecer if jugando else Jugador.ESPERA_MUERTO
 	jugador.reaparece_en = Vector3(mia["base"].x, -mia["base"].z, mia["base"].y) if jugando and mia else Vector3.INF
 	jugador.con_bandera = jugando and lleva_de(yo()) != 0
@@ -275,7 +302,7 @@ func contar(ev: Array) -> void:
 	var t := ""
 	match ev[0]:
 		"prepara":
-			t = "Captura la bandera: pon la tuya con B donde quieras defenderla"
+			t = "Captura la bandera: pon la tuya con B donde quieras defenderla (a pie: mientras se prepara, sin jetpack)"
 		"empieza":
 			t = "¡A jugar! Toma una bandera ajena y llévala a la tuya (a %d puntos)" % meta if meta > 0 else "¡A jugar! Toma una bandera ajena y llévala a la tuya"
 			if not banderas.has(yo()):
@@ -701,7 +728,7 @@ func escribir_marcador() -> void:
 			for id in jugadores():
 				if not banderas.has(id):
 					faltan.append("tú" if id == yo() else nombre_de(id))
-			l.append("B: pon tu bandera donde quieras defenderla" + (" (puesta; puedes moverla)" if mia else ""))
+			l.append("B: pon tu bandera donde quieras defenderla" + (" (puesta; puedes moverla)" if mia else "") + " · sin jetpack")
 			l.append(("Faltan: %s · " % ", ".join(faltan) if not faltan.is_empty() else "") + ("J: empezar" if red.anfitrion() else "El anfitrión empieza"))
 		"jugar":
 			if mia == null:
@@ -782,7 +809,7 @@ func refrescar_panel() -> void:
 	if not red.en_partida():
 		panel_lbl.text = "Para jugar, cree una partida o únase a una"
 	elif anf:
-		panel_lbl.text = {"": "Preparar: cada uno pone su bandera con B; después, Empezar", "preparar": "Cuando estén puestas: Empezar (el que no la puso la tiene donde esté)", "jugar": "Jugando: nadie viaja; quien muere reaparece en su bandera", "fin": "Otra ronda: las mismas banderas, desde cero"}[fase]
+		panel_lbl.text = {"": "Preparar: cada uno pone su bandera con B (sin jetpack); después, Empezar", "preparar": "Cuando estén puestas: Empezar (cada uno parte en la suya; el que no la puso, la tiene donde esté)", "jugar": "Jugando: nadie viaja; quien muere reaparece en su bandera", "fin": "Otra ronda: las mismas banderas, desde cero"}[fase]
 	else:
 		panel_lbl.text = "El anfitrión prepara y empieza" if fase == "" else "Jugando a %d puntos" % meta if fase == "jugar" else ""
 
@@ -848,6 +875,74 @@ func prueba_robar() -> void:
 		jugador.cuerpo.rotation.y = jugador.yaw
 	await arbol.create_timer(Args.num("--ctf-robar", 20.0, 1.0, 600.0)).timeout
 	print("bandera.gd: puntos %s" % str(puntos))
+	terminar_prueba()
+
+
+# --ctf-preparar (el anfitrión, solo en su partida): el jetpack mientras se prepara, la partida desde la propia y los
+# viajes quitados al jugar
+func prueba_preparar() -> void:
+	var arbol := get_tree()
+	var main := get_parent()
+	var v: CharacterBody3D = main.vehiculo
+	await arbol.process_frame
+	if jugador.mapa:
+		await jugador.mapa.esperar()
+	if not red.anfitrion():
+		print("bandera.gd: --ctf-preparar: es para el anfitrión (--servidor)")
+		terminar_prueba()
+		return
+	# 1. en el aire con el jetpack cuando se prepara: baja solo y se lo saca
+	v.armar("jetpack")
+	v.usar()
+	Input.action_press("saltar")
+	await esperar(func(): return v.altura > 25.0, 15.0)
+	Input.action_release("saltar")
+	print("bandera.gd: con el jetpack a %.0f m sobre el suelo; prepara" % v.altura)
+	preparar()
+	var t0 := Time.get_ticks_msec()
+	var bajo: bool = await esperar(func(): return not v.montado, 45.0)
+	print("bandera.gd: %s a los %.1f s (en el suelo: %s, vida %.0f)" % ["se sacó el jetpack" if bajo else "sigue con el jetpack",
+		(Time.get_ticks_msec() - t0) / 1000.0, jugador.is_on_floor(), jugador.vida])
+	# 2. ponérselo otra vez: E con el jetpack, y V
+	v.usar()
+	print("bandera.gd: E con el jetpack en el suelo: puesto %s" % v.montado)
+	var vistos := []
+	for i in 3:
+		v.cambiar()
+		vistos.append(v.tipo)
+	print("bandera.gd: V tres veces: %s" % ", ".join(vistos))
+	if v.montado:
+		v.usar()
+	# 3. la propia aquí, lejos de ella al empezar, y de vuelta
+	await arbol.create_timer(0.5).timeout
+	plantar()
+	if not await esperar(func(): return banderas.has(yo()), 5.0):
+		print("bandera.gd: no pudo poner su bandera")
+		terminar_prueba()
+		return
+	var b: Vector3 = banderas[yo()]["base"]
+	jugador.ir(b.x + 80.0, -b.z, b.y)
+	await esperar(func(): return jugador.llegar == Vector3.INF, 20.0)
+	await arbol.create_timer(0.5).timeout
+	print("bandera.gd: a %.0f m de su bandera; empieza" % jugador.global_position.distance_to(b))
+	empezar()
+	await arbol.physics_frame
+	await esperar(func(): return jugador.llegar == Vector3.INF, 20.0)
+	await arbol.create_timer(0.5).timeout
+	print("bandera.gd: empezó a %.1f m de su bandera" % jugador.global_position.distance_to(b))
+	# 4. jugando, los viajes no se ofrecen: el menú, Tab, el mapa grande y la red
+	main.menu.abrir(true)
+	print("bandera.gd: en el menú, «Ir a un lugar» %s y «Volver a la Plaza de Armas» %s" % [
+		"se ve" if main.menu.b_viaje.visible else "no está", "se ve" if main.menu.b_plaza.visible else "no está"])
+	main.menu.abrir(false)
+	main.viaje.abrir(true)
+	print("bandera.gd: Tab: la lista de lugares %s" % ("abierta" if main.viaje.panel.visible else "no se abre"))
+	main.viaje.abrir(false)
+	if plano:
+		print("bandera.gd: la ayuda del mapa grande: «%s»" % plano.ayuda.text)
+	red.refrescar()
+	print("bandera.gd: la lista de jugadores de la red: «%s»" % red.jugadores_lbl.text)
+	print("bandera.gd: jugador.viajar() a la plaza: %s" % jugador.viajar(0.0, -45.0, 0.0))
 	terminar_prueba()
 
 
