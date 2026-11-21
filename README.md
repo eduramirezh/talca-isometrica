@@ -99,7 +99,8 @@ pipeline/
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos (Commons por nombre, ubicación o
                          categoría; Panoramax; Mapillary y Flickr con clave)
   mapillary.py           Mapillary: la clave, las fotos de la comuna (teselas vectoriales) y qué lugares tienen fotos que los miran;
-                         la búsqueda y la elección (una por pasada, de frente) que usa landmark.py photos --mapillary
+                         la búsqueda y la elección (una por pasada, de frente) que usa landmark.py photos --mapillary;
+                         fachada y punto: las fotos de un edificio o un punto con su planta y una regla dibujadas encima
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
                          la API map de OSM por cajas (tiles, tiles-comuna);
                          cruces, calzadas y ramales de la Ruta 5 -> data/ruta5.json

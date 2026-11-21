@@ -258,6 +258,31 @@ class Mapillary(unittest.TestCase):
         self.assertIsNotNone(mapillary.facing(cam[:4] + [185.0, 1] + cam[6:], 0, 0, 80))   # a panorama sees it
         self.assertIsNone(mapillary.facing(cam, 0, 0, 40))  # too far
 
+    def test_camera(self):
+        # a level camera 50 m south of the plaza on the grid, looking along +y (5° east of true north): its matrix from
+        # the world (east, north, up) to the camera (right, down, forward), as Mapillary's angle-axis
+        t = math.radians(5)
+        R = [[math.cos(t), -math.sin(t), 0], [0, 0, -1], [math.sin(t), math.cos(t), 0]]
+        a = math.acos((R[0][0] + R[1][1] + R[2][2] - 1) / 2)
+        v = [(R[2][1] - R[1][2]) * a / (2 * math.sin(a)), (R[0][2] - R[2][0]) * a / (2 * math.sin(a)), (R[1][0] - R[0][1]) * a / (2 * math.sin(a))]
+        for row, want in zip(mapillary.rotation(v), R):
+            for p, q in zip(row, want): self.assertAlmostEqual(p, q)
+        lat, lon = common.unloc(0, -50)
+        c = {'computed_rotation': v, 'computed_geometry': {'coordinates': [lon, lat]}, 'camera_type': 'perspective', 'camera_parameters': [0.6, 0, 0]}
+        cam = mapillary.Camera(c, (1920, 1080), 1.5)
+        self.assertAlmostEqual(cam.pitch, 0); self.assertAlmostEqual(cam.roll, 0)
+        f = .6 * 1920 / 50                                  # pixels per metre at 50 m
+        for (x, y, z), (u, w) in [((0, 0, 1.5), (960, 540)), ((0, 0, 6.5), (960, 540 - 5 * f)), ((5, 0, 1.5), (960 + 5 * f, 540))]:
+            px = cam.at(x, y, z)
+            self.assertAlmostEqual(px[0], u, delta=.5); self.assertAlmostEqual(px[1], w, delta=.5)
+        self.assertIsNone(cam.at(0, -80, 1.5))              # behind it
+        self.assertEqual(cam.line((0, -80, 0), (0, -60, 0)), [])
+        (pl,) = cam.line((-3, -20, 0), (-3, 20, 0))          # a kerb from beside the camera to ahead of it: cut at its plane
+        self.assertTrue(pl[-1][0] < 960 and pl[-1][1] > 540)  # left of and under the centre
+        pano = mapillary.Camera({**c, 'camera_type': 'spherical'}, (2048, 1024), 1.5)
+        self.assertAlmostEqual(pano.at(0, 0, 1.5)[0], 1024)
+        u = pano.at(0, -100, 1.5)[0]; self.assertAlmostEqual(min(u, 2048 - u), 0, delta=.01)   # behind it: the seam
+
 
 if __name__ == '__main__':
     unittest.main()
