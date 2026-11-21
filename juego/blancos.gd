@@ -8,9 +8,10 @@
 # muñeco).
 #
 # Cada uno tiene VIDA y una barra chica encima, siempre de frente a la cámara. Implementan recibir_dano(cantidad, punto,
-# desde), el contrato de armas.gd: sobre CABEZA m el golpe vale el doble; el muñeco se enciende un instante, muestra el
-# daño y se bambolea (un resorte que lo inclina sobre el borde de la base, hacia donde iba el golpe); con la vida en 0
-# cae hacia ese lado, y a los REAPARECE s se levanta con la vida entera.
+# desde), el contrato de armas.gd: sobre CABEZA m el golpe vale el doble, y devuelven el daño que tomaron (armas.gd
+# muestra la cifra, dorada en la cabeza); el muñeco se enciende un instante y se bambolea (un resorte que lo inclina
+# sobre el borde de la base, hacia donde iba el golpe); con la vida en 0 cae hacia ese lado, y a los REAPARECE s se
+# levanta con la vida entera.
 #
 #   var b := preload("res://blancos.gd").new(); b.mapa = mapa; add_child(b)   # main.gd
 #   await b.listos()     # ya puestos (esperan la colisión de la plaza)
@@ -67,7 +68,6 @@ class Muneco extends Node3D:
 	var t_brillo := 0.0
 	var arpillera := StandardMaterial3D.new()  # la suya: se enciende al golpearlo
 	var barra := ShaderMaterial.new()
-	var cifras := []  # [Label3D, s]
 
 	func _ready() -> void:
 		add_child(pivote)
@@ -169,10 +169,11 @@ class Muneco extends Node3D:
 		s.radius = r
 		return s
 
-	# el contrato de armas.gd: cantidad de daño en el punto (mundo), desde donde vino (la boca del cañón, el pecho)
-	func recibir_dano(cantidad: float, punto: Vector3, desde: Vector3) -> void:
+	# el contrato de armas.gd: cantidad de daño en el punto (mundo), desde donde vino (la boca del cañón, el pecho); el
+	# que tomó, el doble en la cabeza
+	func recibir_dano(cantidad: float, punto: Vector3, desde: Vector3) -> float:
 		if vida <= 0.0:
-			return  # en el suelo: ya cayó
+			return 0.0  # en el suelo: ya cayó
 		var cabeza := (pivote.global_transform.affine_inverse() * punto).y > CABEZA
 		var dano := cantidad * (2.0 if cabeza else 1.0)
 		vida = maxf(vida - dano, 0.0)
@@ -181,27 +182,13 @@ class Muneco extends Node3D:
 		d.y = 0.0
 		d = d.normalized() if d.length() > 1e-4 else Vector3.BACK
 		vel += d * dano * EMPUJE
-		cifra(punto, dano, cabeza)
 		if vida <= 0.0:
 			caido = 0.001
 			dir_caida = d  # hacia donde iba el golpe (si iba de vuelta en el bamboleo, igual: el golpe manda)
 			ang = maxf(incl.dot(d), 0.05)
 			vang = maxf(vel.dot(d), 1.6)
 			print("blancos.gd: %s cae (vuelve en %.0f s)" % [name, REAPARECE])
-
-	func cifra(p: Vector3, dano: float, cabeza: bool) -> void:
-		var l := Label3D.new()
-		l.text = "%d" % roundi(dano)
-		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		l.no_depth_test = true
-		l.pixel_size = 0.0035
-		l.font_size = 44
-		l.outline_size = 10
-		l.modulate = Color(1, 0.82, 0.3) if cabeza else Color(1, 1, 1)
-		l.outline_modulate = Color(0, 0, 0, 0.8)
-		add_child(l)
-		l.global_position = p + Vector3.UP * 0.15 + Vector3(randf_range(-0.1, 0.1), 0, randf_range(-0.1, 0.1))
-		cifras.append([l, 0.0])
+		return dano
 
 	# se inclina ang rad hacia t (horizontal, en su marco), sobre el borde de la base de ese lado
 	func inclinar(t: Vector3) -> void:
@@ -243,13 +230,6 @@ class Muneco extends Node3D:
 		t_brillo = maxf(t_brillo - dt, 0.0)
 		arpillera.emission_energy_multiplier = 2.5 * t_brillo / 0.12
 		barra.set_shader_parameter("vida", vida / VIDA)
-		for c in cifras:
-			c[1] += dt
-			var l: Label3D = c[0]
-			l.position.y += 0.8 * dt
-			l.modulate.a = clampf((0.9 - c[1]) / 0.4, 0.0, 1.0)
-		while not cifras.is_empty() and cifras[0][1] > 0.9:
-			cifras.pop_front()[0].queue_free()
 
 
 func _ready() -> void:

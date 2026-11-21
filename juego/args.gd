@@ -77,6 +77,7 @@ const BANDERAS := {
 	"--ctf-robar": ["s", "bandera.gd: toma la bandera ajena más cercana y se queda con ella s segundos, y sale (con --png, después)"],
 	"--red-foto": ["n", "red.gd: con --png, la captura al llegar el tiro n de otro jugador, con el juego congelado (el fogonazo y la trazadora)"],
 	"--red-tiros": ["n", "red.gd: espera a otro jugador de la partida, le apunta y le dispara n veces (el arma de --arma; --apuntar), imprime cada impacto y la vida que le quedó, y sale (con --png, después)"],
+	"--red-cabeza": ["", "red.gd: con --red-tiros, le apunta a la cabeza en vez del pecho"],
 }
 
 # lo que apaga --sin (y quién lo lee)

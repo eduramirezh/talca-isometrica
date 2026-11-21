@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **Los tiros a la cabeza se notan.** La cabeza ya valía el doble (en los muñecos y entre jugadores), pero el que disparaba no lo veía: la X de la mira y el sonido eran los del cuerpo, y entre jugadores no salía ninguna cifra.
+  - `recibir_dano()` devuelve el daño que tomó (`blancos.gd`, `red.gd Blanco`): más que el del arma es la cabeza, y 0 es que no tomó nada (un jugador recién reaparecido, que ya no marca la X).
+  - En la cabeza, la X de la mira sale más grande y dorada, con borde (roja si lo botó), y suena un tic metálico (`sonidos()`, hecho en código como los demás).
+  - La cifra del daño ahora la pone `armas.gd cifra()` para todo lo que se hiere, también los otros jugadores: a la derecha del impacto (encima van el nombre o la barra de vida), de tamaño fijo en pantalla (a 50 m se lee como a 5) y dorada en la cabeza. Los golpes seguidos al mismo blanco se suman en una sola: una ráfaga de rifle es un número que crece, no una pila.
+  - Al que bota a otro jugador le sale «Mataste a Ana de un tiro en la cabeza» (o «… con el rifle») cuando el porte del herido lo confirma; los demás siguen viendo «Ana murió», porque quién mató a quién no viaja y la red no cambia.
+  - Probado con `--disparar` contra los muñecos y en la red con `--red-cabeza` (nuevo: `--red-tiros` le apunta a la cabeza), pistola y rifle, cabeza y cuerpo, y en capturas con `--pausa` y `--png` (que `--red-tiros` ahora también respeta).
+
 - **El juego a la hora del computador.** El juego partía siempre el 15 de enero a las 17:00, aunque afuera fuera de noche o invierno. Ahora, jugando, toma la hora y el día del computador y el reloj corre con el suyo: el sol, el atardecer, los faroles y la noche van como afuera (`juego/ambiente.gd`, `al_reloj()`). T y L la siguen moviendo, y L de noche vuelve a la hora del computador si es de día.
   - La diferencia con UTC es la de Chile ese día (`utc_chile()`): la del computador si es −3 o −4; si no (otra zona horaria), la regla de Chile desde 2023, el invierno entre el primer domingo desde el 2 de abril y el primer domingo desde el 2 de septiembre. Así las 18:00 del computador son las 18:00 de Talca, con el sol de esa hora. De 2023 a 2030, los 2.922 días dan lo mismo que `America/Santiago`.
   - En una partida de la red local, la hora es la del anfitrión: la manda a cada uno que llega (que la toma de una vez, con un aviso si el sol salta) y a todos cuando la mueve con T, L o el menú (`la_hora()`, una rpc en el nodo «ambiente», con su propia numeración). Cada uno puede mover la suya, solo para él; al salir de la partida vuelve a la de su computador. Una copia anterior del juego sigue con su hora y deja un error en su consola cuando le llega.

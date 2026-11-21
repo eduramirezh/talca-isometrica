@@ -26,11 +26,13 @@
 # Armas.CAPA_RED, que solo ven los rayos de las armas (no choca con nada). El que pega decide, como en todo lo demás: le
 # manda el daño al herido (tocado(), confiable; el doble en la cabeza, como en los muñecos) y el juego del herido se lo
 # quita (jugador.gd recibir_dano(), con quién fue en la causa); su vida vuelve en su porte, y al caer los demás lo ven
-# tendido. Una copia del juego de antes (sin porte(): ANTIGUA) sigue viendo a los demás, pero sin armas, y no recibe
-# los tiros: se avisa una vez.
+# tendido, con el aviso «Ana murió» o, el que lo botó, «Mataste a Ana de un tiro en la cabeza» (cuando su porte lo
+# confirma: Otro.baja). Una copia del juego de antes (sin porte(): ANTIGUA) sigue viendo a los demás, pero sin armas,
+# y no recibe los tiros: se avisa una vez.
 #
-#   --red-tiros n [--arma rifle --apuntar]: espera a otro jugador, le apunta y le dispara n veces (armas.gd prueba()),
-#   e imprime cada impacto y la vida que le quedó según su juego; el herido imprime cada daño (tocado())
+#   --red-tiros n [--arma rifle --apuntar --red-cabeza --pausa s --png x.png]: espera a otro jugador, le apunta (al
+#   pecho; a la cabeza) y le dispara n veces (armas.gd prueba()), e imprime cada impacto y la vida que le quedó según su
+#   juego; el herido imprime cada daño (tocado()); con --png, la captura, congelada los s de --pausa tras el último tiro
 #   --red-foto n --png x.png: la captura al llegar el tiro n de otro jugador, con el juego congelado (el fogonazo)
 extends Node3D
 
@@ -626,7 +628,11 @@ func prueba_tiros() -> void:
 		print("red.gd: le apunta a %s (vida %.0f)" % [apuntar_a.nombre, apuntar_a.vida_red])
 		await arbol.create_timer(1.0).timeout  # la cámara llega
 		armas.prueba_on = true
-		await armas.prueba(roundi(Args.num("--red-tiros", 3.0, 1.0, 200.0)))
+		var pausa := Args.num("--pausa", -1.0, 0.0, 5.0) if Args.has("--png") else -1.0
+		await armas.prueba(roundi(Args.num("--red-tiros", 3.0, 1.0, 200.0)), pausa)
+		if pausa >= 0.0:  # congelado después del último tiro (la cifra, la X de la mira): la captura, ya
+			prueba_lista = true
+			return
 		await arbol.create_timer(1.0).timeout  # su estado, con lo que le quitaron
 		if is_instance_valid(apuntar_a):
 			print("red.gd: %s: vida %.0f según su juego, %s" % [apuntar_a.nombre, apuntar_a.vida_red, "tendido" if apuntar_a.vida_red <= 0.0 else "de pie"])
@@ -637,11 +643,13 @@ func prueba_tiros() -> void:
 		arbol.quit()
 
 
-# la cámara de jugador.gd hacia el pecho de o: corrige yaw y pitch con lo que le falta a la cámara (una parte por
-# cuadro de física: la cámara se mueve recién en el cuadro siguiente)
+# la cámara de jugador.gd hacia el pecho de o (con --red-cabeza, a la cabeza: 1,65 m sobre los pies, sobre CABEZA):
+# corrige yaw y pitch con lo que le falta a la cámara (una parte por cuadro de física: la cámara se mueve recién en el
+# cuadro siguiente)
 func apuntar(o: Otro) -> void:
 	var cam: Camera3D = jugador.cam
-	var d := (o.blanco.global_position + Vector3.UP * 0.35 - cam.global_position).normalized()
+	var alto := 0.75 if Args.has("--red-cabeza") else 0.35  # sobre el Blanco, a 0,9 m de los pies
+	var d := (o.blanco.global_position + Vector3.UP * alto - cam.global_position).normalized()
 	var f := -cam.global_basis.z
 	jugador.yaw += 0.35 * wrapf(atan2(-d.x, -d.z) - atan2(-f.x, -f.z), -PI, PI)
 	jugador.pitch += 0.35 * (asin(clampf(d.y, -1.0, 1.0)) - asin(clampf(f.y, -1.0, 1.0)))
@@ -650,8 +658,8 @@ func apuntar(o: Otro) -> void:
 # ---------- otro jugador, como se ve aquí ----------
 
 # lo que le pega a otro jugador: un Area3D en Armas.CAPA_RED, que solo ven los rayos de armas.gd (rayo(), cortar()), con
-# la entrada de las armas: recibir_dano() se lo pasa a su Otro (herido()), vida marca la X roja de la mira al botarlo y
-# polvo es lo que salta
+# la entrada de las armas: recibir_dano() se lo pasa a su Otro (herido()) y devuelve el daño que tomó (la cabeza en la
+# mira y la cifra), vida marca la X roja de la mira al botarlo y polvo es lo que salta
 class Blanco extends Area3D:
 	var otro: Node3D  # Otro
 	var polvo := Color(0.55, 0.07, 0.07)  # lo que salta al darle
@@ -659,8 +667,8 @@ class Blanco extends Area3D:
 		get:
 			return otro.vida
 
-	func recibir_dano(cantidad: float, punto: Vector3, desde: Vector3) -> void:
-		otro.herido(cantidad, punto, desde)
+	func recibir_dano(cantidad: float, punto: Vector3, desde: Vector3) -> float:
+		return otro.herido(cantidad, punto, desde)
 
 
 class Otro extends Node3D:
@@ -703,6 +711,7 @@ class Otro extends Node3D:
 	var vida_red := 100.0  # la que dice su juego
 	var vida := 100.0  # esa, menos lo que se le acaba de quitar aquí (la X roja de la mira, armas.gd, antes de su porte)
 	var t_golpe := 100.0  # s desde el último golpe de aquí: hasta GOLPE_RED, un porte no le devuelve la vida
+	var baja := ""  # el último golpe de aquí lo dejó en 0: cómo («de un tiro en la cabeza»), para el aviso de su porte
 	var invulnerable := false
 	var antigua := false  # una copia del juego de antes de las armas en la red: no ve los tiros ni los recibe
 	var sin_porte := 0  # estados seguidos sin su porte()
@@ -792,7 +801,11 @@ class Otro extends Node3D:
 		if v_red <= 0.0 and vida_red > 0.0:
 			t_muerto = 0.0
 			if recibido:
-				red.avisar("%s murió" % (nombre if nombre != "" else "Otro jugador"))
+				var quien := nombre if nombre != "" else "Otro jugador"
+				if baja != "" and t_golpe < red.GOLPE_RED:  # lo botó un golpe de aquí, y su juego lo confirma
+					red.avisar("Mataste a %s %s" % [quien, baja])
+				else:
+					red.avisar("%s murió" % quien)
 		vida_red = v_red
 		# un porte que salió antes de que le llegara el último golpe de aquí todavía no lo descuenta
 		vida = minf(vida, v_red) if t_golpe < red.GOLPE_RED else v_red
@@ -804,15 +817,21 @@ class Otro extends Node3D:
 		return "a pie" + (" " + red.CON[arma] if arma != "" else "")
 
 	# un tiro o tajo de aquí le pegó (armas.gd impacto(), por su Blanco): el daño, el doble sobre CABEZA, va a su juego
-	# (tocado()), que se lo quita; aquí se descuenta de vida hasta que llegue su porte
-	func herido(cantidad: float, punto: Vector3, desde: Vector3) -> void:
+	# (tocado()), que se lo quita; aquí se descuenta de vida hasta que llegue su porte. Devuelve el daño (0: ninguno)
+	func herido(cantidad: float, punto: Vector3, desde: Vector3) -> float:
 		if antigua or not recibido or vida <= 0.0 or invulnerable:
-			return
+			return 0.0
 		var cabeza: bool = not montado and (peaton.global_transform.affine_inverse() * punto).y > red.CABEZA
 		var d := cantidad * (2.0 if cabeza else 1.0)
+		var arma_mia: String = red.armas.tipo if red.armas else ""
 		vida = maxf(vida - d, 0.0)
 		t_golpe = 0.0
-		red.tocado.rpc_id(id, d, punto, desde, red.armas.tipo if red.armas else "", cabeza)
+		baja = ""
+		if vida <= 0.0:
+			var golpe := "de un tajo" if arma_mia == "cuchillo" else "de un tiro"
+			baja = "%s en la cabeza" % golpe if cabeza else red.CON.get(arma_mia, "")
+		red.tocado.rpc_id(id, d, punto, desde, arma_mia, cabeza)
+		return d
 
 	# su tiro, tajo o corte (red.gd tiro()): el fogonazo en la boca de su arma como se ve aquí (o en la que mandó), la
 	# trazadora, el polvo y la marca (los de armas.gd), el retroceso o el golpe del peatón y el sonido donde está

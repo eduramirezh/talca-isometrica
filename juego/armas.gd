@@ -8,8 +8,11 @@
 # que apuntando, y más corriendo o en el aire), que empieza a la altura del personaje (lo que hay entre la cámara y él
 # no cuenta) y no lo ve a él; si desde la boca del cañón el punto queda tapado (un muro al lado), el tiro da en lo que lo
 # tapa. Lo golpeado cuyo cuerpo, o un ancestro, tiene recibir_dano(cantidad, punto, desde) recibe el daño (los muñecos;
-# el jugador, si lo implementa); en lo demás queda polvo (chispas en los autos) y, en lo fijo, una marca. El cuchillo
+# los otros jugadores de la red); en lo demás queda polvo (chispas en los autos) y, en lo fijo, una marca. El cuchillo
 # corta a ALCANCE frente al pecho, en la dirección de la cámara, a los 0,12 s del golpe (cuando la hoja pasa).
+# recibir_dano() devuelve el daño que tomó (0: ninguno, como un jugador recién reaparecido), y es más que `cantidad` si
+# fue en la cabeza, que vale el doble (lo decide cada uno: blancos.gd CABEZA, red.gd CABEZA): el tiro a la cabeza se
+# nota en la X de la mira, más grande y dorada, en un tic metálico y en la cifra del daño, dorada.
 # Efectos: fogonazo (una luz y un destello), trazadora, polvo o chispas, marcas (las últimas MARCAS), el retroceso de la
 # cámara (sube y vuelve; un poco queda: hay que bajar el mouse en una ráfaga) y del arma, y sonidos hechos en código
 # (sonidos(): ruido filtrado con envolventes, no hay archivos de audio).
@@ -22,8 +25,9 @@
 #   a.elegir("rifle")      # 1, 2, 3; "" la guarda
 #   await a.prueba(n)      # --disparar n [--apuntar] [--pausa s]: dispara n veces e imprime cada impacto
 #
-# En pantalla: la mira al centro (se abre con la dispersión), y abajo a la derecha, sobre el mapa en miniatura
-# (plano.gd), el arma, sus teclas, la munición y la recarga.
+# En pantalla: la mira al centro (se abre con la dispersión; una X al acertar), y abajo a la derecha, sobre el mapa en
+# miniatura (plano.gd), el arma, sus teclas, la munición y la recarga. Junto a lo que se hiere, la cifra del daño
+# (cifra()): los golpes seguidos al mismo se suman en una sola, que sube y se apaga cuando paran.
 #
 # En la red (red.gd): cada tiro, tajo y corte sale por la señal accion, que red.gd manda a los otros jugadores para que
 # vean el fogonazo (un Fogonazo por tirador), la trazadora y el polvo; los otros jugadores son un Area3D en CAPA_RED,
@@ -71,6 +75,10 @@ const MARCAS := 64  # las marcas de bala que quedan (las más viejas se reusan)
 const POLVO := Color(0.66, 0.62, 0.55)
 const CHISPA := Color(1.0, 0.78, 0.38)
 const RELLENO := Color(0.82, 0.72, 0.5)  # el polvo de lo que se hiere y no dice el suyo (`polvo` del blanco)
+const ORO := Color(1, 0.82, 0.3)  # la cabeza: la X de la mira y la cifra
+const ROJO := Color(1, 0.25, 0.2)  # lo botó: la X de la mira
+const CIFRA := 0.9  # s que dura la cifra del daño
+const SUMA := 0.5  # s: un golpe al mismo blanco antes de esto se suma a su cifra (una ráfaga es un solo número)
 const CAPA_RED := 1 << 19  # la capa 20: los otros jugadores de la red (red.gd), que solo ven los rayos de las armas
 const IMPACTO := 1  # las marcas de accion
 const CHISPAS := 2
@@ -102,6 +110,7 @@ var congelar := -1.0  # congela el juego (Engine.time_scale 0) esto s de juego d
 var congelar_siguiente := -1.0  # prueba(): congelar, para el tiro que viene (el último)
 var t_acierto := 0.0  # el marcador de acierto en la mira
 var mato := false  # el último acierto lo botó (la X de la mira, roja)
+var en_cabeza := false  # el último acierto fue en la cabeza (la X de la mira, más grande y dorada)
 var prueba_on := false  # --disparar o --apuntar: sin el mouse tomado
 var dibujado := false  # la mira o el tablero tenían algo el cuadro anterior
 
@@ -112,6 +121,7 @@ var polvos: Array[CPUParticles3D] = []
 var i_polvo := 0
 var marcas: Array[MeshInstance3D] = []
 var i_marca := 0
+var cifras := []  # [Label3D, s desde el último golpe que sumó, id de lo herido, daño sumado], de la más vieja
 var sonido := {}  # nombre -> AudioStreamPlayer
 var mira_ui: Control
 var tablero: Control
@@ -474,7 +484,7 @@ func cortar() -> void:
 
 
 # lo que pasa donde pega: el daño (recibir_dano), el polvo o las chispas, la marca (de una bala: el cuchillo saca
-# chispas), el sonido; devuelve qué fue
+# chispas), el sonido, la X de la mira y la cifra; devuelve qué fue
 func impacto(r: Dictionary, dano: float, desde: Vector3, bala := true) -> String:
 	var col: Object = r["collider"]
 	var p: Vector3 = r["position"]
@@ -483,7 +493,7 @@ func impacto(r: Dictionary, dano: float, desde: Vector3, bala := true) -> String
 	var quien := receptor(col)
 	if quien:
 		var antes = quien.get("vida")  # si lo dice (los muñecos), para la prueba y la X roja de la mira
-		quien.recibir_dano(dano, p, desde)
+		var tomo = quien.recibir_dano(dano, p, desde)  # si lo dice, el daño que tomó: más que dano, en la cabeza
 		var c = quien.get("polvo")
 		efecto = [c if c is Color else RELLENO, IMPACTO]
 		levantar(p, n, efecto[0], false)
@@ -491,10 +501,18 @@ func impacto(r: Dictionary, dano: float, desde: Vector3, bala := true) -> String
 		var despues = quien.get("vida")
 		if antes is float and antes <= 0.0:
 			return "«%s» a %.1f m, ya en el suelo" % [quien.name, d]
+		if tomo is float and tomo <= 0.0:
+			return "«%s» a %.1f m, sin daño" % [quien.name, d]
 		mato = antes is float and despues is float and despues <= 0.0
+		en_cabeza = tomo is float and tomo > dano
 		t_acierto = 0.3
+		if tomo is float:
+			cifra(quien, p, tomo, en_cabeza)
+		if en_cabeza:
+			sonar("cabeza")
 		var vida := "" if not despues is float else ", vida %.0f → %.0f%s" % [antes, despues, " (cae)" if mato else ""]
-		return "«%s» a %.1f m, %.0f de daño%s" % [quien.name, d, dano, vida]
+		return "«%s» a %.1f m, %.0f de daño%s%s" % [quien.name, d, tomo if tomo is float else dano,
+			" en la cabeza" if en_cabeza else "", vida]
 	var nombre := nombre_de(col)
 	var metal := col is CharacterBody3D or nombre.begins_with("autos") or not bala
 	levantar(p, n, CHISPA if metal else POLVO, metal)
@@ -773,6 +791,49 @@ func efectos(dt: float) -> void:
 			tz["nueva"] = false
 		else:
 			tz["s"] = s + VEL_TRAZA * dt
+	var ojo: Vector3 = jugador.cam.global_position
+	for c in cifras:  # suben lo mismo en pantalla cerca y lejos (son de tamaño fijo): ~0,35 m/s a 7 m
+		var l: Label3D = c[0]
+		c[1] += dt
+		l.global_position.y += 0.05 * maxf(ojo.distance_to(l.global_position), 3.0) * dt
+		l.modulate.a = clampf((CIFRA - c[1]) / 0.4, 0.0, 1.0)
+		l.outline_modulate.a = 0.8 * l.modulate.a
+	while not cifras.is_empty() and cifras[0][1] > CIFRA:
+		cifras.pop_front()[0].queue_free()
+
+
+# el daño de un acierto a quien: una cifra de frente a la cámara, a la vista a través de todo, a la derecha del impacto
+# (encima van su nombre o su barra de vida); blanca, o más grande y dorada en la cabeza. Un golpe al mismo antes de SUMA
+# s se suma a la suya, que salta a este impacto; sube y se apaga en CIFRA s (efectos())
+func cifra(quien: Node, p: Vector3, dano: float, cabeza: bool) -> void:
+	var id := quien.get_instance_id()
+	var total := dano
+	var l: Label3D = null
+	for c in cifras:
+		if c[2] == id and c[1] < SUMA:
+			l = c[0]
+			total += c[3]
+			cifras.erase(c)  # vuelve al final, como la más nueva
+			break
+	if l == null:
+		l = Label3D.new()
+		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		l.fixed_size = true  # a 50 m se lee igual que a 5
+		l.no_depth_test = true
+		l.pixel_size = 0.0006
+		l.outline_size = 12
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT  # empieza donde se pone: a la derecha del impacto
+		l.top_level = true
+		add_child(l)
+	l.text = "%d" % roundi(total)
+	l.font_size = 56 if cabeza else 44
+	l.modulate = ORO if cabeza else Color(1, 1, 1)
+	l.outline_modulate = Color(0, 0, 0, 0.8)
+	# el corrimiento crece con la distancia, como el tamaño fijo: en pantalla es el mismo
+	var cam: Camera3D = jugador.cam
+	var k := maxf(cam.global_position.distance_to(p), 3.0) / 7.0
+	l.global_position = p + (cam.global_basis.x * 0.25 + Vector3.UP * 0.05) * k
+	cifras.append([l, 0.0, id, total])
 
 
 # ---------- texturas y sonidos hechos en código ----------
@@ -836,6 +897,9 @@ static func sonidos() -> Dictionary:
 	_sonidos["golpe"] = onda(0.14, func(t: float) -> float:  # sordo: un relleno que recibe el golpe
 		lg[0] += (rng.randf_range(-1.0, 1.0) - lg[0]) * 0.12
 		return sin(TAU * 140.0 * t) * 0.6 * exp(-t / 0.03) + lg[0] * 2.5 * exp(-t / 0.025))
+	_sonidos["cabeza"] = onda(0.2, func(t: float) -> float:  # un tic metálico, para el que acierta en la cabeza
+		return ((sin(TAU * 2650.0 * t) * 0.55 + sin(TAU * 3980.0 * t) * 0.3 * exp(-t / 0.02)) * exp(-t / 0.05)
+			* minf(t / 0.0015, 1.0)))
 	_sonidos["vacio"] = onda(0.05, func(t: float) -> float: return clic(rng, t))
 	_sonidos["recarga"] = onda(0.16, func(t: float) -> float:  # clic y clac
 		return clic(rng, t) + (clic(rng, t - 0.07) * 1.3 if t > 0.07 else 0.0))
@@ -909,8 +973,8 @@ func hud() -> void:
 	tablero = t
 
 
-# la mira: cuatro rayas que se abren con la dispersión (un punto con el cuchillo), una X al acertar (roja si cae) y un
-# arco con la recarga
+# la mira: cuatro rayas que se abren con la dispersión (un punto con el cuchillo), una X al acertar (más grande y
+# dorada en la cabeza, roja si cae) y un arco con la recarga
 func dibujar_mira(c: Control) -> void:
 	if not puede():
 		return
@@ -929,10 +993,15 @@ func dibujar_mira(c: Control) -> void:
 		c.draw_circle(o, 2.0, sombra)
 		c.draw_circle(o, 1.1, blanco)
 	if t_acierto > 0.0:
-		var col := Color(1, 0.25, 0.2) if mato else Color(1, 1, 1)
+		var col := ROJO if mato else ORO if en_cabeza else Color(1, 1, 1)
 		col.a = clampf(t_acierto / 0.2, 0.0, 1.0)
+		var largo := 21.0 if en_cabeza else 16.0
+		var ancho := 3.5 if en_cabeza else 2.5
 		for d in [Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]:
-			c.draw_line(o + d.normalized() * 9.0, o + d.normalized() * 16.0, col, 2.5)
+			var u: Vector2 = d.normalized()
+			if en_cabeza:  # con borde: el dorado se pierde sobre el cielo
+				c.draw_line(o + u * 8.0, o + u * (largo + 1.0), Color(0, 0, 0, 0.6 * col.a), ancho + 2.0)
+			c.draw_line(o + u * 9.0, o + u * largo, col, ancho)
 	if t_recarga > 0.0:
 		var u: float = 1.0 - t_recarga / ARMAS[tipo]["recarga"]
 		c.draw_arc(o, 22.0, -PI / 2, -PI / 2 + TAU * u, 40, Color(1, 1, 1, 0.8), 3.0, true)
