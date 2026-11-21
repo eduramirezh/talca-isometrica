@@ -23,6 +23,7 @@
 extends Node3D
 
 const Glb := preload("res://glb.gd")
+const Malla := preload("res://malla.gd")
 const Mat := preload("res://materiales.gd")
 const Recorte := preload("res://recorte.gd")
 const Arboleda := preload("res://arboleda.gd")
@@ -48,6 +49,7 @@ var recs := []  # los recortes de los modelos (main.gd)
 var info := {}
 var tam := 500.0
 var teselas := {}  # "i_j" -> la entrada de indice.json
+var cajas := {}  # "i_j" -> Rect2 en metros de grilla (caja(): revisar() la pide cientos de veces cada 0,2 s)
 var cargadas := {}  # "i_j" -> Node3D (la raíz del glb)
 var colision := {}  # "i_j" -> true: tiene su colisión
 var lejos := {}  # "i_j" -> MeshInstance3D de lejos.glb
@@ -71,7 +73,9 @@ func _init() -> void:
 	info = Glb.info()
 	tam = float(info.get("tesela_m", 500.0))
 	for t in info.get("teselas", []):
-		teselas["%d_%d" % [t["i"], t["j"]]] = t
+		var k := "%d_%d" % [t["i"], t["j"]]
+		teselas[k] = t
+		cajas[k] = Rect2(t["i"] * tam, t["j"] * tam, tam, tam)
 
 
 func _ready() -> void:
@@ -135,19 +139,29 @@ static func colores(m: Mesh) -> void:
 # ---------- las teselas ----------
 
 func caja(clave: String) -> Rect2:
-	var t: Dictionary = teselas[clave]
-	return Rect2(t["i"] * tam, t["j"] * tam, tam, tam)
+	return cajas[clave]
 
 
 func distancia(clave: String, p: Vector2) -> float:
-	var c := caja(clave)
-	var q := Vector2(clampf(p.x, c.position.x, c.end.x), clampf(p.y, c.position.y, c.end.y))
-	return q.distance_to(p)
+	return dist_caja(cajas[clave], p)
+
+
+static func dist_caja(c: Rect2, p: Vector2) -> float:
+	return Vector2(clampf(p.x, c.position.x, c.end.x), clampf(p.y, c.position.y, c.end.y)).distance_to(p)
 
 
 # las teselas a menos de r de p, de la más cercana a la más lejana
 func cerca_de(p: Vector2, r: float) -> Array:
-	var out := []
+	var cerca := cerca_con_distancia(p, r)
+	return cerca[0]
+
+
+# [claves, distancias] de las teselas a menos de r de p, de la más cercana a la más lejana. Con MEDIO son ~150: ordenarlas
+# con sort_custom() (que llama a GDScript en cada comparación) costaba ~6 ms en cada revisar(); aquí cada una entra en un
+# número (la distancia en decímetros por 4096 más su índice) y el orden lo hace sort() de un PackedFloat64Array, en C++
+func cerca_con_distancia(p: Vector2, r: float) -> Array:
+	var claves := []
+	var dist := PackedFloat64Array()
 	var i0 := floori((p.x - r) / tam)
 	var i1 := floori((p.x + r) / tam)
 	var j0 := floori((p.y - r) / tam)
@@ -155,10 +169,26 @@ func cerca_de(p: Vector2, r: float) -> Array:
 	for j in range(j0, j1 + 1):
 		for i in range(i0, i1 + 1):
 			var k := "%d_%d" % [i, j]
-			if teselas.has(k) and distancia(k, p) <= r:
-				out.append(k)
-	out.sort_custom(func(a, b): return distancia(a, p) < distancia(b, p))
-	return out
+			if not cajas.has(k):
+				continue
+			var d := dist_caja(cajas[k], p)
+			if d <= r:
+				claves.append(k)
+				dist.append(d)
+	var orden := PackedFloat64Array()
+	orden.resize(claves.size())
+	for n in claves.size():
+		orden[n] = roundf(dist[n] * 10.0) * 4096.0 + n
+	orden.sort()
+	var out_k := []
+	var out_d := PackedFloat64Array()
+	out_k.resize(claves.size())
+	out_d.resize(claves.size())
+	for n in orden.size():
+		var m := int(fmod(orden[n], 4096.0))
+		out_k[n] = claves[m]
+		out_d[n] = dist[m]
+	return [out_k, out_d]
 
 
 # en un hilo: el glb de la tesela con los recortes aplicados, sus árboles listos para arboleda.gd y, si se pide, las
@@ -202,12 +232,30 @@ static func mallas_solidas(raiz: Node3D) -> Dictionary:
 	return out
 
 
+# capa -> StaticBody3D «colision» con su CollisionShape3D, fuera de la escena: se arman en el hilo, porque darle a un
+# CollisionShape3D su forma cóncava costaba en el hilo principal hasta 25 ms por capa (los patios de una tesela) y
+# poner_colision() solo los cuelga de su malla (~1 ms)
 static func formas_de(mallas: Dictionary) -> Dictionary:
 	var out := {}
 	for capa in mallas:
 		# en «hitos», los pasos bajo la Ruta 5 no cierran la autopista (pasos.gd)
-		out[capa] = Pasos.forma(mallas[capa]) if capa == "hitos" else mallas[capa].create_trimesh_shape()
+		var forma: Shape3D = Pasos.forma(mallas[capa]) if capa == "hitos" else mallas[capa].create_trimesh_shape()
+		var cuerpo := StaticBody3D.new()
+		cuerpo.name = "colision"
+		cuerpo.add_child(Malla.colisionador(forma))
+		out[capa] = cuerpo
 	return out
+
+
+# lo que armó un hilo y ya no sirve (la tesela llegó dos veces, o se soltó mientras se leía): nada de eso está en la
+# escena, así que hay que liberarlo
+static func descartar(r: Variant) -> void:
+	if r is Dictionary:
+		var raiz: Variant = r.get("raiz")
+		if raiz is Node:
+			raiz.free()
+		for c in r.get("formas", {}).values():
+			c.free()
 
 
 # en el hilo principal: la tesela leída, a la escena
@@ -242,21 +290,22 @@ func poner(clave: String, r: Dictionary) -> void:
 	stats["ms"] += int(r.get("ms", 0))
 
 
-# la colisión de una tesela: un StaticBody3D bajo cada malla sólida, como create_trimesh_collision() (main.gd --caminar
-# dice contra qué capa chocó por el nombre del padre del cuerpo)
+# la colisión de una tesela: el StaticBody3D de formas_de() bajo cada malla sólida, como create_trimesh_collision()
+# (main.gd --caminar dice contra qué capa chocó por el nombre del padre del cuerpo)
 func poner_colision(clave: String, fs: Dictionary) -> void:
 	var raiz: Node3D = cargadas.get(clave)
 	if raiz == null:
+		descartar({"formas": fs})
 		return
+	var usados := {}
 	for mi in raiz.find_children("*", "MeshInstance3D", true, false):
 		var capa := String(mi.name)
-		if fs.has(capa) and fs[capa] != null:
-			var cuerpo := StaticBody3D.new()
-			cuerpo.name = "colision"
-			var forma := CollisionShape3D.new()
-			forma.shape = fs[capa]
-			cuerpo.add_child(forma)
-			mi.add_child(cuerpo)
+		if fs.has(capa) and not usados.has(capa):
+			mi.add_child(fs[capa])
+			usados[capa] = true
+	for capa in fs:
+		if not usados.has(capa):
+			fs[capa].free()
 	colision[clave] = true
 
 
@@ -376,17 +425,23 @@ func revisar(p: Vector2) -> void:
 	for k in medios.keys():
 		if distancia(k, p) > SOLTAR_MEDIO:
 			quitar_medio(k)
-	for k in cerca_de(p, CARGA):
-		if tareas.size() >= HILOS:
+	if tareas.size() >= HILOS:
+		return  # los hilos están ocupados: no hay qué lanzar
+	var cerca := cerca_con_distancia(p, MEDIO)  # una sola vez: las de CARGA son las primeras
+	var claves: Array = cerca[0]
+	var dist: PackedFloat64Array = cerca[1]
+	for n in claves.size():
+		if tareas.size() >= HILOS or dist[n] > CARGA:
 			break
+		var k: String = claves[n]
 		if ocupada(k):
 			continue
-		var con := distancia(k, p) <= COLISION
+		var con := dist[n] <= COLISION
 		if not cargadas.has(k):
 			lanzar("leer", k, con)
 		elif con and not colision.has(k):
 			lanzar("colision", k, true)
-	for k in cerca_de(p, MEDIO):  # después de las completas: los edificios de en medio
+	for k in claves:  # después de las completas: los edificios de en medio
 		if tareas.size() >= HILOS:
 			break
 		if not cargadas.has(k) and not medios.has(k) and tiene_medio(k) and not ocupada(k):
@@ -438,12 +493,15 @@ func recoger() -> void:
 	for h in listas:
 		if h[0] == "leer":
 			if cargadas.has(h[1]):
+				descartar(h[2])
 				continue
 			poner(h[1], h[2])
 		elif h[0] == "medio":
 			poner_medio(h[1], h[2])
 		elif cargadas.has(h[1]) and not colision.has(h[1]):
 			poner_colision(h[1], h[2])
+		else:
+			descartar({"formas": h[2]})
 
 
 # si ya está todo lo que pide la cámara: las teselas a menos de CARGA, la colisión a menos de COLISION y los
@@ -509,12 +567,7 @@ func muro_del_limite() -> void:
 		var pb := Vector3(b[0], -500, -b[1])
 		var arriba := Vector3.UP * 2000
 		caras.append_array([pa, pb, pb + arriba, pa, pb + arriba, pa + arriba])
-	var forma := ConcavePolygonShape3D.new()
-	forma.backface_collision = true
-	forma.set_faces(caras)
 	var cuerpo := StaticBody3D.new()
 	cuerpo.name = "limite"
-	var cs := CollisionShape3D.new()
-	cs.shape = forma
-	cuerpo.add_child(cs)
+	cuerpo.add_child(Malla.colisionador(Malla.concava(caras)))
 	add_child(cuerpo)

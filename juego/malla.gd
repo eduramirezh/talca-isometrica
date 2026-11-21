@@ -282,18 +282,32 @@ func moldura(f: Marco, a: Vector2, b: Vector2, s0: float, s1: float, h0: float, 
 	prisma(f, q, h0, h1, col, mat, true, null, "", h0 > 0.5)
 
 
+# El CollisionShape3D de una forma cóncava, sin que la arme dos veces. Con la depuración (el binario de siempre, no una
+# exportación de lanzamiento), set_shape() le pasa a la forma el color de depuración del CollisionShape3D, y una
+# ConcavePolygonShape3D que cambia de color le manda de nuevo sus caras al servidor de física, que rehace su árbol: con
+# los patios de una tesela, ~25 ms en el hilo principal. El color de la forma por omisión es el transparente: con el
+# mismo, set_shape() no la toca (en «Visible Collision Shapes» estas no se ven)
+static func colisionador(forma: Shape3D) -> CollisionShape3D:
+	var cs := CollisionShape3D.new()
+	cs.debug_color = Color(0, 0, 0, 0)
+	cs.shape = forma
+	return cs
+
+
+static func concava(caras: PackedVector3Array) -> ConcavePolygonShape3D:
+	var s := ConcavePolygonShape3D.new()
+	s.backface_collision = true
+	s.set_faces(caras)
+	return s
+
+
 # solo la colisión (sin malla): para un constructor que junta formas simples (las cajas de los edificios y los autos)
 func construir_colision(padre: Node3D, nombre: String) -> void:
 	if colision.is_empty():
 		return
 	var cuerpo := StaticBody3D.new()
 	cuerpo.name = nombre
-	var forma := CollisionShape3D.new()
-	var s := ConcavePolygonShape3D.new()
-	s.backface_collision = true
-	s.set_faces(colision)
-	forma.shape = s
-	cuerpo.add_child(forma)
+	cuerpo.add_child(colisionador(concava(colision)))
 	padre.add_child(cuerpo)
 
 
@@ -319,12 +333,7 @@ func construir(padre: Node3D, nombre: String, sombra := true) -> MeshInstance3D:
 	if not colision.is_empty():
 		var cuerpo := StaticBody3D.new()
 		cuerpo.name = nombre + "-colision"
-		var forma := CollisionShape3D.new()
-		var s := ConcavePolygonShape3D.new()
-		s.backface_collision = true
-		s.set_faces(colision)
-		forma.shape = s
-		cuerpo.add_child(forma)
+		cuerpo.add_child(colisionador(concava(colision)))
 		mi.add_child(cuerpo)
 	return mi
 

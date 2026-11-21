@@ -549,12 +549,7 @@ func cuerpo() -> void:
 	var cuerpo := StaticBody3D.new()
 	cuerpo.name = "plaza_colision"
 	add_child(cuerpo)
-	var forma := ConcavePolygonShape3D.new()
-	forma.set_faces(colision.caras())
-	forma.backface_collision = true
-	var cs := CollisionShape3D.new()
-	cs.shape = forma
-	cuerpo.add_child(cs)
+	cuerpo.add_child(Malla.colisionador(Malla.concava(colision.caras())))
 	for f in formas:
 		var c := CollisionShape3D.new()
 		c.shape = f[0]
