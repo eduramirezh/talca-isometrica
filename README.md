@@ -98,7 +98,8 @@ pipeline/
   rutas.py               los nombres de las rutas del mapa contra los roles de la Red Vial del MOP
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos (Commons por nombre, ubicación o
                          categoría; Panoramax; Mapillary y Flickr con clave)
-  mapillary.py           Mapillary: la clave, las fotos de la comuna (teselas vectoriales) y qué lugares tienen fotos que los miran;
+  mapillary.py           Mapillary: la clave, las fotos de la comuna (teselas vectoriales), qué lugares tienen fotos que los miran
+                         y lo que dejan ver de un punto las panorámicas lejanas (mirar);
                          la búsqueda y la elección (una por pasada, de frente) que usa landmark.py photos --mapillary
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
                          la API map de OSM por cajas (tiles, tiles-comuna);
@@ -140,7 +141,7 @@ tools/blender_ver.py     abre en Blender un glb o STL exportado, con sus colores
 tools/icono_juego.py     el ícono del juego (juego/icono.png, pixel art de 32 × 32: la plaza, la torre de la Catedral y el personaje) y, en Linux, su lanzador en el menú y el escritorio (make lanzador)
 tools/godot_oculto.sh    corre el juego de Godot lanzado oculto (en el Mac con open -j -g; en Linux en Xvfb), sin quitarle el teclado a quien trabaja: así lo revisan las sesiones de Claude
 tools/godot/             proyecto de Godot que carga un glb exportado (ver.gd: cámara ortográfica, colores por vértice; --png); comparar.gd: dos exportaciones de teselas en lo que Godot guarda, vértice por vértice; vitrina.gd: un modelo del juego (peatón, vehículos, autos, árboles) solo, sin el mapa, en cuatro vistas
-juego/                   un juego de Godot para pasear por la comuna en tercera persona (make juego exporta juego/mapa/, la comuna en teselas de 500 m; Godot --path juego); juego/modelos/: la plaza, la catedral, las fachadas y las calles de alrededor, de cerca
+juego/                   un juego de Godot para pasear por la comuna en tercera persona (make juego exporta juego/mapa/, la comuna en teselas de 500 m; Godot --path juego); juego/modelos/: la plaza, la catedral, las fachadas y las calles de alrededor, y el Edificio Raíces, de cerca
 juego/mapa.gd, arboleda.gd   las teselas alrededor de la cámara (en hilos, con los edificios solos hasta 3 km, lo de lejos y la colisión cercana; cuantizado.gd: el formato liviano) y los árboles de la página como los de la plaza; viaje.gd: Tab, ir a un lugar; recorte.gd: los recortes de los modelos sobre cada tesela
 juego/autos.gd, faroles.gd   los autos de la página como los de calles.gd (modelos/entorno/auto.gd) de cerca, y los faroles de las calles de noche: postes, brillo y las luces más cercanas
 juego/fachadas_ciudad.gd las fachadas de cerca de los edificios de toda la comuna, por tipo (casa antigua, población, pareada, block…), de juego/mapa/f_<i>_<j>.json (tools/export.py --fachadas)
@@ -159,6 +160,7 @@ juego/cine.gd            --cine: un plano de cine de 30 s en la plaza, de la tar
 juego/vp.gd, juego/vp/   --vp: la plaza en una tele de fondo, proyectada desde la posición de un teléfono Android que filma (WebXR, ARCore; producción virtual como un set de LED)
 tools/juego_osm.py       las plantas y los nodos de la calle de OSM alrededor de la plaza para juego/modelos/ y la página (data/plaza-osm.json)
 juego/modelos/plaza.gd   la Plaza de Armas del juego en detalle (árboles, quiosco, piletas, faroles, escaños; plaza/: árboles, piezas y texturas en código)
+juego/modelos/raices.gd  el Edificio Raíces (3 Oriente 1645) de cerca: balcones con baranda de vidrio, ventanas hundidas, hall, azoteas, jardín y reja; se arma cuando llega su tesela
 juego/malla.gd, materiales.gd   el constructor de mallas y los materiales de todos los modelos del juego (shaders/: capa, patron, plaza/)
 juego/args.gd, fps.gd, glb.gd   las banderas de la línea de comandos, el arnés de --fps y lo que tools/export.py escribe en juego/mapa/indice.json (capas, luces, lugares, teselas)
 tools/check.py           revisión rápida del repo (make check), con las trampas de config/ y data/ que se pueden comprobar; .githooks/pre-commit la corre antes de cada commit (make hooks)

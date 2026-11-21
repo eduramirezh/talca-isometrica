@@ -54,6 +54,7 @@ uv run tools/sentinel.py usos   # las entradas de config/usos.json que hoy se ve
 python pipeline/mapillary.py clave           # de dónde se lee la clave de Mapillary (MAPILLARY_TOKEN o ~/.config/mapillary.key) y si responde; sin clave, cómo pedirla
 uv run --with pillow python pipeline/mapillary.py cobertura [--caja x0 x1 y0 y1]   # las fotos de Mapillary en la comuna (teselas z14, una vez) -> raw/mapillary/imagenes.json, por año y autor, y el panel diagnostics/mapillary-cobertura.png
 python pipeline/mapillary.py lugares [80]     # cada lugar con fotos de Mapillary a menos de 80 m: cuántas lo miran, de cuántas pasadas y la más nueva (las baja landmark.py photos --mapillary)
+uv run --with pillow python pipeline/mapillary.py mirar 278 745 [--radio 450 --desde 2021] [--ids a,b --ancho 14 --escala 7]   # lo que no tiene fotos cerca pero se ve de lejos (una torre): las panorámicas recientes que lo miran, originales (4096 px) y recortadas hacia el punto -> diagnostics/fotos/mirar-x,y/ (indice.txt, hoja.png)
 python pipeline/wikidata.py check [--refresh]   # los lugares contra Wikidata: distancias, fechas y protección que la ficha no dice, fotos que FUENTES no cita, candidatos (caché en raw/wikidata/)
 python pipeline/traces.py tiles x0 x1 y0 y1 <nombre>                # API map de OSM por cajas (sin Overpass) -> raw/osm/map-<nombre>.json
 python pipeline/traces.py tiles-comuna                              # lo mismo sobre toda la comuna -> raw/osm/map-comuna.json (make osm)

@@ -14,9 +14,10 @@
   // an eleventh storey at both ends, set back in the middle (the sky lounge, with a dark pergola on its terrace), lift
   // overruns on the roof; to the north a lawn with the flats' terraces, a playground in the west corner and a black
   // fence. The driveway along the south side is the map's track (Calle sin nombre, class 7). Approximate: the height
-  // (35 m from Google to the top of the overruns; the photos give 10 + 1 storeys, ~30 m to the parapets), the south and
-  // west faces (no photos: the north face's rhythm), the lot's edges (the 2015 empty lot), the playground and the
-  // pergola. Not a place of pois.py (a private residential tower; the map's places are legal and iconic). Its own
+  // (35 m from Google to the top of the overruns; the photos give 10 + 1 storeys, ~30 m to the parapets), the west face
+  // (no photos: the north face's rhythm), the lot's edges (the 2015 empty lot), the playground and the pergola. The
+  // south face, from Mapillary's panoramas from the Alameda (2024, ~205 m, blurry: mapillary.py mirar): light, with
+  // dark windows in pairs on every floor, also on the west block (their places there ± 2 m). Not a place of pois.py (a private residential tower; the map's places are legal and iconic). Its own
   // footprint in occ (the whole lot, occFill: no generated houses in the garden), no pad: it stands on its highest
   // corner with walls 4 m down. Method: docs/METODOLOGIA.md §9.
   {const F=localFrame(275,747,(90+1.8)*Math.PI/180),{G,Gs}=F;
@@ -64,10 +65,11 @@
     balc(WV(4.3,1),-16.5,-12.3,0,9);
     for(const [u,sg,a,b] of [[-12.04,-1,4.3,7.78],[-16.78,1,4.3,8.18]])wins(WU(u,sg),[(a+b)/2],1.4,0,9);
     {const w=WV(8.18,1);balc(w,-25,-17.3,0,10);}
-    // south face (no photos): the north face's rhythm, a column of small windows on the east block
+    // south face (Mapillary, from the Alameda): pairs of windows on every floor, a column of small windows on the east
+    // block; the west block has windows, not the north face's balconies
     {const w=WV(-7.58,-1);wins(w,[18.6],.9,0,10,1.2);band(w,16.2,22.6,1,9);
       wins(w,[14.4,13,10.2,8.8,5.4,4,1.2,-.2,-3.6,-5],1.2,0,9);band(w,-8.9,16.2,1,9);rect(w.at(.12),15.9,16.5,-.5,BAR,K.white);
-      const v=WV(-6.25,-1);balc(v,-25,-17.3,0,10);wins(v,[-14.6,-13.2,-11.4,-10],1.2,0,9);band(v,-16.78,-8.9,1,9);}
+      const v=WV(-6.25,-1);wins(v,[-23,-21.6,-19.4,-18],1.2,0,10);band(v,-25.55,-16.78,1,10);wins(v,[-14.6,-13.2,-11.4,-10],1.2,0,9);band(v,-16.78,-8.9,1,9);}
     // west face: two columns of windows by the corners
     {const w=WU(-25.55,-1);wins(w,[-4.6,6.6],1.2,0,10);band(w,-6.25,8.18,1,10);}
     // the set-back eleventh storey (the sky lounge) with a ribbon of dark glass, its pergola, the lift overruns
