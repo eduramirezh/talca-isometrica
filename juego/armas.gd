@@ -357,14 +357,14 @@ func camara(dt: float) -> void:
 	libre = lerpf(libre, j.largo, 0.2)  # lo que hace jugador.gd largo_actual(), sin lo de este cuadro
 	if k_mira < 0.002 and absf(patada) < 0.0005:
 		if tocada:
-			j.brazo.position = Vector3(0, j.ALTO - 0.15, 0)
+			j.brazo.position = Vector3(0, j.ojo(), 0)
 			j.brazo.spring_length = libre
 			j.cam.fov = fov0
 			tocada = false
 		return
 	tocada = true
 	var cerca := clampf(libre / 1.5, 0.0, 1.0)  # en primera persona no se corre al hombro
-	j.brazo.position = Vector3(0, j.ALTO - 0.15, 0) + Basis(Vector3.UP, j.yaw) * (HOMBRO * k_mira * cerca)
+	j.brazo.position = Vector3(0, j.ojo(), 0) + Basis(Vector3.UP, j.yaw) * (HOMBRO * k_mira * cerca)
 	j.brazo.spring_length = lerpf(libre, minf(libre, LARGO_APUNTAR), k_mira)
 	j.cam.fov = lerpf(fov0, fov_mira, k_mira)
 	j.brazo.rotation.x += patada

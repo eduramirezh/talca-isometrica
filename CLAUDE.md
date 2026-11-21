@@ -140,5 +140,5 @@ Las demás están en su regla, que se carga al tocar los archivos de su tema. Su
 - **`pipeline.md`**: «Medianas de calles» · «Grilla irregular» · «La Alameda (4 Norte)» · «La imagen satelital puede ser vieja» · «Overpass puede no responder» · «La búsqueda por caja de Mapillary pierde fotos» · «El relieve es de superficie»
 - **`pagina.md`**: «El póster del arranque»
 - **`juego.md`**: «Exportar lo generado (`tools/export.py`)» · «El juego carga la comuna por teselas» · «Los vehículos del juego y los pasos bajo la Ruta 5» · «La red de calles del juego no sale de los vértices compartidos» · «Los letreros de las calles del juego» · «Los autos y los faroles del juego son datos, como los árboles» · «Las fachadas de cerca del juego son un registro por edificio, no la geometría del glb»
-- **`juego-jugador.md`**: «Bajarse del vehículo y el servidor de física» · «El jetpack del juego» · «Los tiros en la red» · «En captura la bandera manda el anfitrión» · «Las armas del juego»
+- **`juego-jugador.md`**: «Bajarse del vehículo y el servidor de física» · «El jetpack del juego» · «Los tiros en la red» · «En captura la bandera manda el anfitrión» · «Las armas del juego» · «La persona y el perro»
 - **`herramientas.md`**: «Navegadores sin GPU» · «Rotar en `--js`» · «`__look` no limita el zoom»

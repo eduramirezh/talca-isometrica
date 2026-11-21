@@ -54,6 +54,7 @@ const BANDERAS := {
 	"--hora": ["h", "ambiente.gd: la hora del día (T la avanza; L, día o noche)"],
 	"--dia": ["día del año", "ambiente.gd: el sol de ese día"],
 	"--pose": ["m/s", "jugador.gd: el peatón animado como a esa velocidad"],
+	"--personaje": ["persona|perro", "jugador.gd: el cuerpo que se ve (perro.gd; jugando, en el menú de Esc)"],
 	"--cenital": ["x,y,lado", "modelos/calles.gd: cámara ortográfica desde arriba"],
 	"--ancla": ["x,y", "vp.gd: el punto de grilla al pie de la tele"],
 	"--rumbo": ["grados", "vp.gd"],
