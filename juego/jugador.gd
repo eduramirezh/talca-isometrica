@@ -142,10 +142,12 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventMouseButton and e.pressed:
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-		elif e.button_index == MOUSE_BUTTON_WHEEL_UP:
-			largo = max(0.0, largo - 1.0)
-		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			largo = min(20.0, largo + 1.0)
+		elif e.button_index == MOUSE_BUTTON_WHEEL_UP or e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			# 1 m por clic; a pie, en proporción al brazo del cuerpo (con la gata, a 2,2 m, dos clics de 1 m la dejaban
+			# con la cámara adentro)
+			var paso := 1.0 if vehiculo else brazo_de(peaton) / 5.0
+			var signo := -1.0 if e.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0
+			largo = clampf(largo + signo * paso, 0.0, 20.0)
 	# Esc abre el menú (menu.gd), que suelta el mouse
 
 
@@ -320,7 +322,7 @@ func _process(dt: float) -> void:
 	if vida <= 0.0:  # de bruces, como un tablón que se vuelca desde los pies: el giro acelera hasta CAIDO
 		var f := minf(t_muerto / CAIDO, 1.0)
 		f *= f
-		peaton.tendido(cuerpo, f)  # la persona de bruces, el perro de costado
+		peaton.tendido(cuerpo, f)  # la persona de bruces, el perro y la gata de costado
 	largo_actual()
 	# recién reaparecido, parpadea; a pie el peatón siempre se ve (en el auto, vehiculo.gd lo esconde)
 	peaton.visible = t_invulnerable <= 0.0 or fmod(t_invulnerable, 0.24) > 0.08
@@ -341,7 +343,7 @@ func brazo_de(pe: Node3D) -> float:
 # Otro cuerpo (una clave de CUERPOS), en el mismo lugar y pose que el de ahora (a pie, en la bicicleta o con el jetpack):
 # las armas que el de ahora tiene en la mano (o en el hocico) salen antes de soltarlo, porque son de armas.gd, que se
 # las pasa al nuevo con sostener() en el cuadro siguiente; la mochila del jetpack vuelve al vehículo y pasa a su montura.
-# El brazo de la cámara a pie se escala con el del cuerpo (brazo_de()): la rueda lo ajusta igual, en proporción
+# El brazo de la cámara a pie se escala con el del cuerpo (brazo_de()), y el paso de la rueda a pie también
 func cambiar_personaje(cual: String) -> void:
 	if cual == personaje or not CUERPOS.has(cual):
 		return

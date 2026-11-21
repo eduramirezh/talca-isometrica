@@ -529,12 +529,29 @@ func portabandera() -> Transform3D:
 
 
 # brazo: el largo del brazo de la cámara a pie (jugador.gd brazo_de(): la persona y el perro, 5 m; la gata es mucho más
-# chica); cabeza: adonde apunta la prueba de los tiros a la cabeza (red.gd apuntar())
+# chica)
 func medidas() -> Dictionary:
-	return {"ojo": 0.55, "etiqueta": 0.7, "radio": 0.14, "alto": 0.62, "brazo": 2.2, "cabeza": Vector3(0, 0.29, -0.26),
+	return {"ojo": 0.55, "etiqueta": 0.7, "radio": 0.14, "alto": 0.62, "brazo": 2.2,
 		"blanco": Transform3D(Basis(Vector3.RIGHT, PI / 2), Vector3(0, 0.21, -0.04))}
 
 
-# la cabeza (el doble de daño): adelante del pecho y sobre la cruz
-func es_cabeza(p: Vector3) -> bool:
-	return p.z < -0.17 and p.y > 0.22
+# el centro del cráneo en el marco de la cabeza (de la nuca, z 0,042, a la nariz, -0,06; 0,056 de ancho a cada lado) y
+# el radio de la esfera que cuenta como cabeza, en ese marco (con su escala)
+const CRANEO := Vector3(0, 0.0, -0.008)
+const CRANEO_R := 0.07
+
+
+# la cabeza sigue a su nodo: quieta, la gata se sienta (1,2 s) y se echa (14 s), y la cabeza baja; con una caja fija en
+# el marco del cuerpo, como la del perro, echada casi no tenía cabeza y sentada contaba el pecho
+func centro_cabeza() -> Vector3:
+	return cabeza.global_transform * CRANEO
+
+
+# la cabeza (el doble de daño): p, donde el tiro entró en la cápsula de red.gd (Blanco), y dir, hacia dónde iba, en el
+# marco de la gata. La cápsula es mucho más grande que la gata: de frente el tiro entra 6 a 13 cm delante de la cara, así
+# que cuenta lo que el tiro pasa a menos de CRANEO_R del cráneo en sus primeros 20 cm (no los que siguen: uno que entra
+# por la grupa no llega a la cabeza)
+func es_cabeza(p: Vector3, dir := Vector3.ZERO) -> bool:
+	var inv := cabeza.global_transform.affine_inverse() * global_transform
+	var q := Geometry3D.get_closest_point_to_segment(CRANEO, inv * p, inv * (p + dir.normalized() * 0.2))
+	return q.distance_to(CRANEO) < CRANEO_R

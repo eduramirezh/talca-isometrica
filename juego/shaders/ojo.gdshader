@@ -1,6 +1,6 @@
 // Los ojos de los animales del juego (perro.gd, gata.gd ojos: cada uno un elipsoide en su propio nodo, que parpadea
 // achatándolo en Y): casi todo iris, con fibras radiales y un anillo oscuro en el borde, del color de iris_adentro junto
-// a la pupila a iris_afuera en el borde; la pupila, una rendija vertical (la gata) o redonda (el perro, redonda), que se
+// a la pupila a iris_afuera en el borde; la pupila, una rendija vertical (la gata) o redonda (el perro), que se
 // abre de noche (el global noche de ambiente.gd, de pupila.x de día a pupila.y de noche). Una córnea pulida (casi sin
 // rugosidad y con barniz) da los brillos del sol y del cielo. De noche, la pupila devuelve un brillo verdoso cuando el
 // ojo mira hacia la cámara (el tapetum lucidum). Por omisión, los de la gata.
@@ -10,7 +10,7 @@ render_mode blend_mix, cull_back, diffuse_burley, specular_schlick_ggx;
 #include "res://shaders/ruido.gdshaderinc"
 
 global uniform float noche;
-uniform vec2 radio = vec2(0.0105, 0.0095);  // m: el medio ancho y el medio alto del ojo
+uniform vec2 radio = vec2(0.0118, 0.0106);  // m: el medio ancho y el medio alto del ojo
 uniform vec3 iris_adentro = vec3(0.80, 0.72, 0.30);  // sRGB
 uniform vec3 iris_afuera = vec3(0.50, 0.58, 0.27);
 uniform vec2 pupila = vec2(0.3, 0.85);  // cuánto se abre (0 … 1) de día y de noche

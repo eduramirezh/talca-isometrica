@@ -15,8 +15,8 @@ render_mode blend_mix, cull_back, diffuse_lambert_wrap, specular_schlick_ggx;
 
 // el centro del ojo derecho y su medio ancho y medio alto, en el marco de la cabeza (gata.gd OJO, OJO_R): el borde
 // oscuro de los párpados
-uniform vec3 ojo = vec3(0.0215, 0.007, -0.045);
-uniform vec2 ojo_radio = vec2(0.0105, 0.0095);
+uniform vec3 ojo = vec3(0.021, 0.007, -0.0475);
+uniform vec2 ojo_radio = vec2(0.0118, 0.0106);
 
 // ZONAS (UV2.y): 0 el cuerpo, el cuello y las patas (pat: el punto en el marco de la gata, m); 1 la cabeza y la mandíbula
 // (en el marco de la cabeza); 2 y 3 el lado de afuera de la oreja izquierda y la derecha (en el de la oreja: arriba +Y);

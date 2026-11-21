@@ -69,6 +69,10 @@ func _correr() -> void:
 	var r := maxf(caja.size.length() * 0.5, 0.5)
 	if arg("--centro", "") != "":
 		var p := arg("--centro", "").split_floats(",")
+		if p.size() != 3:
+			push_error("vitrina.gd: --centro pide x,y,z")
+			quit(1)
+			return
 		c = Vector3(p[0], p[1], p[2])
 	var cam := Camera3D.new()
 	cam.fov = 40

@@ -624,8 +624,9 @@ func medidas() -> Dictionary:
 	return {"ojo": 1.6, "etiqueta": 2.25, "radio": 0.32, "alto": 1.8, "blanco": Transform3D(Basis(), Vector3(0, 0.9, 0))}
 
 
-# un golpe en p (en el marco del peatón) es en la cabeza (vale el doble: red.gd), como en los muñecos de blancos.gd
-func es_cabeza(p: Vector3) -> bool:
+# un golpe en p (en el marco del peatón) es en la cabeza (vale el doble: red.gd), como en los muñecos de blancos.gd; _dir,
+# hacia dónde iba el tiro en ese marco, lo usa la gata (gata.gd), cuya cápsula de los tiros es mucho más grande que ella
+func es_cabeza(p: Vector3, _dir := Vector3.ZERO) -> bool:
 	return p.y > 1.52
 
 

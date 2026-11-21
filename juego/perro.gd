@@ -731,12 +731,17 @@ func portabandera() -> Transform3D:
 	return tronco.global_transform * Transform3D(Basis(Vector3.RIGHT, 0.35), Vector3(0.07, 0.06, 0.2))
 
 
-# cabeza: adonde apunta la prueba de los tiros a la cabeza (red.gd apuntar(), --red-cabeza), en el marco del perro
 func medidas() -> Dictionary:
-	return {"ojo": 0.95, "etiqueta": 1.3, "radio": 0.26, "alto": 1.15, "cabeza": Vector3(0, 0.67, -0.53),
+	return {"ojo": 0.95, "etiqueta": 1.3, "radio": 0.26, "alto": 1.15,
 		"blanco": Transform3D(Basis(Vector3.RIGHT, PI / 2), Vector3(0, 0.47, -0.08))}
 
 
+# adonde apunta la prueba de los tiros a la cabeza (red.gd apuntar(), --red-cabeza), en el mundo: el perro no cambia de
+# postura, así que es un punto fijo de su marco (la gata lo reemplaza: sentada o echada, la cabeza baja)
+func centro_cabeza() -> Vector3:
+	return global_transform * Vector3(0, 0.67, -0.53)
+
+
 # la cabeza (el doble de daño): adelante del pecho y sobre la cruz
-func es_cabeza(p: Vector3) -> bool:
+func es_cabeza(p: Vector3, _dir := Vector3.ZERO) -> bool:
 	return p.z < -0.36 and p.y > 0.5

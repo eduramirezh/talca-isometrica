@@ -37,8 +37,9 @@
 #   --red-foto n --png x.png: la captura al llegar el tiro n de otro jugador, con el juego congelado (el fogonazo)
 #
 # El cuerpo (jugador.gd personaje: la persona de peaton.gd, el perro de perro.gd o la gata de gata.gd) va en traje(),
-# confiable: al que llega, si no es la persona, y a todos cuando cambia. Una copia de antes del perro (o de la gata) lo
-# ve como persona: vestir() no cambia a un cuerpo que no conoce.
+# confiable: al que llega, si no es la persona, y a todos cuando cambia. vestir() no cambia a un cuerpo que no conoce:
+# una copia anterior deja al jugador con el último que conocía (una de antes de la gata, a la que se eligió en el menú,
+# que pasa por el perro, la ve como perro; una de antes del perro, como persona).
 extends Node3D
 
 const Args := preload("res://args.gd")
@@ -670,7 +671,7 @@ func apuntar(o: Otro) -> void:
 	var cam: Camera3D = jugador.cam
 	var meta := o.blanco.global_position + Vector3.UP * (0.75 if Args.has("--red-cabeza") else 0.35)  # el Blanco, a 0,9 m de los pies
 	if o.personaje != "persona":
-		meta = o.peaton.global_transform * (o.med["cabeza"] as Vector3) if Args.has("--red-cabeza") else o.blanco.global_position
+		meta = o.peaton.centro_cabeza() if Args.has("--red-cabeza") else o.blanco.global_position
 	var d := (meta - cam.global_position).normalized()
 	var f := -cam.global_basis.z
 	jugador.yaw += 0.35 * wrapf(atan2(-d.x, -d.z) - atan2(-f.x, -f.z), -PI, PI)
@@ -870,7 +871,8 @@ class Otro extends Node3D:
 	func herido(cantidad: float, punto: Vector3, desde: Vector3) -> float:
 		if antigua or not recibido or vida <= 0.0 or invulnerable:
 			return 0.0
-		var cabeza: bool = not montado and peaton.es_cabeza(peaton.global_transform.affine_inverse() * punto)
+		var inv := peaton.global_transform.affine_inverse()
+		var cabeza: bool = not montado and peaton.es_cabeza(inv * punto, inv.basis * (punto - desde))
 		var d := cantidad * (2.0 if cabeza else 1.0)
 		var arma_mia: String = red.armas.tipo if red.armas else ""
 		vida = maxf(vida - d, 0.0)
