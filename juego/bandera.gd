@@ -41,6 +41,8 @@ const Red := preload("res://red.gd")
 const Jugador := preload("res://jugador.gd")
 
 const TOMAR := 2.5  # m del asta para tomarla (o devolver la propia)
+const PARTIR := 15.0  # m: más cerca de la propia, al empezar no se mueve (la que el anfitrión pone al empezar donde vio a
+# su dueño queda, con la latencia, a unos metros de él: llevarlo ahí lo tiraba hacia atrás y paraba el auto)
 const ANOTAR := 3.5  # m de la base propia para anotar
 const VUELTA := 30.0  # s que una bandera en el suelo espera antes de volver sola
 const META := 3  # puntos para ganar, si el anfitrión no elige otra cosa
@@ -259,14 +261,14 @@ func aplicar(e: Dictionary) -> void:
 
 
 # al empezar (también otra ronda), cada uno parte en su bandera: lo lleva su juego, como al reaparecer (jugador.gd ir(),
-# que no mira sin_viajes y espera la colisión de allá; montado, con el vehículo). El que la tiene donde está, no se mueve
+# que no mira sin_viajes y espera la colisión de allá; montado, con el vehículo). El que está a menos de PARTIR, no se mueve
 func a_mi_bandera() -> void:
 	var mia = banderas.get(yo())
 	if mia == null:
 		return
 	var b: Vector3 = mia["base"]
 	var lejos := jugador.global_position.distance_to(b)
-	if lejos < TOMAR:
+	if lejos < PARTIR:
 		return
 	jugador.ir(b.x, -b.z, b.y)
 	print("bandera.gd: a tu bandera, en x %.1f, y %.1f (estaba a %.0f m)" % [b.x, -b.z, lejos])
@@ -302,7 +304,7 @@ func contar(ev: Array) -> void:
 	var t := ""
 	match ev[0]:
 		"prepara":
-			t = "Captura la bandera: pon la tuya con B donde quieras defenderla (a pie: mientras se prepara, sin jetpack)"
+			t = "Captura la bandera: pon la tuya con B donde quieras defenderla (mientras se prepara no hay jetpack)"
 		"empieza":
 			t = "¡A jugar! Toma una bandera ajena y llévala a la tuya (a %d puntos)" % meta if meta > 0 else "¡A jugar! Toma una bandera ajena y llévala a la tuya"
 			if not banderas.has(yo()):
@@ -897,7 +899,8 @@ func prueba_preparar() -> void:
 	Input.action_press("saltar")
 	await esperar(func(): return v.altura > 25.0, 15.0)
 	Input.action_release("saltar")
-	print("bandera.gd: con el jetpack a %.0f m sobre el suelo; prepara" % v.altura)
+	v.combustible = 0.0  # sin combustible: bajar solo no lo gasta, y sin él igual baja (antes caía y moría)
+	print("bandera.gd: con el jetpack a %.0f m sobre el suelo, sin combustible; prepara" % v.altura)
 	preparar()
 	var t0 := Time.get_ticks_msec()
 	var bajo: bool = await esperar(func(): return not v.montado, 45.0)

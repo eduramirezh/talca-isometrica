@@ -101,7 +101,7 @@
         {v0:10.5,v1:19,band:KB.black,logo:KB.gold,canopy:true},     // Kiosko Hotdoguería Raulito: tall, over a canopy
         {v0:19.3,v1:24.1,band:KB.maroon,short:true},                // a dark red Coca-Cola sign
         {v0:24.4,v1:30.1,band:KB.fascia},                           // Completos …
-        {v0:30.4,v1:35.35,band:KB.fascia,front:true}];              // Mafran, a white-topped tent in front
+        {v0:30.4,v1:34.7,band:KB.fascia,front:true}];               // Mafran, a white-topped tent in front (the hut ends at v 34.77)
       for(const k of ROW){const {v0,v1}=k,W=v1-v0;
         if(k.tent){tent(.2,3.2,v0,v1,2.2,KB.tent);continue;}
         S.dy=groundMin(R(0,v0,1.4,v1));
@@ -114,7 +114,7 @@
         if(!k.front){S.prism(R(.6,v0+.9,1.3,v1-.9),.3,1.05,KB.counter,KB.ctop);          // the counter outside
           for(const t of [.3,.7])S.prism(R(.7,v0+W*t-.3,1.2,v0+W*t+.3),1.05,1.5,KB.pot,KB.pot);}
         for(const [c0,c1] of [[v0+.1,v0+.9],[v1-.9,v1-.1]])at(.75,c0,c1,1.0,1.9,KB.body); // red curtains at the ends
-        for(const t of [.2,.5,.8]){const g=G(1.1,v0+W*t);GLOW.push(g[0],S.dy+1.7,g[1]);}
+        for(const t of [.2,.5,.8]){const g=G(k.front?3.5:1.1,v0+W*t);GLOW.push(g[0],S.dy+1.7,g[1]);}   // Mafran's, in front of its tent
         if(k.front)tent(.8,3.2,v0+.6,v0+4,2.1,KB.white);}
       for(const [v,h] of [[-.2,1],[35.6,1]]){S.dy=groundMin(R(1.2,v-.3,1.8,v+.3));S.prism(R(1.4,v-.3,2.0,v+.3),.3,h,KB.bin,KB.bin);}}   // a green bin at each end
     S.dy=0;

@@ -1325,8 +1325,8 @@ func volar(dt: float) -> void:
 			velocity.y -= g * dt
 		else:
 			combustible = minf(1.0, combustible + J_RECARGA * dt)
-	elif combustible > 0.0:
-		# en el aire con combustible (o despegando): la velocidad vertical va hacia la que se pide, con lo que dan las
+	elif combustible > 0.0 or vetado:
+		# en el aire con combustible (o despegando; bajando solo, también sin él): la velocidad vertical va hacia la que se pide, con lo que dan las
 		# toberas (de 0 a g + J_EMPUJE); el techo acota la de subida
 		var quiere := -J_FLOTA
 		gasto = J_GASTO_FLOTA
@@ -1346,6 +1346,8 @@ func volar(dt: float) -> void:
 				gasto *= J_GASTO_FUERTE
 		else:
 			h *= exp(-J_ROCE_H * dt)
+		if vetado:
+			gasto = 0.0  # bajar solo no gasta: con poco combustible caería sin manejar y moriría
 		combustible = maxf(0.0, combustible - gasto * dt)
 		if combustible == 0.0 and tenia > 0.0:
 			avisar("sin combustible")

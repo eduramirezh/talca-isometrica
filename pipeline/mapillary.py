@@ -16,6 +16,7 @@
                                                   # los de una caja de grilla que no están en config/fachadas.json
   python mapillary.py punto -0.8 29.7 [2.6] [--fotos 8] [--radio 45]   # las que miran a un punto (una pila, una
                                                   # estatua): un círculo de r m en el suelo y una regla vertical
+                                                  # fachada y punto dibujan con Pillow: uv run --with pillow python …
 
 clave: Mapillary pide una clave de cliente para todo, también para las teselas. Es gratis: con una cuenta de
 mapillary.com, https://www.mapillary.com/dashboard/developers → «Register application» (nombre y descripción
@@ -230,7 +231,7 @@ def tile_images(z, tx, ty, tok, refresh=False):
         try: tiles = mvt(b) if b else {}
         except Exception: raise SystemExit(f'la tesela {z}/{tx}/{ty} de Mapillary no se pudo leer ({len(b)} bytes)')
         # read before it is kept, and written whole: a cut download or an error page never stays cached for 30 days
-        tmp = f.with_suffix('.tmp'); tmp.write_bytes(b); os.replace(tmp, f)
+        tmp = f.with_suffix(f'.{os.getpid()}.tmp'); tmp.write_bytes(b); os.replace(tmp, f)
     layer = tiles.get('image')
     if not layer: return []
     ext, feats = layer; out = []
@@ -468,14 +469,20 @@ def sightings(R, imgs, walls, r=45):
             out.append((score, i, im, d, ob))
     return sorted(out, key=lambda v: v[0])
 
+def usable(c):
+    """Whether Camera can draw on this image: a computed pose and the fields it reads. Fisheye lenses are left out (their
+    projection is not the perspective one: drawn as such, the overlay would fall wrong without a warning)."""
+    return bool(c and c.get('computed_rotation') and c.get('computed_geometry') and c.get('camera_type') != 'fisheye'
+                and (c.get('camera_type') in ('spherical', 'equirectangular') or c.get('width') and c.get('height')))
+
 def cameras(ids, tok):
-    """The cameras of these images, from raw/mapillary/camaras.json or the API (50 at a time), by id."""
+    """The cameras of these images, from raw/mapillary/camaras.json or the API (50 at a time), by id (None: not served,
+    asked again next time)."""
     have = json.load(open(CAMS)) if CAMS.exists() else {}
     need = [i for i in dict.fromkeys(ids) if i not in have]
     for k in range(0, len(need), 50):
         for c in graph('images', {'image_ids': ','.join(need[k:k + 50]), 'fields': CAMF}, tok).get('data', []):
             have[c['id']] = c
-        for i in need[k:k + 50]: have.setdefault(i, None)          # not served: do not ask again
         tmp = CAMS.with_suffix(f'.{os.getpid()}.tmp'); tmp.write_text(json.dumps(have, separators=(',', ':'))); os.replace(tmp, CAMS)   # whole: another run may be reading it
     return {i: have.get(i) for i in ids}
 
@@ -486,7 +493,7 @@ def photo(iid, tok):
         u = graph(iid, {'fields': 'thumb_2048_url'}, tok).get('thumb_2048_url')
         if not u: return None
         f.parent.mkdir(parents=True, exist_ok=True)
-        tmp = f.with_suffix('.tmp'); tmp.write_bytes(net.get(u, timeout=90, quiet=True)); os.replace(tmp, f)
+        tmp = f.with_suffix(f'.{os.getpid()}.tmp'); tmp.write_bytes(net.get(u, timeout=90, quiet=True)); os.replace(tmp, f)
     return f
 
 def wall_colour(img, cam, a, b, h):
@@ -566,14 +573,14 @@ def cmd_fachada(*ids, caja: (float, float, float, float) = None, fotos: int = 2,
     plan = {}
     for k in ids:
         R = B[k][0]; cx, cy = sum(p[0] for p in R) / len(R), sum(p[1] for p in R) / len(R); rad = max(math.dist((cx, cy), p) for p in R)
-        plan[k] = sightings(R, near_(grid, cx, cy, rad + 50), near_(egrid, cx, cy, rad + 120))[:8]
+        plan[k] = sightings(R, near_(grid, cx, cy, rad + 50), near_(egrid, cx, cy, rad + 120))[:max(8, 4 * fotos)]
     C = cameras([v[2][0] for k in ids for v in plan[k]], tok)
     tiles, rows = [], []
     for n, k in enumerate(ids):
         R, h, lv, t = B[k]; fa = FA.get(k, {}); got, seqs = [], set()
         for score, i, im, dist, ob in plan[k]:
             c = C.get(im[0])
-            if not c or not c.get('computed_rotation') or im[6] in seqs: continue
+            if not usable(c) or (im[6] or im[0]) in seqs: continue
             pano = c.get('camera_type') in ('spherical', 'equirectangular')
             cam = Camera(c, (2048, 1024) if pano else (c['width'], c['height']), HPANO if pano and alto == HCAM else alto)
             if not pano and (abs(cam.pitch) > 15 or abs(cam.roll) > 10): continue      # a reconstruction gone wrong
@@ -598,7 +605,7 @@ def cmd_fachada(*ids, caja: (float, float, float, float) = None, fotos: int = 2,
             crop = img if entera else img.crop((int(max(0, bx0 - m)), int(max(0, by0 - m)), int(min(img.width, bx1 + m)), int(min(img.height, by1 + m))))
             when = time.strftime('%Y-%m-%d', time.gmtime(c['captured_at'] / 1000))
             who = (c.get('creator') or {}).get('username', '')
-            got.append((crop, col, when, dist, ob, i)); seqs.add(im[6])
+            got.append((crop, col, when, dist, ob, i)); seqs.add(im[6] or im[0])
             rows.append(f'{k}\t{im[0]}\t{when}\t{who}\thttps://www.mapillary.com/app/?pKey={im[0]}\tlado {i}, a {dist:.0f} m, {ob:.0f}° de su normal, color {col}')
             if len(got) >= fotos: break
         if not got: print(f'{k}: ninguna foto lo ve de frente'); continue
@@ -644,13 +651,13 @@ def cmd_punto(x: float, y: float, r: float = 3, *, fotos: int = 8, radio: float 
             if f and f[0] >= 2.5 and not any(_cross((im[1], im[2]), (x, y), a, b) for a, b in walls): cand.append((f[0], im))
     best = {}
     for d, im in sorted(cand, key=lambda v: v[0]):
-        best.setdefault(im[6], (d, im))
+        best.setdefault(im[6] or im[0], (d, im))   # an image without a sequence is its own
     pick = sorted(best.values(), key=lambda v: v[0])[:fotos * 3]
     C = cameras([im[0] for _, im in pick], tok)
     tiles, rows = [], []
     for d, im in pick:
         c = C.get(im[0])
-        if not c or not c.get('computed_rotation'): continue
+        if not usable(c): continue
         pano = c.get('camera_type') in ('spherical', 'equirectangular')
         cam = Camera(c, (2048, 1024) if pano else (c['width'], c['height']), HPANO if pano and alto == HCAM else alto)
         if not pano and (abs(cam.pitch) > 15 or abs(cam.roll) > 10): continue
