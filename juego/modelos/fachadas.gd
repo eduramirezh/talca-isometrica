@@ -23,7 +23,12 @@
 #   - el BCI (1 Sur 732): «Banco de Crédito e Inversiones Talca.jpg» (2024-03-15, CC BY 4.0, ElPabloRN): blanco,
 #     neoclásico, el nombre en letras negras en el friso y un frontón con tímpano;
 #   - la casa blanca de 1 Poniente 1133, junto a la catedral: fotos de la catedral 00 y 06 (2024, 2017): blanca, zócalo
-#     café rojizo, rejas en las ventanas, techo de cuatro aguas rojo con alero.
+#     café rojizo, rejas en las ventanas, techo de cuatro aguas rojo con alero;
+#   - cinco más, medidos en fotos de Mapillary (noviembre de 2026; CC BY-SA 4.0, de kaartcam, 2018, y Kaart_Local,
+#     2025; `pipeline/mapillary.py fachada`): Caja Los Andes (w660195968), el blanco de tres pisos con cornisa
+#     (w941980879), el de oficinas poligonal de cinco pisos (w309684101), el de hormigón gris tras su reja (w939148477)
+#     y el blanco de la visera curva (w944738559). Su alto, pisos, color y planta baja van en config/fachadas.json, con los 45 de las
+#     dos cuadras alrededor que viste fachadas_ciudad.gd; la foto de cada uno, en docs/FUENTES.md.
 # Lo demás es genérico y aproximado: los colores (una paleta de fachadas del centro, elegida por el id de OSM), la
 # cantidad de ventanas, los locales y sus toldos; los letreros llevan solo los nombres que da OSM (BCI, Oriencoop,
 # Chilexpress, AFP Habitat, Banco Santander, cine Plaza), con colores supuestos. El Edificio O'Higgins (ex Banco de

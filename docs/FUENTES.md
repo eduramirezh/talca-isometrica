@@ -177,6 +177,59 @@ Fuera de la plaza, lo medido en fotos de Commons para `config/fachadas.json` (no
 - Esquina nororiente de 1 Sur con 2 Oriente (1 Sur 901, w939148488): [«Fuente Germana Talca», 2014](https://commons.wikimedia.org/wiki/File:Fuente_Germana_Talca.jpg) (Xarucoponce, 4 de abril de 2014, CC BY-SA 3.0): dos pisos con balcón en el ochavo, ~9 m con una persona como escala (aproximado); sin color (foto retocada).
 - Restaurante El Chilote (Isidoro del Solar, w952814828): [«Talca, diagonal», 2015](https://commons.wikimedia.org/wiki/File:Talca,_diagonal_(16635634932).jpg) (order_242 from Chile, 18 de febrero de 2015, CC BY-SA 2.0): un piso, naranja (luz de atardecer).
 
+Dos cuadras alrededor de la Plaza de Armas, lo medido en fotos de Mapillary para `config/fachadas.json` (noviembre de 2026; `pipeline/mapillary.py fachada`, que dibuja la planta de OSM y una regla de alturas sobre cada foto). Las fotos se miraron, no van en el repositorio; todas son CC BY-SA 4.0 («© <autor>, Mapillary, CC BY-SA 4.0»), de dos autores: kaartcam (febrero de 2018, una cámara en un auto) y Kaart_Local (agosto de 2025, panorámicas). De 203 edificios de OSM con una foto de frente, se midieron 50; los demás los tapan árboles, autos o rejas, la foto de 2018 es anterior al edificio o no se pudo saber cuál era. Los altos salen de los pisos y de la proporción con el largo del lado de OSM (la posición de algunas fotos de 2018 yerra hasta ~10 m: trampa «La posición de una foto de Mapillary puede errar 10 m»), y casi todos son aproximados; los colores de una fachada a la sombra, corregidos a ojo. Por edificio, su id de OSM, su centro en la grilla y la foto:
+
+- w952178474 (206, 283): [2018-02-13](https://www.mapillary.com/app/?pKey=852925545299437) (kaartcam): Casa de 1 piso: muro blanco ciego a la calle y portón de garaje.
+- w952173090 (-252, 245): [2025-08-25](https://www.mapillary.com/app/?pKey=31187291154220078) (Kaart_Local): 2 pisos gris oscuro con pilastras blancas y techo de tejas a cuatro aguas.
+- w941521632 (79, 201): [2018-02-13](https://www.mapillary.com/app/?pKey=154625346543025) (kaartcam): Blanco de 2 pisos con balcón (Estrategia Abogados), planta baja con pilastras gris oscuro.
+- w939226223 (-209, 196): [2025-08-25](https://www.mapillary.com/app/?pKey=671231568656353) (Kaart_Local): Centro de Diagnóstico Diagonal: 2 pisos, azul (en 2018, azul marino).
+- w952165747 (174, 190): [2018-02-13](https://www.mapillary.com/app/?pKey=115086403965776) (kaartcam): Fachada de vidrio (n.º 1260), planta baja vidriada; el remate queda fuera de la foto: el mínimo que se ve, 3 pisos y 11 m.
+- w939226227 (-140, 186): [2025-08-25](https://www.mapillary.com/app/?pKey=1300613494807231) (Kaart_Local): De frente a 13 m, el lado de 11 m calza con la fachada: 2 pisos antiguos, muro gris beige con grafitis y ventanas tapiadas.
+- w939148460 (72, 185): [2018-02-13](https://www.mapillary.com/app/?pKey=738975546741101) (kaartcam): Tramo de 5 m de un edificio crema de 2 pisos con esquina redondeada y molduras horizontales.
+- w944738562 (-127, 160): [2018-02-13](https://www.mapillary.com/app/?pKey=531853068201218) (kaartcam): Tras árboles: casa larga de 1 piso amarillo pálido con antepecho plano (un tramo central algo más alto).
+- w939226222 (-175, 158): [2025-08-25](https://www.mapillary.com/app/?pKey=2093447491148232) (Kaart_Local): Esquina redondeada con ventanal blanco (Sabor Peruano), roja en 2025.
+- w952165749 (170, 145): [2018-02-13](https://www.mapillary.com/app/?pKey=767097167324096) (kaartcam): Casa blanca de 1 piso con techo a cuatro aguas a la vista (tejas claras, parecen de cemento), chimenea y una buhardilla.
+- w944738559 (-143, 127): [2025-08-25](https://www.mapillary.com/app/?pKey=631596053349614) (Kaart_Local): De frente a 18 m: edificio moderno blanco con una gran visera curva de hormigón arriba y un muro calado.
+- w952165744 (208, 124): [2018-02-13](https://www.mapillary.com/app/?pKey=225194202286116) (kaartcam): SECPLAN: muro blanco, ventana con reja y puerta de vidrio con reja, balcón de vidrio oscuro encima.
+- w952165743 (206, 110): [2018-02-13](https://www.mapillary.com/app/?pKey=133470138817450) (kaartcam): Solo el color: muro rojo frambuesa con grafitis, de muy cerca y a 42°.
+- w952165741 (299, 97): [2018-02-13](https://www.mapillary.com/app/?pKey=135244338593518) (kaartcam): Esquina de 2 pisos, blanco rosado, zócalo de ladrillo hasta el antepecho, ventanas y puerta con reja.
+- w939148477 (-138, 87): [2018-02-13](https://www.mapillary.com/app/?pKey=373985843979684) (kaartcam): 2 pisos de hormigón gris tras una reja.
+- w939148464 (294, 72): [2018-02-13](https://www.mapillary.com/app/?pKey=303009318045734) (kaartcam): 1 piso antiguo crema con cornisa, puertas de madera de dos hojas y ventana alta.
+- w952165771 (-275, 50): [2018-02-13](https://www.mapillary.com/app/?pKey=521676558998112) (kaartcam): Casa de adobe de 1 piso en ruinas, con árboles creciendo encima: tramo de adobe con borde de teja y esquina estucada beige con grafitis.
+- w818950430 (175, 49): [2018-02-13](https://www.mapillary.com/app/?pKey=523633131996566) (kaartcam): Edificio azul oscuro (a la sombra en las dos fotos) de 2 niveles con letrero de notaría arriba y grafitis abajo.
+- w939148475 (206, 47): [2018-02-13](https://www.mapillary.com/app/?pKey=2855649211364464) (kaartcam): Notaría Durán, esquina azul redondeada de 2 pisos con zócalo azul oscuro.
+- w939148465 (296, 47): [2018-02-13](https://www.mapillary.com/app/?pKey=2991427957802107) (kaartcam): Esquina naranja de 2 pisos con ochavo y ojo de buey.
+- w660195968 (141, 38): [2018-02-13](https://www.mapillary.com/app/?pKey=132139748954108) (kaartcam): Caja Los Andes: 2 pisos altos, blanco, ventanales entre pilastras planas y faja entre pisos.
+- w808377016 (-264, -27): [2018-02-13](https://www.mapillary.com/app/?pKey=812770092950053) (kaartcam): Pabellón de 1 piso de muro café (ladrillo o madera) con ventanas de marco blanco, corredor y techo de zinc.
+- w952165720 (-276, -36): [2018-02-13](https://www.mapillary.com/app/?pKey=2937345416479485) (kaartcam): Casa de tablas de madera de 1 piso con frontón sobre la entrada y techo de zinc rojo a dos aguas.
+- w952165721 (-291, -40): [2018-02-13](https://www.mapillary.com/app/?pKey=2830185700577053) (kaartcam): Blanco de 2 pisos con ventanas de arco arriba y un alero corrido sobre la planta baja (letrero C.A.M.).
+- w309684102 (204, -81): [2018-02-13](https://www.mapillary.com/app/?pKey=302715571453824) (kaartcam): Gales Creaciones, esquina con ochavo: un piso de locales con toldos verdes, mansarda café y franja de letrero encima.
+- w939148492 (245, -88): [2018-02-13](https://www.mapillary.com/app/?pKey=236407174909993) (kaartcam): Banco de Chile (948): piedra beige y pórtico de granito gris con vidrio.
+- w275506463 (169, -92): [2018-02-13](https://www.mapillary.com/app/?pKey=931642597380130) (kaartcam): Galería de locales con tambor y cúpula en la esquina curva.
+- w309684101 (-41, -110): [2025-08-25](https://www.mapillary.com/app/?pKey=2722272664778333) (Kaart_Local): edificio de oficinas poligonal con fajas de hormigón gris y vidrio, 5 pisos (OSM dice 4).
+- w941980879 (90, -113): [2018-02-13](https://www.mapillary.com/app/?pKey=527916598221893) (kaartcam): Edificio blanco de 3 pisos con cornisa y planta baja de oficina con letrero verde.
+- w952097282 (-288, -140): [2018-02-13](https://www.mapillary.com/app/?pKey=555542005435329) (kaartcam): Asamblea de Dios Autónoma: 2 pisos con ventanal y pretil alto, a 57°.
+- w360216847 (-96, -163): [2025-08-25](https://www.mapillary.com/app/?pKey=2694870417518735) (Kaart_Local): torre crema con paños de ladrillo anaranjado sobre un zócalo de arcos.
+- w939226202 (23, -170): [2018-02-13](https://www.mapillary.com/app/?pKey=141937951192002) (kaartcam): Oficinas blancas con fajas de vidrio azul, entrada con escalera bajo un voladizo (el lado 5 que sobresale).
+- w246196953 (284, -171): [2018-02-13](https://www.mapillary.com/app/?pKey=1018297822038042) (kaartcam): Restaurante Formosa, de frente: 2 pisos, cortinas metálicas y letrero negro.
+- w563186913 (89, -173): [2018-02-13](https://www.mapillary.com/app/?pKey=326150179080784) (kaartcam): Techo de surtidores Copec, frontón blanco con franja azul verdosa.
+- w939226190 (299, -174): [2018-02-13](https://www.mapillary.com/app/?pKey=3928220300587913) (kaartcam): 2 pisos, celeste turquesa, techo de zinc a la vista.
+- w939226206 (-47, -206): [2025-08-25](https://www.mapillary.com/app/?pKey=792892119825686) (Kaart_Local): Local azul de 1 piso alto con esquina redondeada, junto al terracota w952814881.
+- w952814837 (-310, -211): [2018-02-13](https://www.mapillary.com/app/?pKey=518291516017876) (kaartcam): Local verde «El Katador» y el galpón verde vecino, que el lado de 26 m abarca juntos.
+- w939226200 (82, -213): [2018-02-13](https://www.mapillary.com/app/?pKey=2880307308905695) (kaartcam): Esquina blanca de 2 pisos altos, ventanas de madera roja, zócalo azul con grafitis.
+- w939226196 (206, -214): [2018-02-13](https://www.mapillary.com/app/?pKey=308429260721976) (kaartcam): 1 piso antiguo blanco de muros gruesos con franja roja en la cornisa.
+- w952814881 (-50, -216): [2025-08-25](https://www.mapillary.com/app/?pKey=1070938565029319) (Kaart_Local): 1 piso alto, terracota con zócalo negro y cortinas metálicas, esquina curva.
+- w939226195 (237, -219): [2018-02-13](https://www.mapillary.com/app/?pKey=172429794793041) (kaartcam): Fila de locales precarios de 1 piso (audio de autos) tras reja y árbol.
+- w1167599148 (82, -229): [2018-02-13](https://www.mapillary.com/app/?pKey=811537929493159) (kaartcam): 2 pisos sencillo gris beige con rejas, al lado del restobar La Cleta.
+- w952814876 (-78, -273): [2025-08-25](https://www.mapillary.com/app/?pKey=678924908064273) (Kaart_Local): Casa blanca de 2 pisos en esquina redondeada, balcones de fierro.
+- w952814879 (-45, -274): [2025-08-25](https://www.mapillary.com/app/?pKey=678924908064273) (Kaart_Local): Fachada antigua ocre en ruina, con un portón rojo de ~4–5 m y grafitis.
+- w952821813 (87, -285): [2018-02-13](https://www.mapillary.com/app/?pKey=1354135118294898) (kaartcam): 2 pisos clásico, estuco gris beige con molduras y puerta en arco.
+- w952814877 (-74, -286): [2025-08-25](https://www.mapillary.com/app/?pKey=4284068398494176) (Kaart_Local): Casa blanca de 2 pisos con balcones de fierro, junto a w952814876.
+- w1167599144 (154, -289): [2025-08-25](https://www.mapillary.com/app/?pKey=811602754533221) (Kaart_Local): Torre de departamentos con balcones.
+- w1167599145 (121, -291): [2025-08-25](https://www.mapillary.com/app/?pKey=750871487918122) (Kaart_Local): Muro blanco liso de 1 piso con focos al pie de la torre (¿estacionamiento?).
+- w952821763 (47, -297): [2025-08-25](https://www.mapillary.com/app/?pKey=2935831453255647) (Kaart_Local): 1 piso antiguo con cornisa y pilastras, ventanas con rejas.
+- w952821784 (78, -298): [2025-08-25](https://www.mapillary.com/app/?pKey=748584407988902) (Kaart_Local): Casa blanca de 2 pisos con grafitis, a contraluz.
+
 La página toma de estos modelos lo que se ve en píxeles de 0,5 m: las alturas, los colores, los zócalos y los techos de `config/fachadas.json` (los edificios de OSM de la plaza), los colores de la Catedral, y en `src/js/hitos/calles-plaza.js` la calzada de hormigón y el asfalto de 1 Oriente, los faroles verdes y los semáforos y árboles de vereda de OSM (ODbL, `juego/modelos/entorno/osm.json`), con las mismas fotos como fuente.
 
 ## Fotos de lugares sin hito
