@@ -11,7 +11,7 @@
 # los otros jugadores de la red); en lo demás queda polvo (chispas en los autos) y, en lo fijo, una marca. El cuchillo
 # corta a ALCANCE frente al pecho, en la dirección de la cámara, a los 0,12 s del golpe (cuando la hoja pasa).
 # recibir_dano() devuelve el daño que tomó (0: ninguno, como un jugador recién reaparecido), y es más que `cantidad` si
-# fue en la cabeza, que vale el doble (lo decide cada uno: blancos.gd CABEZA, red.gd CABEZA): el tiro a la cabeza se
+# fue en la cabeza, que vale el doble (lo decide cada uno: blancos.gd CABEZA, red.gd el es_cabeza() de cada cuerpo): el tiro a la cabeza se
 # nota en la X de la mira, más grande y dorada, en un tic metálico y en la cifra del daño, dorada.
 # Efectos: fogonazo (una luz y un destello), trazadora, polvo o chispas, marcas (las últimas MARCAS), el retroceso de la
 # cámara (sube y vuelve; un poco queda: hay que bajar el mouse en una ráfaga) y del arma, y sonidos hechos en código
@@ -367,14 +367,14 @@ func camara(dt: float) -> void:
 	libre = lerpf(libre, j.largo, 0.2)  # lo que hace jugador.gd largo_actual(), sin lo de este cuadro
 	if k_mira < 0.002 and absf(patada) < 0.0005:
 		if tocada:
-			j.brazo.position = Vector3(0, j.ALTO - 0.15, 0)
+			j.brazo.position = Vector3(0, j.ojo(), 0)
 			j.brazo.spring_length = libre
 			j.cam.fov = fov0
 			tocada = false
 		return
 	tocada = true
 	var cerca := clampf(libre / 1.5, 0.0, 1.0)  # en primera persona no se corre al hombro
-	j.brazo.position = Vector3(0, j.ALTO - 0.15, 0) + Basis(Vector3.UP, j.yaw) * (HOMBRO * k_mira * cerca)
+	j.brazo.position = Vector3(0, j.ojo(), 0) + Basis(Vector3.UP, j.yaw) * (HOMBRO * k_mira * cerca)
 	j.brazo.spring_length = lerpf(libre, minf(libre, LARGO_APUNTAR), k_mira)
 	j.cam.fov = lerpf(fov0, fov_mira, k_mira)
 	j.brazo.rotation.x += patada

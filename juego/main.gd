@@ -49,6 +49,7 @@
 #   recorte.gd       los recortes de los modelos sobre cada tesela (abajo)
 #   ambiente.gd      cielo, luz, sombras, niebla y posproceso (un Node3D que se agrega a la escena)
 #   jugador.gd       el personaje y su cámara, su vida y las caídas; viaje.gd, la lista de lugares para ir (Tab)
+#   peaton.gd        el cuerpo del personaje, una persona; perro.gd, el otro (--personaje perro o el menú de Esc)
 #   vida.gd          la barra de vida, la muerte en pantalla y los carritos de completos, donde se recupera
 #   plano.gd         el mapa en miniatura y el mapa grande (M), con plano_datos.gd (datos/plano.json, de pipeline/plano.py)
 #   ruta.gd          el marcador del mapa grande y el camino hasta él, con la cinta de flechas y la columna de luz
@@ -181,6 +182,7 @@ func _ready() -> void:
 	armas.jugador = jugador
 	add_child(armas)
 	red.armas = armas  # los tiros propios a los demás, y los de ellos aquí
+	jugador.cambio_personaje.connect(red.enviar_traje)  # el perro o la persona, a los demás (red.gd traje())
 	armas.accion.connect(red.enviar_accion)
 	bandera = preload("res://bandera.gd").new()  # captura la bandera, en la red
 	bandera.red = red

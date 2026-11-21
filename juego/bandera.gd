@@ -535,11 +535,11 @@ func poner_visuales() -> void:
 			asta.global_transform = Transform3D(Basis(), donde)
 			asta.visible = true
 		else:
-			var torso := torso_de(c)
-			asta.visible = torso != null and not (c == yo() and not jugador.cuerpo.visible)
-			if torso:
-				# en la espalda (+Z del peatón), inclinada hacia atrás
-				asta.global_transform = torso.global_transform * Transform3D(Basis(Vector3.RIGHT, 0.28).scaled(Vector3.ONE * LLEVADA), Vector3(0.05, -0.1, 0.17))
+			var pe := cuerpo_de(c)
+			asta.visible = pe != null and not (c == yo() and not jugador.cuerpo.visible)
+			if pe:
+				# en la espalda (peaton.gd o perro.gd portabandera()), a la escala de la llevada
+				asta.global_transform = pe.portabandera() * Transform3D(Basis().scaled(Vector3.ONE * LLEVADA), Vector3.ZERO)
 			donde = pos_de(c) if pos_de(c) != Vector3.INF else donde
 		var faro: MeshInstance3D = v["faro"]
 		faro.global_position = donde + Vector3.UP * 248.0
@@ -551,11 +551,11 @@ func poner_visuales() -> void:
 		nombre.global_position = donde + Vector3.UP * (ASTA + 0.7)
 
 
-func torso_de(id: int) -> Node3D:
+func cuerpo_de(id: int) -> Node3D:
 	if id == yo():
-		return jugador.peaton.torso
+		return jugador.peaton
 	var o = red.otros.get(id)
-	return o.peaton.torso if o and o.recibido else null
+	return o.peaton if o and o.recibido else null
 
 
 # la bandera de d: el asta con su paño, una columna de luz y un anillo en la base (los de ruta.gd) y su nombre

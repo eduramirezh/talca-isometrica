@@ -1,6 +1,7 @@
 # El menú de Esc: pausa el juego y ofrece seguir, ir a un lugar (viaje.gd, lo mismo que Tab), el mapa grande (plano.gd,
 # M), volver a la Plaza de Armas, pasar del día a la noche (ambiente.gd, L), la red local (red.gd, J), mostrar u ocultar
-# la ayuda de arriba a la izquierda, la pantalla completa y salir. Esc lo abre y lo cierra (antes solo soltaba el mouse:
+# la ayuda de arriba a la izquierda, la pantalla completa, el personaje (la persona o el perro: jugador.gd
+# cambiar_personaje()) y salir. Esc lo abre y lo cierra (antes solo soltaba el mouse:
 # abierto, el mouse queda suelto igual). Las flechas y Enter recorren los botones.
 #
 # En una partida en red no pausa, porque los demás siguen jugando: deja quieto al personaje (jugador.quieto, que respetan
@@ -20,6 +21,7 @@ var subtitulo := Label.new()
 var botones: Array[Button] = []
 var b_ayuda: Button
 var b_pantalla: Button
+var b_personaje: Button
 var b_plano: Button
 var b_red: Button
 var antes := Input.MOUSE_MODE_CAPTURED
@@ -67,6 +69,7 @@ func _ready() -> void:
 	caja.add_child(espacio(4))
 	b_ayuda = boton("", "", alternar_ayuda)
 	b_pantalla = boton("", "", alternar_pantalla)
+	b_personaje = boton("", "", alternar_personaje)
 	caja.add_child(espacio(4))
 	boton("Salir del juego", "", func(): get_tree().quit())
 	visible = false
@@ -176,10 +179,18 @@ func alternar_pantalla() -> void:
 	textos()
 
 
+func alternar_personaje() -> void:
+	var j: Node = main.jugador
+	j.cambiar_personaje("perro" if j.personaje == "persona" else "persona")
+	textos()
+
+
 func textos() -> void:
 	b_ayuda.text = "Ayuda en pantalla: %s" % ("sí" if main.ayuda_texto.visible else "no")
 	var completa := DisplayServer.window_get_mode() in [DisplayServer.WINDOW_MODE_FULLSCREEN, DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN]
 	b_pantalla.text = "Pantalla completa: %s" % ("sí" if completa else "no")
+	b_personaje.text = "Personaje: %s" % (main.jugador.personaje if main.jugador else "persona")
+	b_personaje.disabled = main.jugador == null
 
 
 # --menu-prueba (main.gd): Esc, Tab y M por la misma entrada que el teclado (Input.parse_input_event), e imprime lo que

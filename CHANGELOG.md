@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **Un perro para jugar** (`juego/perro.gd`). El personaje puede ser un perro en vez de la persona: `--personaje perro` o «Personaje» en el menú de Esc, que lo cambia en el lugar (a pie, en la bicicleta o con el jetpack, y con el arma en la mano).
+  - Un quiltro mediano de pelo corto hecho en código, como el peatón: café claro, el pecho y el vientre crema, las patas blancas, el hocico gris oscuro, las orejas grandes y paradas con la punta oscura, la cola larga con la punta clara y un collar con argolla y placa (del color de cada jugador en la red). Colores por vértice y secciones interpoladas (Catmull-Rom), sin quiebres.
+  - Cada pata es una cadena de tres huesos resuelta por cinemática inversa: anda al paso, al trote (las diagonales juntas) y al galope (rotatorio, con el lomo que se dobla y se estira), mezclados según la rapidez, y los pies pisan donde deben aunque el tronco suba, baje o cabecee. Jadea con la lengua afuera, mueve la cola y echa las orejas atrás al correr.
+  - El triple salto: encogido, estirado y una voltereta en ovillo. En la bicicleta va sentado con las manos en el manubrio; con el jetpack, estirado como un superhéroe y la mochila en el lomo; muerto, de costado. Las armas van en el hocico: la pistola y el rifle de lado y el cuchillo atravesado; el tajo le sacude la cabeza.
+  - Extiende `peaton.gd`, y lo que depende del cuerpo pasó a ser un método de cada uno (`volar()`, que antes escribía `vehiculo.gd`; `tendido()`, `montura()`, `portabandera()`, `medidas()`, `es_cabeza()`): la cámara va más baja, y en la red los otros lo ven como perro (`red.gd traje()`), con su cápsula y su cabeza para los tiros.
+  - `tools/godot/vitrina.gd`: `perro`, `bici:quien`, `jetpack:quien`, `--salto n` y `--azimut`. Probado sin teclado: el triple salto (1,07, 1,65 y 5,19 m), la pistola, la red (Bea le dispara al perro de Ana) y el cambio de cuerpo con un arma en la mano.
+
 - **Los tiros a la cabeza se notan.** La cabeza ya valía el doble (en los muñecos y entre jugadores), pero el que disparaba no lo veía: la X de la mira y el sonido eran los del cuerpo, y entre jugadores no salía ninguna cifra.
   - `recibir_dano()` devuelve el daño que tomó (`blancos.gd`, `red.gd Blanco`): más que el del arma es la cabeza, y 0 es que no tomó nada (un jugador recién reaparecido, que ya no marca la X).
   - En la cabeza, la X de la mira sale más grande y dorada, con borde (roja si lo botó), y suena un tic metálico (`sonidos()`, hecho en código como los demás).

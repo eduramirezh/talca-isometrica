@@ -1,4 +1,5 @@
-# El personaje: una cápsula de 1,75 m (la colisión; lo que se ve es peaton.gd, animado según la velocidad) con una cámara en tercera persona sobre un brazo (SpringArm3D) que se acorta
+# El personaje: una cápsula de 1,75 m (la colisión; lo que se ve es peaton.gd, animado según la velocidad, o el perro de
+# perro.gd: --personaje perro o el menú de Esc, cambiar_personaje()) con una cámara en tercera persona sobre un brazo (SpringArm3D) que se acorta
 # cuando un muro se interpone. La rueda lo acorta hasta 0: primera persona, sin cuerpo a la vista. Montado en la
 # bicicleta o el auto (vehiculo.gd), no se mueve solo: va con el vehículo, que maneja también la cámara.
 extends CharacterBody3D
@@ -7,6 +8,7 @@ signal murio  # la vida llegó a 0 (danar())
 signal danado(cantidad: float, causa: String)  # vida.gd: el destello de la barra
 signal reaparecio(donde: String)  # vida.gd: el aviso («» si fue con Tab o el mapa grande)
 signal no_viaja(por_que: String)  # viajar() no lo llevó (main.gd lo muestra en el mapa chico)
+signal cambio_personaje(cual: String)  # cambiar_personaje() (red.gd se lo dice a los demás: traje())
 
 const CAMINAR := 8.0  # m/s (de verdad, ~1,4: se siente lento en una caja de 400 m)
 const CORRER := 18.0
@@ -51,7 +53,9 @@ var brazo := SpringArm3D.new()
 var cam := Camera3D.new()
 var cuerpo := Node3D.new()
 var pose := -1.0
-var peaton: Node3D = preload("res://peaton.gd").new()  # el cuerpo que se ve (peaton.gd)
+const CUERPOS := {"persona": preload("res://peaton.gd"), "perro": preload("res://perro.gd")}
+var personaje := "persona"  # el cuerpo que se ve: una clave de CUERPOS
+var peaton: Node3D = CUERPOS[personaje].new()  # el cuerpo que se ve (peaton.gd, o perro.gd, que lo extiende)
 var mapa: Node3D  # mapa.gd: mientras la colisión bajo el personaje no está, no cae
 var _quieto := false
 # viaje.gd y plano.gd: con la lista de lugares o el mapa grande abiertos, las teclas no lo mueven; muerto, tampoco,
@@ -99,7 +103,7 @@ func _ready() -> void:
 	cuerpo.add_child(peaton)
 	add_child(cuerpo)
 
-	brazo.position.y = ALTO - 0.15
+	brazo.position.y = ojo()
 	brazo.margin = 0.2
 	brazo.add_excluded_object(get_rid())
 	add_child(brazo)
@@ -112,6 +116,11 @@ func _ready() -> void:
 	floor_snap_length = PELDANO + 0.05
 	floor_max_angle = deg_to_rad(50)
 	pose = preload("res://args.gd").num("--pose", pose, 0.0, 20.0)
+	var cual := preload("res://args.gd").texto("--personaje", personaje)
+	if CUERPOS.has(cual):
+		cambiar_personaje(cual)
+	else:
+		push_warning("jugador.gd: --personaje %s no existe (%s)" % [cual, ", ".join(CUERPOS.keys())])
 	if mouse:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -303,12 +312,45 @@ func _process(dt: float) -> void:
 	if vida <= 0.0:  # de bruces, como un tablón que se vuelca desde los pies: el giro acelera hasta CAIDO
 		var f := minf(t_muerto / CAIDO, 1.0)
 		f *= f
-		cuerpo.rotation.x = -1.45 * f  # ~83°: tendido del todo, el pecho y los brazos se hunden en el suelo
-		cuerpo.position.y = 0.1 * f
+		peaton.tendido(cuerpo, f)  # la persona de bruces, el perro de costado
 	largo_actual()
 	# recién reaparecido, parpadea; a pie el peatón siempre se ve (en el auto, vehiculo.gd lo esconde)
 	peaton.visible = t_invulnerable <= 0.0 or fmod(t_invulnerable, 0.24) > 0.08
 	brazo.rotation = Vector3(pitch, yaw, 0)
+
+
+# la altura del brazo de la cámara a pie (la de los ojos de la persona, más baja con el perro)
+func ojo() -> float:
+	return peaton.medidas()["ojo"]
+
+
+# Otro cuerpo (una clave de CUERPOS), en el mismo lugar y pose que el de ahora (a pie, en la bicicleta o con el jetpack):
+# las armas que el de ahora tiene en la mano (o en el hocico) salen antes de soltarlo, porque son de armas.gd, que se
+# las pasa al nuevo con sostener() en el cuadro siguiente; la mochila del jetpack vuelve al vehículo y pasa a su montura
+func cambiar_personaje(cual: String) -> void:
+	if cual == personaje or not CUERPOS.has(cual):
+		return
+	var viejo := peaton
+	var padre := viejo.get_parent()
+	var jet: bool = vehiculo != null and vehiculo.tipo == "jetpack"
+	if jet:
+		vehiculo.mochila_puesta(false)
+	for m in viejo.mano:
+		for c in m.get_children():
+			m.remove_child(c)
+	peaton = CUERPOS[cual].new()
+	personaje = cual
+	if padre:
+		padre.add_child(peaton)
+		peaton.transform = viejo.transform
+		peaton.visible = viejo.visible
+		padre.remove_child(viejo)
+	viejo.queue_free()
+	if jet:
+		vehiculo.mochila_puesta(true)
+	if vehiculo == null:
+		brazo.position = Vector3(0, ojo(), 0)
+	cambio_personaje.emit(cual)
 
 
 func largo_actual() -> void:

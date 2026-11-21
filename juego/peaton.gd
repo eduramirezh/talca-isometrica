@@ -566,6 +566,69 @@ func sentar(dt: float, pies: Array, incl: float, hombros: float, codos: float) -
 	cabeza.rotation.y = lerpf(cabeza.rotation.y, 0.0, k)  # lo que la giró el arma (animar()), si subió con ella
 
 
+# Con el jetpack en el aire (vehiculo.gd pose_vuelo(); red.gd, la de otro jugador): las piernas colgando, un poco
+# dobladas y meciéndose (la derecha adelante), las puntas de los pies abajo y las manos en los mandos de la cintura;
+# inclinar es la del vuelo (la cabeza mira adelante, no al suelo). Se mezcla en ~0,15 s
+func volar(dt: float, inclinar: Vector3) -> void:
+	t += dt
+	var k := 1.0 - exp(-8.0 * dt)
+	var vaiven := 0.06 * sin(t * 2.1)
+	var m_ := [0.14 + vaiven, -0.1 - vaiven]
+	var rodilla := [-0.5, -0.28]
+	var tobillo := [-0.55, -0.6]
+	for i in 2:
+		var lado := -1.0 if i == 0 else 1.0
+		muslo[i].rotation.x = lerpf(muslo[i].rotation.x, m_[i], k)
+		canilla[i].rotation.x = lerpf(canilla[i].rotation.x, rodilla[i], k)
+		pie[i].rotation.x = lerpf(pie[i].rotation.x, tobillo[i], k)
+		hombro[i].rotation.x = lerpf(hombro[i].rotation.x, 0.1, k)
+		hombro[i].rotation.z = lerpf(hombro[i].rotation.z, 0.16 * lado, k)
+		codo[i].rotation.x = lerpf(codo[i].rotation.x, 1.2, k)
+	cadera.position.y = lerpf(cadera.position.y, 0.95, k)
+	cadera.rotation = Vector3(0.0, lerpf(cadera.rotation.y, 0.0, k), 0.0)
+	torso.rotation.x = lerpf(torso.rotation.x, -0.04, k)
+	torso.rotation.y = lerpf(torso.rotation.y, 0.0, k)
+	torso.scale = Vector3.ONE
+	cabeza.rotation.x = lerpf(cabeza.rotation.x, 0.08 + inclinar.x * 0.7, k)
+	salto = 0
+	vuelta = 0.0
+
+
+# ---------- lo que cambia con el cuerpo (perro.gd los reemplaza) ----------
+
+# muerto (jugador.gd en su cuerpo, red.gd en el peatón de otro): de bruces, como un tablón que se vuelca desde los pies;
+# f de 0 (de pie) a 1 (tendido: ~83°, el pecho y los brazos se hunden en el suelo)
+func tendido(n: Node3D, f: float) -> void:
+	n.rotation.x = -1.45 * f
+	n.position.y = 0.1 * f
+
+
+# donde va la mochila del jetpack (vehiculo.gd mochila_puesta(), en su marco: la cadera en el origen, arriba +Y, la
+# espalda hacia +Z) y si lleva sus correas
+func montura() -> Node3D:
+	return torso
+
+
+func con_correas() -> bool:
+	return true
+
+
+# la bandera que lleva (bandera.gd), en el mundo: en la espalda, inclinada hacia atrás (bandera.gd la escala)
+func portabandera() -> Transform3D:
+	return torso.global_transform * Transform3D(Basis(Vector3.RIGHT, 0.28), Vector3(0.05, -0.1, 0.17))
+
+
+# ojo: la altura del brazo de la cámara (jugador.gd); etiqueta: la del nombre sobre otro jugador (red.gd); radio, alto y
+# blanco: la cápsula que reciben los tiros de otro jugador (red.gd Otro), en el marco del peatón
+func medidas() -> Dictionary:
+	return {"ojo": 1.6, "etiqueta": 2.25, "radio": 0.32, "alto": 1.8, "blanco": Transform3D(Basis(), Vector3(0, 0.9, 0))}
+
+
+# un golpe en p (en el marco del peatón) es en la cabeza (vale el doble: red.gd), como en los muñecos de blancos.gd
+func es_cabeza(p: Vector3) -> bool:
+	return p.y > 1.52
+
+
 # ---------- el arma (armas.gd) ----------
 
 # el arma en la mano derecha (el modelo es de armas.gd, que lo crea); tipo "" la guarda: el modelo se oculta

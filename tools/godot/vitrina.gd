@@ -6,14 +6,19 @@
 #       [--vistas 4] [--alto 15] [--dist D] [--rapidez 3] [--t 0.4] [--color 3b6fa0] [--noche]
 #
 # <que>:
-#   peaton              el peatón de peaton.gd, animado --t s a --rapidez m/s (0 quieto, 1,5 camina, 8 corre)
+#   peaton | perro      el peatón de peaton.gd o el perro de perro.gd, animado --t s a --rapidez m/s (0 quieto, 1,5
+#                       camina, 8 corre, 18 galopa); --aire: en el aire, --salto n: en el salto n del triple salto (con
+#                       --t, cuánto después de saltar: la voltereta del tercero a ~0,4)
 #   bici | auto         el vehículo de vehiculo.gd (armar())
+#   bici:quien          la bicicleta con el peatón o el perro (quien: peaton o perro) pedaleando --t s (sentar())
+#   jetpack:quien       el peatón o el perro con el jetpack puesto, en vuelo (volar())
 #   auto:N              el auto N de modelos/entorno/auto.gd (0 sedán … 6 camión), del color --color
 #   autos               los siete en fila
 #   arbol:especie[:v]   un árbol de modelos/plaza/arboles.gd (palmera, cedro, araucaria, frondoso, podado, cordyline,
 #                       arbusto, agapanto, alamo), la variante v
 #   arboles             todas las especies en fila
-# --alto: grados sobre el horizonte de la cámara; --dist: su distancia (si no, del tamaño del modelo).
+# --alto: grados sobre el horizonte de la cámara; --dist: su distancia (si no, del tamaño del modelo); --azimut: los grados
+# de la primera vista alrededor del modelo (30; 90: de costado, desde la derecha).
 extends SceneTree
 
 const Args := preload("res://args.gd")
@@ -37,7 +42,7 @@ func _initialize() -> void:
 func _correr() -> void:
 	var a := OS.get_cmdline_user_args()
 	if a.is_empty() or a[0].begins_with("--"):
-		printerr("vitrina.gd: falta <que> (peaton, bici, auto, auto:N, autos, arbol:especie[:v], arboles)")
+		printerr("vitrina.gd: falta <que> (peaton, perro, bici, bici:quien, jetpack:quien, auto, auto:N, autos, arbol:especie[:v], arboles)")
 		quit(1)
 		return
 	var que: String = a[0]
@@ -65,7 +70,7 @@ func _correr() -> void:
 	var dist := float(arg("--dist", str(r / sin(deg_to_rad(20)) * 1.05)))
 	var hoja := Image.create(W * mini(n, 2), H * ((n + 1) / 2), false, Image.FORMAT_RGB8)
 	for k in n:
-		var az := deg_to_rad(30.0 + 360.0 * k / n)
+		var az := deg_to_rad(float(arg("--azimut", "30")) + 360.0 * k / n)
 		cam.position = c + Vector3(sin(az) * cos(alto), sin(alto), cos(az) * cos(alto)) * dist
 		cam.look_at(c)
 		for _f in 4:
@@ -119,15 +124,45 @@ func construir(que: String) -> Node3D:
 	var n := Node3D.new()
 	raiz.add_child(n)
 	match p[0]:
-		"peaton":
-			var pe: Node3D = load("res://peaton.gd").new()
+		"peaton", "perro":
+			var pe: Node3D = load("res://%s.gd" % p[0]).new()
 			n.add_child(pe)
 			await process_frame
 			var rap := float(arg("--rapidez", "0"))
 			var t := float(arg("--t", "0.4"))
 			var dt := 1.0 / 60
+			var salto := int(arg("--salto", "0"))
+			var suelo := not (OS.get_cmdline_user_args().has("--aire") or salto > 0)
+			if salto > 0:
+				pe.saltar(salto)
 			for _i in int(t / dt):
-				pe.animar(dt, rap, true)
+				pe.animar(dt, rap, suelo)
+		"bici", "jetpack" when p.size() == 2:
+			var v: Node3D = load("res://vehiculo.gd").new()
+			n.add_child(v)
+			await process_frame
+			v.visible = true
+			v.armar(p[0])
+			await process_frame
+			var pe: Node3D = load("res://%s.gd" % p[1]).new()
+			v.asiento.add_child(pe)
+			await process_frame
+			var t := float(arg("--t", "0.6"))
+			var dt := 1.0 / 60
+			var biela := 0.0
+			for _i in int(t / dt):
+				if p[0] == "bici":
+					biela += 3.0 / 4.3 * TAU * dt
+					v.biela.rotation.x = -biela
+					var pies := []
+					for i in 2:
+						var a: float = -biela + PI * i
+						pies.append(v.BIELA_C + Vector2(cos(a), sin(a)) * v.BIELA_R + Vector2(-0.03, 0.07) - v.CADERA)
+					pe.sentar(dt, pies, 0.62, v.BICI_BRAZOS.x, v.BICI_BRAZOS.y)
+				else:
+					v.mochila_puesta(true, pe)
+					v.llama = 0.6
+					v.pose_vuelo(dt, pe)
 		"bici", "auto" when p.size() == 1:
 			var v: Node3D = load("res://vehiculo.gd").new()
 			n.add_child(v)
@@ -174,6 +209,8 @@ func aabb(n: Node3D) -> AABB:
 	var caja := AABB()
 	var primera := true
 	for c in n.find_children("*", "VisualInstance3D", true, false):
+		if c is Light3D:  # su alcance no es el modelo (la luz de las llamas del jetpack: 28 m)
+			continue
 		var vi: VisualInstance3D = c
 		var b := vi.global_transform * vi.get_aabb()
 		if b.size == Vector3.ZERO:

@@ -296,7 +296,7 @@ func soltar_jugador(p: Vector3) -> void:
 	jugador.vehiculo = null
 	jugador.forma.disabled = false
 	jugador.brazo.remove_excluded_object(get_rid())
-	jugador.brazo.position = Vector3(0, jugador.ALTO - 0.15, 0)
+	jugador.brazo.position = Vector3(0, jugador.ojo(), 0)
 	jugador.largo = jugador.largo_a_pie
 	jugador.global_position = p
 	jugador.inicio = p
@@ -1479,47 +1479,24 @@ func mostrar_jetpack(dt: float) -> void:
 	hud.modulate = Color(1.0, 0.55, 0.5) if combustible < 0.2 else Color.WHITE
 
 
-# la pose en el aire, con el jetpack puesto: las piernas colgando, un poco dobladas y meciéndose (la derecha adelante),
-# las puntas de los pies abajo y las manos en los mandos de la cintura. Mueve las articulaciones de peaton.gd como
-# sentar(), y se mezcla en ~0,15 s
+# la pose en el aire, con el jetpack puesto: la de cada cuerpo (peaton.gd o perro.gd volar())
 func pose_vuelo(dt: float, pe: Peaton = null) -> void:
 	if pe == null:  # el propio; red.gd pasa el de otro jugador
 		pe = jugador.peaton as Peaton
-	pe.t += dt
-	var k := 1.0 - exp(-8.0 * dt)
-	var vaiven := 0.06 * sin(pe.t * 2.1)
-	var muslo := [0.14 + vaiven, -0.1 - vaiven]
-	var rodilla := [-0.5, -0.28]
-	var pie := [-0.55, -0.6]
-	for i in 2:
-		var lado := -1.0 if i == 0 else 1.0
-		pe.muslo[i].rotation.x = lerpf(pe.muslo[i].rotation.x, muslo[i], k)
-		pe.canilla[i].rotation.x = lerpf(pe.canilla[i].rotation.x, rodilla[i], k)
-		pe.pie[i].rotation.x = lerpf(pe.pie[i].rotation.x, pie[i], k)
-		pe.hombro[i].rotation.x = lerpf(pe.hombro[i].rotation.x, 0.1, k)
-		pe.hombro[i].rotation.z = lerpf(pe.hombro[i].rotation.z, 0.16 * lado, k)
-		pe.codo[i].rotation.x = lerpf(pe.codo[i].rotation.x, 1.2, k)
-	pe.cadera.position.y = lerpf(pe.cadera.position.y, 0.95, k)
-	pe.cadera.rotation = Vector3(0.0, lerpf(pe.cadera.rotation.y, 0.0, k), 0.0)
-	pe.torso.rotation.x = lerpf(pe.torso.rotation.x, -0.04, k)
-	pe.torso.rotation.y = lerpf(pe.torso.rotation.y, 0.0, k)
-	pe.torso.scale = Vector3.ONE
-	pe.cabeza.rotation.x = lerpf(pe.cabeza.rotation.x, 0.08 + inclinar.x * 0.7, k)  # mira adelante, no al suelo
-	pe.salto = 0
-	pe.vuelta = 0.0
+	pe.volar(dt, inclinar)
 
 
-# la mochila en el torso del peatón (puesta: se mueve con él) o parada en el suelo, en modelo (sacada, sin correas)
+# la mochila en el torso del peatón (puesta: se mueve con él; peaton.gd montura()) o parada en el suelo, en modelo (sacada, sin correas)
 func mochila_puesta(si: bool, pe: Peaton = null) -> void:
 	if mochila == null:
 		return
 	if pe == null and jugador:  # el propio; red.gd pasa el de otro jugador
 		pe = jugador.peaton as Peaton
-	var padre: Node3D = pe.torso if si and pe else modelo
+	var padre: Node3D = pe.montura() if si and pe else modelo  # en el perro, acostada en el lomo (perro.gd)
 	if mochila.get_parent() != padre:
 		mochila.reparent(padre, false)
 	mochila.transform = Transform3D.IDENTITY if si else Transform3D(Basis(), J_EN_EL_SUELO)
-	correas.visible = si
+	correas.visible = si and pe.con_correas()
 
 
 # El modelo, en el marco del torso de peaton.gd (la cadera en el origen, arriba +Y, la espalda hacia +Z; el torso mide

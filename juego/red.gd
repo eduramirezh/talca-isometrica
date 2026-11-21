@@ -34,6 +34,9 @@
 #   pecho; a la cabeza) y le dispara n veces (armas.gd prueba()), e imprime cada impacto y la vida que le quedó según su
 #   juego; el herido imprime cada daño (tocado()); con --png, la captura, congelada los s de --pausa tras el último tiro
 #   --red-foto n --png x.png: la captura al llegar el tiro n de otro jugador, con el juego congelado (el fogonazo)
+#
+# El cuerpo (jugador.gd personaje: la persona de peaton.gd o el perro de perro.gd) va en traje(), confiable: al que
+# llega, si no es la persona, y a todos cuando cambia. Una copia de antes del perro lo ve como persona.
 extends Node3D
 
 const Args := preload("res://args.gd")
@@ -47,7 +50,6 @@ const HZ := 20.0
 const FIRMA := "talca-juego-1"
 const POLERAS := ["b8442f", "3f8a4a", "c99a2e", "7a4fa0", "2f8f8f", "d0679a", "e07b39", "5c5c66"]  # la propia es la azul de peaton.gd
 const ANTIGUA := 40  # estados seguidos sin un porte(): una copia del juego de antes de las armas en la red (~2 s)
-const CABEZA := 1.52  # m sobre los pies: de aquí arriba el golpe vale el doble (como en los muñecos, blancos.gd)
 const GOLPE_RED := 0.5  # s: lo que puede tardar en volver el porte de un herido con el golpe ya descontado
 const CON := {"cuchillo": "con el cuchillo", "pistola": "con la pistola", "rifle": "con el rifle"}
 
@@ -190,6 +192,8 @@ func salir(avisar_ := true) -> void:
 func _llego(id: int) -> void:
 	otro(id)
 	hola.rpc_id(id, nombre)
+	if jugador and jugador.personaje != "persona":
+		traje.rpc_id(id, jugador.personaje)
 
 
 func _se_fue(id: int) -> void:
@@ -290,6 +294,18 @@ func porte_propio() -> Array:
 		rec = 1.0 - a.t_recarga / float(Armas.ARMAS[a.tipo]["recarga"])
 	return [a.tipo if en_mano else "", a.alza if en_mano else 0.0, jugador.pitch, a.objetivo if en_mano else Vector3.INF,
 		rec, jugador.vida, jugador.t_invulnerable > 0.0]
+
+
+# el cuerpo de un jugador (jugador.gd personaje), al llegar si no es la persona y cada vez que lo cambia
+@rpc("any_peer", "call_remote", "reliable")
+func traje(cual: String) -> void:
+	otro(multiplayer.get_remote_sender_id()).vestir(cual)
+
+
+# jugador.gd cambio_personaje (main.gd la conecta): el cuerpo nuevo, a todos
+func enviar_traje(cual: String) -> void:
+	if en_partida():
+		traje.rpc(cual)
 
 
 # un tiro, tajo o corte de un jugador (armas.gd accion, enviar_accion()): lo que se ve y se oye de él aquí
@@ -598,7 +614,8 @@ func prueba() -> void:
 	for id in otros:
 		var o: Otro = otros[id]
 		var p := o.cuerpo.global_position
-		print("red.gd:   %s (id %d) en x %.1f, y %.1f, altura %.2f, %s, vida %.0f, a %.1f m" % [o.nombre, id, p.x, -p.z, p.y, o.en_que(), o.vida_red, yo.distance_to(p)])
+		print("red.gd:   %s (id %d, %s) en x %.1f, y %.1f, altura %.2f, %s, vida %.0f, a %.1f m" % [o.nombre, id, o.personaje, p.x, -p.z,
+			p.y, o.en_que(), o.vida_red, yo.distance_to(p)])
 	prueba_lista = true
 	if not Args.has("--png"):
 		get_tree().quit()
@@ -643,13 +660,15 @@ func prueba_tiros() -> void:
 		arbol.quit()
 
 
-# la cámara de jugador.gd hacia el pecho de o (con --red-cabeza, a la cabeza: 1,65 m sobre los pies, sobre CABEZA):
-# corrige yaw y pitch con lo que le falta a la cámara (una parte por cuadro de física: la cámara se mueve recién en el
-# cuadro siguiente)
+# la cámara de jugador.gd hacia el pecho de o (con --red-cabeza, a la cabeza; en el perro, el centro de su cápsula o su
+# cabeza, adelante): corrige yaw y pitch con lo que le falta a la cámara (una parte por cuadro de física: la cámara se
+# mueve recién en el cuadro siguiente)
 func apuntar(o: Otro) -> void:
 	var cam: Camera3D = jugador.cam
-	var alto := 0.75 if Args.has("--red-cabeza") else 0.35  # sobre el Blanco, a 0,9 m de los pies
-	var d := (o.blanco.global_position + Vector3.UP * alto - cam.global_position).normalized()
+	var meta := o.blanco.global_position + Vector3.UP * (0.75 if Args.has("--red-cabeza") else 0.35)  # el Blanco, a 0,9 m de los pies
+	if o.personaje != "persona":
+		meta = o.blanco.global_position + (o.cuerpo.global_basis * Vector3(0, 0.2, -0.45) if Args.has("--red-cabeza") else Vector3.ZERO)
+	var d := (meta - cam.global_position).normalized()
 	var f := -cam.global_basis.z
 	jugador.yaw += 0.35 * wrapf(atan2(-d.x, -d.z) - atan2(-f.x, -f.z), -PI, PI)
 	jugador.pitch += 0.35 * (asin(clampf(d.y, -1.0, 1.0)) - asin(clampf(f.y, -1.0, 1.0)))
@@ -683,7 +702,9 @@ class Otro extends Node3D:
 	var nombre := ""
 	var color := Color.WHITE
 	var cuerpo := Node3D.new()  # en la posición del jugador, girado como su cuerpo
+	var personaje := "persona"  # su cuerpo (traje()): una clave de Jugador.CUERPOS
 	var peaton: Node3D = Peaton.new()
+	var med: Dictionary = peaton.medidas()  # su ojo, su etiqueta y su cápsula (peaton.gd medidas())
 	var veh: CharacterBody3D  # vehiculo.gd sin física ni entrada (jugador nulo, activo falso): solo su modelo
 	var etiqueta := Label3D.new()
 	var recibido := false
@@ -735,7 +756,7 @@ class Otro extends Node3D:
 		etiqueta.font_size = 28
 		etiqueta.outline_size = 8
 		etiqueta.modulate = color.lightened(0.45)
-		etiqueta.position.y = 2.25
+		etiqueta.position.y = med["etiqueta"]
 		etiqueta.visibility_range_end = 600.0
 		cuerpo.add_child(etiqueta)
 		veh = Veh.new()
@@ -751,8 +772,8 @@ class Otro extends Node3D:
 			a.max_distance = 600.0
 			add_child(a)
 			sonido[k] = a
-		capsula.radius = 0.32
-		capsula.height = 1.8
+		capsula.radius = med["radio"]
+		capsula.height = med["alto"]
 		caja.size = Vector3(1.9, 1.5, 4.5)
 		forma.shape = capsula
 		forma.disabled = true  # hasta su primer estado
@@ -764,6 +785,30 @@ class Otro extends Node3D:
 		blanco.add_child(forma)
 		add_child(blanco)
 		visible = false
+
+	# otro cuerpo (red.gd traje()), donde está el de ahora y con su color; las armas de modelos y la mochila del jetpack
+	# salen antes, como en jugador.gd cambiar_personaje()
+	func vestir(cual: String) -> void:
+		if cual == personaje or not Jugador.CUERPOS.has(cual):
+			return
+		var viejo := peaton
+		var padre := viejo.get_parent()
+		if veh.mochila and veh.mochila.get_parent() == viejo.montura():
+			veh.mochila_puesta(false)
+		for m in viejo.mano:
+			for c in m.get_children():
+				m.remove_child(c)
+		peaton = Jugador.CUERPOS[cual].new()
+		peaton.colores = {"polera": color.to_html(false)}
+		personaje = cual
+		med = peaton.medidas()
+		padre.add_child(peaton)
+		peaton.transform = viejo.transform
+		peaton.visible = viejo.visible
+		padre.remove_child(viejo)
+		viejo.queue_free()
+		capsula.radius = med["radio"]
+		capsula.height = med["alto"]
 
 	func _exit_tree() -> void:
 		for k in modelos:
@@ -816,12 +861,13 @@ class Otro extends Node3D:
 			return "en " + Veh.TIPOS[vt]["nombre"] if Veh.TIPOS.has(vt) else "montado"
 		return "a pie" + (" " + red.CON[arma] if arma != "" else "")
 
-	# un tiro o tajo de aquí le pegó (armas.gd impacto(), por su Blanco): el daño, el doble sobre CABEZA, va a su juego
+	# un tiro o tajo de aquí le pegó (armas.gd impacto(), por su Blanco): el daño, el doble en la cabeza (el es_cabeza() de su
+	# cuerpo: sobre 1,52 m en la persona, como en los muñecos de blancos.gd), va a su juego
 	# (tocado()), que se lo quita; aquí se descuenta de vida hasta que llegue su porte. Devuelve el daño (0: ninguno)
 	func herido(cantidad: float, punto: Vector3, desde: Vector3) -> float:
 		if antigua or not recibido or vida <= 0.0 or invulnerable:
 			return 0.0
-		var cabeza: bool = not montado and (peaton.global_transform.affine_inverse() * punto).y > red.CABEZA
+		var cabeza: bool = not montado and peaton.es_cabeza(peaton.global_transform.affine_inverse() * punto)
 		var d := cantidad * (2.0 if cabeza else 1.0)
 		var arma_mia: String = red.armas.tipo if red.armas else ""
 		vida = maxf(vida - d, 0.0)
@@ -957,13 +1003,12 @@ class Otro extends Node3D:
 				peaton.animar(dt, Vector2(v.x, v.z).length(), en_suelo)
 				# muerto, de bruces como jugador.gd: el peatón se vuelca desde los pies en CAIDO s
 				var f := minf(t_muerto / Jugador.CAIDO, 1.0) if vida_red <= 0.0 else 0.0
-				peaton.rotation.x = -1.45 * f * f
-				peaton.position.y = 0.1 * f * f
-		etiqueta.position.y = 2.25 if not (montado and vt == "auto") else 1.9
+				peaton.tendido(peaton, f * f)  # la persona de bruces, el perro de costado
+		etiqueta.position.y = med["etiqueta"] if not (montado and vt == "auto") else 1.9
 		# lo que le pega: en el auto, el auto; si no, el cuerpo (sentado en la bicicleta, tendido si murió)
 		var en_auto := montado and vt == "auto"
 		var sh: Shape3D = caja if en_auto else capsula
 		if forma.shape != sh:
 			forma.shape = sh
 		var base := veh.global_transform if en_auto else peaton.global_transform
-		blanco.global_transform = base * Transform3D(Basis(), Vector3(0, 0.75 if en_auto else 0.9, 0))
+		blanco.global_transform = base * (Transform3D(Basis(), Vector3(0, 0.75, 0)) if en_auto else med["blanco"])
