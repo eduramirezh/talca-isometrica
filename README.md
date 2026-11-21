@@ -101,7 +101,8 @@ pipeline/
   mapillary.py           Mapillary: la clave, las fotos de la comuna (teselas vectoriales), qué lugares tienen fotos que los miran
                          y lo que dejan ver de un punto las panorámicas lejanas (mirar);
                          la búsqueda y la elección (una por pasada, de frente) que usa landmark.py photos --mapillary;
-                         fachada y punto: las fotos de un edificio o un punto con su planta y una regla dibujadas encima
+                         fachada y punto: las fotos de un edificio o un punto con su planta y una regla dibujadas encima;
+                         postes y cruce: ubicar por rumbos lo que no tiene fotos de cerca (los juegos tras una reja)
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
                          la API map de OSM por cajas (tiles, tiles-comuna);
                          cruces, calzadas y ramales de la Ruta 5 -> data/ruta5.json
