@@ -43,6 +43,12 @@ const ESPERA_MUERTO := 2.5  # s caído antes de reaparecer
 const INVULNERABLE := 3.0  # s sin daño después de reaparecer (el peatón parpadea)
 const FUERA := 60.0  # m bajo el último suelo y sin nada abajo: cayó por un hueco de la colisión, fuera de la maqueta
 const CAIDO := 0.7  # s que tarda en quedar tendido
+# Los toboganes: en la canaleta de uno (un cuerpo con la meta «tobogan»: modelos/juegos_alameda.gd) resbala cuesta
+# abajo, con la gravedad a lo largo de la pendiente menos un roce, y las teclas no lo mueven (saltar sí); donde la
+# canaleta se aplana (bajo TOBOGAN_DESDE) camina como siempre (resbalar())
+const TOBOGAN_ROCE := 0.12
+const TOBOGAN_MAX := 9.0  # m/s
+const TOBOGAN_DESDE := deg_to_rad(10.0)
 
 var g: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var yaw := 0.0  # 0: mirando al norte (-Z)
@@ -58,6 +64,8 @@ const CUERPOS := {"persona": preload("res://peaton.gd"), "perro": preload("res:/
 var personaje := "persona"  # el cuerpo que se ve: una clave de CUERPOS
 var peaton: Node3D = CUERPOS[personaje].new()  # el cuerpo que se ve (peaton.gd, o perro.gd, que lo extiende, o gata.gd, que extiende al perro)
 var mapa: Node3D  # mapa.gd: mientras la colisión bajo el personaje no está, no cae
+var tobogan := Vector3.ZERO  # la normal de la canaleta bajo los pies en el cuadro anterior (canaleta()), o cero
+var bajada := {}  # --resbalar: la bajada en curso (desde dónde, la rapidez máxima)
 var _quieto := false
 # viaje.gd y plano.gd: con la lista de lugares o el mapa grande abiertos, las teclas no lo mueven; muerto, tampoco,
 # aunque se cierren (y vehiculo.gd, que lo lee, no lo deja subir con E)
@@ -210,14 +218,18 @@ func _physics_process(dt: float) -> void:
 	var dir := Vector3(v.x, 0, v.y).rotated(Vector3.UP, yaw)
 	var rapidez := CORRER if Input.is_action_pressed("correr") else CAMINAR
 	var k := 1.0 - exp(-12.0 * dt)  # arranca y frena en ~0,2 s
-	velocity.x = lerp(velocity.x, dir.x * rapidez, k)
-	velocity.z = lerp(velocity.z, dir.z * rapidez, k)
-	if dir.length() > 0.01:
-		cuerpo.rotation.y = lerp_angle(cuerpo.rotation.y, atan2(-dir.x, -dir.z), 1.0 - exp(-10.0 * dt))
+	if tobogan != Vector3.ZERO and acos(clampf(tobogan.y, -1.0, 1.0)) > TOBOGAN_DESDE and is_on_floor():
+		resbalar(dt)
+	else:
+		velocity.x = lerp(velocity.x, dir.x * rapidez, k)
+		velocity.z = lerp(velocity.z, dir.z * rapidez, k)
+		if dir.length() > 0.01:
+			cuerpo.rotation.y = lerp_angle(cuerpo.rotation.y, atan2(-dir.x, -dir.z), 1.0 - exp(-10.0 * dt))
 	var deseo := Vector3(velocity.x, 0, velocity.z) * dt  # antes de que el choque lo anule
 	var cae := 0.0 if is_on_floor() else -velocity.y  # m/s hacia abajo antes de tocar el suelo (aterrizar())
 	move_and_slide()
 	subir_cordon(deseo)
+	tobogan = canaleta()
 	if is_on_floor():
 		if cae > 0.0:
 			aterrizar(cae)
@@ -229,6 +241,46 @@ func _physics_process(dt: float) -> void:
 		# Antes volvía al último suelo. Ahora muere, como en una caída de 60 m; con suelo abajo (un barranco del
 		# Cerro, bajar con el jetpack) sigue cayendo y aterrizar() decide
 		morir("una caída fuera de la maqueta")
+
+
+# la normal de la canaleta de tobogán bajo los pies (un rayo corto: con el ajuste al suelo, bajar por una pendiente
+# no siempre deja el choque con ella entre los de move_and_slide), o cero. Con --resbalar imprime cada bajada al salir
+func canaleta() -> Vector3:
+	var n := Vector3.ZERO
+	if is_on_floor():
+		var q := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 0.3, global_position + Vector3.DOWN * 0.4)
+		q.exclude = [get_rid()]
+		var r := get_world_3d().direct_space_state.intersect_ray(q)
+		if r and r.collider is Node and (r.collider as Node).has_meta("tobogan") and r.normal.y > 0.5:
+			n = r.normal
+	if preload("res://args.gd").has("--resbalar"):
+		var v := Vector2(velocity.x, velocity.z).length()
+		if n != Vector3.ZERO:
+			if bajada.is_empty():
+				bajada = {"desde": global_position, "max": 0.0}
+			bajada["max"] = maxf(bajada["max"], v)
+		elif not bajada.is_empty() and is_on_floor():
+			var a: Vector3 = bajada["desde"]
+			print("jugador.gd: tobogán de x %.1f, y %.1f, altura %.2f a x %.1f, y %.1f, altura %.2f; rapidez máxima %.1f m/s, al salir %.1f" % [
+				a.x, -a.z, a.y, global_position.x, -global_position.z, global_position.y, bajada["max"], v])
+			bajada = {}
+	return n
+
+
+# cuesta abajo por la canaleta de normal `tobogan`: la gravedad a lo largo de la pendiente (su parte horizontal) menos
+# el roce, hasta TOBOGAN_MAX; mira hacia donde va
+func resbalar(dt: float) -> void:
+	var n := tobogan
+	var baja := Vector3.DOWN - n * n.dot(Vector3.DOWN)  # a lo largo de la canaleta, cuesta abajo; su largo, el seno
+	var hv := Vector2(velocity.x, velocity.z)
+	var acel := Vector2(baja.x, baja.z) * g
+	if hv.length() > 0.01:
+		acel -= hv.normalized() * TOBOGAN_ROCE * g * n.y
+	hv = (hv + acel * dt).limit_length(TOBOGAN_MAX)
+	velocity.x = hv.x
+	velocity.z = hv.y
+	if hv.length() > 0.5:
+		cuerpo.rotation.y = lerp_angle(cuerpo.rotation.y, atan2(-hv.x, -hv.y), 1.0 - exp(-10.0 * dt))
 
 
 # el salto que sigue en la cadena (SALTOS): el segundo o el tercero si cayó del anterior hace VENTANA s o menos; si no,

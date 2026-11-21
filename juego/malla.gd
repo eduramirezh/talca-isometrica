@@ -323,14 +323,16 @@ static func concava(caras: PackedVector3Array) -> ConcavePolygonShape3D:
 	return s
 
 
-# solo la colisión (sin malla): para un constructor que junta formas simples (las cajas de los edificios y los autos)
-func construir_colision(padre: Node3D, nombre: String) -> void:
+# solo la colisión (sin malla): para un constructor que junta formas simples (las cajas de los edificios y los autos);
+# devuelve el cuerpo (null si no hay caras), para marcarlo (la meta «tobogan» de modelos/juegos_alameda.gd)
+func construir_colision(padre: Node3D, nombre: String) -> StaticBody3D:
 	if colision.is_empty():
-		return
+		return null
 	var cuerpo := StaticBody3D.new()
 	cuerpo.name = nombre
 	cuerpo.add_child(colisionador(concava(colision)))
 	padre.add_child(cuerpo)
+	return cuerpo
 
 
 func construir(padre: Node3D, nombre: String, sombra := true) -> MeshInstance3D:
