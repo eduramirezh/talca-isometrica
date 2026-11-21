@@ -145,7 +145,7 @@ tools/godot/             proyecto de Godot que carga un glb exportado (ver.gd: c
 juego/                   un juego de Godot para pasear por la comuna en tercera persona (make juego exporta juego/mapa/, la comuna en teselas de 500 m; Godot --path juego); juego/modelos/: la plaza, la catedral, las fachadas y las calles de alrededor, y el Edificio Raíces, de cerca
 juego/mapa.gd, arboleda.gd   las teselas alrededor de la cámara (en hilos, con los edificios solos hasta 3 km, lo de lejos y la colisión cercana; cuantizado.gd: el formato liviano) y los árboles de la página como los de la plaza; viaje.gd: Tab, ir a un lugar; recorte.gd: los recortes de los modelos sobre cada tesela
 juego/autos.gd, faroles.gd   los autos de la página como los de calles.gd (modelos/entorno/auto.gd) de cerca, y los faroles de las calles de noche: postes, brillo y las luces más cercanas
-juego/fachadas_ciudad.gd las fachadas de cerca de los edificios de toda la comuna, por tipo (casa antigua, población, pareada, block…), de juego/mapa/f_<i>_<j>.json (tools/export.py --fachadas)
+juego/fachadas_ciudad.gd las fachadas de cerca de los edificios de toda la comuna, por tipo (casa antigua, población, pareada, block…), de juego/mapa/f_<i>_<j>.json (tools/export.py --fachadas): a la calle, un muro grueso con los vanos hundidos y el repertorio de las fachadas medidas alrededor de la plaza; aleros en los techos inclinados
 juego/letreros.gd        los letreros con el nombre de las calles en los cruces de la comuna (tools/export.py --letreros): poste, placas con la numeración de la cuadra y la flecha del sentido; el texto, en los más cercanos
 juego/vehiculo.gd        la bicicleta, el auto y el jetpack (E: subir o bajar, V: cambiar), con su cámara; pasos.gd: los pasos bajo la Ruta 5 en la colisión
 juego/musica.gd          despegar con el jetpack desde el techo de la Torre Talca pone una pista de música (juego/musica/torre-talca.mp3)
@@ -162,6 +162,7 @@ tools/trailer.py         el avance del juego: graba las tomas de juego/trailer.g
 juego/cine.gd            --cine: un plano de cine de 30 s en la plaza, de la tarde a la noche (make cine: Movie Maker de Godot y ffmpeg -> shots/cine/plaza.mp4)
 juego/vp.gd, juego/vp/   --vp: la plaza en una tele de fondo, proyectada desde la posición de un teléfono Android que filma (WebXR, ARCore; producción virtual como un set de LED)
 tools/juego_osm.py       las plantas y los nodos de la calle de OSM alrededor de la plaza para juego/modelos/ y la página (data/plaza-osm.json)
+tools/juego_vistas.py    vistas del juego frente a las fachadas de la ciudad: dónde pararse frente a un edificio (punto, buscar), las capturas (tomar) y una hoja antes/después (hoja)
 juego/modelos/plaza.gd   la Plaza de Armas del juego en detalle (árboles, quiosco, piletas, faroles, escaños; plaza/: árboles, piezas y texturas en código)
 juego/modelos/raices.gd  el Edificio Raíces (3 Oriente 1645) de cerca: balcones con baranda de vidrio, ventanas hundidas, hall, azoteas, jardín y reja; se arma cuando llega su tesela
 juego/malla.gd, materiales.gd   el constructor de mallas y los materiales de todos los modelos del juego (shaders/: capa, patron, plaza/)
