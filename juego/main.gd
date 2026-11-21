@@ -171,6 +171,9 @@ func _ready() -> void:
 	if plano:
 		plano.red = red
 	add_child(red)
+	ambiente.red = red  # el anfitrión manda su hora a los demás (ambiente.gd la_hora())
+	red.ambiente = ambiente
+	red.salio.connect(ambiente.salio)
 	vida = preload("res://vida.gd").new()
 	vida.jugador = jugador
 	add_child(vida)

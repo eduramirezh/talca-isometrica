@@ -16,7 +16,8 @@
 # SceneMultiplayer, activo por omisión). No hay autoridad: cada uno simula lo suyo y los otros solo se dibujan
 # (Otro: peaton.gd y, si tienen el vehículo afuera, un vehiculo.gd sin física, solo su modelo), sin colisión entre
 # jugadores. El anfitrión anuncia la partida por broadcast UDP cada segundo (FIRMA|puerto|nombre|jugadores) a
-# PUERTO_AVISO, que el panel escucha mientras está abierto sin partida. Lo que no viaja: la hora (T), el marcador y lo
+# PUERTO_AVISO, que el panel escucha mientras está abierto sin partida. La hora es la del anfitrión, que la manda a cada
+# uno al llegar y a todos cuando la mueve (ambiente.gd la_hora(), en su propio nodo). Lo que no viaja: el marcador y lo
 # que carga cada uno; el mapa es el mismo porque sale de los mismos archivos (make juego).
 #
 # Las armas (armas.gd): con cada estado va su porte (porte()): el arma en la mano, cuánto va en alto, hacia dónde
@@ -55,6 +56,7 @@ var vehiculo: CharacterBody3D  # vehiculo.gd
 var armas: Node3D  # armas.gd (main.gd conecta su señal accion a enviar_accion())
 var viaje: CanvasLayer
 var plano: CanvasLayer
+var ambiente: Node3D  # ambiente.gd: la hora, que imprime --red-prueba
 var nombre := "Jugador"
 var puerto := PUERTO
 var otros := {}  # id de ENet -> Otro
@@ -589,6 +591,8 @@ func prueba() -> void:
 	await get_tree().create_timer(Args.num("--red-prueba", 10.0, 0.0, 3600.0)).timeout
 	var yo := jugador.global_position if jugador else Vector3.ZERO
 	print("red.gd: %s, %d otros (yo: %s en x %.1f, y %.1f, vida %.0f)" % ["anfitrión" if anfitrion() else ("cliente" if en_partida() else "sin partida"), otros.size(), nombre, yo.x, -yo.z, jugador.vida if jugador else 0.0])
+	if ambiente:
+		print("red.gd:   la hora: %s" % ambiente.texto_hora())
 	for id in otros:
 		var o: Otro = otros[id]
 		var p := o.cuerpo.global_position
