@@ -136,7 +136,7 @@ var mat_llamas: Array[ShaderMaterial] = []
 var luz: OmniLight3D
 var aviso := ""  # un mensaje en el HUD durante t_aviso s
 var t_aviso := 0.0
-var musica: Node  # musica.gd: despegar desde el techo de la Torre Talca pone la música
+var musica: Node  # musica.gd: despegar desde el techo de la Torre Talca pone la música (null en el de otro jugador)
 var impactos: Array[float] = []  # --volar: la rapidez hacia abajo de cada aterrizaje
 
 # --conducir: lo medido mientras anda
@@ -180,9 +180,10 @@ func _ready() -> void:
 		var c := InputEventKey.new()
 		c.physical_keycode = KEY_C
 		InputMap.action_add_event("descender", c)
-	musica = Musica.new()
-	add_child(musica)
-	jugador.murio.connect(musica.parar)
+	if jugador:  # el de otro jugador de la red (red.gd Otro) es solo su modelo: sin personaje ni música
+		musica = Musica.new()
+		add_child(musica)
+		jugador.murio.connect(musica.parar)
 	cargar_r5()
 	armar(tipo)
 	visible = false
@@ -1291,7 +1292,7 @@ func volar(dt: float) -> void:
 	var h := Vector3(velocity.x, 0, velocity.z)
 	var gasto := 0.0
 	var tenia := combustible
-	if montado and en_suelo and sube and combustible >= J_ENCENDER:
+	if musica and montado and en_suelo and sube and combustible >= J_ENCENDER:
 		musica.despegue(global_position)  # despega: desde el techo de la Torre Talca, la música (musica.gd)
 	llama = 0.0
 	if not montado or (en_suelo and not (sube and combustible >= J_ENCENDER)):
@@ -1423,7 +1424,8 @@ func sacarse() -> void:
 	montado = false
 	en_aire = false
 	hud.visible = false
-	musica.parar()
+	if musica:
+		musica.parar()
 	var p0 := global_position
 	soltar_jugador(p0 + Vector3.UP * 0.02)
 	mochila_puesta(false)
