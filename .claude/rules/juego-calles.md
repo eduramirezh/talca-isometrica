@@ -1,0 +1,32 @@
+---
+paths:
+  - "juego/plano.gd"
+  - "juego/plano_datos.gd"
+  - "juego/ruta.gd"
+  - "juego/letreros.gd"
+  - "juego/autos.gd"
+  - "juego/faroles.gd"
+  - "juego/modelos/calles.gd"
+  - "pipeline/plano.py"
+  - "pipeline/sentidos.py"
+  - "tools/juego_osm.py"
+---
+
+# Las calles del juego (la red, los mapas, los letreros, los autos y los faroles)
+
+Lo que el juego pone en las calles y cómo se mueve por ellas: la red de calles y los mapas (`pipeline/plano.py`, `juego/plano.gd`, `juego/ruta.gd`), los letreros, los autos y los faroles, que la página exporta como datos por tesela. El resto del juego (el mapa por teselas, los vehículos, la exportación) está en `juego.md`, que se carga con todo `juego/`.
+
+## Comandos
+
+```bash
+python3 pipeline/plano.py [stats]   # data/geometry.json + data/ruta5.json -> juego/datos/plano.json: lo que dibujan los mapas del juego (juego/plano.gd) y la red de calles del camino al marcador (juego/ruta.gd); make juego lo corre; `stats`: nodos, aristas y componentes de la red
+make sentidos juego             # raw/osm/map-comuna.json -> data/sentidos.json (las calles de un sentido de OSM: pipeline/sentidos.py; `stats`, por clase), que make juego usa para las flechas de los letreros de las calles (juego/letreros.gd)
+python3 tools/juego_osm.py [--lista]  # las plantas de los edificios y los nodos de la calle (semáforos, cruces, árboles) alrededor de la plaza, de raw/osm/map-comuna.json -> data/plaza-osm.json (lo leen calles.gd y fachadas.gd, de la copia en juego/datos/ que hace `make juego`, y build.py: DATA.plaza)
+tools/godot_oculto.sh --path juego -- --desde 0,-45 --marcar 297,748 [--plano --escala-plano 1.5 | --plano --clic 1100,300 | --plano --doble-clic 1254,555 | --norte] --png shots/x.png   # los mapas (juego/plano.gd: M abre el grande, un clic pone el marcador, el derecho lo quita, un doble clic lleva ahí y Enter al marcador, a la calle si hay una a menos de 40 m; N, la miniatura con el norte arriba) y el camino al marcador (juego/ruta.gd: A* por la red de pipeline/plano.py, la cinta de flechas en el suelo y la columna de luz); --marcar x,y pone el marcador, --plano abre el mapa grande, --clic px,py hace un clic en él y --doble-clic un doble clic (imprime dónde quedó el personaje); --sin plano los quita (para medir con --fps)
+```
+
+## Trampas
+
+- **La red de calles del juego no sale de los vértices compartidos.** El grafo de cicloconecta deja tramos rectos largos (1 Oriente va de 1 Norte a 7 Norte en uno solo) y las calles que lo cruzan lo tocan en medio, sin un vértice común: juntando solo los vértices la red queda partida, y el camino de la plaza a 2 Norte da la vuelta por el sur. `pipeline/plano.py` corta cada tramo donde lo cruza otra calle y donde un vértice de otra calle cae a menos de 3 m (`plano.py stats`: 97 % de los nodos en la red mayor); la Ruta 5 no se cruza con las calles (va en trinchera o en puente), solo se une por los extremos de sus ramales. Un paso a desnivel entre dos calles quedaría como un cruce.
+- **Los letreros de las calles del juego.** La página no los dibuja (una placa de 24 cm es medio píxel de arte): `tools/export.js` (`__exSigns`) los calcula al exportar, con lo que expone `window.__export` (`segs`, `sgrid`, `streets`, `swOf`, `walkOf`, `urbanAt`), y `tools/export.py --letreros` los escribe en `t_<i>_<j>.json` («letreros», once números cada uno, y «nombres») para `juego/letreros.gd`. Uno por cruce de dos calles de nombre distinto (sin las de servicio ni «Calle sin nombre») en el área urbana, en la primera de sus cuatro esquinas (en un orden que sale del lugar del cruce) que no cae en una calzada, a 0,45 m de las dos soleras; con dos calzadas, el segundo cruce de los mismos nombres a menos de 40 m no lleva otro. Cada placa sale del poste por la vereda de su calle: su numeración es la de esa cuadra (`numeros()`, la regla de `pipeline/geocode.py`, solo entre calles numeradas hasta la 10) y su flecha, el sentido de esa cuadra a 12 m del cruce en `data/sentidos.json` (una calle de dos calzadas, con las dos en sentidos opuestos a menos de 7 m, va sin flecha). Sin `data/sentidos.json` (`make osm sentidos`) salen sin flechas, con un aviso. El texto (`Label3D`) va solo en los 24 más cercanos a la cámara, reasignados cada 0,25 s como las luces de los faroles (`--sin letreros` los apaga, para medir con `--fps`). Un recorte que nombra `veredas` quita los letreros, como los faroles: `calles.gd` pone los de la plaza con `poste()`, `placa()`, `flecha()` y `texto()` de `letreros.gd`, con su numeración y su sentido (`SENTIDO_PLAZA`) escritos a mano. Las tres calles numeradas que OSM rotula con el nombre de una persona (1 Poniente, 4 Norte, 11 Oriente) llevan su número (`NUMERADAS`); un alias nuevo va ahí, y cambia también su numeración.
+- **Los autos y los faroles del juego son datos, como los árboles.** Los autos (`autos`, `autos-ruta5`) van en `t_<i>_<j>.json` con diez números (`__exInstN`: los nueve de un árbol y la inclinación, que `carsMesh` aplica con el Euler YZX y el juego como `Basis(UP, giro) * Basis(BACK, inclinación)`; la escala horizontal es el largo, × 4,5 m), y `juego/autos.gd` pone a menos de 90 m los de `calles.gd` (`modelos/entorno/auto.gd`: el tipo sale del largo y el alto de la página) y más lejos el auto de la página (`carGeo`), un MultiMesh por tesela; la colisión, una `BoxShape3D` por auto a menos de 60 m: con una forma cóncava de caras por los dos lados, el personaje que aparece donde hay un auto (`--desde`, Tab) queda encerrado. La carrocería va en alfa 0 y el material `Mat.tinte()` (`tinte` de `shaders/patron.gdshader`) le pone el color de la instancia (datos propios del MultiMesh, no su color, que Godot multiplicaría también en el vidrio y las ruedas). Los faroles de las calles: la página dibuja solo su brillo, sobre el eje (`streetLamps()`, `84-lights.js`); `__exLamps` (`tools/export.js`) pone el pie del poste en la vereda, a 0,45 m de la solera, al otro lado si cae en la calzada de otra calle (`__export.onRoad`) y sin poste si los dos (98 de 5.044), y `juego/faroles.gd` los dibuja por tesela con su brillo (`shaders/brillo.gdshader`, de al menos 7 píxeles, como el de la página). Luz de verdad solo en las 32 lámparas más cercanas a la cámara (calles, Alameda y hitos: `ambiente.gd` le pasa las de `GLOW`), un grupo fijo de `OmniLight3D` que se reasignan cada 0,25 s (una luz por farol serían ~6.000). Un recorte que nombra `veredas` quita los faroles, uno que nombra `autos` (o `autos-ruta5`), los autos cuyo centro cae dentro.

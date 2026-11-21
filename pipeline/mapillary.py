@@ -17,6 +17,10 @@
   python mapillary.py punto -0.8 29.7 [2.6] [--fotos 8] [--radio 45]   # las que miran a un punto (una pila, una
                                                   # estatua): un círculo de r m en el suelo y una regla vertical
                                                   # fachada y punto dibujan con Pillow: uv run --with pillow python …
+  uv run --with pillow python mapillary.py mirar 275 747 [--radio 450] [--desde 2021] [--n 12] [--nombre raices]
+                                                  # lo que dejan ver de un punto las fotos lejanas: las originales de las
+                                                  # panorámicas recortadas hacia él -> diagnostics/fotos/<nombre>/
+  … mirar 275 747 --ids 873538511416209,2445007295696620 [--ancho 14 --alto 40 --bajo 4 --escala 7]   # esas, más de cerca
 
 clave: Mapillary pide una clave de cliente para todo, también para las teselas. Es gratis: con una cuenta de
 mapillary.com, https://www.mapillary.com/dashboard/developers → «Register application» (nombre y descripción
@@ -59,6 +63,17 @@ solo lo comprueba. Y una foto de 2018 puede ser anterior al edificio.
 
 punto: lo mismo para un punto de la grilla, con un círculo de r m en el suelo y una regla vertical en él: las fotos
 que lo miran (±40°, o panorámicas) sin un edificio de OSM en medio, la más cercana de cada pasada.
+mirar: para lo que no tiene fotos cerca, o solo viejas (el Edificio Raíces, terminado después de 2020: a menos de
+150 m solo hay fotos de 2018, del sitio vacío), pero es alto y se ve de lejos entre casas y árboles. Elige de
+raw/mapillary/imagenes.json las fotos desde --desde (el año) a menos de --radio m que lo miran (las panorámicas
+siempre), hasta cuatro por pasada separadas 6 m (de lejos, unos metros cambian qué árbol tapa), las pasadas más cercanas
+primero, y baja la original (4096 × 2048 en una panorámica; landmark.py baja la miniatura de 2048). De una panorámica
+recorta --ancho grados alrededor del rumbo al punto (computed_compass_angle: la columna del medio es ese rumbo) y de
+--bajo grados (4) bajo el horizonte hasta lo que mide --alto m a esa distancia, más 3°, agrandado --escala veces; una foto plana va
+entera. Escribe los recortes, indice.txt (fecha, autor, licencia, enlace: para FUENTES) y hoja.png, todos juntos.
+El horizonte de una panorámica puede estar corrido unos grados (la cámara inclinada en el auto; las de 2023 de
+SolutivaSistemas): si el edificio sale cortado abajo, suba --bajo; arriba, --alto. A más de ~150 m la imagen es borrosa: da la
+silueta, las alturas (el ángulo sobre el horizonte por la distancia) y el ritmo de las ventanas, no el detalle.
 
 Licencia: las fotos son CC BY-SA 4.0 («© <autor>, Mapillary, CC BY-SA 4.0»). Se bajan para mirarlas al modelar
 (diagnostics/, fuera de git), como las de Commons; los términos de Mapillary piden su logo y un enlace si se publican.
@@ -689,5 +704,77 @@ def cmd_punto(x: float, y: float, r: float = 3, *, fotos: int = 8, radio: float 
     if not tiles: print('Ninguna foto mira a ese punto sin un edificio en medio.'); return
     sheets(tiles, rows, nombre, 6, 'punto')
 
+def pick_far(x, y, radio, desde, n, per_seq=4, gap=6.0):
+    """The images of imagenes.json from year `desde` on that could see grid point (x, y) from less than `radio` m:
+    panoramas, or photos pointing at it ±FRONT. Up to per_seq of each sequence, closest first and at least `gap` m
+    apart (from afar a few metres change which tree is in the way), the closest sequences first, at most n."""
+    D = json.load(open(OUT / 'imagenes.json'))
+    t0 = time.mktime((desde, 1, 1, 0, 0, 0, 0, 0, 0)) * 1000
+    seqs = {}
+    for im in D['imagenes']:
+        if im[3] < t0: continue
+        fc = facing(im, x, y, radio)
+        if fc: seqs.setdefault(im[6] or im[0], []).append((fc[0], im))
+    out = []
+    for seq in sorted(seqs.values(), key=lambda s: min(d for d, _ in s)):
+        kept = []
+        for d, im in sorted(seq, key=lambda v: v[0]):
+            if all(math.dist(im[1:3], k[1:3]) >= gap for k in kept): kept.append(im)
+            if len(kept) == per_seq: break
+        out += kept
+    return out[:n]
+
+def cmd_mirar(x: float, y: float, *, radio: float = 450, desde: int = 2021, n: int = 16, ancho: float = 24,
+              alto: float = 40, bajo: float = 4, escala: int = 3, nombre: str = '', ids: str = ''):
+    """mirar X Y: lo que dejan ver de un punto las fotos lejanas (un edificio alto entre casas y árboles)."""
+    from PIL import Image, ImageDraw
+    tok = token()
+    D = json.load(open(OUT / 'imagenes.json'))
+    pos = {im[0]: im for im in D['imagenes']}
+    pick = [pos[i] for i in ids.split(',') if i in pos] if ids else pick_far(x, y, radio, desde, n)
+    if not pick: raise SystemExit(f'Sin fotos desde {desde} a menos de {radio:.0f} m de ({x:.0f}, {y:.0f}) que lo miren.')
+    info = {}
+    for k in range(0, len(pick), 50):
+        for r in graph('images', {'image_ids': ','.join(im[0] for im in pick[k:k+50]),
+                                  'fields': 'id,thumb_original_url,computed_compass_angle,camera_type,creator,captured_at'}, tok).get('data', []):
+            info[r['id']] = r
+    out = ROOT / 'diagnostics' / 'fotos' / (nombre or f'mirar-{x:.0f},{y:.0f}')
+    (out / 'originales').mkdir(parents=True, exist_ok=True)
+    rows, crops = [], []
+    for im in pick:
+        r = info.get(im[0], {})
+        if not r.get('thumb_original_url'): continue
+        f = out / 'originales' / f'{im[0]}.jpg'
+        if not f.exists(): f.write_bytes(net.get(r['thumb_original_url'], timeout=90))
+        img = Image.open(f).convert('RGB'); W, H = img.size
+        dist, b = math.dist(im[1:3], (x, y)), bearing(im[1], im[2], x, y)
+        pano = im[5] or r.get('camera_type') in ('spherical', 'equirectangular')
+        cca = r.get('computed_compass_angle', im[4])
+        if pano and cca is not None:
+            px = W / 360                                       # equirectangular: the centre column is the heading
+            c = W * ((b - cca) / 360 + .5)
+            top = math.degrees(math.atan2(alto, dist)) + 3
+            x0 = int(c - ancho / 2 * px)
+            band = Image.new('RGB', (W * 3, H))                # three copies side by side: the crop may wrap round 0°
+            for i in range(3): band.paste(img, (W * i, 0))
+            crop = band.crop((x0 + W, int(H / 2 - top * px), x0 + W + int(ancho * px), int(H / 2 + bajo * px)))
+            note = f'panorámica, recortada al rumbo {b:.0f}° ±{ancho / 2:.0f}° y de -{bajo:.0f}° a +{top:.0f}°'
+        else:
+            crop = img; note = f'foto de rumbo {cca if cca is not None else "?"}°: entera (el punto está a {b:.0f}°)'
+        crop = crop.resize((crop.width * escala, crop.height * escala), Image.LANCZOS)
+        name = f'{len(rows):02d}.png'; crop.save(out / name); crops.append((name, crop))
+        user = (r.get('creator') or {}).get('username', '')
+        rows.append(f'{name}  {time.strftime("%Y-%m-%d", time.gmtime(im[3] / 1000))}  [Mapillary] {im[0]}  [CC BY-SA 4.0] {user}  '
+                    f'(en {im[1]:.0f},{im[2]:.0f}: a {dist:.0f} m)\n    {note}\n    https://www.mapillary.com/app/?pKey={im[0]}')
+    (out / 'indice.txt').write_text('\n'.join(rows) + '\n')
+    cw = max(c.width for _, c in crops); ch = max(c.height for _, c in crops); cols = min(4, len(crops))
+    sheet = Image.new('RGB', (cw * cols, ch * ((len(crops) + cols - 1) // cols)), 'white'); d = ImageDraw.Draw(sheet)
+    for i, (name, c) in enumerate(crops):
+        sheet.paste(c, ((i % cols) * cw, (i // cols) * ch)); d.text(((i % cols) * cw + 6, (i // cols) * ch + 4), name, fill=(255, 0, 0))
+    if sheet.width > 1600: sheet = sheet.resize((1600, sheet.height * 1600 // sheet.width))
+    sheet.save(out / 'hoja.png')
+    print('\n'.join(rows)); print(f'-> {out.relative_to(ROOT)}/ (hoja.png: todos los recortes)')
+
 if __name__ == '__main__':
-    cli.run({'clave': cmd_clave, 'cobertura': cmd_cobertura, 'lugares': cmd_lugares, 'fachada': cmd_fachada, 'punto': cmd_punto}, __doc__)
+    cli.run({'clave': cmd_clave, 'cobertura': cmd_cobertura, 'lugares': cmd_lugares, 'fachada': cmd_fachada, 'punto': cmd_punto,
+             'mirar': cmd_mirar}, __doc__)
