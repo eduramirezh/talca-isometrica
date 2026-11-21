@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **Los carritos de completos, con fotos de Mapillary** (`src/js/hitos/carritos-5-oriente.js`). Son las primeras fotos con licencia libre de los quioscos (2022 a 2024; `docs/FUENTES.md`), y muestran otra cosa que la que se había dibujado desde Street View:
+  - 5 Oriente: un solo galpón bajo un letrero azul continuo de punta a punta. Lleva el nombre de cada local en blanco tras un disco de Pepsi (un óvalo blanco de PF sobre Señora Anita, la insignia roja de La Quinito), y el quiosco del sur va bajo un letrero oscuro. Abajo, frentes rojos con una ventanilla y puertas (la de La Quinito, blanca), postes de madera que sostienen el letrero y jabas rojas apiladas en la vereda. Antes eran seis quioscos con letreros separados, columnas de ladrillo y blanco y un toldo a rayas que ninguna foto fechada muestra. En la panorámica el letrero mide ~1,1 m (la mitad del frente); se dibuja de 1,95 a 3,3 m y con la tapa también azul, porque la cámara del mapa ve más el techo que el frente, y desde arriba la línea azul es lo que distingue la hilera.
+  - 6 Oriente, de sur a norte: una carpa roja en la esquina de 1½ Norte; «Completos y Bebidas Mafran» (franja roja anaranjada, cortina metálica blanca); el «Kiosko Hotdoguería Raulito» («el primer carrito de Talca, desde 1976»: un letrero negro alto sobre un alero); un letrero granate de Coca-Cola; uno rojo; y «Mafran» con una carpa de techo blanco delante. Antes eran seis puestos iguales, rojos y negros alternados.
+  - En el juego, los quioscos de 5 Oriente quedan cerrados por su frente: el rectángulo donde se come un completo (`juego/vida.gd`, `CARRITOS`) empieza en el frente (u 3,5) y no en el mesón. El modelo nuevo llega al juego con `make juego`.
+
 - **Los tiros a la cabeza se notan.** La cabeza ya valía el doble (en los muñecos y entre jugadores), pero el que disparaba no lo veía: la X de la mira y el sonido eran los del cuerpo, y entre jugadores no salía ninguna cifra.
   - `recibir_dano()` devuelve el daño que tomó (`blancos.gd`, `red.gd Blanco`): más que el del arma es la cabeza, y 0 es que no tomó nada (un jugador recién reaparecido, que ya no marca la X).
   - En la cabeza, la X de la mira sale más grande y dorada, con borde (roja si lo botó), y suena un tic metálico (`sonidos()`, hecho en código como los demás).
