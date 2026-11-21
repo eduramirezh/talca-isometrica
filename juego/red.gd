@@ -36,8 +36,9 @@
 #   juego; el herido imprime cada daño (tocado()); con --png, la captura, congelada los s de --pausa tras el último tiro
 #   --red-foto n --png x.png: la captura al llegar el tiro n de otro jugador, con el juego congelado (el fogonazo)
 #
-# El cuerpo (jugador.gd personaje: la persona de peaton.gd o el perro de perro.gd) va en traje(), confiable: al que
-# llega, si no es la persona, y a todos cuando cambia. Una copia de antes del perro lo ve como persona.
+# El cuerpo (jugador.gd personaje: la persona de peaton.gd, el perro de perro.gd o la gata de gata.gd) va en traje(),
+# confiable: al que llega, si no es la persona, y a todos cuando cambia. Una copia de antes del perro (o de la gata) lo
+# ve como persona: vestir() no cambia a un cuerpo que no conoce.
 extends Node3D
 
 const Args := preload("res://args.gd")
@@ -662,14 +663,14 @@ func prueba_tiros() -> void:
 		arbol.quit()
 
 
-# la cámara de jugador.gd hacia el pecho de o (con --red-cabeza, a la cabeza; en el perro, el centro de su cápsula o su
-# cabeza, adelante): corrige yaw y pitch con lo que le falta a la cámara (una parte por cuadro de física: la cámara se
-# mueve recién en el cuadro siguiente)
+# la cámara de jugador.gd hacia el pecho de o (con --red-cabeza, a la cabeza; en el perro y la gata, el centro de su
+# cápsula o el punto «cabeza» de su medidas()): corrige yaw y pitch con lo que le falta a la cámara (una parte por cuadro
+# de física: la cámara se mueve recién en el cuadro siguiente)
 func apuntar(o: Otro) -> void:
 	var cam: Camera3D = jugador.cam
 	var meta := o.blanco.global_position + Vector3.UP * (0.75 if Args.has("--red-cabeza") else 0.35)  # el Blanco, a 0,9 m de los pies
 	if o.personaje != "persona":
-		meta = o.blanco.global_position + (o.cuerpo.global_basis * Vector3(0, 0.2, -0.45) if Args.has("--red-cabeza") else Vector3.ZERO)
+		meta = o.peaton.global_transform * (o.med["cabeza"] as Vector3) if Args.has("--red-cabeza") else o.blanco.global_position
 	var d := (meta - cam.global_position).normalized()
 	var f := -cam.global_basis.z
 	jugador.yaw += 0.35 * wrapf(atan2(-d.x, -d.z) - atan2(-f.x, -f.z), -PI, PI)
@@ -1005,7 +1006,7 @@ class Otro extends Node3D:
 				peaton.animar(dt, Vector2(v.x, v.z).length(), en_suelo)
 				# muerto, de bruces como jugador.gd: el peatón se vuelca desde los pies en CAIDO s
 				var f := minf(t_muerto / Jugador.CAIDO, 1.0) if vida_red <= 0.0 else 0.0
-				peaton.tendido(peaton, f * f)  # la persona de bruces, el perro de costado
+				peaton.tendido(peaton, f * f)  # la persona de bruces, el perro y la gata de costado
 		etiqueta.position.y = med["etiqueta"] if not (montado and vt == "auto") else 1.9
 		# lo que le pega: en el auto, el auto; si no, el cuerpo (sentado en la bicicleta, tendido si murió)
 		var en_auto := montado and vt == "auto"

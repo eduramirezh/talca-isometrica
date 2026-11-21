@@ -17,7 +17,7 @@ Este archivo se carga en cada sesión y es corto a propósito: lo que vale para 
 | [`pipeline.md`](.claude/rules/pipeline.md) | El pipeline de datos (pipeline/, config/, data/) | `pipeline/**`, `config/**`, `Makefile`, `tests/**` |
 | [`pagina.md`](.claude/rules/pagina.md) | La página y el sitio publicado | `src/page.html`, `src/style.css`, `src/site/**`, `src/js/05-categories.js` y 8 más |
 | [`juego.md`](.claude/rules/juego.md) | El juego en Godot (juego/) y la exportación | `juego/**`, `tools/export.py`, `tools/export.js`, `tools/godot/**` y 3 más |
-| [`juego-jugador.md`](.claude/rules/juego-jugador.md) | El personaje del juego (vida, armas, jetpack, menú) | `juego/jugador.gd`, `juego/vehiculo.gd`, `juego/vida.gd`, `juego/armas.gd` y 7 más |
+| [`juego-jugador.md`](.claude/rules/juego-jugador.md) | El personaje del juego (vida, armas, jetpack, menú) | `juego/jugador.gd`, `juego/vehiculo.gd`, `juego/vida.gd`, `juego/armas.gd` y 11 más |
 | [`juego-calles.md`](.claude/rules/juego-calles.md) | Las calles del juego (la red, los mapas, los letreros, los autos y los faroles) | `juego/plano.gd`, `juego/ruta.gd`, `juego/letreros.gd`, `pipeline/plano.py` y 6 más |
 | [`herramientas.md`](.claude/rules/herramientas.md) | Las herramientas de tools/ (Playwright, rendimiento) | `tools/**` |
 
@@ -141,6 +141,6 @@ Las demás están en su regla, que se carga al tocar los archivos de su tema. Su
 - **`pipeline.md`**: «Medianas de calles» · «Grilla irregular» · «La Alameda (4 Norte)» · «La imagen satelital puede ser vieja» · «Overpass puede no responder» · «La búsqueda por caja de Mapillary pierde fotos» · «La posición de una foto de Mapillary puede errar 10 m» · «El relieve es de superficie»
 - **`pagina.md`**: «El póster del arranque»
 - **`juego.md`**: «Exportar lo generado (`tools/export.py`)» · «El juego carga la comuna por teselas» · «Los vehículos del juego y los pasos bajo la Ruta 5» · «Un modelo propio lejos de la plaza espera su tesela» · «Las fachadas de cerca del juego son un registro por edificio, no la geometría del glb»
-- **`juego-jugador.md`**: «Bajarse del vehículo y el servidor de física» · «El jetpack del juego» · «Los tiros en la red» · «En captura la bandera manda el anfitrión» · «Las armas del juego» · «La persona y el perro»
+- **`juego-jugador.md`**: «Bajarse del vehículo y el servidor de física» · «El jetpack del juego» · «Los tiros en la red» · «En captura la bandera manda el anfitrión» · «Las armas del juego» · «La persona, el perro y la gata» · «Los errores de RID con `--headless`»
 - **`juego-calles.md`**: «La red de calles del juego no sale de los vértices compartidos» · «Los letreros de las calles del juego» · «Los autos y los faroles del juego son datos, como los árboles»
 - **`herramientas.md`**: «Navegadores sin GPU» · «Rotar en `--js`» · «`__look` no limita el zoom»
