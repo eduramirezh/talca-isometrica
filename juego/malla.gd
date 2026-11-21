@@ -11,7 +11,8 @@
 #   - por material del patrón (materiales.gd patron(): ladrillo, baldosa…), en el marco: cara(), piso(), muro(),
 #     prisma(), caja(), cilindro(), piramide(), muro_vanos(), superficie(), derrame(), panel(), moldura(); las caras van
 #     también a la colisión mientras `solido`, y construir() deja el MeshInstance3D y su StaticBody3D (catedral.gd,
-#     fachadas.gd, calles.gd);
+#     fachadas.gd, calles.gd, raices.gd, torre_talca.gd). Para los vanos de una fachada por la coordenada del marco:
+#     s_de() y huecos_de();
 #   - en Godot, con UV, para un material que se da al final (malla(mat)): tri(), tri_n(), quad(), plano(), muros(),
 #     prisma_uv(), bloque(), torno(), tubo() (las piezas de la plaza: plaza.gd, plaza/*.gd), en la capa "".
 #
@@ -192,6 +193,27 @@ static func arco(s: float, w: float, h0: float, ha: float, flecha := -1.0, n := 
 func muro_vanos(f: Marco, a: Vector2, b: Vector2, h0: float, h1: float, huecos: Array, col: Color, mat := "liso") -> void:
 	var L := a.distance_to(b)
 	superficie(f, a, b, PackedVector2Array([Vector2(0, h0), Vector2(L, h0), Vector2(L, h1), Vector2(0, h1)]), huecos, col, mat)
+
+
+# los huecos de muro_vanos() de una lista de vanos rectangulares [s0, s1, z0, z1, …] (lo que sigue a z1 es de cada
+# modelo: el tipo de vano o el paso de los montantes; raices.gd, torre_talca.gd)
+static func huecos_de(vanos: Array) -> Array:
+	var out := []
+	for w in vanos:
+		var s0: float = w[0]
+		var s1: float = w[1]
+		var z0: float = w[2]
+		var z1: float = w[3]
+		out.append(PackedVector2Array([Vector2(s0, z0), Vector2(s1, z0), Vector2(s1, z1), Vector2(s0, z1)]))
+	return out
+
+
+# s a lo largo de un muro a -> b paralelo a un eje del marco, del punto c de ese eje (u en un muro a lo largo de u, v
+# en uno a lo largo de v): para dar los vanos por la coordenada del marco y no por la distancia desde a
+static func s_de(a: Vector2, b: Vector2, c: float) -> float:
+	var d := (b - a).normalized()
+	var p := Vector2(c, a.y) if absf(d.x) > 0.5 else Vector2(a.x, c)
+	return (p - a).dot(d)
 
 
 # lo mismo con un contorno cualquiera en (s, h) (un hastial, el fondo de un arco), sobre la línea a -> b

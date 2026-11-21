@@ -166,19 +166,12 @@ func rect(u0: float, v0: float, u1: float, v1: float) -> Array:
 	return [[u0, v0], [u1, v0], [u1, v1], [u0, v1]]
 
 
-# s de un punto (u o v según el muro) a lo largo de a -> b
-func s_de(a: Vector2, b: Vector2, c: float) -> float:
-	var d := (b - a).normalized()
-	var p := Vector2(c, a.y) if absf(d.x) > 0.5 else Vector2(a.x, c)
-	return (p - a).dot(d)
-
-
 # ventanas de los pisos k0..k1 centradas en cs (u o v), de ancho w y alto h, a 0,65 m del piso
 func ventanas(a: Vector2, b: Vector2, cs: Array, w: float, k0: int, k1: int, h := 1.5) -> Array:
 	var out := []
 	for k in range(k0, k1 + 1):
 		for c in cs:
-			var s := s_de(a, b, c)
+			var s := Malla.s_de(a, b, c)
 			out.append([s - w / 2, s + w / 2, st(k) + 0.65, st(k) + 0.65 + h, "v"])
 	return out
 
@@ -186,8 +179,8 @@ func ventanas(a: Vector2, b: Vector2, cs: Array, w: float, k0: int, k1: int, h :
 # las correderas de un balcón: un vano de piso a dintel entre c0 y c1 (u o v) en los pisos k0..k1
 func correderas(a: Vector2, b: Vector2, c0: float, c1: float, k0: int, k1: int, tipo := "p") -> Array:
 	var out := []
-	var s0 := s_de(a, b, c0)
-	var s1 := s_de(a, b, c1)
+	var s0 := Malla.s_de(a, b, c0)
+	var s1 := Malla.s_de(a, b, c1)
 	for k in range(k0, k1 + 1):
 		out.append([minf(s0, s1), maxf(s0, s1), st(k) + 0.2, st(k) + 2.35, tipo])
 	return out
@@ -200,13 +193,7 @@ func correderas(a: Vector2, b: Vector2, c0: float, c1: float, k0: int, k1: int, 
 #   h  el vidrio del hall, encendido de noche
 #   m  la ranura de madera de la esquina
 func fachada(a: Vector2, b: Vector2, h0: float, h1: float, vanos: Array, col: Color) -> void:
-	var huecos := []
-	for w in vanos:
-		var s0: float = w[0]
-		var s1: float = w[1]
-		var z0: float = w[2]
-		var z1: float = w[3]
-		huecos.append(PackedVector2Array([Vector2(s0, z0), Vector2(s1, z0), Vector2(s1, z1), Vector2(s0, z1)]))
+	var huecos := Malla.huecos_de(vanos)
 	m.muro_vanos(f, a, b, h0, h1, huecos, col)
 	for i in vanos.size():
 		var w: Array = vanos[i]
@@ -242,8 +229,8 @@ func fachada(a: Vector2, b: Vector2, h0: float, h1: float, vanos: Array, col: Co
 
 # las bandas blancas de las losas en los pisos k0..k1, de s0 a s1 del muro a -> b
 func bandas(a: Vector2, b: Vector2, c0: float, c1: float, k0: int, k1: int) -> void:
-	var s0 := s_de(a, b, c0)
-	var s1 := s_de(a, b, c1)
+	var s0 := Malla.s_de(a, b, c0)
+	var s1 := Malla.s_de(a, b, c1)
 	for k in range(k0, k1 + 1):
 		m.moldura(f, a, b, minf(s0, s1), maxf(s0, s1), st(k) - 0.2, st(k) + 0.25, 0.04, K["blanco"])
 
@@ -301,7 +288,7 @@ func caras() -> void:
 	# norte: el bloque oriente con la ranura de madera y la columna de ventanas chicas, la barra con sus pares
 	a = V2(24, 7.18); b = V2(16.2, 7.18)
 	var vn := ventanas(a, b, [18.6], 0.9, 0, 10, 1.2)
-	vn.append([s_de(a, b, 23.5), s_de(a, b, 22.7), 0.2, TOP - 0.6, "m"])
+	vn.append([Malla.s_de(a, b, 23.5), Malla.s_de(a, b, 22.7), 0.2, TOP - 0.6, "m"])
 	fachada(a, b, -4, TOP, vn, muro)
 	bandas(a, b, 16.5, 22.6, 1, 10)
 	a = V2(16.2, 7.18); b = V2(6.54, 7.18)
@@ -331,7 +318,7 @@ func caras() -> void:
 	fachada(a, b, -4, TOP, correderas(a, b, -17.3, -25.0, 0, 10, "l"), muro)
 	for k in range(0, 11):
 		m.moldura(f, a, b, 0.0, 8.77, st(k) - 0.25, st(k) + 0.2, 0.05, blanco)
-		baranda(a, b, s_de(a, b, -17.3), s_de(a, b, -25.0), st(k) + 0.2)
+		baranda(a, b, Malla.s_de(a, b, -17.3), Malla.s_de(a, b, -25.0), st(k) + 0.2)
 	# poniente: dos columnas de ventanas junto a las esquinas
 	a = V2(-25.55, 8.18); b = V2(-25.55, -6.25)
 	fachada(a, b, -4, TOP, ventanas(a, b, [6.6, -4.6], 1.2, 0, 10), muro)
@@ -451,9 +438,9 @@ func remates() -> void:
 	# las caras interiores de los extremos, sobre la azotea, con la puerta de la escalera
 	var a := V2(16.2, 7.18)
 	var b := V2(16.2, -7.58)
-	fachada(a, b, h, TOP, [[s_de(a, b, 0.6), s_de(a, b, -0.6), h + 0.05, h + 2.2, "p"]], K["muro"])
+	fachada(a, b, h, TOP, [[Malla.s_de(a, b, 0.6), Malla.s_de(a, b, -0.6), h + 0.05, h + 2.2, "p"]], K["muro"])
 	a = V2(-16.78, -6.25); b = V2(-16.78, 4.3)
-	fachada(a, b, h, TOP, [[s_de(a, b, -1.2), s_de(a, b, 0.0), h + 0.05, h + 2.2, "p"]], K["muro"])
+	fachada(a, b, h, TOP, [[Malla.s_de(a, b, -1.2), Malla.s_de(a, b, 0.0), h + 0.05, h + 2.2, "p"]], K["muro"])
 	# el sky lounge: el undécimo piso retranqueado, vidriado de piso a cielo
 	var sl := [[-6.0, -4.6], [16.0, -4.6], [16.0, 4.6], [-6.0, 4.6]]
 	for i in 4:

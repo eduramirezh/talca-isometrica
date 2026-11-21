@@ -77,23 +77,10 @@ func vidrio() -> Color:
 	return c
 
 
-# s de una coordenada (x o y, según el muro) a lo largo de a -> b
-func s_de(a: Vector2, b: Vector2, c: float) -> float:
-	var d := (b - a).normalized()
-	var p := Vector2(c, a.y) if absf(d.x) > 0.5 else Vector2(a.x, c)
-	return (p - a).dot(d)
-
-
 # los vanos [s0, s1, z0, z1, montantes cada ~m (0: uno al medio)] de un muro a -> b (afuera a la derecha), de -10 a
 # TOP, hundidos 0,15 m con su vidrio, sus montantes y un alféizar blanco
 func fachada(a: Vector2, b: Vector2, vanos: Array) -> void:
-	var huecos := []
-	for w in vanos:
-		var s0: float = w[0]
-		var s1: float = w[1]
-		var z0: float = w[2]
-		var z1: float = w[3]
-		huecos.append(PackedVector2Array([Vector2(s0, z0), Vector2(s1, z0), Vector2(s1, z1), Vector2(s0, z1)]))
+	var huecos := Malla.huecos_de(vanos)
 	m.muro_vanos(f, a, b, -10, TOP, huecos, K["muro"])
 	for i in vanos.size():
 		var w: Array = vanos[i]
@@ -115,7 +102,7 @@ func fachada(a: Vector2, b: Vector2, vanos: Array) -> void:
 # una ventana por piso centrada en c (x o y) de ancho w, en los once pisos
 func ventanas(a: Vector2, b: Vector2, c: float, w: float, alto := 1.3, desde := 1.0) -> Array:
 	var out := []
-	var s := s_de(a, b, c)
+	var s := Malla.s_de(a, b, c)
 	for k in PISOS:
 		out.append([s - w / 2, s + w / 2, piso(k) + desde, piso(k) + desde + alto, 0.0])
 	return out
@@ -124,8 +111,8 @@ func ventanas(a: Vector2, b: Vector2, c: float, w: float, alto := 1.3, desde := 
 # una cinta de ventanas por piso de c0 a c1, con montantes cada ~1,3 m; la del último piso, más alta si alto_ultimo
 func cintas(a: Vector2, b: Vector2, c0: float, c1: float, alto_ultimo := false) -> Array:
 	var out := []
-	var s0 := s_de(a, b, c0)
-	var s1 := s_de(a, b, c1)
+	var s0 := Malla.s_de(a, b, c0)
+	var s1 := Malla.s_de(a, b, c1)
 	for k in PISOS:
 		var z0 := piso(k) + (0.4 if alto_ultimo and k == PISOS - 1 else 1.0)
 		var z1 := piso(k) + (2.6 if alto_ultimo and k == PISOS - 1 else 2.3)
@@ -135,8 +122,8 @@ func cintas(a: Vector2, b: Vector2, c0: float, c1: float, alto_ultimo := false) 
 
 # las bandas blancas de las losas, que salen 5 cm, de c0 a c1 del muro a -> b
 func bandas(a: Vector2, b: Vector2, c0: float, c1: float) -> void:
-	var s0 := s_de(a, b, c0)
-	var s1 := s_de(a, b, c1)
+	var s0 := Malla.s_de(a, b, c0)
+	var s1 := Malla.s_de(a, b, c1)
 	for k in PISOS:
 		m.moldura(f, a, b, minf(s0, s1), maxf(s0, s1), piso(k) - 0.15, piso(k) + 0.25, 0.05, K["blanco"])
 

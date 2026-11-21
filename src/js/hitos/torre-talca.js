@@ -13,10 +13,9 @@
   // Approximate: the height (12 floors as tagged and in the listings, 4.2 m + 11 × 3 m, which the photo's floors
   // against the Catedral's 39 m tower agree with), the windows' places on the south and east faces (the 2018 cameras
   // err ~10° and some metres: mapillary.py, trap «La posición de una foto de Mapillary…») and the billboard's size.
-  // Its face is unknown: it carries the
-  // name of Trifolia (office 63 of the tower; a place of its own, whose card says the sign is the model's licence),
-  // stretched along the whole east edge, with MODELS['trifolia'] on it. On the plaza's level
-  // (MODELS[...].pad), with walls 10 m deep. Method: docs/METODOLOGIA.md §9.
+  // Its face is unknown: it carries the name of Trifolia (office 63 of the tower; a place of its own, whose card says
+  // the sign is the model's licence), stretched along the whole east edge, with MODELS['trifolia'] on it. On the
+  // plaza's level (MODELS[...].pad), with walls 10 m deep. Method: docs/METODOLOGIA.md §9.
   {const F=localFrame(0,0,Math.PI/2),{V,N3}=F,H=MODELS['plaza-de-armas'].pad;
     const K={...KH,wall:C('#ECE7DC'),white:C('#F4F0E6'),roof:C('#A35C42'),
       red:C('#B04A3C'),red2:C('#93402F'),frame:C('#B9B7B0'),board:C('#D8D6CE'),metal:C('#707070')};
@@ -47,7 +46,7 @@
     // the north face (Mapillary, from 1 Norte): a ribbon of windows on every floor, the top one higher
     {const w=WV(-5.2,1);FL.forEach(([a,b],i)=>{const t=i===FL.length-1;rect(w,155.8,167,t?a-.6:a,t?b+.3:b,i%2?K.glass2:K.glass);});
       rect(w,155.8,167,.4,3.4,K.glass2);rect(WV(-5.2,1,.09),155.2,167.6,3.7,4.2,K.white);}
-    // roof: the red plant room, and the billboard on two legs along the east edge (back to the city, face to the east)
+    // roof: the red plant room, and the billboard on three legs along the east edge (back to the city, face to the east)
     box(158,-16,163.5,-9,TOP,42.6,K.red,K.red2);
     for(const v of [-23.5,-15.5,-7.5])box(166.6,v-.25,167.1,v+.25,TOP,40,K.metal,K.metal);
     box(166.6,-25.5,167.1,-5.5,40,45,K.frame,K.metal);
