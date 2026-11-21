@@ -31,7 +31,7 @@ const BANDERAS := {
 	"--caer": ["m", "main.gd: lo deja caer desde m metros sobre el suelo (negativo: bajo él, fuera de la maqueta) e imprime la rapidez, el daño y la vida (vida.gd prueba())"],
 	"--bajar": ["", "vehiculo.gd: con --conducir, se baja al final y dice dónde quedó el personaje; con --volar, se saca el jetpack, camina y se lo pone otra vez"],
 	"--volar": ["s", "vehiculo.gd: con --vehiculo jetpack, despega, sube, avanza y aterriza en ~s segundos e imprime la altura máxima, lo recorrido, el combustible y la rapidez al aterrizar"],
-	"--musica": ["archivo", "musica.gd: la pista (ogg, mp3 o wav) que suena al despegar con el jetpack desde el techo de la Torre Talca, en vez de juego/musica/torre-talca.*"],
+	"--musica": ["archivo", "musica.gd: la pista (ogg, mp3 o wav) que suena al despegar con el jetpack desde el techo de la Torre Talca, en vez de juego/musica/torre-talca.mp3"],
 	"--arma": ["cuchillo|pistola|rifle", "armas.gd: saca esa arma al comenzar"],
 	"--apuntar": ["", "armas.gd: apunta (el botón derecho apretado) desde el comienzo"],
 	"--disparar": ["n", "main.gd: dispara (o ataca) n veces a lo que hay bajo la mira e imprime cada impacto, el daño y la munición (armas.gd prueba())"],

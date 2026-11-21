@@ -2,10 +2,10 @@
 # src/js/hitos/torre-talca.js) pone una pista de música, que sigue en loop mientras el jetpack va puesto y se apaga
 # (en FUNDIDO s) al sacárselo, al cambiar de vehículo o al morir. Solo en el juego propio: en la red no viaja.
 #
-# La pista no va en git (es de quien la ponga, y puede no ser libre): se busca, en este orden, en --musica archivo,
-# res://musica/torre-talca.{ogg,mp3,wav} (juego/musica/, con .gdignore para que Godot no la importe) y
-# user://musica/torre-talca.{ogg,mp3,wav} (un juego exportado no ve juego/musica/). Sin pista, despegar desde la torre
-# lo dice una vez en la consola y no pasa nada más.
+# La pista va en git: juego/musica/torre-talca.mp3 (la carpeta lleva .gdignore para que Godot no la importe: se lee del
+# archivo al despegar). Se busca, en este orden, en --musica archivo (otra pista, para probar),
+# res://musica/torre-talca.{ogg,mp3,wav} y user://musica/torre-talca.{ogg,mp3,wav} (un juego exportado no ve
+# juego/musica/). Sin pista, despegar desde la torre lo dice una vez en la consola y no pasa nada más.
 #
 # «Sobre la torre» es despegar (Espacio en el suelo, vehiculo.gd volar()) con los pies dentro de su planta (PLANTA, la
 # de OSM w310246574 en metros de grilla, como en el hito) y más alto que SOBRE m: los muros llegan al suelo, así que
@@ -52,7 +52,7 @@ func despegue(p: Vector3) -> void:
 		reproductor.stream = cargar()
 		if reproductor.stream == null:
 			if not dicho:
-				print("musica.gd: despegó desde la Torre Talca, pero no hay pista: ponga juego/musica/%s.ogg (o .mp3, .wav)" % NOMBRE)
+				print("musica.gd: despegó desde la Torre Talca, pero no hay pista: falta juego/musica/%s.mp3 (o .ogg, .wav)" % NOMBRE)
 				dicho = true
 			return
 	if fundido:

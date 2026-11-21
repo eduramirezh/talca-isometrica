@@ -1642,6 +1642,14 @@ func prueba_vuelo() -> void:
 	var arbol := get_tree()
 	var s := Args.num("--volar", 20.0, 1.0, 600.0)
 	var pausa := Args.num("--pausa", -1.0, 0.0, 600.0)
+	# despega desde el suelo: recién puesto (--desde, sobre todo en un techo) puede no haberlo tocado todavía, y apretar
+	# Espacio en el aire no es despegar (volar(): la música de la Torre Talca no sonaba una de cada tres veces)
+	var esperado := 0
+	while not is_on_floor() and esperado < 120:  # hasta 2 s
+		await arbol.physics_frame
+		esperado += 1
+	if not is_on_floor():
+		print("vehiculo.gd: el jetpack no tocó el suelo en 2 s: despega desde el aire")
 	var p0 := global_position
 	var antes := p0
 	var tiempo := 0.0
