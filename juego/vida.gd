@@ -13,8 +13,8 @@
 # Los carritos de completos (el hito carritos-5-oriente de la página: dos hileras de quioscos, en 5 Oriente entre 2 y
 # 3 Sur y en 6 Oriente frente al Mercado): un rectángulo por hilera (CARRITOS) en el marco local del hito, el de
 # localFrame(X, Y, A) en src/js/hitos/carritos-5-oriente.js, G(u, v) = (X + u·sen A + v·cos A, Y − u·cos A + v·sen A),
-# u hacia la calle y v a lo largo de la hilera, sobre donde se para la gente (en 5 Oriente también los pisos de los
-# quioscos, entre el mesón y la vereda). A pie, detenido ahí (bajo 2 m/s) PARAR s y con la vida incompleta, come un
+# u hacia la calle y v a lo largo de la hilera, sobre donde se para la gente (en 5 Oriente, la vereda frente a los
+# quioscos, bajo el letrero). A pie, detenido ahí (bajo 2 m/s) PARAR s y con la vida incompleta, come un
 # completo: COMPLETO de vida por segundo (de 0 a 100 en ~3 s), con el aviso «Comiendo un completo… +N». De paso, sin
 # detenerse, no; con la vida llena, nada.
 #
@@ -40,11 +40,12 @@ const PERDIDA_ESPERA := 0.45  # s que lo perdido queda en claro
 const PERDIDA_VACIA := 80.0  # por segundo, después
 # las hileras de carritos: el marco del hito (x, y de grilla, A en grados) y el rectángulo en (u, v), en m
 const CARRITOS := [
-	# (A) 5 Oriente entre 2 y 3 Sur: los quioscos en u 0–3,5 (el mesón en 1,3–2 y los pisos hasta 3,5), la vereda hasta
-	# ~8 y la calzada de 5 Oriente después; v 0–26,5, seis quioscos
-	{"nombre": "5 Oriente", "x": 562.8, "y": -258.0, "a": 91.5, "u0": 2.0, "u1": 9.0, "v0": -1.5, "v1": 28.0},
-	# (B) 6 Oriente, frente al Mercado: la caseta al poniente de u 0, los mesones afuera en u 0,6–1,3, el pavimento
-	# hasta 3,4 y el estacionamiento; v -0,5–35,5, seis puestos
+	# (A) 5 Oriente entre 2 y 3 Sur: los quioscos en u 0–3,5, cerrados por su frente rojo (el mesón se ve por la
+	# ventanilla), los postes del letrero en 3,55–3,95, la vereda hasta ~8 y la calzada de 5 Oriente después; v 0–26,5,
+	# seis quioscos
+	{"nombre": "5 Oriente", "x": 562.8, "y": -258.0, "a": 91.5, "u0": 3.5, "u1": 9.0, "v0": -1.5, "v1": 28.0},
+	# (B) 6 Oriente, frente al Mercado: la caseta al poniente de u 0, los mesones afuera en u 0,6–1,3 y las carpas en
+	# 0,2–3,2, el pavimento hasta 3,4 y la vereda de 6 Oriente; v -0,5–35,5, cinco puestos y una carpa en la esquina
 	{"nombre": "6 Oriente", "x": 676.36, "y": 128.44, "a": 91.4, "u0": 0.5, "u1": 8.0, "v0": -1.5, "v1": 37.0},
 ]
 const COMPLETO := 35.0  # de vida por segundo comiendo
