@@ -149,28 +149,9 @@ func rect(u0: float, v0: float, u1: float, v1: float) -> Array:
 	return [[u0, v0], [u1, v0], [u1, v1], [u0, v1]]
 
 
-# una capa plana sobre el relieve, off m sobre el suelo: cortada por los triángulos del terreno, apoyada en él
+# una capa plana sobre el relieve, off m sobre el suelo (malla.gd capa())
 func capa(pol: Array, off: float, col: Color, mat := "liso") -> void:
-	var gp := PackedVector2Array()
-	for q in pol:
-		gp.append(f.punto(q[0], q[1]))
-	if Geometry2D.is_polygon_clockwise(gp):
-		gp.reverse()
-	var x0 := INF
-	var y0 := INF
-	var x1 := -INF
-	var y1 := -INF
-	for p in gp:
-		x0 = minf(x0, p.x); y0 = minf(y0, p.y); x1 = maxf(x1, p.x); y1 = maxf(y1, p.y)
-	var alt := func(u: float, v: float) -> float: return E(u, v) + off
-	for tri in S.triangulos(x0, y0, x1, y1):
-		for pz in Geometry2D.intersect_polygons(gp, tri):
-			if Geometry2D.is_polygon_clockwise(pz):
-				continue
-			var pu := PackedVector2Array()
-			for p in pz:
-				pu.append(f.L(p.x, p.y))
-			m.piso(f, pu, 0.0, col, mat, alt)
+	m.capa(f, S, pol, off, col, mat)
 
 
 # una caja sobre el suelo del tramo, de h m sobre el maicillo, con su pie 0,3 m bajo el punto más bajo

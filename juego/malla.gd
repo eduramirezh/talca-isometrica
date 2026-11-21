@@ -9,10 +9,10 @@
 #
 # Dos maneras de llenarla, que se pueden mezclar:
 #   - por material del patrón (materiales.gd patron(): ladrillo, baldosa…), en el marco: cara(), piso(), muro(),
-#     prisma(), caja(), cilindro(), piramide(), muro_vanos(), superficie(), derrame(), panel(), moldura(); las caras van
-#     también a la colisión mientras `solido`, y construir() deja el MeshInstance3D y su StaticBody3D (catedral.gd,
-#     fachadas.gd, calles.gd, raices.gd, torre_talca.gd). Para los vanos de una fachada por la coordenada del marco:
-#     s_de() y huecos_de();
+#     prisma(), caja(), cilindro(), piramide(), muro_vanos(), superficie(), derrame(), panel(), moldura() y capa() (una
+#     capa plana apoyada en el relieve, con suelo.gd); las caras van también a la colisión mientras `solido`, y
+#     construir() deja el MeshInstance3D y su StaticBody3D (catedral.gd, fachadas.gd, calles.gd, raices.gd,
+#     torre_talca.gd, juegos_alameda.gd). Para los vanos de una fachada por la coordenada del marco: s_de() y huecos_de();
 #   - en Godot, con UV, para un material que se da al final (malla(mat)): tri(), tri_n(), quad(), plano(), muros(),
 #     prisma_uv(), bloque(), torno(), tubo() (las piezas de la plaza: plaza.gd, plaza/*.gd), en la capa "".
 #
@@ -302,6 +302,34 @@ func moldura(f: Marco, a: Vector2, b: Vector2, s0: float, s1: float, h0: float, 
 	var pt := func(s: float, p: float) -> Vector2: return a + d * s + ou * p
 	var q := PackedVector2Array([pt.call(s0, desde), pt.call(s1, desde), pt.call(s1, sal), pt.call(s0, sal)])
 	prisma(f, q, h0, h1, col, mat, true, null, "", h0 > 0.5)
+
+
+# una capa plana sobre el relieve: el polígono pol ([u, v] del marco f) a off m sobre el suelo S (modelos/entorno/
+# suelo.gd), cortado por los triángulos del terreno y apoyado en ellos, cada vértice a su altura (modelos/raices.gd,
+# modelos/juegos_alameda.gd)
+func capa(f: Marco, S: RefCounted, pol: Array, off: float, col: Color, mat := "liso") -> void:
+	var gp := PackedVector2Array()
+	for q in pol:
+		gp.append(f.punto(q[0], q[1]))
+	if Geometry2D.is_polygon_clockwise(gp):
+		gp.reverse()
+	var x0 := INF
+	var y0 := INF
+	var x1 := -INF
+	var y1 := -INF
+	for p in gp:
+		x0 = minf(x0, p.x); y0 = minf(y0, p.y); x1 = maxf(x1, p.x); y1 = maxf(y1, p.y)
+	var alt := func(u: float, v: float) -> float:
+		var g := f.punto(u, v)
+		return S.E(g.x, g.y) - f.base + off
+	for t in S.triangulos(x0, y0, x1, y1):
+		for pz in Geometry2D.intersect_polygons(gp, t):
+			if Geometry2D.is_polygon_clockwise(pz):
+				continue
+			var pu := PackedVector2Array()
+			for p in pz:
+				pu.append(f.L(p.x, p.y))
+			piso(f, pu, 0.0, col, mat, alt)
 
 
 # El CollisionShape3D de una forma cóncava, sin que la arme dos veces. Con la depuración (el binario de siempre, no una
