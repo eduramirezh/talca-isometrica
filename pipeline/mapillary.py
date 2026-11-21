@@ -17,10 +17,10 @@
   python mapillary.py punto -0.8 29.7 [2.6] [--fotos 8] [--radio 45]   # las que miran a un punto (una pila, una
                                                   # estatua): un círculo de r m en el suelo y una regla vertical
                                                   # fachada y punto dibujan con Pillow: uv run --with pillow python …
-  uv run --with pillow python mapillary.py mirar 275 747 [--radio 450] [--desde 2021] [--n 12] [--nombre raices]
+  uv run --with pillow python mapillary.py mirar 278 745 [--radio 450] [--desde 2021] [--n 16] [--nombre raices]
                                                   # lo que dejan ver de un punto las fotos lejanas: las originales de las
                                                   # panorámicas recortadas hacia él -> diagnostics/fotos/<nombre>/
-  … mirar 275 747 --ids 873538511416209,2445007295696620 [--ancho 14 --alto 40 --bajo 4 --escala 7]   # esas, más de cerca
+  … mirar 278 745 --ids 873538511416209,2445007295696620 [--ancho 14 --alto 40 --bajo 4 --escala 7]   # esas, más de cerca
 
 clave: Mapillary pide una clave de cliente para todo, también para las teselas. Es gratis: con una cuenta de
 mapillary.com, https://www.mapillary.com/dashboard/developers → «Register application» (nombre y descripción
@@ -704,11 +704,11 @@ def cmd_punto(x: float, y: float, r: float = 3, *, fotos: int = 8, radio: float 
     if not tiles: print('Ninguna foto mira a ese punto sin un edificio en medio.'); return
     sheets(tiles, rows, nombre, 6, 'punto')
 
-def pick_far(x, y, radio, desde, n, per_seq=4, gap=6.0):
+def pick_far(D, x, y, radio, desde, n, per_seq=4, gap=6.0):
     """The images of imagenes.json from year `desde` on that could see grid point (x, y) from less than `radio` m:
     panoramas, or photos pointing at it ±FRONT. Up to per_seq of each sequence, closest first and at least `gap` m
-    apart (from afar a few metres change which tree is in the way), the closest sequences first, at most n."""
-    D = json.load(open(OUT / 'imagenes.json'))
+    apart (from afar a few metres change which tree is in the way), the closest sequences first, at most n. D: the
+    contents of imagenes.json."""
     t0 = time.mktime((desde, 1, 1, 0, 0, 0, 0, 0, 0)) * 1000
     seqs = {}
     for im in D['imagenes']:
@@ -728,11 +728,17 @@ def cmd_mirar(x: float, y: float, *, radio: float = 450, desde: int = 2021, n: i
               alto: float = 40, bajo: float = 4, escala: int = 3, nombre: str = '', ids: str = ''):
     """mirar X Y: lo que dejan ver de un punto las fotos lejanas (un edificio alto entre casas y árboles)."""
     from PIL import Image, ImageDraw
+    if not (OUT / 'imagenes.json').exists(): raise SystemExit('Falta raw/mapillary/imagenes.json: corra antes `mapillary.py cobertura`.')
     tok = token()
     D = json.load(open(OUT / 'imagenes.json'))
     pos = {im[0]: im for im in D['imagenes']}
-    pick = [pos[i] for i in ids.split(',') if i in pos] if ids else pick_far(x, y, radio, desde, n)
-    if not pick: raise SystemExit(f'Sin fotos desde {desde} a menos de {radio:.0f} m de ({x:.0f}, {y:.0f}) que lo miren.')
+    if ids:
+        want = [i for i in ids.split(',') if i]; pick = [pos[i] for i in want if i in pos]
+        if len(pick) < len(want): print('No están en imagenes.json (¿fuera de la comuna, o cobertura vieja?): ' + ', '.join(i for i in want if i not in pos))
+        if not pick: raise SystemExit('Ninguna de --ids está en raw/mapillary/imagenes.json.')
+    else:
+        pick = pick_far(D, x, y, radio, desde, n)
+        if not pick: raise SystemExit(f'Sin fotos desde {desde} a menos de {radio:.0f} m de ({x:.0f}, {y:.0f}) que lo miren.')
     info = {}
     for k in range(0, len(pick), 50):
         for r in graph('images', {'image_ids': ','.join(im[0] for im in pick[k:k+50]),
@@ -743,9 +749,13 @@ def cmd_mirar(x: float, y: float, *, radio: float = 450, desde: int = 2021, n: i
     rows, crops = [], []
     for im in pick:
         r = info.get(im[0], {})
-        if not r.get('thumb_original_url'): continue
+        if not r.get('thumb_original_url') or r.get('camera_type') == 'fisheye': continue   # a fisheye is neither cropped nor whole
         f = out / 'originales' / f'{im[0]}.jpg'
-        if not f.exists(): f.write_bytes(net.get(r['thumb_original_url'], timeout=90))
+        if not f.exists() or not f.stat().st_size:
+            try: body = net.get(r['thumb_original_url'], timeout=90, quiet=True)   # quiet: the URL is signed
+            except Exception as e:
+                print(f'{im[0]}: no se pudo bajar ({type(e).__name__}{": HTTP " + str(e.code) if hasattr(e, "code") else ""}); se salta'); continue
+            tmp = f.with_suffix(f'.{os.getpid()}.tmp'); tmp.write_bytes(body); os.replace(tmp, f)   # whole: never a half file in the cache
         img = Image.open(f).convert('RGB'); W, H = img.size
         dist, b = math.dist(im[1:3], (x, y)), bearing(im[1], im[2], x, y)
         pano = im[5] or r.get('camera_type') in ('spherical', 'equirectangular')
@@ -761,11 +771,13 @@ def cmd_mirar(x: float, y: float, *, radio: float = 450, desde: int = 2021, n: i
             note = f'panorámica, recortada al rumbo {b:.0f}° ±{ancho / 2:.0f}° y de -{bajo:.0f}° a +{top:.0f}°'
         else:
             crop = img; note = f'foto de rumbo {cca if cca is not None else "?"}°: entera (el punto está a {b:.0f}°)'
-        crop = crop.resize((crop.width * escala, crop.height * escala), Image.LANCZOS)
-        name = f'{len(rows):02d}.png'; crop.save(out / name); crops.append((name, crop))
+        if pano: crop = crop.resize((crop.width * escala, crop.height * escala), Image.LANCZOS)
+        name = f'{len(rows):02d}.png'; crop.save(out / name)
+        small = crop.copy(); small.thumbnail((1200, 1200)); crops.append((name, small))   # the sheet: at most 1200 px each
         user = (r.get('creator') or {}).get('username', '')
         rows.append(f'{name}  {time.strftime("%Y-%m-%d", time.gmtime(im[3] / 1000))}  [Mapillary] {im[0]}  [CC BY-SA 4.0] {user}  '
                     f'(en {im[1]:.0f},{im[2]:.0f}: a {dist:.0f} m)\n    {note}\n    https://www.mapillary.com/app/?pKey={im[0]}')
+    if not crops: raise SystemExit('Ninguna foto se pudo bajar (la API no dio su original, o es de ojo de pez).')
     (out / 'indice.txt').write_text('\n'.join(rows) + '\n')
     cw = max(c.width for _, c in crops); ch = max(c.height for _, c in crops); cols = min(4, len(crops))
     sheet = Image.new('RGB', (cw * cols, ch * ((len(crops) + cols - 1) // cols)), 'white'); d = ImageDraw.Draw(sheet)

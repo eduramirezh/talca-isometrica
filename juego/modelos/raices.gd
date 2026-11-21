@@ -109,6 +109,9 @@ func construir(tesela: Node3D) -> void:
 	numero()
 	m.construir(self, "raices")
 	mc.construir_colision(self, "raices-reja")
+	S = null  # el relieve de toda la tesela y los arreglos de las mallas: ya están en la escena
+	m = null
+	mc = null
 	print("raices.gd: %d ms (base %.2f)" % [Time.get_ticks_msec() - t0, g0])
 
 
