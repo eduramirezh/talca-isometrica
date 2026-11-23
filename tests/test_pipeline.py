@@ -10,7 +10,8 @@
   - gis.py: GeoPackage geometries written and read back, the grid's PROJ operation is common.loc, and a vertex taken
     to EPSG:4326 and back rounds to the same integer metre;
   - mapillary.py: a vector tile written here is read back (properties of every type, points and lines), a point of a
-    tile lands in that tile, and the bearing from the grid to true north (the grid's +y points 5° east of north).
+    tile lands in that tile, the bearing from the grid to true north (the grid's +y points 5° east of north), and the
+    poles of postes along a segment and where the lines of cruce meet.
 Standard library only; ~0.2 s. The tests that need raw/ (the commune's limit) or node are skipped without them.
 """
 import contextlib, io, json, math, random, shutil, subprocess, sys, unittest
@@ -217,6 +218,16 @@ class Mapillary(unittest.TestCase):
                                  'is_pano': True, 'sequence_id': 'seqA'})
             self.assertEqual((typ2, parts2), (2, [[(10, 20), (15, 15), (0, 15)]]))
             self.assertEqual(q, {'sequence_id': -3})                  # no id field: none is made up
+
+    def test_along_meet(self):
+        self.assertEqual(mapillary.along(320, 511, 425, 511, 370), (370.0, 511.0))     # along x: the pole at x 370
+        self.assertEqual(mapillary.along(0, 0, 10, 40, 20), (5.0, 20.0))              # mostly along y: read as y
+        s = math.sqrt(.5)
+        p, ang = mapillary.meet([(0, 0, s, s), (10, 0, -s, s)])                         # two lines at right angles
+        self.assertAlmostEqual(p[0], 5); self.assertAlmostEqual(p[1], 5); self.assertAlmostEqual(ang, 90)
+        p, ang = mapillary.meet([(0, 0, 1, 0), (0, 2, 0, -1), (4, 0, 0, 1)])           # three: the nearest point
+        self.assertAlmostEqual(p[1], 0); self.assertAlmostEqual(ang, 90)
+        self.assertEqual(mapillary.meet([(0, 0, 1, 0), (0, 3, -1, 0)]), (None, 0.0))   # parallel
 
     def test_tiles(self):
         tiles = mapillary.tiles_of(14, -500, 500, -400, 400)
