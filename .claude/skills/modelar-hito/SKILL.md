@@ -21,12 +21,11 @@ lugar (un puente, un paso), un punto `x,y` de la grilla. Los ejemplos de referen
 
 ## 0. Antes de empezar
 
-En un worktree, `raw/` y `node_modules/` no están (no van en git): enlácelos a los del checkout principal.
+En un worktree, `raw/` y `node_modules/` no van en git: el hook `WorktreeCreate` (`tools/preparar.sh`) los enlaza a
+los del checkout principal. Si faltan (un worktree hecho a mano), `tools/preparar.sh`.
 
 ```bash
-MAIN=$(git worktree list | head -1 | awk '{print $1}')
-[ -e raw ] || ln -s "$MAIN/raw" raw
-[ -e node_modules ] || ln -s "$MAIN/node_modules" node_modules
+tools/preparar.sh --revisar || tools/preparar.sh
 make build
 ```
 

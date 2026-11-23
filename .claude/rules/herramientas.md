@@ -1,6 +1,7 @@
 ---
 paths:
   - "tools/**"
+  - ".claude/hooks/**"
 ---
 
 # Las herramientas de tools/ (Playwright, rendimiento)
@@ -10,6 +11,7 @@ Capturas, comparaciones, perfiles y mediciones en el navegador. Cada herramienta
 ## Comandos
 
 ```bash
+tools/preparar.sh [--revisar]   # un worktree listo: raw/, node_modules/, scripts/deploy/node_modules/ y modelo3d/mapa y datos, enlazados a los de la copia principal; lo corre solo el hook WorktreeCreate de .claude/settings.json (.claude/hooks/worktree-crear.sh: el worktree en .claude/worktrees/<nombre>, rama worktree-<nombre>, desde origin/main), y WorktreeRemove (worktree-quitar.sh) lo quita y borra su rama si ya no lleva nada propio; a mano, en un worktree hecho con git worktree add
 uv run --with "playwright==1.63" --with pillow python tools/variants.py shots/hoja.png --view "Plaza=__look(-60,30,14.2)" --variant "Sin pixel art=__pixelArt(null)" --variant "0,75 m=__pixelArt({m:0.75})" --reset "__pixelArt({m:0.5})" --scale 1   # vistas x variantes en una hoja
 uv run --with "playwright==1.63" --with pillow python tools/variants.py shots/d.png --size 390x844 --dpr 2 --clip 0,0,390,844 --view "z4=__look(-60,30,4)" --variant "Antes=__pixelArt({m:0.5,crease:'normals'})" --variant "Ahora=" --diff   # % de píxeles distintos y columna Δ
 uv run --with "playwright==1.63" python tools/perf.py [--size 1440x900 --dpr 1] [--view "nombre=__look(x,y,z)"]   # ms, llamadas, triángulos y ms de CPU de un cuadro (refit, pan, settle) y ms entre cuadros al arrastrar (gesto); teléfono por omisión
