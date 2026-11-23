@@ -101,7 +101,8 @@ pipeline/
   mapillary.py           Mapillary: la clave, las fotos de la comuna (teselas vectoriales), qué lugares tienen fotos que los miran
                          y lo que dejan ver de un punto las panorámicas lejanas (mirar);
                          la búsqueda y la elección (una por pasada, de frente) que usa landmark.py photos --mapillary;
-                         fachada y punto: las fotos de un edificio o un punto con su planta y una regla dibujadas encima
+                         fachada y punto: las fotos de un edificio o un punto con su planta y una regla dibujadas encima;
+                         postes y cruce: ubicar por rumbos lo que no tiene fotos de cerca (los juegos tras una reja)
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
                          la API map de OSM por cajas (tiles, tiles-comuna);
                          cruces, calzadas y ramales de la Ruta 5 -> data/ruta5.json
@@ -165,6 +166,7 @@ tools/juego_osm.py       las plantas y los nodos de la calle de OSM alrededor de
 tools/juego_vistas.py    vistas del juego frente a las fachadas de la ciudad: dónde pararse frente a un edificio (punto, buscar), las capturas (tomar) y una hoja antes/después (hoja)
 juego/modelos/plaza.gd   la Plaza de Armas del juego en detalle (árboles, quiosco, piletas, faroles, escaños; plaza/: árboles, piezas y texturas en código)
 juego/modelos/raices.gd  el Edificio Raíces (3 Oriente 1645) de cerca: balcones con baranda de vidrio, ventanas hundidas, hall, azoteas, jardín y reja; se arma cuando llega su tesela
+juego/modelos/juegos_alameda.gd   los juegos de la Alameda entre 3 y 4 Oriente y su tramo: plataformas a las que se sube por escaleras, toboganes por los que se resbala (jugador.gd), columpios que se mecen, faroles
 juego/malla.gd, materiales.gd   el constructor de mallas y los materiales de todos los modelos del juego (shaders/: capa, patron, plaza/)
 juego/args.gd, fps.gd, glb.gd   las banderas de la línea de comandos, el arnés de --fps y lo que tools/export.py escribe en juego/mapa/indice.json (capas, luces, lugares, teselas)
 juego/modelos/torre_talca.gd   la Torre Talca de cerca: ventanas y cintas hundidas, planta baja vidriada, azotea, sala de máquinas y el letrero (su techo lo reconoce musica.gd)

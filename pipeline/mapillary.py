@@ -21,6 +21,11 @@
                                                   # lo que dejan ver de un punto las fotos lejanas: las originales de las
                                                   # panorámicas recortadas hacia él -> diagnostics/fotos/<nombre>/
   … mirar 278 745 --ids 873538511416209,2445007295696620 [--ancho 14 --alto 40 --bajo 4 --escala 7]   # esas, más de cerca
+  uv run --with pillow python mapillary.py postes 320 511 425 511 [--paso 5] [--alto 4] [--radio 60] [--desde 2021]
+                       [--n 12] [--ids a,b] [--nombre juegos]   # postes cada 5 m a lo largo de un segmento, dibujados
+                                                  # en las panorámicas que lo ven -> diagnostics/fotos/<nombre>/<id>.jpg
+  python mapillary.py cruce 320 511 425 511 2804659613044828:370 1520358651907062:367.4:3.7   # dónde está lo que esas
+                                                  # dos ven en esos postes (con :3.7, la corrección de esa pasada)
 
 clave: Mapillary pide una clave de cliente para todo, también para las teselas. Es gratis: con una cuenta de
 mapillary.com, https://www.mapillary.com/dashboard/developers → «Register application» (nombre y descripción
@@ -74,6 +79,22 @@ entera. Escribe los recortes, indice.txt (fecha, autor, licencia, enlace: para F
 El horizonte de una panorámica puede estar corrido unos grados (la cámara inclinada en el auto; las de 2023 de
 SolutivaSistemas): si el edificio sale cortado abajo, suba --bajo; arriba, --alto. A más de ~150 m la imagen es borrosa: da la
 silueta, las alturas (el ángulo sobre el horizonte por la distancia) y el ritmo de las ventanas, no el detalle.
+
+postes: para ubicar lo que se ve desde la calle pero no tiene fotos de cerca (los juegos de la Alameda entre 3 y 4
+Oriente, detrás de una reja en medio del bandejón). Dibuja con la cámara calculada de cada panorámica el segmento
+X0 Y0 X1 Y1 en el suelo (amarillo) y un poste de --alto m cada --paso m a lo largo de él (blanco), rotulado con su
+coordenada (x si el segmento corre más a lo largo de x; si no, y), y recorta a los postes. Elige como mirar las
+panorámicas desde --desde a menos de --radio m del medio del segmento (o las de --ids) y baja sus originales. Lo que
+asoma entre dos postes está en la recta que va de la cámara por ese punto del segmento: con la lectura desde dos
+cámaras, cruce da dónde. El rumbo de la cámara calza a uno o dos grados; la altura en la imagen no (la cámara
+inclinada en el auto corre el horizonte unos grados, y con él la distancia que dirían las filas): lea columnas, no
+filas. Antes de leer, pruebe cada pasada con algo que OSM tenga (un portón, una esquina de la reja): la pasada norte
+de 2024 en la Alameda veía los portones 3,7 m al poniente de los de OSM, y sus lecturas van con :3.7.
+cruce: el punto donde se cruzan las rectas de las lecturas <id>:<poste>[:<corrección>] (la corrección, en metros a lo
+largo del segmento, mueve juntas la cámara y la lectura: la de su pasada contra un punto conocido); con más de dos, el
+más cercano a todas (mínimos cuadrados), con la distancia de cada recta a él. Dos cámaras de lados casi opuestos se
+cruzan en ángulo agudo y un grado de error corre el punto varios metros a lo largo de ellas: avisa bajo 25°. En los
+juegos de la Alameda, ±2 m a lo largo del bandejón y ±4 m a lo ancho.
 
 Licencia: las fotos son CC BY-SA 4.0 («© <autor>, Mapillary, CC BY-SA 4.0»). Se bajan para mirarlas al modelar
 (diagnostics/, fuera de git), como las de Commons; los términos de Mapillary piden su logo y un enlace si se publican.
@@ -704,6 +725,18 @@ def cmd_punto(x: float, y: float, r: float = 3, *, fotos: int = 8, radio: float 
     if not tiles: print('Ninguna foto mira a ese punto sin un edificio en medio.'); return
     sheets(tiles, rows, nombre, 6, 'punto')
 
+def original(iid, url, folder):
+    """The original of an image (4096 × 2048 for a panorama) as folder/<id>.jpg, downloaded whole once; None (and a
+    line saying so) when it cannot be downloaded. The URL is signed: it is never printed."""
+    f = folder / f'{iid}.jpg'
+    if not f.exists() or not f.stat().st_size:
+        try: body = net.get(url, timeout=90, quiet=True)
+        except Exception as e:
+            print(f'{iid}: no se pudo bajar ({type(e).__name__}{": HTTP " + str(e.code) if hasattr(e, "code") else ""}); se salta'); return None
+        folder.mkdir(parents=True, exist_ok=True)
+        tmp = f.with_suffix(f'.{os.getpid()}.tmp'); tmp.write_bytes(body); os.replace(tmp, f)   # whole: never a half file in the cache
+    return f
+
 def pick_far(D, x, y, radio, desde, n, per_seq=4, gap=6.0):
     """The images of imagenes.json from year `desde` on that could see grid point (x, y) from less than `radio` m:
     panoramas, or photos pointing at it ±FRONT. Up to per_seq of each sequence, closest first and at least `gap` m
@@ -750,12 +783,8 @@ def cmd_mirar(x: float, y: float, *, radio: float = 450, desde: int = 2021, n: i
     for im in pick:
         r = info.get(im[0], {})
         if not r.get('thumb_original_url') or r.get('camera_type') == 'fisheye': continue   # a fisheye is neither cropped nor whole
-        f = out / 'originales' / f'{im[0]}.jpg'
-        if not f.exists() or not f.stat().st_size:
-            try: body = net.get(r['thumb_original_url'], timeout=90, quiet=True)   # quiet: the URL is signed
-            except Exception as e:
-                print(f'{im[0]}: no se pudo bajar ({type(e).__name__}{": HTTP " + str(e.code) if hasattr(e, "code") else ""}); se salta'); continue
-            tmp = f.with_suffix(f'.{os.getpid()}.tmp'); tmp.write_bytes(body); os.replace(tmp, f)   # whole: never a half file in the cache
+        f = original(im[0], r['thumb_original_url'], out / 'originales')
+        if not f: continue
         img = Image.open(f).convert('RGB'); W, H = img.size
         dist, b = math.dist(im[1:3], (x, y)), bearing(im[1], im[2], x, y)
         pano = im[5] or r.get('camera_type') in ('spherical', 'equirectangular')
@@ -787,6 +816,97 @@ def cmd_mirar(x: float, y: float, *, radio: float = 450, desde: int = 2021, n: i
     sheet.save(out / 'hoja.png')
     print('\n'.join(rows)); print(f'-> {out.relative_to(ROOT)}/ (hoja.png: todos los recortes)')
 
+def along(x0, y0, x1, y1, a):
+    """The point of the segment (x0, y0)-(x1, y1) whose coordinate on its main axis (x if it runs more along x than
+    along y, else y) is a: how postes labels its poles and cruce reads them."""
+    ax = abs(x1 - x0) >= abs(y1 - y0)
+    t = (a - (x0 if ax else y0)) / ((x1 - x0) if ax else (y1 - y0))
+    return (x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)
+
+def meet(rays):
+    """The point nearest to the lines rays [(x, y, dx, dy)] (a point and a unit direction each), by least squares (for
+    two, where they cross); None when they are parallel. Also the widest angle between two of them, in degrees (0–90)."""
+    a = b = c = px = py = 0.0
+    for x, y, dx, dy in rays:   # sum over the lines of (I - d dᵀ) p = (I - d dᵀ) q
+        m00, m01, m11 = 1 - dx * dx, -dx * dy, 1 - dy * dy
+        a += m00; b += m01; c += m11; px += m00 * x + m01 * y; py += m01 * x + m11 * y
+    det = a * c - b * b
+    if abs(det) < 1e-9: return None, 0.0
+    ang = max((math.degrees(math.acos(min(1, abs(r[2] * s[2] + r[3] * s[3])))) for i, r in enumerate(rays) for s in rays[i + 1:]), default=0.0)
+    return ((c * px - b * py) / det, (a * py - b * px) / det), ang
+
+def cmd_postes(x0: float, y0: float, x1: float, y1: float, *, paso: float = 5, alto: float = 4, radio: float = 60,
+               desde: int = 2021, n: int = 12, ids: str = '', nombre: str = ''):
+    """postes X0 Y0 X1 Y1: postes cada `paso` m a lo largo de un segmento de la grilla, dibujados en las panorámicas
+    que lo ven, para ubicar por su rumbo lo que no tiene fotos de cerca (los juegos detrás de una reja)."""
+    from PIL import Image, ImageDraw, ImageFont
+    if not (OUT / 'imagenes.json').exists(): raise SystemExit('Falta raw/mapillary/imagenes.json: corra antes `mapillary.py cobertura`.')
+    tok = token(); mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+    if ids: want = [i for i in ids.split(',') if i]
+    else: want = [im[0] for im in pick_far(json.load(open(OUT / 'imagenes.json')), mx, my, radio, desde, n * 4) if im[5]][:n]
+    if not want: raise SystemExit(f'Sin panorámicas desde {desde} a menos de {radio:.0f} m de ({mx:.0f}, {my:.0f}).')
+    C = cameras(want, tok); urls = {}
+    for k in range(0, len(want), 50):
+        for r in graph('images', {'image_ids': ','.join(want[k:k + 50]), 'fields': 'id,thumb_original_url'}, tok).get('data', []):
+            urls[r['id']] = r.get('thumb_original_url')
+    ax = abs(x1 - x0) >= abs(y1 - y0); lo, hi = sorted((x0, x1) if ax else (y0, y1))
+    marks = [k * paso for k in range(math.ceil(lo / paso - 1e-9), math.floor(hi / paso + 1e-9) + 1)]
+    out = ROOT / 'diagnostics' / 'fotos' / (nombre or f'postes-{mx:.0f},{my:.0f}'); rows = []
+    for iid in want:
+        c = C.get(iid)
+        if not usable(c) or c.get('camera_type') not in ('spherical', 'equirectangular'):
+            print(f'{iid}: no es una panorámica con su cámara calculada; se salta'); continue
+        f = urls.get(iid) and original(iid, urls[iid], out / 'originales')
+        if not f: continue
+        img = Image.open(f).convert('RGB'); W, H = img.size; cam = Camera(c, (W, H), HPANO)
+        sh = int(W / 2 - cam.at(mx, my, 0)[0])                 # turned round so that the segment's middle is the middle
+        im = Image.new('RGB', (W, H)); im.paste(img, (sh % W - W, 0)); im.paste(img, (sh % W, 0))
+        d = ImageDraw.Draw(im, 'RGBA'); pts = []
+        try: font = ImageFont.load_default(size=max(14, W // 200))
+        except TypeError: font = ImageFont.load_default()
+        def draw(a, b, fill, k=4):
+            for pl in cam.line(a, b, k):
+                q = [((p[0] + sh) % W, p[1]) for p in pl]
+                for s, e in zip(q, q[1:]):
+                    if abs(e[0] - s[0]) < W / 3: d.line([s, e], fill=fill, width=2); pts.extend((s, e))
+        draw((x0, y0, 0), (x1, y1, 0), (255, 214, 0, 220), 48)
+        for a in marks:
+            x, y = along(x0, y0, x1, y1, a); draw((x, y, 0), (x, y, alto), (255, 255, 255, 220))
+            p = cam.at(x, y, alto + .6)
+            if p: d.text(((p[0] + sh) % W, p[1]), f'{a:g}', fill=(255, 255, 255), font=font, stroke_width=2, stroke_fill=(0, 0, 0), anchor='ms')
+        if not pts: continue
+        xs, ys = [p[0] for p in pts], [p[1] for p in pts]; ppd = W / 360
+        im.crop((int(max(0, min(xs) - 150)), int(max(0, min(ys) - 6 * ppd)), int(min(W, max(xs) + 150)), int(min(H, max(ys) + 3 * ppd)))).save(out / f'{iid}.jpg', quality=90)
+        when = time.strftime('%Y-%m-%d', time.gmtime(c['captured_at'] / 1000)); who = (c.get('creator') or {}).get('username', '')
+        rows.append(f'{iid}.jpg  {when}  [Mapillary] {iid}  [CC BY-SA 4.0] {who}  (cámara en {cam.x:.1f},{cam.y:.1f}; '
+                    f'cabeceo {cam.pitch:.1f}°, alabeo {cam.roll:.1f}°)\n    https://www.mapillary.com/app/?pKey={iid}')
+    if not rows: raise SystemExit('Ninguna panorámica se pudo dibujar.')
+    (out / 'indice.txt').write_text('\n'.join(rows) + '\n')
+    print('\n'.join(rows)); print(f'-> {out.relative_to(ROOT)}/ (cada foto con postes cada {paso:g} m; lecturas para mapillary.py cruce)')
+
+def cmd_cruce(x0: float, y0: float, x1: float, y1: float, *lecturas):
+    """cruce X0 Y0 X1 Y1 <id>:<poste>[:<corrección>] …: dónde está lo que dos o más panorámicas de postes ven en esos
+    postes del segmento."""
+    if len(lecturas) < 2: raise SystemExit('cruce necesita dos lecturas o más: <id>:<poste>[:<corrección en m>]')
+    L = [l.split(':') for l in lecturas]
+    try: L = [(p[0], float(p[1]), float(p[2]) if len(p) > 2 else 0.0) for p in L]
+    except (IndexError, ValueError): raise SystemExit('Cada lectura es <id>:<poste>[:<corrección en m>], p. ej. 1520358651907062:367.5:3.7')
+    C = cameras([iid for iid, _, _ in L], token()); n = math.dist((x0, y0), (x1, y1)); ux, uy = (x1 - x0) / n, (y1 - y0) / n
+    rays = []
+    for iid, a, dd in L:
+        c = C.get(iid)
+        if not usable(c): raise SystemExit(f'{iid}: Mapillary no da su cámara calculada')
+        cx, cy = loc(*c['computed_geometry']['coordinates']); cx, cy = cx + ux * dd, cy + uy * dd   # the pass's offset moves both
+        px, py = along(x0, y0, x1, y1, a); px, py = px + ux * dd, py + uy * dd
+        r = math.dist((cx, cy), (px, py)); rays.append((cx, cy, (px - cx) / r, (py - cy) / r))
+    p, ang = meet(rays)
+    if not p: raise SystemExit('Las rectas son paralelas: no se cruzan.')
+    print(f'{p[0]:.1f} {p[1]:.1f}   (las rectas se cruzan a {ang:.0f}° como mucho)')
+    for (iid, a, dd), (cx, cy, dx, dy) in zip(L, rays):
+        t = (p[0] - cx) * dx + (p[1] - cy) * dy; off = abs((p[0] - cx) * dy - (p[1] - cy) * dx)
+        print(f'  {iid}: cámara en {cx:.1f},{cy:.1f}, a {t:.1f} m; el punto queda a {off:.1f} m de su recta' + ('  ¡detrás de la cámara!' if t < 0 else ''))
+    if ang < 25: print('Aviso: a menos de 25° (cámaras de lados casi opuestos, o muy juntas), un grado de error en el rumbo corre el punto varios metros a lo largo de las rectas: lea también desde cámaras más apartadas.')
+
 if __name__ == '__main__':
     cli.run({'clave': cmd_clave, 'cobertura': cmd_cobertura, 'lugares': cmd_lugares, 'fachada': cmd_fachada, 'punto': cmd_punto,
-             'mirar': cmd_mirar}, __doc__)
+             'mirar': cmd_mirar, 'postes': cmd_postes, 'cruce': cmd_cruce}, __doc__)
