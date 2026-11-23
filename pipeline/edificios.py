@@ -40,6 +40,12 @@ estimados (la plantilla les da uno o dos pisos).
       teja, óxido, zinc, claro…), clasificada con la imagen satelital de Esri (la mediana de los píxeles claros dentro
       de su planta, sin el borde; solo se guarda la familia). Luego `make edificios build`. `imagen` guarda qué imagen
       se usó; con --release, las teselas de esa publicación de Esri Wayback, que no cambian (las actuales sí).
+  uv run --with pillow python pipeline/edificios.py techos 19 --ml 4150 4760 -460 -60
+      lo mismo para las huellas de aprendizaje automático con su centro en esa caja (x0 x1 y0 y1), en la sección "ml"
+      de config/techos.json, por su id GERS (las de otras cajas quedan; la misma caja se rehace). Sin eso, una huella
+      toma los techos de su barrio, que no miran la imagen: la Villa Parque Universitario salía gris donde es de teja.
+      Solo cajas construidas antes de la imagen (a z19, 2015 en la ciudad): una casa posterior tomaría el color del
+      potrero de entonces.
 
 Lo que hace con OSM:
   - Plantas: vías y multipolígonos con `building` (no `building:part`), simplificadas a 0,25 m, en sentido
@@ -56,7 +62,7 @@ delta como geometry.json; las huellas, en "h"):
    "z": [[x0, y0, x1, y1], …] la caja de cada grupo de huellas sueltas,
    "e": [[id, [anillo, hueco, …], alto, tipo, pisos, techo, estimada, manzana], …] los edificios de OSM,
    "s": [[anillo, superficie, manzana], …],
-   "h": {"q": HQ, "K": HK, "k": [manzana, cuántas, …], "c": [[alto, tipo, pisos, estimada, fuente], …], "i": [fila de c, …],
+   "h": {"q": HQ, "K": HK, "k": [manzana, cuántas, …], "c": [[alto, tipo, pisos, estimada, fuente, techo], …], "i": [fila de c, …],
          "n": […], "o": […], "l": […]} las huellas de aprendizaje automático (h_encode),
    "tipos": [...], "superficies": [...], "techos": [...], "fuentes": [...]}
 techo es el índice en "techos" de la familia de config/techos.json, o -1 sin dato; estimada, 0 con pisos de OSM, 1 sin
@@ -507,15 +513,24 @@ def analyse(with_ml=True):
         else: keep.append(m)
     return cfg, B, excl, {'loose': keep, 'gone': gone, 'sh': sh, 'ctx': ctx}
 
-def techos():
+def techos_json():
     f = CONFIG / 'techos.json'
-    return json.load(open(f))['techos'] if f.exists() else {}
+    return json.load(open(f)) if f.exists() else {}
+
+def techos():
+    """{id de OSM: familia} de config/techos.json."""
+    return techos_json().get('techos', {})
+
+def techos_ml():
+    """{id GERS de Overture: familia} de las huellas de aprendizaje automático de config/techos.json (techos --ml)."""
+    return techos_json().get('ml', {}).get('techos', {})
 
 LOOSE_C = 500                                                # las huellas sueltas van en grupos por celdas de 500 m
 
-def ml_row(m, k, kind):
+def ml_row(m, k, kind, TM=None):
     """Una huella de aprendizaje automático -> (su manzana, sus datos en "c" de "h": alto, tipo, pisos, estimada, fuente,
-    y su anillo, que h_encode() escribe en "g"). Tipo:
+    techo (el índice en "techos" de su familia en TM, de config/techos.json, o -1), y su anillo, que h_encode() escribe
+    en "g"). Tipo:
     departamentos con tres pisos o más (Google 2.5D) y 150 m²; casa bajo 600 m² (250 suelta o en un landuse de granja; ninguna en uno industrial: las
     de 250 a 600 m² suelen ser casas pareadas o en fila que la huella junta, y como «otro» eran cajas grises); galpón en un landuse industrial o de
     granja, suelta (fuera de las manzanas) o desde 1.500 m²; si no, otro. Un galpón toma el alto del raster (de 4 a 10 m)."""
@@ -524,12 +539,13 @@ def ml_row(m, k, kind):
     if fl: h, lv, est = fl*3.0 + 0.5, fl, 2
     elif t == 'galpon': h, lv, est = max(4.0, min(10.0, m['h'] or 5.0)), 1, 1
     else: h, lv, est = 3.5, 1, 1
-    return k, (int(round(h*10)), TIPOS.index(t), lv, est, FUENTES.index(m['f'])), m['r'][0]
+    fam = (TM or {}).get(m['id'])
+    return k, (int(round(h*10)), TIPOS.index(t), lv, est, FUENTES.index(m['f']), TECHOS.index(fam) if fam in TECHOS else -1), m['r'][0]
 
 def main(with_ml=True):
     """data/edificios.json (with_ml=False: without the machine-learning footprints)."""
     from collections import Counter
-    cfg, B, excl, info = analyse(with_ml); T = techos(); mn = cfg['mixto']['m2']; ctx = info['ctx']
+    cfg, B, excl, info = analyse(with_ml); T = techos(); TM = techos_ml(); mn = cfg['mixto']['m2']; ctx = info['ctx']
     alt = json.load(open(ML / 'alturas-osm.json')) if with_ml and (ML / 'alturas-osm.json').exists() else {}
     sel, mix = [b for b in B if b['sel']], [b for b in B if b['mix']]
     groups = {}
@@ -548,10 +564,10 @@ def main(with_ml=True):
             fam = T.get(oid); nt += fam is not None; nm += b['mix']
             out['e'].append([oid, [enc_dm(r) for r in rings], int(round(h*10)), TIPO.get(t['building'], 0), int(lv), TECHOS.index(fam) if fam in TECHOS else -1, int(est), k])
             ne += est == 1; nf['osm'] += 1
-        for m in b['ml']: H.append(ml_row(m, k, landuse_at(ctx, m['c']))); nf[m['f']] += 1
+        for m in b['ml']: H.append(ml_row(m, k, landuse_at(ctx, m['c']), TM)); nf[m['f']] += 1
         for r, s in b['srf']: out['s'].append([enc_dm(r), s, k])
     for z, g in enumerate(groups):
-        for m in g: H.append(ml_row(m, len(sel) + len(mix) + z, 'suelta')); nf[m['f'] + ' sueltas'] += 1
+        for m in g: H.append(ml_row(m, len(sel) + len(mix) + z, 'suelta', TM)); nf[m['f'] + ' sueltas'] += 1
     # las huellas, en "h", en el orden de las manzanas (en cada una, después de las de OSM de "e")
     G, dec_rings, nrect = h_encode([r for _, _, r in H]); C = sorted({a for _, a, _ in H}); ci = {a: i for i, a in enumerate(C)}
     runs, idx = [], []
@@ -568,7 +584,7 @@ def main(with_ml=True):
     kb = (DATA / 'edificios.json').stat().st_size / 1024
     print(f"data/edificios.json: {len(sel)} manzanas enteras, {len(mix)} mixtas y {len(groups)} grupos de huellas sueltas, "
           f"{len(out['e'])} edificios de OSM y {len(idx)} huellas ({nrect} rectilíneas; {nm} de OSM en las mixtas, {ne} de OSM sin altura, {nr} de OSM con pisos de Google 2.5D, "
-          f"{nt} con color de techo; por fuente: {dict(nf)}), {len(out['s'])} superficies, {kb:.0f} KB")
+          f"{nt} con color de techo y {sum(a[5] >= 0 for _, a, _ in H)} huellas con el suyo; por fuente: {dict(nf)}), {len(out['s'])} superficies, {kb:.0f} KB")
     if with_ml:
         print('corrimiento contra OSM (m de grilla, lo que se resta; pares):', {k: (round(v[0], 2), round(v[1], 2), v[2]) for k, v in info['sh'].items()})
         print('huellas quitadas:', dict(info['gone'].most_common()))
@@ -623,14 +639,11 @@ def roof_family(c):
     if s > .2 and 180 < h < 260: return 'blue'
     return 'light' if l > .68 else 'zinc' if l > .5 else 'zincOld'
 
-def cmd_techos(z='19', *, release=None):
-    from PIL import Image, ImageDraw
+def roof_families(eds, z, rel):
+    """[(clave, anillo en metros de grilla)] -> {clave: familia de roof_family()}, con la imagen de Esri a zoom z (rel:
+    una publicación de Wayback o None): la mediana de los píxeles más claros dentro de la planta, sin su borde."""
+    from PIL import Image, ImageDraw, ImageFilter
     from satellite import mosaic
-    from satellite import provenance, release_of
-    rel = release_of(release); z = int(z); ed = json.load(open(require(DATA / 'edificios.json', 'Ejecute: make edificios')))
-    eds = []
-    for oid, rings, *_ in ed['e']:
-        r = [(x/10, y/10) for x, y in dec(rings[0])]; eds.append((oid, r))
     res, C = {}, 400                                          # por cajas de C m, para no armar una imagen enorme
     xs = [p[0] for _, r in eds for p in r]; ys = [p[1] for _, r in eds for p in r]
     for cx in range(int(min(xs)//C), int(max(xs)//C)+1):
@@ -642,7 +655,6 @@ def cmd_techos(z='19', *, release=None):
             img, P = mosaic(x0, x1, y0, y1, z, rel); px = img.load()
             for oid, r in mine:
                 m = Image.new('L', img.size, 0); ImageDraw.Draw(m).polygon([P(p) for p in r], fill=255)
-                from PIL import ImageFilter
                 bx = m.getbbox()
                 if not bx: continue
                 m = m.crop(bx).filter(ImageFilter.MinFilter(5)); mp = m.load()      # sin el borde (~1 m): aleros, vecinos
@@ -652,15 +664,41 @@ def cmd_techos(z='19', *, release=None):
                 med = tuple(sorted(p[k] for p in pix)[len(pix)//2] for k in range(3))
                 fam = roof_family(med)
                 if fam: res[oid] = fam
-    out = {'_comentario': f'La familia del techo (CP.roof de la plantilla: teja, óxido, zinc, claro…) de cada edificio de OSM de '
-           f'data/edificios.json, clasificada por pipeline/edificios.py techos con la imagen satelital de Esri (zoom {z}): la '
-           'mediana de los píxeles más claros dentro de la planta, sin su borde. Solo la familia: ni píxeles ni colores de la '
-           'imagen (docs/FUENTES.md). La imagen puede tener años (trampa «La imagen satelital puede ser vieja»). Sin entrada: '
-           'árboles o sombra sobre el techo, o una planta chica.', 'z': z,
-           'imagen': provenance(min(xs), max(xs), min(ys), max(ys), z, rel), 'techos': dict(sorted(res.items()))}
-    (CONFIG / 'techos.json').write_text(json.dumps(out, ensure_ascii=False, indent=0))
+    return res
+
+def cmd_techos(z='19', *, release=None, ml: (float, float, float, float) = None):
     from collections import Counter
-    print(f'config/techos.json: {len(res)} de {len(eds)} edificios', dict(Counter(res.values()).most_common()))
+    from satellite import provenance, release_of
+    rel = release_of(release); z = int(z); old = techos_json()
+    if ml:                                                  # las huellas de una caja: su sección "ml", por id GERS
+        x0, x1, y0, y1 = ml; _, B, _, info = analyse(True)
+        eds = [(m['id'], m['r'][0]) for m in [m for b in B for m in b['ml']] + info['loose']
+               if x0 <= m['c'][0] <= x1 and y0 <= m['c'][1] <= y1]
+        if not eds: raise SystemExit('Ninguna huella de aprendizaje automático con su centro en esa caja')
+        res = roof_families(eds, z, rel); sec = old.get('ml', {'areas': [], 'techos': {}})
+        keep = {k: v for k, v in sec['techos'].items() if k not in {i for i, _ in eds}}
+        area = {'caja': list(ml), 'z': z, 'imagen': provenance(x0, x1, y0, y1, z, rel)}
+        sec = {'_comentario': 'Lo mismo para las huellas de aprendizaje automático (Microsoft y Google, de Overture) con su centro '
+               'en las cajas de "areas" (metros de grilla: x0, x1, y0, y1; edificios.py techos --ml), por su id GERS, ya corridas a '
+               'OSM como las dibuja la página. Una huella posterior a la imagen sale con el color del suelo de entonces: '
+               'elija cajas construidas antes de la fecha de "imagen".',
+               'areas': [a for a in sec['areas'] if a['caja'] != list(ml)] + [area], 'techos': dict(sorted({**keep, **res}.items()))}
+        out = {**old, 'ml': sec}
+        print(f'config/techos.json (ml): {len(res)} de {len(eds)} huellas', dict(Counter(res.values()).most_common()))
+    else:
+        ed = json.load(open(require(DATA / 'edificios.json', 'Ejecute: make edificios')))
+        eds = [(oid, [(x/10, y/10) for x, y in dec(rings[0])]) for oid, rings, *_ in ed['e']]
+        res = roof_families(eds, z, rel)
+        xs = [p[0] for _, r in eds for p in r]; ys = [p[1] for _, r in eds for p in r]
+        out = {'_comentario': f'La familia del techo (CP.roof de la plantilla: teja, óxido, zinc, claro…) de cada edificio de OSM de '
+               f'data/edificios.json, clasificada por pipeline/edificios.py techos con la imagen satelital de Esri (zoom {z}): la '
+               'mediana de los píxeles más claros dentro de la planta, sin su borde. Solo la familia: ni píxeles ni colores de la '
+               'imagen (docs/FUENTES.md). La imagen puede tener años (trampa «La imagen satelital puede ser vieja»). Sin entrada: '
+               'árboles o sombra sobre el techo, o una planta chica.', 'z': z,
+               'imagen': provenance(min(xs), max(xs), min(ys), max(ys), z, rel), 'techos': dict(sorted(res.items()))}
+        if 'ml' in old: out['ml'] = old['ml']
+        print(f'config/techos.json: {len(res)} de {len(eds)} edificios', dict(Counter(res.values()).most_common()))
+    (CONFIG / 'techos.json').write_text(json.dumps(out, ensure_ascii=False, indent=0))
 
 def cmd_main(): main()
 def cmd_solo_osm(): main(False)

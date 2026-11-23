@@ -40,6 +40,7 @@ python pipeline/satellite.py plaza-de-armas [500]   # manzanas sobre imagen sate
 python pipeline/satellite.py punto 3755 1414 [900] [17] --calles   # caja en (x, y) de grilla, con calles, cruces cada 100 m y usos
 python pipeline/satellite.py marco -4 2120 75.3 -135 105 -250 -70 19 sur   # la imagen en el marco local de un hito (X Y A u0 u1 v0 v1 [z] [nombre]: landmark.py frame), girada, con cruces cada 10 m en (u,v): así se leyó el Cementerio; `punto … --rejilla[=N]` pone cruces de grilla cada N m
 uv run --with pillow python pipeline/golf.py [panel]   # el pasto cortado y las copas del Talca Country Club desde la imagen de Esri -> data/golf.json (make golf; `panel`: diagnostics/golf-clases.png)
+uv run --with pillow python pipeline/copas.py [panel [nombre]]   # las copas de los árboles en las cajas de config/copas.json (barrios arbolados) desde la imagen de Esri -> data/copas.json (make copas build; DATA.copas: los patios y parques de esas cajas las plantan en vez de su cuota; `panel`: diagnostics/copas-<nombre>.png)
 python pipeline/geocode.py address "2 Norte 781"
 python -I pipeline/grilla.py <nav_graph.json|map-*.json> <lat> <lon> [radio ...]   # el giro de la grilla de una ciudad alrededor de su plaza (METODOLOGIA §3; otra comuna: docs/PLAN-COMUNAS.md)
 python pipeline/diagnostics.py centro          # panel PNG en diagnostics/

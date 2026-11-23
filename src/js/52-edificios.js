@@ -58,7 +58,8 @@ const ED_T0=performance.now(),ED=(()=>{const D=DATA.ed;if(!D)return {list:[],sur
   const list=D.e.map(([id,rings,h,t,lv,roof,est,k])=>{const R=rings.map(dm),e={id,R,h:h/10,t:D.tipos[t],lv,roof:roof<0?null:D.techos[roof],est:est===1,f:'osm',bb:box(R[0]),bk:bks[k],seed:seed(id),fa:FA[id]||null};
     bks[k].eds.push(e);return e;});
   // the machine-learning footprints (pipeline/edificios.py h_encode): k runs of footprints of a block, after its OSM
-  // buildings; c their data (height, kind, floors, estimated, source), i the row of c of each; n, o, l their outlines,
+  // buildings; c their data (height, kind, floors, estimated, source, roof family from the imagery or -1: edificios.py
+  // techos --ml), i the row of c of each; n, o, l their outlines,
   // each starting from the first vertex of the one before, taken to its own grid of q m (the same operations as the
   // pipeline: the same integers). n: k + 2K(m/2 - 2) for a rectilinear one of m vertices in direction k (integers
   // (K, k) up to 45 degrees, (2K - k, K) after), its lengths in l along u and v by turns but the two that close it;
@@ -67,7 +68,7 @@ const ED_T0=performance.now(),ED=(()=>{const D=DATA.ed;if(!D)return {list:[],sur
   const H=D.h;if(H){const {c:C,i:I,k:KR}=H,F=edDecodeH(H);let j=0;
     for(let r=0;r<KR.length;r+=2){const k=KR[r],bk=bks[k];bk.ml=true;
       for(let c=0;c<KR[r+1];c++,j++){const {R,s}=F[j],A=C[I[j]];
-        const e={id:'ml'+k,R:[R],h:A[0]/10,t:D.tipos[A[1]],lv:A[2],roof:null,est:A[3]===1,f:D.fuentes[A[4]],bb:box(R),bk,seed:s};bk.eds.push(e);list.push(e);}}}
+        const e={id:'ml'+k,R:[R],h:A[0]/10,t:D.tipos[A[1]],lv:A[2],roof:A[5]>=0?D.techos[A[5]]:null,est:A[3]===1,f:D.fuentes[A[4]],bb:box(R),bk,seed:s};bk.eds.push(e);list.push(e);}}}
   const surf=D.s.map(([r,s,k])=>{const R=dm(r),o={r:R,k:D.superficies[s],bb:box(R)};bks[k].surf.push(o);return o;});
   // a mixed block under ED_SOLID with machine-learning footprints has its houses nearly all drawn: its own ground
   // (buildBase) takes the yard colour of its barrio (edYardCol) instead of the 2 m raster of yards, which then only
@@ -234,8 +235,11 @@ function edificio(B,Z,e){const r=rng(e.seed),R=e.R[0],holes=e.R.slice(1),t=e.t;
 // one raster for each group of buildings whose yards may meet (by their boxes): one over the block would cover tens
 // of hectares of nothing in the large blocks of the outskirts
 const ED_XS=[],ED_YARD=20;
+// the yard colours of a mixed block: its barrio's, or the villa's lawns in a wooded barrio of config/copas.json (COPAS,
+// 50-city.js: garden villas, whose yards the imagery shows as lawn under the trees, not the barrio's dirt or cement)
+const edYards=bi=>COPAS&&COPAS.covers(...blocks[bi].bb)?CP.yardVilla:recipeOf(bi).h.yc||PAL.patio;
 // the yard colour of a solid block (bk.solid): the one edRaster gives its houses
-const edYardCol=bi=>pick(rng(bi*131+7),recipeOf(bi).h.yc||PAL.patio);
+const edYardCol=bi=>pick(rng(bi*131+7),edYards(bi));
 function edificiosGround(Y,bk){if(bk.bi<0)return;if(!bk.mix){edRaster(Y,bk,blocks[bk.bi].bb);return;}
   const m=ED_YARD+2,gs=(bk.solid?bk.paved:bk.obs).map(q=>{const r=ringBox(q);return [r[0]-m,r[1]-m,r[2]+m,r[3]+m];});
   for(let merged=true;merged;){merged=false;
@@ -285,7 +289,7 @@ function edRaster(Y,bk,bb){const C=bk.ml?2:1,FRONT=3.2,{bi,mix,surf}=bk,xs=ED_XS
     for(const n of [i>0?c-1:-1,i<nx-1?c+1:-1,j>0?c-nx:-1,j<ny-1?c+nx:-1]){if(n<0||own[n]!==1||dist[n]>=0)continue;own[n]=own[c];dist[n]=dist[c]+1;qu[qt++]=n;}}
   // colours: by owner (in a mixed block a house's yard in its barrio's colours, other buildings' paved; a cell no
   // building reached is left to the block's ground), then rectangles (runs along x merged down the rows while they match)
-  const r=rng(bi*131+7),yc=mix?recipeOf(bi).h.yc||PAL.patio:PAL.patio,
+  const r=rng(bi*131+7),yc=mix?edYards(bi):PAL.patio,
     yb=bk.solid?pick(r,yc):null, // a solid block's (the colour of its ground, edYardCol; its houses lay no yard here)
     pc=eds.map(e=>e.t==='techo'||e.t==='galpon'||(mix&&e.t!=='casa'&&e.t!=='otro')?pick(r,CP.paved):yb||pick(r,yc)),
     colOf=v=>v===-2?ED_K.walk:v===-4?PASEO_K.pave:v===1?(mix?null:PAL.backlot[bi%3]):v>=BLD?pc[v-BLD]:v>=10?ED_K.surf[surf[v-10].k]:null;

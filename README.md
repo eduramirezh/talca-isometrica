@@ -72,7 +72,8 @@ config/
   usos-minvu.json        plazas y parques del Catastro Nacional de Áreas Verdes 2023 (MINVU–INE)
   rutas.json             nombres de rutas de OSM que corrige el rol de la Dirección de Vialidad (MOP)
   edificios.json         dónde se dibujan los edificios reales de OpenStreetMap en vez de los generados o junto a ellos (áreas, umbrales de cobertura, correcciones)
-  techos.json            la familia del techo (teja, óxido, zinc, claro…) de cada edificio de OSM, clasificada con la imagen satelital
+  techos.json            la familia del techo (teja, óxido, zinc, claro…) de cada edificio de OSM, clasificada con la imagen satelital (y, en "ml", de las huellas de aprendizaje automático de unas cajas: techos --ml)
+  copas.json             las cajas de los barrios arbolados donde pipeline/copas.py lee las copas de los árboles de la imagen satelital
 pipeline/
   common.py              rutas, proyección (origen en la Plaza de Armas, grilla girada 5°) y el límite de la comuna (OSM)
   geom.py                geometría compartida: codificación en delta, punto en polígono, segmentos, Douglas–Peucker, Web Mercator
@@ -93,6 +94,7 @@ pipeline/
   usos.py                usos de suelo: importación desde OSM, revisión de lo que falta y de config/usos.json
   edificios.py           los edificios de OSM (manzanas enteras y mixtas) y las huellas de aprendizaje automático -> data/edificios.json; panel de cobertura; techos
   golf.py                la imagen de Esri sobre el Talca Country Club -> data/golf.json (pasto cortado y copas)
+  copas.py               la imagen de Esri en las cajas de config/copas.json -> data/copas.json (las copas de los barrios arbolados)
   fuentes_cl.py          fuentes públicas chilenas (CIREN, CONAF, INE Censo 2024, MINVU, MINEDUC, DEIS): descarga a raw/cl/, lectura y paneles sobre la imagen satelital
   cobertura.py           la cobertura vegetal de CONAF 2024 -> data/cobertura.json (una clase cada 40 m)
   rutas.py               los nombres de las rutas del mapa contra los roles de la Red Vial del MOP

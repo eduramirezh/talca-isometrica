@@ -27,6 +27,7 @@ make edificios build            # tras editar config/edificios.json o con OSM nu
 uv run --with pillow python pipeline/edificios.py panel -900 1100 -900 900 17   # qué manzanas toman todos sus edificios de OSM (verde), cuáles se mezclan con cityGen (amarillo) y cuáles no (rojo), con su cobertura, sobre la imagen satelital
 python pipeline/edificios.py manzanas 20       # las manzanas cerca del umbral de cobertura, con un punto para forzar, quitar o generar
 uv run --with pillow python pipeline/edificios.py techos 19   # la familia del techo de cada edificio de OSM, de la imagen de Esri -> config/techos.json (luego make edificios build)
+uv run --with pillow python pipeline/edificios.py techos 19 --ml 4150 4760 -460 -60   # lo mismo para las huellas de aprendizaje automático de una caja, por su id GERS (sección "ml"; sin eso toman el techo de su barrio); solo cajas construidas antes de la imagen
 ```
 
 ## Trampas

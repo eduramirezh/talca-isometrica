@@ -257,6 +257,10 @@ function usoKit(B,S,UG){const C=hex,K=USO_K,HUERTO=USO_HUERTO,kit={B,S,UG,cur:nu
       for(const [a,b] of usoSpans(fr,cv))strip(fr,cv-1.25,cv+1.25,a,b,0.13,K.path);
       if(W>30)for(const [a,b] of usoSpans({...fr,lr:fr.lr.map(p=>[p[1],p[0]]),kl:fr.kl.map(k=>k.map(p=>[p[1],p[0]]))},cu))strip({...fr,G:(x,y)=>fr.G(y,x),R:(a0,b0,a1,b1)=>fr.R(b0,a0,b1,a1)},cu-1.25,cu+1.25,a,b,0.13,K.path);
       if(u.A>2500){const pq=fr.R(cu+6,cv+5,cu+18,cv+15);if(fits(u,pq,3)){flatD(pq,0.14,K.sand);objs.push(pq);for(let k=0;k<3;k++){const c=fr.G(cu+8.5+k*3.5,cv+7+(k%2)*4),q=[[c[0]-.6,c[1]-.6],[c[0]+.6,c[1]-.6],[c[0]+.6,c[1]+.6],[c[0]-.6,c[1]+.6]];S.dy=groundMin(q);S.prism(q,0.3,1+k*.6,K.play[k],K.play[(k+1)%4]);}}}
+      // in a wooded barrio (COPAS, 50-city.js) the crowns the imagery shows, off the paths, instead of the clusters
+      if(COPAS&&COPAS.covers(...u.bb)){COPAS.each(...u.bb,(cx,cy,s)=>{const x=cx+(r()-.5)*2,y=cy+(r()-.5)*2,k=r(),[ta,tb]=fr.L(x,y);
+          if(Math.abs(tb-cv)<2.5||(W>30&&Math.abs(ta-cu)<2.5))return;
+          if(inUso(u,x,y)&&!occ0At(x,y)&&!nearStreet(x,y,2)&&objs.every(o=>!pip([x,y],o)))tree(x,y,s*(.8+.3*k),r());});return;}
       for(let a=fr.u0+r()*10;a<fr.u1;a+=20+r()*8)for(let b=fr.v0+r()*10;b<fr.v1;b+=20+r()*8){if(r()<.3)continue;const n=2+Math.floor(r()*5);
         for(let k=0;k<n;k++){const ta=a+(r()-.5)*12,tb=b+(r()-.5)*12;if(Math.abs(tb-cv)<3||(W>30&&Math.abs(ta-cu)<3))continue;const p=fr.G(ta,tb);
           if(inUso(u,...p)&&!occ0At(...p)&&!nearStreet(...p,2)&&objs.every(o=>!pip(p,o)))tree(p[0],p[1],.9+r()*.5,r());}}},
