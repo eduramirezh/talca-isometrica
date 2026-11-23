@@ -42,9 +42,16 @@ if [ "${DRY_RUN:-0}" != "0" ]; then
 fi
 
 wrangler=scripts/deploy/node_modules/.bin/wrangler
-if [ ! -x "$wrangler" ] || [ scripts/deploy/package-lock.json -nt scripts/deploy/node_modules/.package-lock.json ]; then
+# El lockfile con que se instaló queda copiado en node_modules/ (sello), y se compara por contenido: por fecha (-nt),
+# un worktree recién creado tiene el lockfile «más nuevo» y reinstalaba los ~270 MB cada vez. En un worktree,
+# node_modules/ es un enlace a la copia principal (tools/preparar.sh): si su lockfile es otro (un PR de Dependabot),
+# el enlace se cambia por una instalación propia, sin tocar la de la copia principal.
+sello=scripts/deploy/node_modules/.sello-package-lock.json
+if [ ! -x "$wrangler" ] || ! cmp -s scripts/deploy/package-lock.json "$sello"; then
+  [ -L scripts/deploy/node_modules ] && rm scripts/deploy/node_modules
   say "instalando Wrangler (npm ci en scripts/deploy/, la versión de su package-lock.json)…"
   npm ci --prefix scripts/deploy --no-audit --no-fund --loglevel=error >/dev/null
+  cp scripts/deploy/package-lock.json "$sello"
 fi
 
 # --branch=main la marca como producción (la que sirve el dominio propio); otras ramas son vistas previas.

@@ -140,6 +140,7 @@ scripts/deploy/          package.json y package-lock.json de Wrangler (versión 
 tools/ml_buildings.py    huellas de edificios de Overture (Microsoft, Google) y alturas de Google 2.5D Temporal -> raw/edificios-ml/, para edificios.py (make edificios-ml)
 tools/export.py          la maqueta generada a glTF (Blender, Godot; --teselas: un archivo por tesela, con --instancias, --lejos, --medio y --liviano para modelo3d/) y a STL cerrado para impresión 3D (tools/export.js corre en la página)
 tools/blender_ver.py     abre en Blender un glb o STL exportado, con sus colores y encuadrado (-b --png: una vista sin ventana)
+tools/preparar.sh        un worktree listo para trabajar: raw/, node_modules/ y las teselas de modelo3d/ enlazados a los de la copia principal (lo corre el hook WorktreeCreate de .claude/settings.json: .claude/hooks/)
 tools/godot_oculto.sh    corre Godot lanzado oculto (en el Mac con open -j -g; en Linux en Xvfb), sin quitarle el teclado a quien trabaja: así lo revisan las sesiones de Claude
 tools/godot/             proyecto de Godot que carga un glb exportado (ver.gd: cámara ortográfica, colores por vértice; --png); comparar.gd: dos exportaciones de teselas en lo que Godot guarda, vértice por vértice
 tools/juego_osm.py       las plantas y los nodos de la calle de OSM alrededor de la plaza para modelo3d/modelos/ y la página (data/plaza-osm.json)

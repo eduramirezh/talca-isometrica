@@ -334,7 +334,7 @@ Los hitos restantes se rehicieron en cinco sesiones paralelas, una por zona (Pla
 - Cada hito está en su archivo, `src/js/hitos/<id>.js`, y una sesión solo edita el suyo. (Entonces era un bloque de la plantilla bajo su línea de marca `// ==== hito: <id> ====`, que sigue siendo la primera línea de cada archivo: las marcas, que no cambiaban, separaban los cambios de dos ramas, porque git no mezcla cambios en líneas contiguas.) Dos sesiones que agregan un hito cada una tocan las dos el final de `src/js/hitos/ORDER`: esa mezcla se resuelve a mano, con una línea por hito.
 - Lo compartido (`localFrame`, `facade`, el terreno, la ciudad) no se toca en paralelo. Antes de repartir el trabajo se subió a `facade()` el vocabulario de la Catedral, para que nadie lo copiara por su cuenta; los ayudantes nuevos quedan dentro de cada bloque y se suben después (CLAUDE.md, «Ideas pendientes»).
 - Las sesiones no editan la documentación: entregan sus entradas de CHANGELOG, FUENTES y trampas, y se integran todas al final, en un solo cambio.
-- `raw/` y `node_modules/` no están en git: en cada worktree van como enlaces simbólicos a los del checkout principal.
+- `raw/` y `node_modules/` no están en git: en cada worktree van como enlaces simbólicos a los del checkout principal. Entonces se hacían a mano; desde noviembre de 2026 los hace `tools/preparar.sh`, que corre el hook `WorktreeCreate` de `.claude/settings.json` en cada worktree de una sesión (también `scripts/deploy/node_modules/` y las teselas de `modelo3d/`).
 - Commons limita las descargas cuando varias sesiones bajan fotos a la vez; `landmark.py photos` espera y reintenta. Las capturas, en cambio, conviene sacarlas de a una: con la máquina cargada, Playwright agota su tiempo.
 
 ## 10. Diseño de la interfaz
