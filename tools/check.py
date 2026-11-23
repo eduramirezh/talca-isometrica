@@ -19,7 +19,7 @@ Comprueba:
     de tamaño, un `paths:` válido en cada regla y cuyos globs calcen con archivos, el índice de trampas de CLAUDE.md
     igual a las trampas de las reglas, y cada cita de una trampa en el código y los docs, el comienzo de un título;
   - que data/pois.json tenga ids únicos y que cada recorrido apunte a lugares que existen;
-  - que lo que el juego y tools/ copian de la página siga igual (juego_contratos: el contorno y los prados de la plaza,
+  - que lo que modelo3d/ y tools/ copian de la página siga igual (modelo3d_contratos: el contorno y los prados de la plaza,
     LEJOS, config/fachadas.json, data/plaza-osm.json, las fórmulas del relieve de tools/relieve.py);
   - que el script de dist/assets/ compile (node --check; el error da el archivo de src/ y la línea, con build.where()),
     que cada archivo que pide dist/index.html (src, href, srcset y lo que pide desde JS en assets/) exista en dist/, y que
@@ -108,9 +108,9 @@ def hitos_deps(fail):
             s = sets.get(m.group(1))
             if s and s != h and pos[s] > pos[h]:
                 fail(f'src/js/hitos/{h}.js:{t.count(chr(10), 0, m.start()) + 1}: lee MODELS[\'{m.group(1)}\'], que src/js/hitos/{s}.js pone más abajo en ORDER (todavía no existe)')
-# ---- calidad-tools: the game and the tools against the page (juego/, tools/) ----
+# ---- calidad-tools: the 3D model and the tools against the page (modelo3d/, tools/) ----
 HEX = re.compile(r'[0-9a-fA-F]{6}')
-# config/fachadas.json: each key of an entry and its value (juego/modelos/fachadas.gd spec(), CLAVES; build.py FACHADA)
+# config/fachadas.json: each key of an entry and its value (modelo3d/modelos/fachadas.gd spec(), CLAVES; build.py FACHADA)
 FACHADAS = {'estilo': {'comercial', 'clasico', 'deco', 'torre', 'moderno', 'colonial', 'intendencia', 'municipal', 'vidrio'},
             'pb': {'vitrinas', 'ventanas', 'vidrio'}, 'techo': {'plano', 'teja'}, 'pisos': int, 'alto': float,
             'zocalo_alto': float, 'bahia': float, 'corte_y': float, 'alto_basamento': float, 'fronton': bool,
@@ -123,23 +123,23 @@ def _nums(text, name, src):
     if not m: raise ValueError(f'{src}: no encuentro {name}')
     return [float(x) for x in re.findall(r'-?\d+(?:\.\d+)?', m.group(1))]
 
-def juego_contratos(fail):
-    """What the game (juego/) and the tools copy from the page, compared with it: the plaza's outline and lawns, how
+def modelo3d_contratos(fail):
+    """What the 3D model (modelo3d/) and the tools copy from the page, compared with it: the plaza's outline and lawns, how
     far the street models go, config/fachadas.json and data/plaza-osm.json, and the relief formulas of tools/relieve.py."""
     js = lambda f: (ROOT / 'src' / 'js' / 'hitos' / f).read_text()
-    gd = lambda f: (ROOT / 'juego' / f).read_text()
+    gd = lambda f: (ROOT / 'modelo3d' / f).read_text()
     try:
         hito, plano, plaza = js('plaza-de-armas.js'), gd('modelos/entorno/plano.gd'), gd('modelos/plaza.gd')
         if _nums(plano, 'PZ', 'plano.gd') != _nums(hito, 'PZ', 'plaza-de-armas.js'):
-            fail('juego/modelos/entorno/plano.gd: PZ no es el contorno PZ de src/js/hitos/plaza-de-armas.js')
+            fail('modelo3d/modelos/entorno/plano.gd: PZ no es el contorno PZ de src/js/hitos/plaza-de-armas.js')
         lawns = re.search(r'const LAWNS=\[(\[.*?\])\]', hito, re.S).group(1)
         prados = re.search(r'const PRADOS := \[(.*?)\]\]', plaza, re.S).group(1)
         n = lambda t: [float(x) for x in re.findall(r'-?\d+(?:\.\d+)?', t)]
-        if n(lawns) != n(prados): fail('juego/modelos/plaza.gd: PRADOS no son los LAWNS de src/js/hitos/plaza-de-armas.js')
+        if n(lawns) != n(prados): fail('modelo3d/modelos/plaza.gd: PRADOS no son los LAWNS de src/js/hitos/plaza-de-armas.js')
         lejos = float(re.search(r'const LEJOS := ([\d.]+)', plano).group(1))
         z0 = float(re.search(r'const Z0=(\d+(?:\.\d+)?)', js('calles-plaza.js')).group(1))
-        if lejos != z0: fail(f'juego/modelos/entorno/plano.gd: LEJOS = {lejos:g} y src/js/hitos/calles-plaza.js: Z0 = {z0:g} (deben ser iguales)')
-    except (OSError, ValueError, AttributeError) as e: fail(f'juego/ contra los hitos: {e}')
+        if lejos != z0: fail(f'modelo3d/modelos/entorno/plano.gd: LEJOS = {lejos:g} y src/js/hitos/calles-plaza.js: Z0 = {z0:g} (deben ser iguales)')
+    except (OSError, ValueError, AttributeError) as e: fail(f'modelo3d/ contra los hitos: {e}')
 
     fach = json.load(open(ROOT / 'config' / 'fachadas.json'))
     for k, e in fach.items():
@@ -215,7 +215,7 @@ def layer_heights(fail):
 # `paths:`). Progressive disclosure only holds while the root stays short and the rules stay findable.
 GUIDE_MAX = 30_000      # CLAUDE.md: loaded in every session, with ~/CLAUDE.md (Claude Code warns past 150k together)
 RULE_MAX = 24_000       # a rule: loaded on demand, cut past 40k with a 200k context window
-CITE_DIRS = ('src', 'juego', 'pipeline', 'tools', 'tests', 'docs', '.claude')
+CITE_DIRS = ('src', 'modelo3d', 'pipeline', 'tools', 'tests', 'docs', '.claude')
 GUILL = r'«((?:[^«»]|«[^«»]*»)+)»'   # «…», with one nested «…» (the trap «Manzanas «sin información»»)
 
 def _norm(s):
@@ -339,7 +339,7 @@ def main(dist=True):
                     fail(f'dist/{app[0]}: el script no compila{at}: {err}')
 
     for check in PIPELINE: check(fail)
-    juego_contratos(fail)  # calidad-tools
+    modelo3d_contratos(fail)  # calidad-tools
 
     for m in bad: print('FALLA:', m)
     print(f'check: {len(bad)} fallas' if bad else f'check: ok ({(time.time()-t0)*1000:.0f} ms)')

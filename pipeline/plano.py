@@ -1,8 +1,9 @@
-"""El plano del juego: lo que dibujan el mapa en miniatura y el mapa grande de juego/plano.gd (M) y la red de calles
-por la que juego/ruta.gd busca el camino a un marcador, de data/geometry.json y data/ruta5.json -> juego/datos/plano.json
-(lo corre `make juego`; no necesita juego/mapa/ ni el navegador).
+"""El plano de las calles: lo que dibujan los mapas de un proyecto de Godot que use la maqueta (un mapa en
+miniatura, uno grande) y la red de calles para buscar el camino a un punto, de data/geometry.json y
+data/ruta5.json -> modelo3d/datos/plano.json
+(lo corre `make modelo3d`; no necesita modelo3d/mapa/ ni el navegador).
 
-  python pipeline/plano.py [salida]   -> juego/datos/plano.json (o salida)
+  python pipeline/plano.py [salida]   -> modelo3d/datos/plano.json (o salida)
   python pipeline/plano.py stats      -> la red: nodos, aristas, uniones en T, componentes y dónde están las mayores
 
 La red: los vértices de las calles del mapa (las del grafo de cicloconecta y las de OSM fuera de él), juntados a menos
@@ -32,7 +33,7 @@ import cli
 from common import DATA, ROOT
 from geom import dec, seg_dist, simplify_ring
 
-OUT = ROOT / 'juego' / 'datos' / 'plano.json'
+OUT = ROOT / 'modelo3d' / 'datos' / 'plano.json'
 JUNTAR = 2.0      # m: dos vértices de calle a menos de esto son el mismo nodo
 T_CALLE = 3.0     # m: el extremo suelto de una calle sobre el tramo de otra
 T_RAMAL = 12.0    # m: el extremo de un ramal de la Ruta 5 sobre una calzada o una calle
@@ -184,7 +185,7 @@ def componentes(n, dobles, dirigidas):
 
 
 def cmd_plano(salida: str = ''):
-    """El plano del juego -> juego/datos/plano.json (o salida)."""
+    """El plano de las calles -> modelo3d/datos/plano.json (o salida)."""
     g, r5 = cargar()
     nodos, dobles, dirigidas, n_t = red(lineas_de_red(g, r5))
     W = g.get('widths', {})

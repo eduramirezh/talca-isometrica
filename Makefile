@@ -11,9 +11,8 @@ GODOT ?= $(or $(shell command -v godot 2>/dev/null),$(shell command -v godot4 2>
 endif
 PORT ?= 8765
 DRY_RUN ?= 0
-CINE ?= 1920x1080             # la resolución de make cine (1280x720 para una prueba rápida)
-CINE_CRF ?= 20                # la calidad del H.264 de make cine (18: ~100 MB los 30 s; 23: ~45 MB)
-.PHONY: all fetch osm data elevation ruta5 sentidos edificios edificios-ml golf pois build check golden lint smoke hooks validate diagnostics shots site-assets juego lanzador cine deploy serve clean
+M3D ?= modelo3d                # adónde escribe make modelo3d (mapa/ y datos/); otro proyecto de Godot que use la maqueta pasa el suyo
+.PHONY: all fetch osm data elevation ruta5 sentidos edificios edificios-ml golf pois build check golden lint smoke hooks validate diagnostics shots site-assets modelo3d deploy serve clean
 
 all: data elevation edificios golf pois build         ## pipeline completo (requiere raw/: make fetch)
 
@@ -67,25 +66,12 @@ smoke: build lint             ## carga la página en Chromium y falla si hay err
 hooks:                        ## instala .githooks/ (pre-commit = make check; pre-push = make deploy al empujar main a origin, sin bloquear)
 	git config core.hooksPath .githooks
 
-juego: build                  ## juego/mapa/: la comuna en teselas de 500 m, sus árboles, autos, faroles y letreros de las calles (con data/sentidos.json) como datos, sus edificios solos (de 1,8 a 3 km) y lo de lejos (tools/export.py --teselas; ~3 min, ~540 MB), el plano de los mapas (pipeline/plano.py) y la importación en Godot; luego: Godot --path juego
-	rm -f juego/plaza.glb juego/plaza.glb.import juego/plaza.json   # el glb de 400 m de antes de noviembre de 2026
-	$(PW) tools/export.py --teselas juego/mapa --comuna --tam 500 --instancias arboles,alamos,autos,autos-ruta5 --faroles --letreros --fachadas --lejos --medio --liviano
-	touch juego/mapa/.gdignore    # Godot no importa los glb: mapa.gd los lee al jugar
-	mkdir -p juego/datos && cp config/fachadas.json data/plaza-osm.json data/ruta5.json juego/datos/   # lo que el juego comparte con la página
-	cd pipeline && $(PY) plano.py   # juego/datos/plano.json: las calles, el agua y la red de calles de los mapas del juego (plano.gd, ruta.gd)
-	$(GODOT) --headless --path juego --import
-
-lanzador:                     ## Linux: el lanzador del juego en el menú de aplicaciones y en el escritorio, con su ícono (tools/icono_juego.py; juego/icono.png es el de la ventana)
-	uv run tools/icono_juego.py --instalar
-
-cine:                         ## la película de juego/cine.gd (requiere juego/mapa/: make juego): shots/cine/plaza.mp4 (H.264, 30 cuadros por segundo; ~1 min con la GPU del Mac)
-	mkdir -p shots/cine
-	@# juego/override.cfg (Godot lo lee al partir): el tamaño, porque --resolution no cambia lo que graba Movie Maker, y la calidad del MJPEG, que por omisión (0,75) deja una grilla de 8 × 8 en las copas oscuras y en el cielo de noche (y el H.264 gasta bits en copiarla); la ruta, absoluta: Godot la toma relativa a juego/
-	printf '[display]\nwindow/size/viewport_width=%s\nwindow/size/viewport_height=%s\n[editor]\nmovie_writer/video_quality=1.0\n' $(subst x, ,$(strip $(CINE))) > juego/override.cfg
-	$(GODOT) --path juego --write-movie $(CURDIR)/shots/cine/plaza.avi --fixed-fps 30 -- --cine; s=$$?; rm -f juego/override.cfg; exit $$s
-	ffmpeg -y -loglevel error -i shots/cine/plaza.avi -c:v libx264 -preset slow -crf $(strip $(CINE_CRF)) -pix_fmt yuv420p -movflags +faststart -an shots/cine/plaza.mp4
-	rm shots/cine/plaza.avi       # el intermedio: ~1,4 GB a 1080p
-	@echo "-> shots/cine/plaza.mp4"
+modelo3d: build               ## modelo3d/mapa/: la comuna en teselas de 500 m, sus árboles, autos, faroles y letreros de las calles (con data/sentidos.json) como datos, sus edificios solos (de 1,8 a 3 km) y lo de lejos (tools/export.py --teselas; ~3 min, ~540 MB); modelo3d/datos/: lo que comparte con la página y el plano de las calles (pipeline/plano.py); y la importación en Godot. Luego: Godot --path modelo3d. M3D=<dir>: a otro proyecto
+	$(PW) tools/export.py --teselas $(M3D)/mapa --comuna --tam 500 --instancias arboles,alamos,autos,autos-ruta5 --faroles --letreros --fachadas --lejos --medio --liviano
+	touch $(M3D)/mapa/.gdignore    # Godot no importa los glb: mapa.gd los lee mientras se mira
+	mkdir -p $(M3D)/datos && cp config/fachadas.json data/plaza-osm.json data/ruta5.json $(M3D)/datos/   # lo que el 3D comparte con la página
+	cd pipeline && $(PY) plano.py $(abspath $(M3D))/datos/plano.json   # las calles, el agua y la red de calles (para mapas y caminos)
+	$(GODOT) --headless --path $(M3D) --import
 
 deploy:                       ## make build y sube dist/ a Cloudflare Pages (talca.eduramirez.com); DRY_RUN=1 arma sin subir
 	DRY_RUN=$(DRY_RUN) ./scripts/deploy-cloudflare.sh

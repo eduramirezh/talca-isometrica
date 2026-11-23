@@ -1,5 +1,5 @@
 # Compara dos exportaciones de teselas (tools/export.py --teselas) en lo que el juego recibe: lee cada glb con
-# GLTFDocument, como juego/mapa.gd, y compara lo que Godot guarda en cada malla (ArrayMesh: los colores en RGBA8 y las
+# GLTFDocument, como modelo3d/mapa.gd, y compara lo que Godot guarda en cada malla (ArrayMesh: los colores en RGBA8 y las
 # normales en 16 bits octaédricas, cualquiera sea el formato del archivo), capa por capa y vértice por vértice. Sirve
 # para un cambio de formato que no debe cambiar el juego (--liviano, noviembre de 2026): las capturas del juego no
 # salen iguales de una corrida a otra (las nubes y el viento siguen los cuadros que tardó la carga).
@@ -14,7 +14,7 @@
 extends SceneTree
 
 
-# lo mismo que juego/cuantizado.gd (este script corre fuera del proyecto del juego)
+# lo mismo que modelo3d/cuantizado.gd (este script corre fuera del proyecto del juego)
 class Cuantizado extends GLTFDocumentExtension:
 	func _get_supported_extensions() -> PackedStringArray:
 		return PackedStringArray(["KHR_mesh_quantization"])

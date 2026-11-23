@@ -41,12 +41,12 @@ Requisitos: Python 3.9+ (el pipeline usa solo la biblioteca estándar). Opcional
 
 ### En Linux
 
-Probado en Linux Mint 22.3 (base Ubuntu 24.04, X11) con una GTX 1650, en noviembre de 2026: la página, las capturas, `make juego` y `make cine`. Lo mismo que en el Mac, con estas diferencias:
+Probado en Linux Mint 22.3 (base Ubuntu 24.04, X11) con una GTX 1650, en noviembre de 2026: la página, las capturas, `make modelo3d` y `make cine`. Lo mismo que en el Mac, con estas diferencias:
 
 - Node, Python, make y ffmpeg de la distribución sirven (`apt install nodejs npm python3 make ffmpeg`); [uv](https://docs.astral.sh/uv/) para las herramientas de `tools/`.
 - El Chromium de las capturas, una vez: `uv run --with "playwright==1.63" python -m playwright install chromium-headless-shell` (queda en `~/.cache/ms-playwright/`). En una distribución que no es Ubuntu ni Debian, Playwright avisa y baja la versión de Ubuntu 24.04, que funciona.
 - La GPU en las herramientas de Playwright: `--gl gpu` usa la NVIDIA si está su driver propietario, o si no la GPU por omisión por EGL (`--gl nvidia` y `--gl egl` eligen una). La carga del mapa es de la CPU (~14 s con cualquiera), pero dibujar un cuadro de toda la comuna pasa de ~5 s con SwiftShader a 70 ms en una Intel UHD 630 y 15 ms en la GTX 1650: lo notan `video.py` (la usa por omisión), `gif.py` y `perf.py`. `regress.py` y `hitos.py` comparan contra referencias tomadas con SwiftShader: ahí no cambie el `--gl`.
-- El juego: Godot 4.7 de [godotengine.org](https://godotengine.org/download/linux/) como `godot` o `godot4` en el PATH (el `Makefile` lo busca ahí; si no, `make juego GODOT=<ruta>`), y para jugar `godot --path juego` (o `make lanzador`, una vez: un ícono en el menú de aplicaciones y en el escritorio). `tools/godot_oculto.sh` lo corre en una pantalla virtual (`apt install xvfb`), sin abrir ventanas ni quitarle el teclado a nadie. Dibuja con la GPU solo con el driver propietario de NVIDIA (Vulkan de Mesa no puede presentar en Xvfb; `GODOT_OCULTO_VK=lavapipe` dibuja por CPU, ~15 veces más lento), y ahí `--fps` mide también la copia a la pantalla virtual.
+- La maqueta en 3D: Godot 4.7 de [godotengine.org](https://godotengine.org/download/linux/) como `godot` o `godot4` en el PATH (el `Makefile` lo busca ahí; si no, `make modelo3d GODOT=<ruta>`), y para mirarla `godot --path modelo3d`. `tools/godot_oculto.sh` lo corre en una pantalla virtual (`apt install xvfb`), sin abrir ventanas ni quitarle el teclado a nadie. Dibuja con la GPU solo con el driver propietario de NVIDIA (Vulkan de Mesa no puede presentar en Xvfb; `GODOT_OCULTO_VK=lavapipe` dibuja por CPU, ~15 veces más lento), y ahí `--fps` mide también la copia a la pantalla virtual.
 
 ## Publicar
 
@@ -106,8 +106,8 @@ pipeline/
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
                          la API map de OSM por cajas (tiles, tiles-comuna);
                          cruces, calzadas y ramales de la Ruta 5 -> data/ruta5.json
-  sentidos.py            el sentido del tránsito de las calles de un sentido de OSM -> data/sentidos.json (las flechas de los letreros del juego)
-  plano.py               las calles, el agua, la vía, la Ruta 5 y la red de calles (planarizada) para los mapas del juego -> juego/datos/plano.json
+  sentidos.py            el sentido del tránsito de las calles de un sentido de OSM -> data/sentidos.json (las flechas de los letreros de las calles en 3D)
+  plano.py               las calles, el agua, la vía, la Ruta 5 y la red de calles (planarizada), para mapas y caminos en 3D -> modelo3d/datos/plano.json
   railway.py             la vía férrea y el ramal desde OSM: cruces bajo la vía o a nivel, catenaria y señales -> config/trazados.json
 src/                     toda la aplicación (CSS, UI y motor three.js r128), en fuentes que build.py une en la página y su script:
   page.html              la página entera: <head>, cargador de los datos (/*DATA*/), DOM, póster y <!--SCRIPTS-->; el marcador /*STYLE*/
@@ -138,38 +138,26 @@ tools/lint.py            ESLint sobre el script unido (make lint; reglas en tool
 scripts/deploy-cloudflare.sh  publica dist/ en Cloudflare Pages (make deploy); .githooks/pre-push lo corre al empujar main
 scripts/deploy/          package.json y package-lock.json de Wrangler (versión fija), que deploy-cloudflare.sh instala con npm ci
 tools/ml_buildings.py    huellas de edificios de Overture (Microsoft, Google) y alturas de Google 2.5D Temporal -> raw/edificios-ml/, para edificios.py (make edificios-ml)
-tools/export.py          la maqueta generada a glTF (Blender, Godot; --teselas: un archivo por tesela, con --instancias, --lejos, --medio y --liviano para el juego) y a STL cerrado para impresión 3D (tools/export.js corre en la página)
+tools/export.py          la maqueta generada a glTF (Blender, Godot; --teselas: un archivo por tesela, con --instancias, --lejos, --medio y --liviano para modelo3d/) y a STL cerrado para impresión 3D (tools/export.js corre en la página)
 tools/blender_ver.py     abre en Blender un glb o STL exportado, con sus colores y encuadrado (-b --png: una vista sin ventana)
-tools/icono_juego.py     el ícono del juego (juego/icono.png, pixel art de 32 × 32: la plaza, la torre de la Catedral y el personaje) y, en Linux, su lanzador en el menú y el escritorio (make lanzador)
-tools/godot_oculto.sh    corre el juego de Godot lanzado oculto (en el Mac con open -j -g; en Linux en Xvfb), sin quitarle el teclado a quien trabaja: así lo revisan las sesiones de Claude
-tools/godot/             proyecto de Godot que carga un glb exportado (ver.gd: cámara ortográfica, colores por vértice; --png); comparar.gd: dos exportaciones de teselas en lo que Godot guarda, vértice por vértice; vitrina.gd: un modelo del juego (peatón, perro, gata, vehículos, autos, árboles) solo, sin el mapa, en cuatro vistas
-juego/                   un juego de Godot para pasear por la comuna en tercera persona (make juego exporta juego/mapa/, la comuna en teselas de 500 m; Godot --path juego); juego/modelos/: la plaza, la catedral, las fachadas y las calles de alrededor, y el Edificio Raíces, de cerca
-juego/mapa.gd, arboleda.gd   las teselas alrededor de la cámara (en hilos, con los edificios solos hasta 3 km, lo de lejos y la colisión cercana; cuantizado.gd: el formato liviano) y los árboles de la página como los de la plaza; viaje.gd: Tab, ir a un lugar; recorte.gd: los recortes de los modelos sobre cada tesela
-juego/autos.gd, faroles.gd   los autos de la página como los de calles.gd (modelos/entorno/auto.gd) de cerca, y los faroles de las calles de noche: postes, brillo y las luces más cercanas
-juego/fachadas_ciudad.gd las fachadas de cerca de los edificios de toda la comuna, por tipo (casa antigua, población, pareada, block…), de juego/mapa/f_<i>_<j>.json (tools/export.py --fachadas): a la calle, un muro grueso con los vanos hundidos y el repertorio de las fachadas medidas alrededor de la plaza; aleros en los techos inclinados
-juego/letreros.gd        los letreros con el nombre de las calles en los cruces de la comuna (tools/export.py --letreros): poste, placas con la numeración de la cuadra y la flecha del sentido; el texto, en los más cercanos
-juego/vehiculo.gd        la bicicleta, el auto y el jetpack (E: subir o bajar, V: cambiar), con su cámara; pasos.gd: los pasos bajo la Ruta 5 en la colisión
-juego/musica.gd          despegar con el jetpack desde el techo de la Torre Talca pone una pista de música (juego/musica/torre-talca.mp3)
-juego/perro.gd           otro personaje que se puede jugar (--personaje perro o el menú de Esc): un quiltro café claro hecho en código como peaton.gd, que lo extiende; anda al paso, al trote y al galope (las patas por cinemática inversa), salta, pedalea sentado, vuela con el jetpack y lleva las armas en el hocico; los demás lo ven en la red. Su pelaje se dibuja por píxel (shaders/pelaje_perro.gdshader, con lo común de los pelajes en shaders/pelo.gdshaderinc)
-juego/gata.gd            la gata Watata, el tercer personaje (--personaje gata o el menú de Esc): una calicó gordita hecha desde sus fotos que extiende perro.gd (anda, salta, pedalea y vuela con su paso); el pelaje se dibuja por píxel (shaders/pelaje_gata.gdshader: manchas naranjas y atigradas, la veta del pelo) y los ojos tienen pupila de rendija que se abre de noche (shaders/ojo.gdshader); quieta se sienta, se lame la nariz y se echa
-juego/vida.gd            la barra de vida, la muerte y la reaparición en la Plaza de Armas, y los carritos de completos de 5 y 6 Oriente, donde se recupera (--dano, --caer)
-juego/armas.gd, blancos.gd   el cuchillo, la pistola y el rifle de asalto (1, 2, 3; clic, botón derecho, R; modelos/entorno/armas.gd) y los muñecos de práctica del borde sur de la plaza (--arma, --disparar)
-juego/menu.gd            el menú de Esc: pausa, seguir, ir a un lugar, el mapa, volver a la plaza, día o noche, la red local, la ayuda en pantalla, pantalla completa, el personaje (persona, perro o gata), salir
-juego/red.gd             la red local (J): crear una partida o unirse a una en la misma red (ENet; --servidor, --unirse ip|lan, --nombre), con los otros jugadores a pie o en sus vehículos, con sus armas y sus tiros (y el daño que hacen), y en los mapas
-juego/bandera.gd         captura la bandera en la red local, para dos o más: cada uno pone su bandera (B), toma las ajenas y anota llevándolas a la suya; el anfitrión la prepara y empieza (J) y decide quién toma y quién anota; al morir se reaparece en la propia
-juego/plano.gd, ruta.gd  el mapa en miniatura y el mapa grande (M; plano_datos.gd lee datos/plano.json), y el marcador con el camino por las calles (A*), la cinta de flechas y la columna de luz
-juego/trailer.gd         --trailer toma: las tomas del avance (tools/trailer.py las graba con Movie Maker, les pone títulos y música y las junta -> shots/trailer/talca.mp4)
-tools/trailer.py         el avance del juego: graba las tomas de juego/trailer.gd, cortes al ritmo, cuadros congelados, títulos y un ritmo sintetizado
-juego/cine.gd            --cine: un plano de cine de 30 s en la plaza, de la tarde a la noche (make cine: Movie Maker de Godot y ffmpeg -> shots/cine/plaza.mp4)
-juego/vp.gd, juego/vp/   --vp: la plaza en una tele de fondo, proyectada desde la posición de un teléfono Android que filma (WebXR, ARCore; producción virtual como un set de LED)
-tools/juego_osm.py       las plantas y los nodos de la calle de OSM alrededor de la plaza para juego/modelos/ y la página (data/plaza-osm.json)
-tools/juego_vistas.py    vistas del juego frente a las fachadas de la ciudad: dónde pararse frente a un edificio (punto, buscar), las capturas (tomar) y una hoja antes/después (hoja)
-juego/modelos/plaza.gd   la Plaza de Armas del juego en detalle (árboles, quiosco, piletas, faroles, escaños; plaza/: árboles, piezas y texturas en código)
-juego/modelos/raices.gd  el Edificio Raíces (3 Oriente 1645) de cerca: balcones con baranda de vidrio, ventanas hundidas, hall, azoteas, jardín y reja; se arma cuando llega su tesela
-juego/modelos/juegos_alameda.gd   los juegos de la Alameda entre 3 y 4 Oriente y su tramo: plataformas a las que se sube por escaleras, toboganes por los que se resbala (jugador.gd), columpios que se mecen, faroles
-juego/malla.gd, materiales.gd   el constructor de mallas y los materiales de todos los modelos del juego (shaders/: capa, patron, plaza/)
-juego/args.gd, fps.gd, glb.gd   las banderas de la línea de comandos, el arnés de --fps y lo que tools/export.py escribe en juego/mapa/indice.json (capas, luces, lugares, teselas)
-juego/modelos/torre_talca.gd   la Torre Talca de cerca: ventanas y cintas hundidas, planta baja vidriada, azotea, sala de máquinas y el letrero (su techo lo reconoce musica.gd)
+tools/godot_oculto.sh    corre Godot lanzado oculto (en el Mac con open -j -g; en Linux en Xvfb), sin quitarle el teclado a quien trabaja: así lo revisan las sesiones de Claude
+tools/godot/             proyecto de Godot que carga un glb exportado (ver.gd: cámara ortográfica, colores por vértice; --png); comparar.gd: dos exportaciones de teselas en lo que Godot guarda, vértice por vértice
+tools/juego_osm.py       las plantas y los nodos de la calle de OSM alrededor de la plaza para modelo3d/modelos/ y la página (data/plaza-osm.json)
+tools/modelo3d_vistas.py   vistas de la maqueta en 3D frente a las fachadas de la ciudad: dónde pararse frente a un edificio (punto, buscar), las capturas con el visor (tomar) y una hoja antes/después (hoja)
+modelo3d/                la maqueta en 3D en Godot 4.7: la comuna entera en teselas de 500 m (make modelo3d exporta modelo3d/mapa/), con la Plaza de Armas y sus calles, la Catedral, el Edificio Raíces y la Torre Talca de cerca; Godot --path modelo3d
+modelo3d/ver.gd          el visor: una cámara que orbita (arrastrar gira, rueda acerca, WASD mueve, Q/E bajan y suben; --desde, --girar, --mirar, --camara, --png)
+modelo3d/mundo.gd        el mundo, sobre el nodo que lo extiende: las teselas, el cielo, los modelos de cerca y sus recortes, la captura (--png); la base de ver.gd y de cualquier proyecto que use la maqueta
+modelo3d/mapa.gd, arboleda.gd   las teselas alrededor de la cámara (en hilos, con los edificios solos hasta 3 km, lo de lejos y la colisión cercana; cuantizado.gd: el formato liviano) y los árboles de la página como los de la plaza; recorte.gd: los recortes de los modelos sobre cada tesela; pasos.gd: los pasos bajo la Ruta 5 en la colisión
+modelo3d/ambiente.gd     el cielo, el sol y la luna de Talca a cualquier hora y día, las nubes, la niebla, la noche y el posproceso (--hora, --dia, --reloj, --calidad, --sin)
+modelo3d/autos.gd, faroles.gd   los autos de la página como los de calles.gd (modelos/entorno/auto.gd) de cerca, y los faroles de las calles de noche: postes, brillo y las luces más cercanas
+modelo3d/fachadas_ciudad.gd   las fachadas de cerca de los edificios de toda la comuna, por tipo (casa antigua, población, pareada, block…), de modelo3d/mapa/f_<i>_<j>.json (tools/export.py --fachadas): a la calle, un muro grueso con los vanos hundidos y el repertorio de las fachadas medidas alrededor de la plaza; aleros en los techos inclinados
+modelo3d/letreros.gd     los letreros con el nombre de las calles en los cruces de la comuna (tools/export.py --letreros): poste, placas con la numeración de la cuadra y la flecha del sentido; el texto, en los más cercanos
+modelo3d/modelos/plaza.gd   la Plaza de Armas en detalle (árboles, quiosco, piletas, faroles, escaños; plaza/: árboles, piezas y texturas en código); calles.gd, catedral.gd y fachadas.gd: sus calles, la Catedral y los edificios de alrededor
+modelo3d/modelos/raices.gd  el Edificio Raíces (3 Oriente 1645) de cerca: balcones con baranda de vidrio, ventanas hundidas, hall, azoteas, jardín y reja; se arma cuando llega su tesela
+modelo3d/modelos/juegos_alameda.gd   los juegos de la Alameda entre 3 y 4 Oriente y su tramo: plataformas con escaleras, toboganes (sus canaletas llevan la meta «tobogan»), columpios que se mecen, faroles; se arma cuando llegan sus dos teselas
+modelo3d/modelos/torre_talca.gd   la Torre Talca de cerca: ventanas y cintas hundidas, planta baja vidriada, azotea, sala de máquinas y el letrero
+modelo3d/malla.gd, materiales.gd   el constructor de mallas y los materiales de todos los modelos (shaders/: capa, patron, follaje, cielo, brillo, plaza/)
+modelo3d/args.gd, fps.gd, glb.gd   las banderas de la línea de comandos (más las de res://banderas.gd del proyecto que use la maqueta), el arnés de --fps y lo que tools/export.py escribe en modelo3d/mapa/indice.json (capas, luces, lugares, teselas)
 tools/check.py           revisión rápida del repo (make check), con las trampas de config/ y data/ que se pueden comprobar; .githooks/pre-commit la corre antes de cada commit (make hooks)
 tools/datadiff.py        qué cambió en los data/*.json (de una línea): claves, tamaños y elementos distintos contra HEAD u otra versión
 tests/                   pruebas del pipeline que corre make check (test_pipeline.py: huellas en Python y en la plantilla, geometría, línea de comandos) y golden.py (make golden: la salida de cada comando del pipeline, antes y después de un cambio)
@@ -192,7 +180,7 @@ Los cambios de código o de datos se reciben como pull request en GitHub. Antes 
 - [docs/PLAN-SITIO.md](docs/PLAN-SITIO.md): el sitio sin las restricciones del artifact de Claude: datos aparte y three.js propio (hechos); empaquetador, Worker, primera vista generada al armar, three.js nuevo y relieve más fino.
 - [docs/PLAN-COMUNAS.md](docs/PLAN-COMUNAS.md): qué de Talca está fijo en el código y un plan para hacer la maqueta de otra comuna (Curicó como prueba).
 - [CLAUDE.md](CLAUDE.md): guía para seguir trabajando con Claude Code. Corta, porque se carga en cada sesión: lo que vale para todo el repo, la arquitectura en una tabla y el índice de las trampas conocidas.
-- [.claude/rules/](.claude/rules/): el detalle de la guía, un archivo por tema (la generación, los hitos, la ciudad, los edificios, los usos de suelo, ríos y vías, el pipeline, la página, el juego, las herramientas), con sus comandos y sus trampas. Claude Code carga cada uno al tocar los archivos de su `paths:`; para una persona, son la referencia de cada parte.
+- [.claude/rules/](.claude/rules/): el detalle de la guía, un archivo por tema (la generación, los hitos, la ciudad, los edificios, los usos de suelo, ríos y vías, el pipeline, la página, la maqueta en 3D, las herramientas), con sus comandos y sus trampas. Claude Code carga cada uno al tocar los archivos de su `paths:`; para una persona, son la referencia de cada parte.
 - [.claude/skills/modelar-hito/](.claude/skills/modelar-hito/SKILL.md): el procedimiento para modelar un hito, paso a paso (`/modelar-hito` en Claude Code).
 - [docs/PENDIENTES.md](docs/PENDIENTES.md): ideas pendientes, con lo medido y lo probado.
 - [CHANGELOG.md](CHANGELOG.md): cambios.

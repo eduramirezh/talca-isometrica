@@ -11,8 +11,8 @@
   uv run tools/export.py --stl shots/comuna.stl --comuna --paso 25 --escala 100000
   uv run tools/export.py --glb shots/c.glb --stl shots/c.stl --vista shots/c.png
   uv run tools/export.py --teselas shots/teselas --comuna        # un glb por km² e indice.json (Godot)
-  uv run tools/export.py --teselas juego/mapa --comuna --tam 500 --instancias arboles,alamos --faroles --letreros --fachadas --lejos --medio --liviano   # make juego
-  uv run tools/export.py --teselas juego/mapa --solo-fachadas    # solo los f_<i>_<j>.json (las fachadas de cerca del juego), sin rehacer los glb
+  uv run tools/export.py --teselas modelo3d/mapa --comuna --tam 500 --instancias arboles,alamos --faroles --letreros --fachadas --lejos --medio --liviano   # make modelo3d
+  uv run tools/export.py --teselas modelo3d/mapa --solo-fachadas    # solo los f_<i>_<j>.json (las fachadas de cerca del juego), sin rehacer los glb
 
 Carga dist/ en Chromium (Map de tools/page.py, ~1 min; --gl gpu, la GPU del equipo) con window.__KEEP, para que las
 mallas conserven sus arreglos después de subir a la GPU, espera la generación completa e inyecta tools/export.js, que
@@ -37,14 +37,14 @@ con --comuna o una caja que cruza el límite, recortado al contorno de la comuna
 --teselas escribe un glb por tesela de --tam metros alineada con la plaza (t_<i>_<j>.glb: x de i·tam a (i+1)·tam, y
 de j·tam a (j+1)·tam), solo las que tienen algo, e indice.json con su lista, los lugares, las luces de los hitos y el
 límite de la comuna (un anillo de grilla). La comuna entera en un solo glb pesa ~400 MB sin árboles ni edificios: para
-un motor de juegos van por teselas (make juego: juego/mapa/, 500 m). Con --instancias arboles,alamos esas capas no van
+un motor de juegos van por teselas (make modelo3d: modelo3d/mapa/, 500 m). Con --instancias arboles,alamos esas capas no van
 como triángulos sino como datos, en t_<i>_<j>.json (__exInst de tools/export.js: x, y, altura del pie, escala, giro y
-tinte de cada árbol; el juego pone los suyos, juego/arboleda.gd); con --lejos, además lejos.glb: un nodo por tesela
+tinte de cada árbol; el juego pone los suyos, modelo3d/arboleda.gd); con --lejos, además lejos.glb: un nodo por tesela
 con solo el relieve, el agua y el borde, para lo que está más allá de lo cargado; con --medio, m_<i>_<j>.glb: los
-edificios de la tesela solos (edificios, hitos, ciudad), que el juego carga hasta 3 km (juego/mapa.gd, MEDIO). Con
---liviano (make juego) las normales y los colores van en un byte por componente y los índices en 16 bits donde caben
+edificios de la tesela solos (edificios, hitos, ciudad), que el juego carga hasta 3 km (modelo3d/mapa.gd, MEDIO). Con
+--liviano (make modelo3d) las normales y los colores van en un byte por componente y los índices en 16 bits donde caben
 (__exLiviano de tools/export.js; las normales en BYTE piden KHR_mesh_quantization, que el juego declara en
-juego/cuantizado.gd): de 36 a 20 bytes por vértice, ~800 MB a ~430 MB, y lo que Godot guarda es lo mismo salvo las
+modelo3d/cuantizado.gd): de 36 a 20 bytes por vértice, ~800 MB a ~430 MB, y lo que Godot guarda es lo mismo salvo las
 normales, hasta 0,6° (tools/godot/comparar.gd).
 
 --vista dibuja el glb exportado, cargado de vuelta con el GLTFLoader de three.js, en un PNG (para revisarlo), y el STL\nen <vista>-stl.png.
@@ -122,7 +122,7 @@ def write_glb(path, res, nodos=None):
     gl = {'asset': {'version': '2.0', 'generator': 'talca-isometrica tools/export.py'}, 'scene': 0,
           'scenes': [{'nodes': [len(nodes) - 1]}], 'nodes': nodes, 'meshes': meshes, 'materials': mats,
           'accessors': accs, 'bufferViews': views, 'buffers': [{'byteLength': len(bin_)}]}
-    if liviano:  # las normales en BYTE: Godot 4.7 las lee si se declara la extensión (juego/cuantizado.gd)
+    if liviano:  # las normales en BYTE: Godot 4.7 las lee si se declara la extensión (modelo3d/cuantizado.gd)
         gl['extensionsUsed'] = gl['extensionsRequired'] = ['KHR_mesh_quantization']
     js = json.dumps(gl, ensure_ascii=False, separators=(',', ':')).encode()
     js += b' ' * (-len(js) % 4)
@@ -298,7 +298,7 @@ async def datos_tesela(pg, caja, inst, faroles, sin_poste, letreros=False):
 
 
 async def fachadas_tesela(pg, d, i, j, caja):
-    """los edificios de una tesela para las fachadas de cerca del juego (__exFach, juego/fachadas_ciudad.gd):
+    """los edificios de una tesela para las fachadas de cerca del juego (__exFach, modelo3d/fachadas_ciudad.gd):
     f_<i>_<j>.json, una lista; devuelve cuántos son"""
     r = await pg.evaluate('b => __exFach(b)', caja)
     f = d / f'f_{i}_{j}.json'
@@ -320,7 +320,7 @@ async def solo_fachadas(pg, d, t):
 
 
 def fach_info(n):
-    return {'datos': 'f_<i>_<j>.json: los edificios de cada tesela (tools/export.js __exFach), para juego/fachadas_ciudad.gd', 'n': n}
+    return {'datos': 'f_<i>_<j>.json: los edificios de cada tesela (tools/export.js __exFach), para modelo3d/fachadas_ciudad.gd', 'n': n}
 
 
 async def main(a):
@@ -442,13 +442,13 @@ if __name__ == '__main__':
     ap.add_argument('--teselas', help='directorio: un glb por tesela de --tam metros (t_<i>_<j>.glb, la caja x de i·tam a (i+1)·tam) e indice.json')
     ap.add_argument('--tam', type=float, default=1000, help='lado de las teselas (m)')
     ap.add_argument('--instancias', help='--teselas: capas de objetos instanciados (arboles,alamos) que van como datos en t_<i>_<j>.json y no en el glb')
-    ap.add_argument('--faroles', action='store_true', help='--teselas: los faroles de las calles como datos en t_<i>_<j>.json (el poste en la vereda; la página solo dibuja su brillo): juego/faroles.gd')
-    ap.add_argument('--fachadas', action='store_true', help='--teselas: los edificios de cada tesela (planta, alturas, tipo, colores, lados a la calle) en f_<i>_<j>.json: juego/fachadas_ciudad.gd')
+    ap.add_argument('--faroles', action='store_true', help='--teselas: los faroles de las calles como datos en t_<i>_<j>.json (el poste en la vereda; la página solo dibuja su brillo): modelo3d/faroles.gd')
+    ap.add_argument('--fachadas', action='store_true', help='--teselas: los edificios de cada tesela (planta, alturas, tipo, colores, lados a la calle) en f_<i>_<j>.json: modelo3d/fachadas_ciudad.gd')
     ap.add_argument('--solo-fachadas', action='store_true', help='--teselas dir: solo rehace los f_<i>_<j>.json de las teselas de dir/indice.json (sin exportar los glb; ~1 min)')
-    ap.add_argument('--letreros', action='store_true', help='--teselas: los letreros con el nombre de las calles en los cruces como datos en t_<i>_<j>.json (la página no los dibuja): juego/letreros.gd')
+    ap.add_argument('--letreros', action='store_true', help='--teselas: los letreros con el nombre de las calles en los cruces como datos en t_<i>_<j>.json (la página no los dibuja): modelo3d/letreros.gd')
     ap.add_argument('--lejos', nargs='?', const='terreno,agua,borde', help='--teselas: además, lejos.glb con un nodo por tesela y solo estas capas (por omisión terreno,agua,borde): lo que el juego muestra donde no cargó la tesela')
     ap.add_argument('--medio', nargs='?', const='edificios,hitos,ciudad', help='--teselas: además, m_<i>_<j>.glb con solo estas capas de cada tesela (por omisión edificios,hitos,ciudad): lo que el juego carga entre las teselas completas y lejos.glb, para la silueta de la ciudad')
-    ap.add_argument('--liviano', action='store_true', help='--teselas: normales y colores de un byte por componente (KHR_mesh_quantization, que el juego declara en juego/cuantizado.gd) e índices de 16 bits donde caben (make juego)')
+    ap.add_argument('--liviano', action='store_true', help='--teselas: normales y colores de un byte por componente (KHR_mesh_quantization, que el juego declara en modelo3d/cuantizado.gd) e índices de 16 bits donde caben (make modelo3d)')
     ap.add_argument('--vista', help='PNG del glb exportado, cargado de vuelta (revisión)')
     add_page_args(ap, size='1200x800', only=('size', 'gl'))
     a = ap.parse_args()

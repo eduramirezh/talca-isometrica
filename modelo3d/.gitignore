@@ -1,0 +1,7 @@
+# lo genera Godot y `make modelo3d` (tools/export.py, pipeline/plano.py; datos/: copias de config/fachadas.json,
+# data/plaza-osm.json y data/ruta5.json, y plano.json; mapa/: las teselas de la comuna): no van en git. Sin la barra
+# final, para que calcen también si son enlaces (un worktree enlaza los de la copia principal)
+/.godot
+/mapa
+/datos
+/override.cfg

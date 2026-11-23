@@ -6,7 +6,7 @@
   // is the v=-29 line. Heights and colours from dated photos on Wikimedia Commons (2017–2024), measured against the
   // tower's OSM width: white façade 17 m to the shoulders and 20 m to the apex with three arched bays; brick tower
   // with white piers and bands, a setback halfway, balustrade, white belfry and a green spire to ~39 m; brick nave
-  // with clerestory windows between white pilasters, tiled roofs (grey-brown tile in the 2024 photo; the colours are the game's, juego/modelos/catedral.gd). Approximate: the nave's and aisles' exact widths,
+  // with clerestory windows between white pilasters, tiled roofs (grey-brown tile in the 2024 photo; the colours are the game's, modelo3d/modelos/catedral.gd). Approximate: the nave's and aisles' exact widths,
   // the transept ends, apse and sacristy (no photos of the west side), the roofs' pitch. Night glow in the façade
   // windows is licence. Method: docs/METODOLOGIA.md §9; style: docs/ESTETICA.md.
   {const F=localFrame(-102.9,32.3,179.3*Math.PI/180),{G,Gs,V,N3,R}=F;

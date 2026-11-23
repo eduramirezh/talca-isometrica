@@ -5,8 +5,8 @@
   const T = THREE, X = window.__export, scene = window.__three.scene;
   // Las capas que puede tener un glb: el nombre de cada grupo de la escena (rest() en 99-boot.js, terrainMesh, la vía,
   // la Ruta 5, el Cerro, los trenes) y lo que cada una es para quien lo lee. Van en el JSON de al lado («capas»): el
-  // juego (juego/main.gd, materiales.gd) las lee de ahí en vez de tener su propia lista. tipo: suelo, edificio (con
-  // ventanas), hito, arbol, auto, o null (sin material propio en el juego: el del glb); solido: con colisión. Una malla
+  // 3D (modelo3d/mapa.gd, materiales.gd) las lee de ahí en vez de tener su propia lista. tipo: suelo, edificio (con
+  // ventanas), hito, arbol, auto, o null (sin material propio en Godot: el del glb); solido: con colisión. Una malla
   // de un grupo que no está aquí hace fallar la exportación (tools/export.py): agréguela.
   const LAYERS = {
     terreno: { tipo: 'suelo', solido: true }, borde: { tipo: null, solido: true }, suelo: { tipo: 'suelo', solido: true },
@@ -127,10 +127,10 @@
   };
 
   // __exInst([x0,y0,x1,y1], cats): los objetos instanciados de esas capas (los árboles: arboles, alamos) cuyo pie cae en
-  // la caja, como datos en vez de triángulos, para que el juego ponga los suyos (juego/arboleda.gd). Por capa, nueve
+  // la caja, como datos en vez de triángulos, para que el juego ponga los suyos (modelo3d/arboleda.gd). Por capa, nueve
   // números por instancia: x, y de grilla, la altura del pie (Y del juego), la escala horizontal y la vertical, el giro
   // en torno a Y (radianes, el de three.js y Godot) y el tinte de la instancia (r, g, b, en el espacio de la página).
-  // Los autos (tipo auto en LAYERS: autos, autos-ruta5; juego/autos.gd) llevan un décimo número: la inclinación en
+  // Los autos (tipo auto en LAYERS: autos, autos-ruta5; modelo3d/autos.gd) llevan un décimo número: la inclinación en
   // torno a su eje transversal (radianes, la trompa hacia arriba si es positiva; carsMesh de 60-streets.js gira con
   // el Euler YZX: el giro y luego la pendiente). Su escala horizontal es la del largo (× 4,5 m: el auto de carGeo) y
   // la vertical, la del alto (1, un furgón 1,3, un camión de la Ruta 5 2,1). __exInstN(capa): los números de cada una.
@@ -157,7 +157,7 @@
   };
 
   // __exFach([x0,y0,x1,y1]): los edificios cuyo centro cae en la caja, para las fachadas de cerca del juego
-  // (juego/fachadas_ciudad.gd). Cada uno como lo dibujó la página (FACH de 50-city.js, de cityGen() y de edificio() en
+  // (modelo3d/fachadas_ciudad.gd). Cada uno como lo dibujó la página (FACH de 50-city.js, de cityGen() y de edificio() en
   // 52-edificios.js): t, el tipo (adobe, continua, local, edificio, torre, poblacion, pareada, fila, condominio, block,
   // galpon, institucional); q, la planta [[x, y]…] en metros de grilla; b, la altura de su base (el suelo más bajo de
   // la planta) y h, la del alero o del techo plano sobre b (rh: lo que sube el techo inclinado; ph: el pretil); p, los pisos; w (y w2, la otra mitad de una pareada, que se
@@ -203,7 +203,7 @@
     return Object.fromEntries(Object.entries(window.__exBuf).map(([k, b]) => [k, b.I instanceof Uint16Array]));
   };
 
-  // __exLamps([x0,y0,x1,y1]): los faroles de las calles cuyo poste cae en la caja (juego/faroles.gd). La página dibuja
+  // __exLamps([x0,y0,x1,y1]): los faroles de las calles cuyo poste cae en la caja (modelo3d/faroles.gd). La página dibuja
   // solo su brillo, sobre el eje de la calle a 6 m (lamps(), streetLamps() de 84-lights.js); el juego pone un poste en
   // la vereda, a POSTE m de la solera, con un brazo hasta sobre la calzada. En las calles de clase 0 y 1 (avenidas) van
   // alternados a los dos lados; en las demás, a la izquierda del sentido en que está dibujada la calle. Si ese lado cae
@@ -229,7 +229,7 @@
     return out;
   };
 
-  // __exSigns([x0,y0,x1,y1]): los letreros con el nombre de las calles cuyo poste cae en la caja (juego/letreros.gd).
+  // __exSigns([x0,y0,x1,y1]): los letreros con el nombre de las calles cuyo poste cae en la caja (modelo3d/letreros.gd).
   // La página no los dibuja (una placa de 20 cm se pierde en el píxel de arte de 0,5 m). Uno por cruce de dos calles de
   // nombre distinto (clases 0 a 6: no las de servicio ni las «sin nombre») a más de 30° en el área urbana, en una de sus
   // cuatro esquinas: a POSTE m de las dos soleras, la primera que no cae en una calzada, en un orden que sale del lugar
