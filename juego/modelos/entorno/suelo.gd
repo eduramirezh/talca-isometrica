@@ -11,6 +11,7 @@ const CELDA := 20.0
 
 var tris := []  # [Vector2 a, b, c (x, z), Vector3 alturas]
 var celdas := {}
+var sumadas := {}  # las mallas ya sumadas: sumar() la misma tesela dos veces no repite sus triángulos
 
 
 func _init(raiz: Node) -> void:
@@ -19,9 +20,12 @@ func _init(raiz: Node) -> void:
 		push_warning("suelo.gd: no encontré la malla «terreno» del glb; uso altura 0")
 
 
-# agrega los triángulos de las mallas «terreno» bajo raiz
+# agrega los triángulos de las mallas «terreno» bajo raiz (una ya sumada, no otra vez)
 func sumar(raiz: Node) -> void:
 	for mi in raiz.find_children("terreno", "MeshInstance3D", true, false):
+		if sumadas.has(mi.get_instance_id()):
+			continue
+		sumadas[mi.get_instance_id()] = true
 		var xf: Transform3D = mi.global_transform if mi.is_inside_tree() else Transform3D.IDENTITY
 		var am: Mesh = mi.mesh
 		for s in am.get_surface_count():

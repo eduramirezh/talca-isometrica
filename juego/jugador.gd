@@ -66,6 +66,7 @@ var peaton: Node3D = CUERPOS[personaje].new()  # el cuerpo que se ve (peaton.gd,
 var mapa: Node3D  # mapa.gd: mientras la colisión bajo el personaje no está, no cae
 var tobogan := Vector3.ZERO  # la normal de la canaleta bajo los pies en el cuadro anterior (canaleta()), o cero
 var bajada := {}  # --resbalar: la bajada en curso (desde dónde, la rapidez máxima)
+var resbalar_imprime: bool = preload("res://args.gd").has("--resbalar")  # leída una vez, no en cada cuadro
 var _quieto := false
 # viaje.gd y plano.gd: con la lista de lugares o el mapa grande abiertos, las teclas no lo mueven; muerto, tampoco,
 # aunque se cierren (y vehiculo.gd, que lo lee, no lo deja subir con E)
@@ -253,7 +254,7 @@ func canaleta() -> Vector3:
 		var r := get_world_3d().direct_space_state.intersect_ray(q)
 		if r and r.collider is Node and (r.collider as Node).has_meta("tobogan") and r.normal.y > 0.5:
 			n = r.normal
-	if preload("res://args.gd").has("--resbalar"):
+	if resbalar_imprime:
 		var v := Vector2(velocity.x, velocity.z).length()
 		if n != Vector3.ZERO:
 			if bajada.is_empty():
