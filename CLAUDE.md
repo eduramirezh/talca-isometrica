@@ -19,6 +19,7 @@ Este archivo se carga en cada sesión y es corto a propósito: lo que vale para 
 | [`juego.md`](.claude/rules/juego.md) | El juego en Godot (juego/) y la exportación | `juego/**`, `tools/export.py`, `tools/export.js`, `tools/godot/**` y 3 más |
 | [`juego-jugador.md`](.claude/rules/juego-jugador.md) | El personaje del juego (vida, armas, jetpack, menú) | `juego/jugador.gd`, `juego/vehiculo.gd`, `juego/vida.gd`, `juego/armas.gd` y 11 más |
 | [`juego-calles.md`](.claude/rules/juego-calles.md) | Las calles del juego (la red, los mapas, los letreros, los autos y los faroles) | `juego/plano.gd`, `juego/ruta.gd`, `juego/letreros.gd`, `pipeline/plano.py` y 6 más |
+| [`juego-fachadas.md`](.claude/rules/juego-fachadas.md) | Las fachadas de cerca del juego (fachadas_ciudad.gd) | `juego/fachadas_ciudad.gd`, `juego/modelos/fachadas.gd`, `tools/juego_vistas.py` |
 | [`herramientas.md`](.claude/rules/herramientas.md) | Las herramientas de tools/ (Playwright, rendimiento) | `tools/**` |
 
 Además:
@@ -140,7 +141,8 @@ Las demás están en su regla, que se carga al tocar los archivos de su tema. Su
 - **`rios-vias.md`**: «Datos fuera del grafo» · «Los ríos están sobre las manzanas, a 0,11» · «Los ríos están nivelados» · «Etiquetas de los ríos por punto» · «Dos ríos de OSM se tocan sin compartir nodos» · «Ríos en `config/trazados.json`» · «La Ruta 5 va en trinchera y el relieve no la puede dibujar» · «Las líneas de OSM de la Ruta 5 son el borde entre la primera y la segunda pista» · «La vía se dibuja después de las explanadas» · «Los pasos bajo nivel suben la vía, no bajan la calle» · «Cada calle del mapa que cruza la vía está en `DATA.railx`» · «La vía principal pasa bajo la cubierta de la estación» · «Lo que se mueve no usa `winMat()`» · «Una pestaña oculta no anima» · «El tren detenido en la estación no se ve»
 - **`pipeline.md`**: «Medianas de calles» · «Grilla irregular» · «La Alameda (4 Norte)» · «La imagen satelital puede ser vieja» · «Overpass puede no responder» · «La búsqueda por caja de Mapillary pierde fotos» · «La posición de una foto de Mapillary puede errar 10 m» · «El relieve es de superficie»
 - **`pagina.md`**: «El póster del arranque»
-- **`juego.md`**: «Exportar lo generado (`tools/export.py`)» · «El juego carga la comuna por teselas» · «Los vehículos del juego y los pasos bajo la Ruta 5» · «Un modelo propio lejos de la plaza espera su tesela» · «Las fachadas de cerca del juego son un registro por edificio, no la geometría del glb»
+- **`juego.md`**: «Exportar lo generado (`tools/export.py`)» · «El juego carga la comuna por teselas» · «Los vehículos del juego y los pasos bajo la Ruta 5» · «Un modelo propio lejos de la plaza espera su tesela»
 - **`juego-jugador.md`**: «Bajarse del vehículo y el servidor de física» · «El jetpack del juego» · «Los tiros en la red» · «En captura la bandera manda el anfitrión» · «Las armas del juego» · «La persona, el perro y la gata» · «Los errores de RID con `--headless`»
 - **`juego-calles.md`**: «La red de calles del juego no sale de los vértices compartidos» · «Los letreros de las calles del juego» · «Los autos y los faroles del juego son datos, como los árboles»
+- **`juego-fachadas.md`**: «Las fachadas de cerca del juego son un registro por edificio, no la geometría del glb» · «La fachada gruesa y los aleros del juego»
 - **`herramientas.md`**: «Navegadores sin GPU» · «Rotar en `--js`» · «`__look` no limita el zoom»
