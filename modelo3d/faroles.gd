@@ -158,7 +158,14 @@ func instancia(mm: MultiMesh, hasta: float, sombra: bool) -> MultiMeshInstance3D
 # las lámparas de los hitos (ambiente.gd, de Glb.luces(), sin las que reemplazan los modelos): solo luz de verdad, la
 # lámpara la pone ambiente.gd; aquí, además, su brillo
 func poner_fijas(ps: Array[Vector3]) -> void:
-	fijas = PackedVector3Array(ps)
+	fijas = PackedVector3Array()
+	agregar_fijas(ps)
+
+
+# más lámparas fijas, las de un modelo propio que se arma cuando llega su tesela (modelos/juegos_alameda.gd): luz de
+# verdad cuando están entre las más cercanas, y su brillo
+func agregar_fijas(ps: Array[Vector3]) -> void:
+	fijas.append_array(PackedVector3Array(ps))
 	if ps.is_empty():
 		return
 	var mm := multimesh(mallas["brillo"], ps.size())

@@ -4,16 +4,28 @@
 #
 #   var S := preload("res://modelos/entorno/suelo.gd").new(get_parent())   # desde el _ready() de un modelo
 #   S.E(x, y)
+#   S.sumar(otra_tesela)   # el relieve de otra tesela (un modelo que cae en dos: modelos/juegos_alameda.gd)
 extends RefCounted
 
 const CELDA := 20.0
 
 var tris := []  # [Vector2 a, b, c (x, z), Vector3 alturas]
 var celdas := {}
+var sumadas := {}  # las mallas ya sumadas: sumar() la misma tesela dos veces no repite sus triángulos
 
 
 func _init(raiz: Node) -> void:
+	sumar(raiz)
+	if tris.is_empty():
+		push_warning("suelo.gd: no encontré la malla «terreno» del glb; uso altura 0")
+
+
+# agrega los triángulos de las mallas «terreno» bajo raiz (una ya sumada, no otra vez)
+func sumar(raiz: Node) -> void:
 	for mi in raiz.find_children("terreno", "MeshInstance3D", true, false):
+		if sumadas.has(mi.get_instance_id()):
+			continue
+		sumadas[mi.get_instance_id()] = true
 		var xf: Transform3D = mi.global_transform if mi.is_inside_tree() else Transform3D.IDENTITY
 		var am: Mesh = mi.mesh
 		for s in am.get_surface_count():
@@ -34,8 +46,6 @@ func _init(raiz: Node) -> void:
 						if not celdas.has(c):
 							celdas[c] = []
 						celdas[c].append(k)
-	if tris.is_empty():
-		push_warning("suelo.gd: no encontré la malla «terreno» del glb; uso altura 0")
 
 
 # la altura del suelo en (x, y) de grilla

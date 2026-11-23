@@ -9,8 +9,9 @@
 # Mouse con el botón izquierdo (o derecho) apretado: girar alrededor del punto; rueda: acercar o alejar; WASD o
 # flechas: mover el punto (Mayús: más rápido); Q y E: bajarlo y subirlo; Esc: salir. --desde x,y pone el punto en ese
 # punto de grilla (sin ella, el centro de la plaza), --girar G gira la vista G grados a la izquierda (0: mirando al
-# norte), --mirar P la inclina P grados (+ arriba; -30 por omisión) y --camara L pone la cámara a L m del punto (160). Las
-# demás banderas (--hora, --sin, --calidad, --fps, --cenital) son las de args.gd.
+# norte), --mirar P la inclina P grados (+ arriba; -30 por omisión) y --camara L pone la cámara a L m del punto (160;
+# 0.01: en el punto, que está 1,7 m sobre el suelo, a la altura de los ojos, como las vistas de
+# tools/modelo3d_vistas.py). Las demás banderas (--hora, --sin, --calidad, --fps, --cenital) son las de args.gd.
 extends "res://mundo.gd"
 
 const INICIO := Vector2(0, 0)  # x, y de grilla: el centro de la plaza
@@ -31,7 +32,7 @@ func _ready() -> void:
 		return
 	yaw = deg_to_rad(Args.num("--girar", 0.0))
 	pitch = deg_to_rad(Args.num("--mirar", -30.0, -89.0, 89.0))
-	largo = Args.num("--camara", largo, 1.0, 5000.0)
+	largo = Args.num("--camara", largo, 0.01, 5000.0)
 	punto = Vector3(desde.x, 0.0, -desde.y)
 	cam = Camera3D.new()
 	cam.far = 6000.0
