@@ -349,6 +349,7 @@ class Armador:
 	var vanos := []  # los vanos del muro que se arma: [s0, s1, z0, z1, flecha del arco]
 	var F := P  # el grueso del muro que se arma
 	var sp := {}  # el estilo del edificio que se arma (estilo())
+	var bajo_alero := 0.0  # la pendiente del alero sobre el muro que se arma (0: sin alero): fachada_casa() no lo cruza
 
 	func _init() -> void:
 		m.solido = false
@@ -634,8 +635,8 @@ class Armador:
 		var wb := Muro.new(a2, b2, -w.d)
 		var wc := Muro.new(b2, a2, w.d)
 		var c := Color(0.2, 0.21, 0.22)
-		saliente(wb, F, F + 0.25, h + 0.35, h + 0.45, -0.02, 0.02, c, "metal")  # la ménsula
-		saliente(wb, F + 0.15, F + 1.05, h, h + 0.8, -0.05, 0.05, fondo, "pintura")
+		bloque(wb, F, F + 0.25, h + 0.35, h + 0.45, -0.02, 0.02, c, "metal")  # la ménsula
+		bloque(wb, F + 0.15, F + 1.05, h, h + 0.8, -0.05, 0.05, fondo, "pintura")
 		var claro := fondo.lightened(0.6) if fondo.get_luminance() < 0.5 else fondo.darkened(0.55)
 		rect(wb, F + 0.3, F + 0.9, h + 0.3, h + 0.5, 0.052, claro, "pintura")
 		rect(wc, 0.2, 0.8, h + 0.3, h + 0.5, 0.052, claro, "pintura")
@@ -848,6 +849,7 @@ class Armador:
 				elif t in ["block", "torre", "institucional", "edificio"]:
 					fachada_altos(w, b, H, p, t, col)
 				else:
+					bajo_alero = pend if aleros[i] and libre[i] else 0.0
 					fachada_casa(w, b, hi, p, t, col, cols, reja)
 				var e0: float = ext[i][0]
 				var e1: float = ext[i][1]
@@ -906,6 +908,7 @@ class Armador:
 		var mt := TECHO
 		var cielo := col.lightened(0.12)
 		var canto := Color("e8e4da") if r.randf() < 0.6 else tc.darkened(0.25)
+		var tl := tc.srgb_to_linear()  # el faldón: capa.gdshaderinc lee COLOR lineal, como el glb (export.js); f_*.json da sRGB
 		for i in n:
 			var w: Muro = muros[i]
 			if w == null or not libre[i]:
@@ -934,7 +937,7 @@ class Armador:
 				var nf := w.faldon(k)
 				var a0: float = -xo[0]
 				var a1: float = w.L + xo[1]
-				m.cara([w.W(0, zi, -0.05), w.W(w.L, zi, -0.05), w.W(a1, zo, e), w.W(a0, zo, e)], tc, mt, nf)
+				m.cara([w.W(0, zi, -0.05), w.W(w.L, zi, -0.05), w.W(a1, zo, e), w.W(a0, zo, e)], tl, mt, nf)
 				m.cara([w.W(a0, zo - TF, e), w.W(a1, zo - TF, e), w.W(a1, zo, e), w.W(a0, zo, e)], canto, "pintura", w.N)
 				m.cara([w.W(0, h - TF, 0), w.W(a0, zo - TF, e), w.W(a1, zo - TF, e), w.W(w.L, h - TF, 0)], cielo, "liso", -nf)
 				for pu in [[cerrar[0], 0.0, a0, -1.0], [cerrar[1], w.L, a1, 1.0]]:
@@ -951,7 +954,7 @@ class Armador:
 					if wv == null:
 						continue
 					var nf := wv.faldon(k)
-					m.cara([w.W(s0, z0, -0.05), w.W(s1, z1, -0.05), w.W(s1, z1, e), w.W(s0, z0, e)], tc, mt, nf)
+					m.cara([w.W(s0, z0, -0.05), w.W(s1, z1, -0.05), w.W(s1, z1, e), w.W(s0, z0, e)], tl, mt, nf)
 					m.cara([w.W(s0, z0 - TF, e), w.W(s1, z1 - TF, e), w.W(s1, z1, e), w.W(s0, z0, e)], canto, "pintura", w.N)
 					m.cara([w.W(s0, z0 - TF, 0), w.W(s1, z1 - TF, 0), w.W(s1, z1 - TF, e), w.W(s0, z0 - TF, e)], cielo, "liso", -nf)
 					# la punta del faldón, de canto, en la línea del alero
@@ -1079,10 +1082,11 @@ class Armador:
 				var s := clampf(s0 + L * j / nd, s0 + 0.25, s1 - 0.25)
 				bloque(w, s - 0.22, s + 0.22, top - 0.08, top + 0.4, F - 0.1, F + 0.1, trim)
 
-	# una caja suelta sobre el pretil: como saliente(), con su cara de atrás (se ve desde el techo)
-	func bloque(w: Muro, s0: float, s1: float, h0: float, h1: float, off0: float, off1: float, col: Color) -> void:
-		saliente(w, s0, s1, h0, h1, off0, off1, col)
-		m.cara([w.W(s1, h0, off0), w.W(s0, h0, off0), w.W(s0, h1, off0), w.W(s1, h1, off0)], col.darkened(0.12), "liso", -w.N)
+	# una caja suelta (sobre el pretil, el letrero de bandera, los pilares de la reja): como saliente(), con su cara de
+	# atrás (se ve desde el techo o desde el otro lado)
+	func bloque(w: Muro, s0: float, s1: float, h0: float, h1: float, off0: float, off1: float, col: Color, mat := "liso") -> void:
+		saliente(w, s0, s1, h0, h1, off0, off1, col, mat)
+		m.cara([w.W(s1, h0, off0), w.W(s0, h0, off0), w.W(s0, h1, off0), w.W(s1, h1, off0)], col.darkened(0.12), mat, -w.N)
 
 	# los locales de una planta baja: vitrinas hundidas (con su puerta) entre machones, la cortina metálica bajada o
 	# enrollada, el letrero de cada local, toldos y letreros de bandera; pb: vidrio, vanos vidriados entre pilares
@@ -1160,7 +1164,11 @@ class Armador:
 			var mont := 0.45 if sp["montante"] else 0.0
 			puerta(w, sd, 0.9, b + 0.15, 2.05 + mont, sp["puerta"], marco, false, mont)
 			if sp["alerito"] and t != "condominio":
-				saliente(w, sd - 0.75, sd + 0.75, b + 2.45 + mont, b + 2.55 + mont, F, F + 0.7, col.lightened(0.1))
+				# bajo el cielo del alero del techo, que baja con su pendiente (h ya es el cielo en el plano): si no cabe
+				# entre la puerta y él, no va
+				var za := minf(b + 2.55 + mont, h - 0.7 * bajo_alero - 0.02)
+				if za - 0.1 >= b + 2.25 + mont:
+					saliente(w, sd - 0.75, sd + 0.75, za - 0.1, za, F, F + 0.7, col.lightened(0.1))
 			# una o dos ventanas en lo que queda
 			for hq in [[s0 + 0.25, sd - 0.65], [sd + 0.65, s1 - 0.25]]:
 				var an := minf(1.6, hq[1] - hq[0] - 0.3)
@@ -1273,4 +1281,4 @@ class Armador:
 		var wa := Muro.new(a, b, o)
 		for i in range(np + 1):
 			var x := clampf(L * i / np, 0.15, L - 0.15)
-			saliente(wa, x - 0.15, x + 0.15, h0 - 0.3, h0 + alto + 0.15, -0.15, 0.15, pilar, "liso")
+			bloque(wa, x - 0.15, x + 0.15, h0 - 0.3, h0 + alto + 0.15, -0.15, 0.15, pilar)
