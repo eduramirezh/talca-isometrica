@@ -1,0 +1,7 @@
+{
+"_comentario": "Las cajas (metros de grilla: x0, x1, y0, y1) donde pipeline/copas.py lee de la imagen de Esri las copas de los árboles (data/copas.json), y la página planta esas en los patios y los parques en vez de los de la cuota. Una caja por barrio arbolado que la página dibujaba pelado, construido antes de la imagen (z19: 2015 en la ciudad).",
+"areas": [
+{"nombre": "Villa Parque Universitario", "caja": [4150, 4760, -460, -60], "nota": "Casas de los años noventa en patios con árboles grandes, el parque lineal de 3 Norte (w592373757, un bosque en la imagen) y sus dos rotondas; al sur, 2 Norte y la UCM (su hito planta sus árboles)."},
+{"nombre": "Villa Parque Universitario norte", "caja": [4230, 4760, -60, 20], "nota": "Lo mismo hasta 5 Norte; al poniente de 34 Oriente era un loteo en obras en 2015 y queda fuera."}
+]
+}

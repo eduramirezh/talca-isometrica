@@ -170,9 +170,23 @@ const CITY_ORDER=[...streets.keys()].sort((a,b)=>CITY_DIST[a]-CITY_DIST[b]||a-b)
 const MAXT=36000,isPark=bi=>!blocks[bi].built||bi===PLAZA_BI;
 const parkTrees=b=>Math.min(b.A<40000?b.A/150:b.A/900,1400);
 let YARD_K=-1; // set on the first blockTrees(): PLAZA_BI and ALAM come later in the script
+// The tree crowns of the wooded barrios (DATA.copas, pipeline/copas.py, from the imagery: x, y in decimetres and size
+// in tenths, flat): a block whose box lies inside the boxes of config/copas.json plants these in its yards instead of
+// its quota, and so does a park (76-usos.js). Each crown stands where the image shows one, so a block's trees still
+// depend only on what stands in it. COPAS.covers(x0,y0,x1,y1): the box's four corners inside the boxes;
+// COPAS.each(x0,y0,x1,y1,f): f(x,y,s) for the crowns in a box
+const COPAS=(()=>{const D=DATA.copas;if(!D)return null;const A=D.areas,CT=D.trees,CS=50,cells=new Map();
+  for(let i=0;i<CT.length;i+=3){const k=Math.floor(CT[i]/10/CS)*4096+Math.floor(CT[i+1]/10/CS);let c=cells.get(k);if(!c)cells.set(k,c=[]);c.push(i);}
+  const inA=(x,y)=>A.some(a=>x>=a[0]&&x<=a[1]&&y>=a[2]&&y<=a[3]);
+  return {covers:(x0,y0,x1,y1)=>inA(x0,y0)&&inA(x1,y0)&&inA(x0,y1)&&inA(x1,y1),
+    each(x0,y0,x1,y1,f){for(let i=Math.floor(x0/CS);i<=Math.floor(x1/CS);i++)for(let j=Math.floor(y0/CS);j<=Math.floor(y1/CS);j++)
+      for(const t of cells.get(i*4096+j)||[]){const x=CT[t]/10,y=CT[t+1]/10;if(x>=x0&&x<=x1&&y>=y0&&y<=y1)f(x,y,CT[t+2]/10);}}};})();
 function blockTrees(bi,TR){const b=blocks[bi];if(isPark(bi)&&ALAM.has(bi))return;
   if(YARD_K<0){let np=0,ny=0;blocks.forEach((c,ci)=>{if(!isPark(ci))ny+=c.A/1100;else if(!ALAM.has(ci))np+=Math.ceil(parkTrees(c));});YARD_K=Math.max(0,Math.min(1,(MAXT-np)/ny));}
-  const r=rng(bi*31+5);let n=isPark(bi)?parkTrees(b):b.A/1100*YARD_K,tries=n*3;
+  const r=rng(bi*31+5);
+  if(COPAS&&COPAS.covers(...b.bb)){COPAS.each(...b.bb,(cx,cy,s)=>{const x=cx+(r()-.5)*2,y=cy+(r()-.5)*2,k=r();
+      if(pipXY(x,y,b.r)&&!occAt(x,y)&&!nearStreet(x,y,1.2)&&inTerrain(x,y))TR.push([x,y,s*(.8+.3*k),r()]);});return;}
+  let n=isPark(bi)?parkTrees(b):b.A/1100*YARD_K,tries=n*3;
   while(n>0&&tries-->0){const x=b.bb[0]+r()*(b.bb[2]-b.bb[0]),y=b.bb[1]+r()*(b.bb[3]-b.bb[1]);
     if(!pipXY(x,y,b.r))continue;if(occAt(x,y))continue;if(nearStreet(x,y,1.2))continue;
     TR.push([x,y,0.8+r()*0.6,r()]);n--;}}

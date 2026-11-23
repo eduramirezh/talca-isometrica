@@ -14,9 +14,9 @@ DRY_RUN ?= 0
 # adónde escribe make modelo3d (mapa/ y datos/); otro proyecto de Godot que use la maqueta pasa el suyo. El comentario va
 # arriba: en la misma línea, make deja en el valor los espacios antes del #, y «--teselas $(M3D)/mapa» se parte en dos
 M3D ?= modelo3d
-.PHONY: all fetch osm data elevation ruta5 sentidos edificios edificios-ml golf pois build check golden lint smoke hooks validate diagnostics shots site-assets modelo3d deploy serve clean
+.PHONY: all fetch osm data elevation ruta5 sentidos edificios edificios-ml golf copas pois build check golden lint smoke hooks validate diagnostics shots site-assets modelo3d deploy serve clean
 
-all: data elevation edificios golf pois build         ## pipeline completo (requiere raw/: make fetch)
+all: data elevation edificios golf copas pois build         ## pipeline completo (requiere raw/: make fetch)
 
 fetch:                        ## descarga las fuentes a raw/ (~117 MB)
 	./pipeline/fetch_sources.sh
@@ -44,6 +44,9 @@ edificios-ml:                 ## raw/overture, raw/msbuildings, raw/google-open-
 
 golf:                         ## la imagen de Esri sobre el Talca Country Club (su contorno, en config/usos.json) -> data/golf.json (pasto cortado y copas; Pillow, por uv)
 	cd pipeline && $(PIL) golf.py
+
+copas:                        ## la imagen de Esri en las cajas de config/copas.json -> data/copas.json (las copas de los árboles de los barrios arbolados; Pillow, por uv)
+	cd pipeline && $(PIL) copas.py
 
 pois:                         ## pipeline/pois.py -> data/pois.json + data/pois.csv
 	cd pipeline && $(PY) pois.py
