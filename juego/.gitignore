@@ -1,7 +1,0 @@
-# lo genera Godot y `make juego` (tools/export.py; datos/: copias de config/fachadas.json, data/plaza-osm.json y data/ruta5.json, y plano.json de pipeline/plano.py; mapa/: las teselas de la comuna): no van en git
-.godot/
-plaza.glb
-plaza.glb.import
-plaza.json
-datos/
-mapa/

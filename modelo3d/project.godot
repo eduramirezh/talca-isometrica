@@ -1,0 +1,30 @@
+; La maqueta de Talca en 3D (ver ver.gd y mundo.gd). mapa/ y datos/ salen de `make modelo3d` en la raíz del repositorio.
+config_version=5
+
+[application]
+config/name="Talca Isométrica: la maqueta en 3D"
+run/main_scene="res://ver.tscn"
+config/features=PackedStringArray("4.7")
+
+[display]
+window/size/viewport_width=1600
+window/size/viewport_height=1000
+
+[rendering]
+renderer/rendering_method="forward_plus"
+anti_aliasing/quality/msaa_3d=2
+
+[shader_globals]
+
+noche={
+"type": "float",
+"value": 0.0
+}
+sol_dir={
+"type": "vec3",
+"value": Vector3(0, 1, 0)
+}
+luna_dir={
+"type": "vec3",
+"value": Vector3(0, 1, 0)
+}

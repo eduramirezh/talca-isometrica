@@ -178,7 +178,7 @@ function blockTrees(bi,TR){const b=blocks[bi];if(isPark(bi)&&ALAM.has(bi))return
     TR.push([x,y,0.8+r()*0.6,r()]);n--;}}
 // cityGen(B, Y, Z, sts, bis): the lots of the streets sts (indices, a stretch of CITY_ORDER, in its order), then the
 // trees of the blocks bis; boot calls it for the streets near the first view and again, in pieces, for the rest
-// the game's facades (juego/fachadas_ciudad.gd): with window.__KEEP (tools/export.py) each building cityGen and
+// the game's facades (modelo3d/fachadas_ciudad.gd): with window.__KEEP (tools/export.py) each building cityGen and
 // edificio() draw leaves a record of what it is (its footprint, base, eaves, storeys, type, colours, roof, which sides
 // face a street, its front fence): tools/export.js __exFach writes them per tile. Nothing here changes what is drawn
 // (no rng draws), and without __KEEP nothing is kept

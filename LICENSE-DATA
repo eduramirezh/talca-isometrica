@@ -27,7 +27,12 @@ Los archivos siguientes contienen datos derivados de OpenStreetMap
   o llevan ids `osm`: ríos, Ruta 5, vía férrea y ramal);
 - config/usos.json: las entradas importadas de OSM (fuente OSM, con su id);
 - las coordenadas de los lugares tomadas de OSM (vía Mapcarta) en
-  pipeline/pois.py, data/pois.json y data/pois.csv.
+  pipeline/pois.py, data/pois.json y data/pois.csv;
+- lo que exporta tools/export.py (los glb y STL, y las teselas, los datos por
+  tesela e indice.json que `make modelo3d` escribe en modelo3d/mapa/, con
+  modelo3d/datos/plano.json): la maqueta en 3D, hecha con todos los datos de
+  arriba y con los del punto 3 y el 4 (sus atribuciones van con ella). El código de
+  modelo3d/ (los modelos de cerca, en GDScript) es MIT, como el resto del código.
 
 Estas bases de datos derivadas se ponen a disposición bajo la Open Database
 License 1.0 (ODbL): https://opendatacommons.org/licenses/odbl/1-0/

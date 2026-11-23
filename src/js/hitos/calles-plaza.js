@@ -1,6 +1,6 @@
   // ==== hito: calles-plaza ====
   // The four streets around the Plaza de Armas (1 Norte, 1 Sur, 1 Oriente, 1 Poniente: Cardenal Raúl Silva
-  // Henríquez) and their runs up to 132 m from the plaza, as the game reads them (juego/modelos/calles.gd, which has
+  // Henríquez) and their runs up to 132 m from the plaza, as the game reads them (modelo3d/modelos/calles.gd, which has
   // the sources of each piece): concrete slabs on the carriageway (OSM surface=concrete; the photo of 1 Norte, 2022),
   // asphalt on 1 Oriente; dashed lane lines; cast-iron street lamps, dark green, every ~24 m on the blocks' side of
   // the plaza and on both sides of the runs (photos of 1 Norte, 2022, and of the Catedral, 2017–2024); the traffic
