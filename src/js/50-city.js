@@ -207,11 +207,14 @@ function fachRec(o){if(KEEP)FACH.push(o);}
 // (February 2018): mostly exposed red brick, some rendered cream, some a clipped hedge, each lot with a dark iron gate.
 // Along both sides of street si, at the back of its sidewalk (hw + WALK_OUT), wherever a built block inside the boxes
 // lies behind it; never on another street or its sidewalk, a land use (a park stays open), the Diagonal's median, a
-// landmark or a house that reaches the line (occ 1 and 3: laid before the city, so nothing here depends on the order
-// of the streets), and 1.5 m short of each end of a stretch. Its own rng, so the lots' draws stay the same. On Z (no
-// windows, casts shadow), in the street's run of keys
+// landmark or a house that reaches the line (occ 1 and 3: laid before the city), nor in front of a lot of cityGen
+// (occ 2 on the line or 1.5 m behind it: the 3D draws its own front railing, reja_antejardin, and the two were a double
+// fence; this runs right after the street's lots, in CITY_ORDER in both stages of the startup, so it sees the same
+// lots), and 1.5 m short of each end of a stretch. Its own rng, so the lots' draws stay the same. On G, the landmarks' builder S
+// (cityGen's sixth argument, keyed as the street): Z is the 3D's «ciudad» layer, whose shader paints a grid of windows
+// on every wall that fachadas_ciudad.gd does not dress, and «hitos» has none; no windows on the page either, casts shadow
 const VILLA_WALL={brick:['#9A4E36','#A55A3F','#8E4632'].map(hex),cream:['#E3D8C2','#D9CDB4'].map(hex),hedge:['#3E5B2C','#46632F'].map(hex),gate:hex('#35383A')};
-function villaWalls(Z,si,s,hw){if(!COPAS)return;const P=s.pts,off=hw+WALK_OUT+.2,m0=off+1;
+function villaWalls(G,si,s,hw){if(!COPAS)return;const P=s.pts,off=hw+WALK_OUT+.2,m0=off+1;
   if(!COPAS.meets(Math.min(...P.map(p=>p[0]))-m0,Math.min(...P.map(p=>p[1]))-m0,Math.max(...P.map(p=>p[0]))+m0,Math.max(...P.map(p=>p[1]))+m0))return;
   const r=rng(si*7177+3);
   const free=(x,y)=>{const bi=blockAt(x,y);if(bi<0||!blocks[bi].built||!COPAS.covers(...blocks[bi].bb))return false;
@@ -219,21 +222,22 @@ function villaWalls(Z,si,s,hw){if(!COPAS)return;const P=s.pts,off=hw+WALK_OUT+.2
     for(const id of segsAt(x,y)||[]){const g=segs[id];if(g[5]===si)continue;const m=g[4]+WALK_OUT+.8;if(segDist2(x,y,g[0],g[1],g[2],g[3])<m*m)return false;}
     return true;};
   for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<6)continue;const tx=(b[0]-a[0])/L,ty=(b[1]-a[1])/L;
-    for(const side of [1,-1]){const nx=-ty*side,ny=tx*side,at=u=>[a[0]+tx*u+nx*off,a[1]+ty*u+ny*off];
+    for(const side of [1,-1]){const nx=-ty*side,ny=tx*side,at=(u,v=off)=>[a[0]+tx*u+nx*v,a[1]+ty*u+ny*v];
       // the stretches of free line, 0.5 m at a time
-      const runs=[];let s0=null;for(let u=0;u<=L;u+=.5){const ok=free(...at(u))&&free(...at(Math.min(L,u+.25)));if(ok&&s0===null)s0=u;if(!ok&&s0!==null){runs.push([s0,u-.5]);s0=null;}}
+      const runs=[];let s0=null;for(let u=0;u<=L;u+=.5){const ok=free(...at(u))&&free(...at(Math.min(L,u+.25)))&&occAt(...at(u))!==2&&occAt(...at(u,off+1.5))!==2;
+        if(ok&&s0===null)s0=u;if(!ok&&s0!==null){runs.push([s0,u-.5]);s0=null;}}
       if(s0!==null)runs.push([s0,L]);
       for(let [u0,u1] of runs){u0+=1.5;u1-=1.5;
         while(u1-u0>=2){const lot=Math.min(u1-u0,14+r()*8),q=r(),mat=q<.6?'brick':q<.75?'cream':'hedge',col=pick(r,VILLA_WALL[mat]),h=mat==='hedge'?2.2+r()*.5:2+r()*.4;
           const g0=lot>=8?u0+1+r()*(lot-5.5):-1,g1=g0+3.5; // the gate: 3.5 m of iron somewhere in a lot of 8 m or more
           const piece=(p0,p1,top,c)=>{for(let p=p0;p<p1-.01;p+=6){const e=Math.min(p1,p+6),A=at(p),Bq=at(e),w=.2,
               q4=[[A[0]-nx*w,A[1]-ny*w],[Bq[0]-nx*w,Bq[1]-ny*w],[Bq[0]+nx*w,Bq[1]+ny*w],[A[0]+nx*w,A[1]+ny*w]];
-              Z.dy=groundMin(q4);Z.prism(q4,.3,top,c,shade(c,1.06));}};
+              G.dy=groundMin(q4);G.prism(q4,.3,top,c,shade(c,1.06));}};
           if(g0<0)piece(u0,u0+lot,h,col);
           else{piece(u0,g0,h,col);piece(g0,g1,1.9,VILLA_WALL.gate);piece(g1,u0+lot,h,col);}
           CITY.villaWall=(CITY.villaWall||0)+1;u0+=lot;}}}}
-  Z.dy=0;}
-function cityGen(B,Y,Z,sts,bis){
+  G.dy=0;}
+function cityGen(B,Y,Z,sts,bis,S){
   const TR=[],PO=[]; // tree instances [x,y,s], poplars
   const cnt=k=>{CITY[k]=(CITY[k]||0)+1;};
   let nb=0;
@@ -360,7 +364,7 @@ function cityGen(B,Y,Z,sts,bis){
         flush();
       }
     }
-    villaWalls(Z,si,s,hw);
+    if(S){const k0=S.k;S.k=3e7+CITY_POS[si];villaWalls(S,si,s,hw);S.k=k0;}
   });
   B.dy=0;Z.dy=0;
   for(const bi of bis)blockTrees(bi,TR);

@@ -138,11 +138,11 @@ function boot(){
     const Y=new GB(1<<18),Z=new GB(1<<17);let nb=0;
     const [ed1,ed2]=split(ED.bks,bk=>boxIn(...bk.bb));edHullsFor(si=>k1<0||CITY_POS[si]<k1); // the hulls the lots of those streets can reach (the rest: edificiosBase, below and in rest())
     edificiosBase(B,Z,Y,ed1);tm('edificios'); // ...drawn, with their blocks' ground (2.5e7 + the block: between the Cerro and the city)
-    const streetsOf=(Bx,Yx,Zx,sts)=>{const c=cityGen(Bx,Yx,Zx,sts,[]);PT.yard.push(...c.TR);nb+=c.nb;};
+    const streetsOf=(Bx,Yx,Zx,sts,Sx)=>{const c=cityGen(Bx,Yx,Zx,sts,[],Sx);PT.yard.push(...c.TR);nb+=c.nb;};
     const blocksOf=bis=>{for(const bi of bis)blockTrees(bi,PT.blocks[bi]=[]);};
     const alamOf=(Bx,bis)=>{for(const bi of bis){Bx.k=4e7+AL.indexOf(bi);PT.alam.set(bi,alamedaPark(Bx,[bi]));}};
     const walksOf=ws=>{for(const w of ws){PT.walks.set(w,streetTrees([w]));PT.cars.set(w,parkedCars([w]));}};
-    streetsOf(B,Y,Z,sts1);blocksOf(bis1);
+    streetsOf(B,Y,Z,sts1,S);blocksOf(bis1);
     first.z=tiled(Z,matFlat,true);first.z.traverse(o=>o.castShadow=o.receiveShadow=true);scene.add(first.z);
     alamOf(B,al1);walksOf(wk1);
     const cat=parts=>{const o=[];for(const p of parts)if(p)for(const e of p)o.push(e);return o;};
@@ -179,7 +179,7 @@ function boot(){
       for(const u of us2){drawUses(B2,S2,UG2,[u]);yield;}
       usosDone(uv[0]+UG2.nv);
       for(const bk of ed2){edificiosBase(B2,Z2,Y2,[bk]);yield;} // a block per piece: six were up to 97 ms
-      for(let i=0;i<sts2.length;i+=4){streetsOf(B2,Y2,Z2,sts2.slice(i,i+4));yield;}
+      for(let i=0;i<sts2.length;i+=4){streetsOf(B2,Y2,Z2,sts2.slice(i,i+4),S2);yield;}
       for(let i=0;i<bis2.length;i+=40){blocksOf(bis2.slice(i,i+40));yield;}
       alamOf(B2,al2);yield;
       for(let i=0;i<wk2.length;i+=200){walksOf(wk2.slice(i,i+200));yield;}
