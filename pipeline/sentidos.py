@@ -1,5 +1,5 @@
 """El sentido del tránsito de las calles de un solo sentido, de OpenStreetMap: data/sentidos.json, que tools/export.py
---letreros pasa a la página para que la placa de cada calle en los letreros del juego (juego/letreros.gd) lleve su
+--letreros pasa a la página para que la placa de cada calle en los letreros del juego (modelo3d/letreros.gd) lleve su
 flecha, como las del centro de Talca (fotos de 2005 a 2017: un módulo con la flecha junto al nombre).
 
   python pipeline/sentidos.py          -> data/sentidos.json (requiere raw/osm/map-comuna.json: make osm)

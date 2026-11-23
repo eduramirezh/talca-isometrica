@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# El juego de Godot sin que se vea ni se quede con el teclado. Corrido directo, Godot se pone al frente al partir y le
+# Godot (modelo3d/, o el juego que la usa) sin que se vea ni se quede con el teclado. Corrido directo, Godot se pone al frente al partir y le
 # quita el teclado y el mouse a quien trabaja: en el Mac, aunque se le pida una ventana fuera de la pantalla
 # (--position), sin foco (window/size/no_focus) o se lance con `open -g` (probado en noviembre de 2026); en Linux
 # (Cinnamon, X11) una captura con la ventana a la vista se quedó con lo que se tecleaba (E y V: el personaje subió al
 # auto, cambió a la bicicleta y volvió al auto, y salió andando a 14 km/h), y la carga, que espera a lo que ve la
 # cámara, tardó 101 s en vez de 6.
-# Las sesiones de Claude revisan el juego siempre así (--png, --caminar con --png, --fps, --cine --cuadro), nunca con
+# Las sesiones de Claude revisan Godot siempre así (--png, --caminar con --png, --fps, --cine --cuadro), nunca con
 # el binario directo (--headless no dibuja, pero tampoco abre ventana: ese sí va directo).
 #
-#   tools/godot_oculto.sh --path juego -- --png shots/x.png [--desde x,y …]   # los mismos argumentos que Godot
-#   tools/godot_oculto.sh --path juego -- --fps 6
+#   tools/godot_oculto.sh --path modelo3d -- --png shots/x.png [--desde x,y …]   # los mismos argumentos que Godot
+#   tools/godot_oculto.sh --path modelo3d -- --fps 6
 #   make cine GODOT=tools/godot_oculto.sh
 #
 # En el Mac: el mismo Godot.app (GODOT_APP), lanzado oculto (`open -j -g`): la app al frente no cambia, no aparece
@@ -25,7 +25,7 @@
 # Vulkan de Mesa por CPU (llvmpipe), que sí, pero lento (la misma captura, 213 s) y sin cuadros por segundo que sirvan.
 # La salida de Godot sale a medida que llega.
 #
-# Sale con 1 si hubo un SCRIPT ERROR o un ERROR, o si Godot salió con error. Sin --png, --fps ni --cuadro el juego no
+# Sale con 1 si hubo un SCRIPT ERROR o un ERROR, o si Godot salió con error. Sin --png, --fps ni --cuadro Godot no
 # sale solo: quedaría corriendo oculto (en el Mac, Cmd+Tab lo muestra; en Linux no se ve: Ctrl+C lo termina).
 set -e
 out=$(mktemp "${TMPDIR:-/tmp}/godot_oculto.XXXXXX")

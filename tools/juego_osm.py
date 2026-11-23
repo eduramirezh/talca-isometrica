@@ -1,4 +1,4 @@
-"""Lo de OpenStreetMap que el juego (juego/modelos/) necesita alrededor de la Plaza de Armas, en metros de grilla.
+"""Lo de OpenStreetMap que el juego (modelo3d/modelos/) necesita alrededor de la Plaza de Armas, en metros de grilla.
 
   python3 tools/juego_osm.py            # raw/osm/map-comuna.json (make osm) -> data/plaza-osm.json
   python3 tools/juego_osm.py --lista    # además imprime cada edificio y nodo, para elegir qué modelar
@@ -6,7 +6,7 @@
 Escribe los edificios que tocan la caja ENTORNO (las cuatro caras de manzana frente a la plaza y las esquinas), con su
 contorno (x, y de grilla: x al oriente, y al norte; en Godot X = x, Z = -y) y las etiquetas que sirven para modelarlos
 (nombre, pisos, altura, dirección), y los nodos de la calle: semáforos, cruces, paraderos, árboles, hidrantes. Lo lee
-juego/modelos/entorno/plano.gd (de la copia en juego/datos/ que hace `make juego`) y pipeline/build.py (DATA.plaza, los
+modelo3d/modelos/entorno/plano.gd (de la copia en modelo3d/datos/ que hace `make modelo3d`) y pipeline/build.py (DATA.plaza, los
 semáforos y árboles de src/js/hitos/calles-plaza.js); tools/check.py revisa su forma. Solo biblioteca estándar. Los datos son © colaboradores de OpenStreetMap (ODbL 1.0).
 """
 import json
@@ -17,7 +17,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'pipeline'))
 import osm  # noqa: E402  (pipeline/osm.py: el JSON de OSM por id, en metros de grilla)
 
-ENTORNO = (-140, 140, -140, 135)   # x0, x1, y0, y1: la caja de lo que modela juego/modelos/
+ENTORNO = (-140, 140, -140, 135)   # x0, x1, y0, y1: la caja de lo que modela modelo3d/modelos/
 TAGS = ('name', 'old_name', 'building', 'building:levels', 'height', 'addr:street', 'addr:housenumber', 'amenity',
         'shop', 'office', 'brand', 'man_made', 'layer', 'roof:shape', 'roof:colour', 'building:colour')
 NODOS = {'highway': ('traffic_signals', 'crossing', 'bus_stop', 'street_lamp', 'give_way', 'stop'),

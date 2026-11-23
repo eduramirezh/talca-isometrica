@@ -66,7 +66,7 @@ El Estadio Fiscal y la Catedral son los ejemplos de referencia. Para casos parti
 - un edificio que OSM no tiene, desde una huella de aprendizaje automático, sin lugar en `pois.py` y sin explanada (`occFill`): el Edificio Raíces (`edificio-raices`);
 - un recinto fuera de las manzanas que reemplaza un uso del campo sin correr las parcelas vecinas (`u.keep`): el Colegio Inglés (`colegio-ingles`);
 - un recinto dibujado desde datos leídos de la imagen (`DATA.golf`, de `pipeline/golf.py`): el Talca Country Club (`talca-country-club`);
-- calles vestidas sin reemplazar el mapa (la calzada pintada por zonas con `s.paint`, líneas de pista con `s.lanes`, faroles con `LAMP_SKIP`, árboles reales con `CLEAR_T`, objetos sobre la vereda de la calle del mapa y no sobre la solera real): las calles de la plaza (`calles-plaza`, con `DATA.plaza`: los semáforos y árboles de OSM del plano del juego).
+- calles vestidas sin reemplazar el mapa (la calzada pintada por zonas con `s.paint`, líneas de pista con `s.lanes`, faroles con `LAMP_SKIP`, árboles reales con `CLEAR_T`, objetos sobre la vereda de la calle del mapa y no sobre la solera real): las calles de la plaza (`calles-plaza`, con `DATA.plaza`: los semáforos y árboles de OSM de `modelo3d/modelos/calles.gd`).
 
 ## Trampas
 
