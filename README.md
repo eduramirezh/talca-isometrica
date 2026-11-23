@@ -101,7 +101,8 @@ pipeline/
   mapillary.py           Mapillary: la clave, las fotos de la comuna (teselas vectoriales), qué lugares tienen fotos que los miran
                          y lo que dejan ver de un punto las panorámicas lejanas (mirar);
                          la búsqueda y la elección (una por pasada, de frente) que usa landmark.py photos --mapillary;
-                         fachada y punto: las fotos de un edificio o un punto con su planta y una regla dibujadas encima
+                         fachada y punto: las fotos de un edificio o un punto con su planta y una regla dibujadas encima;
+                         postes y cruce: ubicar por rumbos lo que no tiene fotos de cerca (los juegos tras una reja)
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
                          la API map de OSM por cajas (tiles, tiles-comuna);
                          cruces, calzadas y ramales de la Ruta 5 -> data/ruta5.json
@@ -142,16 +143,18 @@ tools/blender_ver.py     abre en Blender un glb o STL exportado, con sus colores
 tools/godot_oculto.sh    corre Godot lanzado oculto (en el Mac con open -j -g; en Linux en Xvfb), sin quitarle el teclado a quien trabaja: así lo revisan las sesiones de Claude
 tools/godot/             proyecto de Godot que carga un glb exportado (ver.gd: cámara ortográfica, colores por vértice; --png); comparar.gd: dos exportaciones de teselas en lo que Godot guarda, vértice por vértice
 tools/juego_osm.py       las plantas y los nodos de la calle de OSM alrededor de la plaza para modelo3d/modelos/ y la página (data/plaza-osm.json)
+tools/modelo3d_vistas.py   vistas de la maqueta en 3D frente a las fachadas de la ciudad: dónde pararse frente a un edificio (punto, buscar), las capturas con el visor (tomar) y una hoja antes/después (hoja)
 modelo3d/                la maqueta en 3D en Godot 4.7: la comuna entera en teselas de 500 m (make modelo3d exporta modelo3d/mapa/), con la Plaza de Armas y sus calles, la Catedral, el Edificio Raíces y la Torre Talca de cerca; Godot --path modelo3d
 modelo3d/ver.gd          el visor: una cámara que orbita (arrastrar gira, rueda acerca, WASD mueve, Q/E bajan y suben; --desde, --girar, --mirar, --camara, --png)
 modelo3d/mundo.gd        el mundo, sobre el nodo que lo extiende: las teselas, el cielo, los modelos de cerca y sus recortes, la captura (--png); la base de ver.gd y de cualquier proyecto que use la maqueta
 modelo3d/mapa.gd, arboleda.gd   las teselas alrededor de la cámara (en hilos, con los edificios solos hasta 3 km, lo de lejos y la colisión cercana; cuantizado.gd: el formato liviano) y los árboles de la página como los de la plaza; recorte.gd: los recortes de los modelos sobre cada tesela; pasos.gd: los pasos bajo la Ruta 5 en la colisión
 modelo3d/ambiente.gd     el cielo, el sol y la luna de Talca a cualquier hora y día, las nubes, la niebla, la noche y el posproceso (--hora, --dia, --reloj, --calidad, --sin)
 modelo3d/autos.gd, faroles.gd   los autos de la página como los de calles.gd (modelos/entorno/auto.gd) de cerca, y los faroles de las calles de noche: postes, brillo y las luces más cercanas
-modelo3d/fachadas_ciudad.gd   las fachadas de cerca de los edificios de toda la comuna, por tipo (casa antigua, población, pareada, block…), de modelo3d/mapa/f_<i>_<j>.json (tools/export.py --fachadas)
+modelo3d/fachadas_ciudad.gd   las fachadas de cerca de los edificios de toda la comuna, por tipo (casa antigua, población, pareada, block…), de modelo3d/mapa/f_<i>_<j>.json (tools/export.py --fachadas): a la calle, un muro grueso con los vanos hundidos y el repertorio de las fachadas medidas alrededor de la plaza; aleros en los techos inclinados
 modelo3d/letreros.gd     los letreros con el nombre de las calles en los cruces de la comuna (tools/export.py --letreros): poste, placas con la numeración de la cuadra y la flecha del sentido; el texto, en los más cercanos
 modelo3d/modelos/plaza.gd   la Plaza de Armas en detalle (árboles, quiosco, piletas, faroles, escaños; plaza/: árboles, piezas y texturas en código); calles.gd, catedral.gd y fachadas.gd: sus calles, la Catedral y los edificios de alrededor
 modelo3d/modelos/raices.gd  el Edificio Raíces (3 Oriente 1645) de cerca: balcones con baranda de vidrio, ventanas hundidas, hall, azoteas, jardín y reja; se arma cuando llega su tesela
+modelo3d/modelos/juegos_alameda.gd   los juegos de la Alameda entre 3 y 4 Oriente y su tramo: plataformas con escaleras, toboganes (sus canaletas llevan la meta «tobogan»), columpios que se mecen, faroles; se arma cuando llegan sus dos teselas
 modelo3d/modelos/torre_talca.gd   la Torre Talca de cerca: ventanas y cintas hundidas, planta baja vidriada, azotea, sala de máquinas y el letrero
 modelo3d/malla.gd, materiales.gd   el constructor de mallas y los materiales de todos los modelos (shaders/: capa, patron, follaje, cielo, brillo, plaza/)
 modelo3d/args.gd, fps.gd, glb.gd   las banderas de la línea de comandos (más las de res://banderas.gd del proyecto que use la maqueta), el arnés de --fps y lo que tools/export.py escribe en modelo3d/mapa/indice.json (capas, luces, lugares, teselas)

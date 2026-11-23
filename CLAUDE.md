@@ -17,6 +17,7 @@ Este archivo se carga en cada sesión y es corto a propósito: lo que vale para 
 | [`pipeline.md`](.claude/rules/pipeline.md) | El pipeline de datos (pipeline/, config/, data/) | `pipeline/**`, `config/**`, `Makefile`, `tests/**` |
 | [`pagina.md`](.claude/rules/pagina.md) | La página y el sitio publicado | `src/page.html`, `src/style.css`, `src/site/**`, `src/js/05-categories.js` y 8 más |
 | [`modelo3d.md`](.claude/rules/modelo3d.md) | La maqueta en 3D (modelo3d/: Godot) y la exportación | `modelo3d/**`, `tools/export.py`, `tools/export.js`, `tools/godot/**` y 5 más |
+| [`modelo3d-fachadas.md`](.claude/rules/modelo3d-fachadas.md) | Las fachadas de cerca en 3D (fachadas_ciudad.gd) | `modelo3d/fachadas_ciudad.gd`, `modelo3d/modelos/fachadas.gd`, `tools/modelo3d_vistas.py` |
 | [`herramientas.md`](.claude/rules/herramientas.md) | Las herramientas de tools/ (Playwright, rendimiento) | `tools/**` |
 
 Además:
@@ -140,5 +141,6 @@ Las demás están en su regla, que se carga al tocar los archivos de su tema. Su
 - **`rios-vias.md`**: «Datos fuera del grafo» · «Los ríos están sobre las manzanas, a 0,11» · «Los ríos están nivelados» · «Etiquetas de los ríos por punto» · «Dos ríos de OSM se tocan sin compartir nodos» · «Ríos en `config/trazados.json`» · «La Ruta 5 va en trinchera y el relieve no la puede dibujar» · «Las líneas de OSM de la Ruta 5 son el borde entre la primera y la segunda pista» · «La vía se dibuja después de las explanadas» · «Los pasos bajo nivel suben la vía, no bajan la calle» · «Cada calle del mapa que cruza la vía está en `DATA.railx`» · «La vía principal pasa bajo la cubierta de la estación» · «Lo que se mueve no usa `winMat()`» · «Una pestaña oculta no anima» · «El tren detenido en la estación no se ve»
 - **`pipeline.md`**: «Medianas de calles» · «Grilla irregular» · «La Alameda (4 Norte)» · «La imagen satelital puede ser vieja» · «Overpass puede no responder» · «La búsqueda por caja de Mapillary pierde fotos» · «La posición de una foto de Mapillary puede errar 10 m» · «El relieve es de superficie»
 - **`pagina.md`**: «El póster del arranque»
-- **`modelo3d.md`**: «Exportar lo generado (`tools/export.py`)» · «La maqueta en 3D se carga por teselas» · «Los pasos bajo la Ruta 5 en la colisión» · «Un modelo propio lejos de la plaza espera su tesela» · «Las fachadas de cerca son un registro por edificio, no la geometría del glb» · «La red de calles de `plano.py` no sale de los vértices compartidos» · «Los letreros de las calles en 3D» · «Los autos y los faroles en 3D son datos, como los árboles»
+- **`modelo3d.md`**: «Exportar lo generado (`tools/export.py`)» · «La maqueta en 3D se carga por teselas» · «Los pasos bajo la Ruta 5 en la colisión» · «Un modelo propio lejos de la plaza espera su tesela» · «La red de calles de `plano.py` no sale de los vértices compartidos» · «Los letreros de las calles en 3D» · «Los autos y los faroles en 3D son datos, como los árboles»
+- **`modelo3d-fachadas.md`**: «Las fachadas de cerca son un registro por edificio, no la geometría del glb» · «La fachada gruesa y los aleros»
 - **`herramientas.md`**: «Navegadores sin GPU» · «Rotar en `--js`» · «`__look` no limita el zoom»
