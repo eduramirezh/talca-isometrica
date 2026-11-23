@@ -81,5 +81,6 @@
  "w1167599144": {"estilo": "torre", "alto": 40.0, "color": "c9bfae"},
  "w939226196": {"estilo": "colonial", "alto": 4.5, "pisos": 1, "color": "efefea", "pb": "ventanas"},
  "w1167599148": {"alto": 6.0, "pisos": 2, "color": "a89e90", "pb": "ventanas"},
- "w939226195": {"estilo": "comercial", "alto": 3.5, "pisos": 1, "pb": "vitrinas"}
+ "w939226195": {"estilo": "comercial", "alto": 3.5, "pisos": 1, "pb": "vitrinas"},
+ "w1096162181": {"estilo": "vidrio", "alto": 21.5, "pisos": 6, "color": "2e3135", "techo": "plano"}
 }

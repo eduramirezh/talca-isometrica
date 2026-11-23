@@ -14,7 +14,7 @@ DRY_RUN ?= 0
 # adónde escribe make modelo3d (mapa/ y datos/); otro proyecto de Godot que use la maqueta pasa el suyo. El comentario va
 # arriba: en la misma línea, make deja en el valor los espacios antes del #, y «--teselas $(M3D)/mapa» se parte en dos
 M3D ?= modelo3d
-.PHONY: all fetch osm data elevation ruta5 sentidos edificios edificios-ml golf copas pois build check golden lint smoke hooks validate diagnostics shots site-assets modelo3d deploy serve clean
+.PHONY: all fetch osm data elevation ruta5 sentidos edificios edificios-ml golf copas perfiles pois build check golden lint smoke hooks validate diagnostics shots site-assets modelo3d deploy serve clean
 
 all: data elevation edificios golf copas pois build         ## pipeline completo (requiere raw/: make fetch)
 
@@ -45,6 +45,9 @@ edificios-ml:                 ## raw/overture, raw/msbuildings, raw/google-open-
 golf:                         ## la imagen de Esri sobre el Talca Country Club (su contorno, en config/usos.json) -> data/golf.json (pasto cortado y copas; Pillow, por uv)
 	cd pipeline && $(PIL) golf.py
 
+perfiles:                     ## config/perfiles.json + raw/osm/map-comuna.json + data/geometry.json -> data/perfiles.json (los perfiles de calles medidos en fotos, con su eje de OSM, sus cruces y sus postes: la Avenida Las Rastras; después de make data)
+	cd pipeline && $(PY) perfiles.py
+
 copas:                        ## la imagen de Esri en las cajas de config/copas.json -> data/copas.json (las copas de los árboles de los barrios arbolados; Pillow, por uv)
 	cd pipeline && $(PIL) copas.py
 
@@ -74,7 +77,7 @@ hooks:                        ## instala .githooks/ (pre-commit = make check; pr
 modelo3d: build               ## modelo3d/mapa/: la comuna en teselas de 500 m, sus árboles, autos, faroles y letreros de las calles (con data/sentidos.json) como datos, sus edificios solos (de 1,8 a 3 km) y lo de lejos (tools/export.py --teselas; ~3 min, ~540 MB); modelo3d/datos/: lo que comparte con la página y el plano de las calles (pipeline/plano.py); y la importación en Godot. Luego: Godot --path modelo3d. M3D=<dir>: a otro proyecto
 	$(PW) tools/export.py --teselas $(M3D)/mapa --comuna --tam 500 --instancias arboles,alamos,autos,autos-ruta5 --faroles --letreros --fachadas --lejos --medio --liviano
 	touch $(M3D)/mapa/.gdignore    # Godot no importa los glb: mapa.gd los lee mientras se mira
-	mkdir -p $(M3D)/datos && cp config/fachadas.json data/plaza-osm.json data/ruta5.json $(M3D)/datos/   # lo que el 3D comparte con la página
+	mkdir -p $(M3D)/datos && cp config/fachadas.json data/plaza-osm.json data/ruta5.json data/perfiles.json $(M3D)/datos/   # lo que el 3D comparte con la página
 	cd pipeline && $(PY) plano.py $(abspath $(M3D))/datos/plano.json   # las calles, el agua y la red de calles (para mapas y caminos)
 	$(GODOT) --headless --path $(M3D) --import
 

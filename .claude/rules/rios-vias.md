@@ -1,5 +1,6 @@
 ---
 paths:
+  - "src/js/12-perfiles.js"
   - "src/js/55-rivers.js"
   - "src/js/60-streets.js"
   - "src/js/62-diagonal.js"
@@ -17,6 +18,8 @@ paths:
   - "pipeline/rutas.py"
   - "config/trazados.json"
   - "config/rutas.json"
+  - "config/perfiles.json"
+  - "pipeline/perfiles.py"
 ---
 
 # Ríos, calles, Ruta 5, vía férrea y trenes
@@ -28,6 +31,7 @@ Las líneas que cruzan la comuna y lo que va sobre ellas: los ríos de OSM, las 
 | Archivo (`src/js/`) | Qué hace |
 |---|---|
 | `55-rivers.js` (ríos), `60-streets.js` (veredas, cruces, árboles de vereda, autos), `62-diagonal.js`, `63-paseos.js` (`paseosBase`: los paseos peatonales de `PASEOS`, en `10-decode.js`, con su ancho, baldosas, árboles, faroles y maceteros), `64-base.js` (`walkBase`, `buildBase`), `66-ruta5.js`, `68-rail.js` | parcelas agrícolas, manzanas, ríos (con suavizado Chaikin), Ruta 5 (`ruta5Base`: dos calzadas de OSM, `R5.c`, con sus pistas, líneas, bandejón y ramales `R5.k`, a 0,16 sobre las calles; sus tramos en puente o terraplén los dibujan los hitos con `r5Deck`/`r5Raise`, que dejan huecos en `R5C[k].gaps`; `ruta5Objects()` pone la barrera, los postes, cuyas luces van a `GLOW`, y los autos), calles, vía férrea (`railBase`, sobre ellas); todo pasa por `drape()`. Los tres ríos son de OSM (`RIV[k]`, de `DATA.area[k]`; ramas laterales en `DATA.branch`) y van sobre las manzanas (`riverBase`): el agua de todos en una malla propia (`riverWater`, `matWater` con `polygonOffset`), con franjas de ripio fuera de las orillas y una cinta de `ancho_m` sobre el eje donde no hay área (`riverRuns`); `riversLevel`/`riversRelevel` los nivelan (trampa «Los ríos están nivelados»), `riversOcc` los deja ocupados y `linesOcc` hace lo mismo con la Ruta 5 y la vía férrea. `walkRuns(sis, occOf)` traza las veredas de las calles `sis`; `walkBase()` (`64-base.js`) hace en la primera etapa solo las calles cuyas veredas alcanzan `STAGE`, y `walkRest()` las demás al comienzo de `rest()`, con `occWas`. `CLARO` e `inClaro` siguen como atajos para los hitos de la ribera. Una calle con `s.bridge` (la Ruta K-60-J sobre el río) no se dibuja: la dibuja el hito del puente. `railBase()` dibuja las dos líneas (`DATA.rail`, `DATA.ramal`) y las vías de patio (`RAIL_YARD`) muestreadas cada 0,7 m con un perfil de alturas: en el suelo, balasto, durmientes y rieles drapeados; donde una calle pasa bajo la vía (`DATA.railx` tipo 0), terraplén y tablero; los puentes que registran los hitos (`RAIL_BR`) se dibujan ahí (trampa «La vía se dibuja después de las explanadas»). Lo que no es plano (terraplenes, tableros, puentes, postes, señales, barreras) va en una malla propia que proyecta sombra. `RAILP` (`window.__rail`) guarda cada línea como camino para el tren |
+| `12-perfiles.js` | las avenidas cuya sección se midió en fotos (`config/perfiles.json` → `pipeline/perfiles.py` → `DATA.perfiles`; hoy la Avenida Las Rastras): al decodificar, cada calle del mapa que es la avenida pasa a ser el tramo de su eje corrido para cubrir de una línea de cierre a la otra (los lotes empiezan en los cierros de verdad; sin veredas, árboles, autos ni faroles genéricos: `s.walk` 0, `s.perfil`); `perfilesBase(B)` (en `buildBase`) pone encima sus bandas (pasto, tierra, veredas, ciclovías, soleras, bandejón), sus hileras de árboles y los faroles de sus postes en `GLOW`. Lo mismo, de cerca y con medidas de verdad, en `modelo3d/modelos/las_rastras.gd`; `window.__perfiles(clave, s)` da las bandas en una estación |
 | `70-trains.js` | bajo `// ==== trains ====`: `trainCar()` construye cada coche (sfb, adm, loco, wagon; `nose` ±1 para las cabinas) en un marco local; `makeTrain()`/`trainPlace()` los ubican por su `s` sobre `RAILP`, a la altura `h` y orientados por la tangente entre sus bogies; `trainsInit()` (en `boot`, después de `buildBase`) arma los tres trenes y el horario de cada línea (`TRAIN.lines`); `trainsTick(now)` (desde `loop`) avanza el horario y los trenes y devuelve `true` cuando corresponde un cuadro: a `TRAIN_FPS` (18) mientras un tren se mueve dentro de la vista. `trainTurn()` da vuelta un tren: en su lugar (el Buscarril en el andén) o fuera del mapa (la locomotora sigue adelante). De noche, `trainsNight()`: ventanas por `matTrainWin.emissive` y el foco como un punto de `TRAIN.pts` (`GLOWPTS`, con los faroles). `trainHold`, `trainsList`, `trainFps`: `window.__train`, `__trains`, `__trainFps` |
 
 ## Comandos
@@ -43,6 +47,7 @@ python pipeline/traces.py cruces comuna                             # cada cruce
 uv run --with pillow python pipeline/traces.py vial x0 x1 y0 y1 [18] # calzadas, ramales y cruces de OSM sobre la imagen satelital
 python pipeline/railway.py check comuna                             # la vía y el ramal de OSM: cruces con las calles (bajo la vía o a nivel), puentes, postes, señales
 python pipeline/railway.py write comuna                             # lo mismo, escrito en config/trazados.json -> ferrocarril (y su ramal); luego make data build
+python pipeline/perfiles.py [check]                                 # los perfiles medidos (config/perfiles.json) con su eje de OSM, las calles del mapa que toman, las bocas de las calles que llegan y sus postes -> data/perfiles.json (make perfiles build; check: lo mismo sin escribir)
 ```
 
 ## Trampas
@@ -62,3 +67,4 @@ python pipeline/railway.py write comuna                             # lo mismo, 
 - **Lo que se mueve no usa `winMat()`.** Sus ventanas se calculan con la posición en el mundo (`vWP`): en un coche que avanza se deslizarían sobre la carrocería. Los trenes llevan las ventanas en una malla propia (`matTrainWin`) con `emissive` de noche. Y el foco que se mueve no puede ir en `GLOW` (que `lamps()` convierte en puntos fijos una sola vez): es un `Points` propio (`TRAIN.pts`) en `GLOWPTS`, que `paRender()` oculta en la pasada de normales y reduce con `k` como a los faroles.
 - **Una pestaña oculta no anima.** `requestAnimationFrame` no corre en una pestaña que no se ve (la que abre la extensión de Chrome queda en otra ventana): el horario de los trenes se detiene y `__trains()` muestra `run: false` para siempre. `trainsTick()` acota `dt` a 0,5 s para que al volver no salten.
 - **El tren detenido en la estación no se ve.** Para bajo la cubierta, que lo tapa; se ve entrar y salir. Para una captura del automotor quieto, `__train('main', 11261)` lo deja sobre el tablero de 1 Sur, al norte de la cubierta. Las `s` se cuentan desde el extremo norte de la línea, que se mueve con el límite de la maqueta (un cambio del límite corre todas las `s`). El horario busca la cubierta por su lugar (`ST`, en `trainsInit`), no por su `s`.
+- **Un perfil medido toma calles del mapa por su índice.** `data/perfiles.json` nombra las calles de `data/geometry.json` que son la avenida (`calles`: índice, tramo y alcance) y las bocas de las que llegan: después de `make data` (otro grafo de cicloconecta, otro recorte) corra `make perfiles`. La página revisa el nombre de cada una y avisa en la consola si no calza; la maqueta en 3D (`las_rastras.gd`) lee el mismo archivo de `modelo3d/datos/`, así que `make modelo3d` después.

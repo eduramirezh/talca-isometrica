@@ -4,9 +4,10 @@
 const LAMP_SKIP=[];
 // streetLamps(): the street lamps, one every 35 m along the main streets (class 3 or less) in the urban area, on the
 // axis: [x, y, tx, ty (along the street), the half carriageway (curb to axis), its number along the street, the
-// street's class]. The page draws only their glow (no posts); the game (tools/export.js __exLamps) stands a post at the curb
+// street's class]. The page draws only their glow (no posts); the game (tools/export.js __exLamps) stands a post at the curb.
+// A street of a measured profile (s.perfil) has its own, on its poles (perfilesBase, in GLOW)
 function streetLamps(){const out=[];
-  streets.forEach(s=>{if(s.c>3)return;const cw=swOf(s)/2-walkOf(s);let acc=0,n=0;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);let u=(35-acc%35);while(u<L){const t=u/L;const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t;if(inTerrain(x,y)&&urbanAt(x,y)&&!LAMP_SKIP.some(([bx,re])=>re.test(s.name||'')&&x>=bx[0]&&x<=bx[2]&&y>=bx[1]&&y<=bx[3]))out.push([x,y,(b[0]-a[0])/L,(b[1]-a[1])/L,cw,n++,s.c]);u+=35;}acc+=L;}});
+  streets.forEach(s=>{if(s.c>3||s.perfil)return;const cw=swOf(s)/2-walkOf(s);let acc=0,n=0;for(let i=0;i<s.pts.length-1;i++){const a=s.pts[i],b=s.pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);let u=(35-acc%35);while(u<L){const t=u/L;const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t;if(inTerrain(x,y)&&urbanAt(x,y)&&!LAMP_SKIP.some(([bx,re])=>re.test(s.name||'')&&x>=bx[0]&&x<=bx[2]&&y>=bx[1]&&y<=bx[3]))out.push([x,y,(b[0]-a[0])/L,(b[1]-a[1])/L,cw,n++,s.c]);u+=35;}acc+=L;}});
   return out;}
 function lamps(){
   const pts=[];for(let i=0;i<GLOW.length;i+=3)pts.push(GLOW[i],GLOW[i+1],-GLOW[i+2]);

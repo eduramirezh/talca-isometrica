@@ -7,6 +7,9 @@ const blocks=DATA.blocks.map(b=>{const r=dec(b[3]);let A=0,cx=0,cy=0,x0=1e9,y0=1
     if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<y0)y0=p[1];if(p[1]>y1)y1=p[1];}
   A/=2;return {t:b[0],built:b[0]===0||b[0]===3,pers:b[1],viv:b[2],r,A:Math.abs(A),cx:cx/(6*A),cy:cy/(6*A),bb:[x0,y0,x1,y1]};});
 const SW=[16,13,11,9.5,7,5,3.5,3.5]; // street widths per class
+// how far past a street's ribbon its sidewalk goes and the lots of the city start (60-streets.js; 12-perfiles.js sizes
+// the ribbons of a measured profile with it)
+const WALK_OUT=1.2;
 const streets=DATA.streets.map(s=>({c:s[0],name:DATA.names[s[1]],pts:dec(s[2])}));
 // Streets drawn narrower than their class: [name, width, sidewalk inside it, street trees [spacing, size] in rows on
 // every run]. The Diagonal (Avenida Isidoro del Solar) is two one-way carriageways of one lane and parking, 12 m apart

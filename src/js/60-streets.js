@@ -8,7 +8,7 @@
 // before the city (rivers and bridges, the Ruta 5, the rail, the landmarks). Heights: sidewalks 0.16, curbs and
 // crosswalks 0.172 (streets 0.12-0.148; a 0.5 cm gap flickers). WALKS keeps the runs: the street trees and the parked
 // cars go along them.
-const WALK=[0,2,1.8,1.4,1.2,0.8,0,0],WALK_OUT=1.2,CURB=0.5,WALK_Y=Y_LAYER.walk,CURB_Y=Y_LAYER.curb;
+const WALK=[0,2,1.8,1.4,1.2,0.8,0,0],CURB=0.5,WALK_Y=Y_LAYER.walk,CURB_Y=Y_LAYER.curb;
 const STREET=STATS.street; // counts for __stats
 const WALKS=[]; // {si, side, pts (on the street's axis), hw, iw, bi (the block behind its middle)}
 // is (x, y) on the carriageway of a street that crosses segment k (at more than ~37 degrees, not its neighbour)?

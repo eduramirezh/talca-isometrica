@@ -227,6 +227,8 @@ function hooksView(trees,cars){Object.assign(window,{
     // tools/export.py (with window.__KEEP; GLOW: the landmarks' lights, LIM: the commune's limit, streetLamps and ALAM_LAMPS: the street lamps, for the game)
     onRoad:(x,y)=>(segsAt(x,y)||[]).some(id=>{const s=segs[id],st=streets[s[5]],r=s[4]-walkOf(st);return !st.bridge&&segDist2(x,y,s[0],s[1],s[2],s[3])<r*r;})}, // is (x, y) on a carriageway (where the game puts no lamp post)
   __pads:PADS,                           // the landmark pads [x0,y0,x1,y1,h]: pipeline/traces.py check --pads
+  __perfiles:(k,s)=>{const pf=PERF.find(p=>p.key===k)||PERF[0];if(!pf)return null;if(s==null)return {L:pf.L,calles:pf.d.calles.map(c=>({i:c[0],w:streets[c[0]].w,walk:streets[c[0]].walk,p0:streets[c[0]].pts[0]}))}; // a measured profile (12-perfiles.js): its map streets, or its bands at station s, both sides, and the point on the axis
+    return {p:pfAt(pf,s),O:pfBandas(pf,s,-1),E:pfBandas(pf,s,1),boca:[pfBoca(pf,s,-1),pfBoca(pf,s,1)]};},
   __rail:RAILP,                          // the rail lines as paths for the train (68-rail.js): tools/probe.py
   __ed:EDS});}                           // the OSM buildings' counts and ms (52-edificios.js): tools/perf.py
 function hooksDone(stats){Object.assign(window,{

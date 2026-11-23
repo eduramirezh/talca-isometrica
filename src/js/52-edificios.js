@@ -112,7 +112,7 @@ function edificiosPlan(){const t0=performance.now();
     // (a footprint cut away entirely, rings null, stops it: before, the loop went on in the other cells, where any
     // segment that reached it would have read rings[0])
     segsInBox(x0,y0,x1,y1,(id,s)=>{const st=streets[s[5]];if(st.bridge)return;
-        const L=Math.hypot(s[2]-s[0],s[3]-s[1]);if(L<0.5)return;const tx=(s[2]-s[0])/L,ty=(s[3]-s[1])/L,ax=s[0],ay=s[1],m=s[4]+(walkOf(st)?WALK_OUT:0.3);
+        const L=Math.hypot(s[2]-s[0],s[3]-s[1]);if(L<0.5)return;const tx=(s[2]-s[0])/L,ty=(s[3]-s[1])/L,ax=s[0],ay=s[1],m=s[4]+(walkOf(st)||st.perfil?WALK_OUT:0.3);
         const ua=(x0-ax)*tx,ub=(x1-ax)*tx,va=(y0-ay)*ty,vb=(y1-ay)*ty;if(Math.max(ua,ub)+Math.max(va,vb)<-1e-6||Math.min(ua,ub)+Math.min(va,vb)>L+1e-6)return;
         const side=Math.sign((c[0]-ax)*ty-(c[1]-ay)*tx)||1,ga=(x0-ax)*ty,gb=(x1-ax)*ty,ha=(y0-ay)*tx,hb=(y1-ay)*tx;
         if((side>0?Math.min(ga,gb)-Math.max(ha,hb):-(Math.max(ga,gb)-Math.min(ha,hb)))>m+1e-6)return;
@@ -262,7 +262,7 @@ function edRaster(Y,bk,bb){const C=bk.ml?2:1,FRONT=3.2,{bi,mix,surf}=bk,xs=ED_XS
       for(let i=i0;i<i1;i++){const x=X0+(i+.5)*C;while(k<xs.length&&xs[k]<=x)k++;if((xs.length-k)&1){const c=j*nx+i;if(!only||only(own[c]))own[c]=v;}}}};
   fill(b.r,1);
   // the streets: each segment near the block marks its margin and the front strip behind it (none in a mixed block)
-  segsInBox(bx0-20,by0-20,bx1+20,by1+20,(id,s)=>{const st=streets[s[5]];const m=s[4]+(walkOf(st)?WALK_OUT:mix?0.8:0.3),f=!mix&&(walkOf(st)||st.paseo)?m+FRONT:m,fv=st.paseo?-4:-2;
+  segsInBox(bx0-20,by0-20,bx1+20,by1+20,(id,s)=>{const st=streets[s[5]];const m=s[4]+(walkOf(st)||st.perfil?WALK_OUT:mix?0.8:0.3),f=!mix&&(walkOf(st)||st.paseo||st.perfil)?m+FRONT:m,fv=st.paseo?-4:-2;
       const i0=Math.max(0,Math.floor((Math.min(s[0],s[2])-f-X0)/C)),i1=Math.min(nx-1,Math.ceil((Math.max(s[0],s[2])+f-X0)/C)),j0=Math.max(0,Math.floor((Math.min(s[1],s[3])-f-Y0)/C)),j1=Math.min(ny-1,Math.ceil((Math.max(s[1],s[3])+f-Y0)/C));
       for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const c=j*nx+i;if(own[c]===0||own[c]===-1)continue;const d2=segDist2(X0+(i+.5)*C,Y0+(j+.5)*C,s[0],s[1],s[2],s[3]);
         if(d2<m*m)own[c]=-1;else if(d2<f*f&&own[c]!==-2)own[c]=fv;}});

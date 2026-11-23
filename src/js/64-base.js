@@ -54,6 +54,7 @@ function buildBase(L){
   const order=[7,6,5,4,3,2,1,0];
   // (a street a landmark draws as a bridge, s.bridge, stays off the ground: the Ruta K-60-J over the Río Claro)
   for(const c of order)streets.forEach(s=>{if(s.c===c&&!s.bridge&&!s.paseo)(s.paint?paintRibbon:ribbon)(B,s.paint?s:s.pts,swOf(s),Y_LAYER.street+(7-c)*Y_LAYER.street_step,c<=2?PAL.asphalt2:PAL.asphalt,c<=5);});
+  perfilesBase(B); // the bands of the measured profiles over their streets (12-perfiles.js)
   railBase(B);   // over the streets
   if(L)L.flat=B;return drape(B,L&&L.base);
 }

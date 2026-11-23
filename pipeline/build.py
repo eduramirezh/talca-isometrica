@@ -5,8 +5,8 @@
 Los datos son data/geometry.json (más los usos de config/usos.json y de los archivos de las fuentes chilenas, USOS_FILES,
 como `usos`; config/manzanas.json reclasifica como construidas, tipo 3, manzanas «sin información» del Censo, y las
 entradas `vivienda` de los usos agregan manzanas construidas donde el Censo no tiene), data/elevation.json,
-data/ruta5.json, data/edificios.json, data/golf.json, data/cobertura.json (si está) y data/pois.json (más data/copas.json
-y data/plaza-osm.json, dentro de la geometría): un archivo
+data/ruta5.json, data/edificios.json, data/golf.json, data/cobertura.json (si está) y data/pois.json (más data/copas.json,
+data/perfiles.json y data/plaza-osm.json, dentro de la geometría): un archivo
 cada uno, que la página pide con fetch apenas empieza (src/page.html, el marcador /*DATA*/) y el script espera
 (src/js/00-start.js). Con el hash en el nombre se guardan en la caché del navegador sin fecha de vencimiento
 (src/site/_headers): un cambio del código no vuelve a bajar los datos, ni al revés.
@@ -175,6 +175,8 @@ def main(*, where=None):
     # plants them in the yards (blockTrees) and the parks (76-usos.js) inside its boxes
     cp = json.load(open(require(DATA / 'copas.json', 'Ejecute: make copas')))
     geo['copas'] = {'areas': cp['areas'], 'trees': [v for t in cp['trees'] for v in t]}
+    # the street profiles measured in photos (pipeline/perfiles.py): DATA.perfiles, which src/js/12-perfiles.js draws
+    geo['perfiles'] = json.load(open(require(DATA / 'perfiles.json', 'Ejecute: make perfiles')))
     if (DATA / 'cobertura.json').exists():   # la cobertura vegetal de CONAF (pipeline/cobertura.py; sin ella, solo la pendiente)
         files['cob'] = ('cobertura.json', json.load(open(DATA / 'cobertura.json')))
     require(THREE, 'Ejecute: npm install')
