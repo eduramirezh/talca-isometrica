@@ -100,7 +100,10 @@ def main(*, release=None):
     """data/copas.json from the current imagery or, with --release, from a Wayback release."""
     rel = release_of(release); A, T, I = [], [], []
     for a in areas():
-        box = a['caja']; ox, oy, nx, ny, grid, *_ = cells(box, rel); t = crowns(ox, oy, nx, ny, grid)
+        box = a['caja']; ox, oy, nx, ny, grid, *_ = cells(box, rel)
+        # the boxes may overlap (a census block sticks out of the box that holds most of it): a crown in an earlier box is
+        # already there
+        t = [c for c in crowns(ox, oy, nx, ny, grid) if not any(b[0] <= c[0] / 10 <= b[1] and b[2] <= c[1] / 10 <= b[3] for b in A)]
         A.append(box); T += t; I.append(provenance(*box, Z, rel))
         print(f"{a['nombre']}: {len(t)} copas en {(box[1] - box[0]) * (box[3] - box[2]) / 1e4:.0f} ha")
     (DATA / 'copas.json').write_text(json.dumps({'areas': A, 'trees': T, 'imagen': I}, separators=(',', ':')))

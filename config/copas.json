@@ -1,7 +1,8 @@
 {
-"_comentario": "Las cajas (metros de grilla: x0, x1, y0, y1) donde pipeline/copas.py lee de la imagen de Esri las copas de los árboles (data/copas.json), y la página planta esas en los patios y los parques en vez de los de la cuota. Una caja por barrio arbolado que la página dibujaba pelado, construido antes de la imagen (z19: 2015 en la ciudad).",
+"_comentario": "Las cajas (metros de grilla: x0, x1, y0, y1) de los barrios arbolados: pipeline/copas.py lee en ellas de la imagen de Esri las copas de los árboles (data/copas.json), y en las manzanas que caen enteras dentro de ellas la página planta esas copas en los patios y los parques en vez de los de la cuota, los patios toman el pasto de las villas y las calles llevan los muros de los antejardines (villaWalls, 50-city.js). Una manzana del Censo puede asomar fuera de la caja que la contiene casi entera: las cajas se eligen para que cubran enteras las manzanas del barrio (si no, quedan con lo genérico). Un barrio construido antes de la imagen (z19: 2015 en la ciudad). Los techos de sus huellas, con las mismas cajas: edificios.py techos 19 --ml.",
 "areas": [
-{"nombre": "Villa Parque Universitario", "caja": [4150, 4760, -460, -60], "nota": "Casas de los años noventa en patios con árboles grandes, el parque lineal de 3 Norte (w592373757, un bosque en la imagen) y sus dos rotondas; al sur, 2 Norte y la UCM (su hito planta sus árboles)."},
-{"nombre": "Villa Parque Universitario norte", "caja": [4230, 4760, -60, 20], "nota": "Lo mismo hasta 5 Norte; al poniente de 34 Oriente era un loteo en obras en 2015 y queda fuera."}
+{"nombre": "Villa Parque Universitario", "caja": [4065, 4790, -530, -150], "nota": "Casas de un piso en patios con árboles grandes, cerradas a la calle por muros de ladrillo, el parque lineal de 3 Norte (w592373757, un bosque en la imagen) y su rotonda; al sur, 2 Norte y la UCM (su hito planta sus árboles)."},
+{"nombre": "Villa Parque Universitario centro", "caja": [4150, 4790, -150, -60], "nota": "Lo mismo, sin el loteo al poniente de 34 Oriente, en obras en 2015."},
+{"nombre": "Villa Parque Universitario norte", "caja": [4185, 4790, -140, 35], "nota": "Lo mismo hasta 5 Norte, con la rotonda de la Plaza Parque Universitario (juegos y árboles)."}
 ]
 }

@@ -179,6 +179,7 @@ const COPAS=(()=>{const D=DATA.copas;if(!D)return null;const A=D.areas,CT=D.tree
   for(let i=0;i<CT.length;i+=3){const k=Math.floor(CT[i]/10/CS)*4096+Math.floor(CT[i+1]/10/CS);let c=cells.get(k);if(!c)cells.set(k,c=[]);c.push(i);}
   const inA=(x,y)=>A.some(a=>x>=a[0]&&x<=a[1]&&y>=a[2]&&y<=a[3]);
   return {covers:(x0,y0,x1,y1)=>inA(x0,y0)&&inA(x1,y0)&&inA(x0,y1)&&inA(x1,y1),
+    meets:(x0,y0,x1,y1)=>A.some(a=>x1>=a[0]&&x0<=a[1]&&y1>=a[2]&&y0<=a[3]),
     each(x0,y0,x1,y1,f){for(let i=Math.floor(x0/CS);i<=Math.floor(x1/CS);i++)for(let j=Math.floor(y0/CS);j<=Math.floor(y1/CS);j++)
       for(const t of cells.get(i*4096+j)||[]){const x=CT[t]/10,y=CT[t+1]/10;if(x>=x0&&x<=x1&&y>=y0&&y<=y1)f(x,y,CT[t+2]/10);}}};})();
 function blockTrees(bi,TR){const b=blocks[bi];if(isPark(bi)&&ALAM.has(bi))return;
@@ -201,6 +202,37 @@ const FACH=[];
 function fachFront(R,force){const m=[],s=ringArea(R)>0?1:-1;for(let i=0;i<R.length;i++){const a=R[i],b=R[(i+1)%R.length],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<2)continue;
   const nx=(b[1]-a[1])/L*s,ny=-(b[0]-a[0])/L*s,mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;if(i===force||nearStreet(mx+nx*4.5,my+ny*4.5,0))m.push(i);}return m;}
 function fachRec(o){if(KEEP)FACH.push(o);}
+// The front walls of a garden villa (the boxes of config/copas.json, COPAS): its lots close on the street with walls
+// about 2.2 m high at the back of the sidewalk, as the Mapillary photos of the Villa Parque Universitario show them
+// (February 2018): mostly exposed red brick, some rendered cream, some a clipped hedge, each lot with a dark iron gate.
+// Along both sides of street si, at the back of its sidewalk (hw + WALK_OUT), wherever a built block inside the boxes
+// lies behind it; never on another street or its sidewalk, a land use (a park stays open), the Diagonal's median, a
+// landmark or a house that reaches the line (occ 1 and 3: laid before the city, so nothing here depends on the order
+// of the streets), and 1.5 m short of each end of a stretch. Its own rng, so the lots' draws stay the same. On Z (no
+// windows, casts shadow), in the street's run of keys
+const VILLA_WALL={brick:['#9A4E36','#A55A3F','#8E4632'].map(hex),cream:['#E3D8C2','#D9CDB4'].map(hex),hedge:['#3E5B2C','#46632F'].map(hex),gate:hex('#35383A')};
+function villaWalls(Z,si,s,hw){if(!COPAS)return;const P=s.pts,off=hw+WALK_OUT+.2,m0=off+1;
+  if(!COPAS.meets(Math.min(...P.map(p=>p[0]))-m0,Math.min(...P.map(p=>p[1]))-m0,Math.max(...P.map(p=>p[0]))+m0,Math.max(...P.map(p=>p[1]))+m0))return;
+  const r=rng(si*7177+3);
+  const free=(x,y)=>{const bi=blockAt(x,y);if(bi<0||!blocks[bi].built||!COPAS.covers(...blocks[bi].bb))return false;
+    const o=occAt(x,y);if(o===1||o===3||usoAt(x,y)||inMedian(x,y)||!inTerrain(x,y))return false;
+    for(const id of segsAt(x,y)||[]){const g=segs[id];if(g[5]===si)continue;const m=g[4]+WALK_OUT+.8;if(segDist2(x,y,g[0],g[1],g[2],g[3])<m*m)return false;}
+    return true;};
+  for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<6)continue;const tx=(b[0]-a[0])/L,ty=(b[1]-a[1])/L;
+    for(const side of [1,-1]){const nx=-ty*side,ny=tx*side,at=u=>[a[0]+tx*u+nx*off,a[1]+ty*u+ny*off];
+      // the stretches of free line, 0.5 m at a time
+      const runs=[];let s0=null;for(let u=0;u<=L;u+=.5){const ok=free(...at(u))&&free(...at(Math.min(L,u+.25)));if(ok&&s0===null)s0=u;if(!ok&&s0!==null){runs.push([s0,u-.5]);s0=null;}}
+      if(s0!==null)runs.push([s0,L]);
+      for(let [u0,u1] of runs){u0+=1.5;u1-=1.5;
+        while(u1-u0>=2){const lot=Math.min(u1-u0,14+r()*8),q=r(),mat=q<.6?'brick':q<.75?'cream':'hedge',col=pick(r,VILLA_WALL[mat]),h=mat==='hedge'?2.2+r()*.5:2+r()*.4;
+          const g0=lot>=8?u0+1+r()*(lot-5.5):-1,g1=g0+3.5; // the gate: 3.5 m of iron somewhere in a lot of 8 m or more
+          const piece=(p0,p1,top,c)=>{for(let p=p0;p<p1-.01;p+=6){const e=Math.min(p1,p+6),A=at(p),Bq=at(e),w=.2,
+              q4=[[A[0]-nx*w,A[1]-ny*w],[Bq[0]-nx*w,Bq[1]-ny*w],[Bq[0]+nx*w,Bq[1]+ny*w],[A[0]+nx*w,A[1]+ny*w]];
+              Z.dy=groundMin(q4);Z.prism(q4,.3,top,c,shade(c,1.06));}};
+          if(g0<0)piece(u0,u0+lot,h,col);
+          else{piece(u0,g0,h,col);piece(g0,g1,1.9,VILLA_WALL.gate);piece(g1,u0+lot,h,col);}
+          CITY.villaWall=(CITY.villaWall||0)+1;u0+=lot;}}}}
+  Z.dy=0;}
 function cityGen(B,Y,Z,sts,bis){
   const TR=[],PO=[]; // tree instances [x,y,s], poplars
   const cnt=k=>{CITY[k]=(CITY[k]||0)+1;};
@@ -328,6 +360,7 @@ function cityGen(B,Y,Z,sts,bis){
         flush();
       }
     }
+    villaWalls(Z,si,s,hw);
   });
   B.dy=0;Z.dy=0;
   for(const bi of bis)blockTrees(bi,TR);
