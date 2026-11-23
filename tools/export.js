@@ -5,8 +5,8 @@
   const T = THREE, X = window.__export, scene = window.__three.scene;
   // Las capas que puede tener un glb: el nombre de cada grupo de la escena (rest() en 99-boot.js, terrainMesh, la vía,
   // la Ruta 5, el Cerro, los trenes) y lo que cada una es para quien lo lee. Van en el JSON de al lado («capas»): el
-  // juego (juego/main.gd, materiales.gd) las lee de ahí en vez de tener su propia lista. tipo: suelo, edificio (con
-  // ventanas), hito, arbol, auto, o null (sin material propio en el juego: el del glb); solido: con colisión. Una malla
+  // 3D (modelo3d/mapa.gd, materiales.gd) las lee de ahí en vez de tener su propia lista. tipo: suelo, edificio (con
+  // ventanas), hito, arbol, auto, o null (sin material propio en Godot: el del glb); solido: con colisión. Una malla
   // de un grupo que no está aquí hace fallar la exportación (tools/export.py): agréguela.
   const LAYERS = {
     terreno: { tipo: 'suelo', solido: true }, borde: { tipo: null, solido: true }, suelo: { tipo: 'suelo', solido: true },

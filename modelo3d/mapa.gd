@@ -541,7 +541,8 @@ func _mb_medios() -> float:
 	return s
 
 
-# si la colisión bajo el punto (x, y) de grilla ya está (jugador.gd no cae mientras no)
+# si la colisión bajo el punto (x, y) de grilla ya está (ver.gd espera a ella para poner el punto; el juego no deja
+# caer al personaje mientras no)
 func solido(x: float, y: float) -> bool:
 	var k := "%d_%d" % [floori(x / tam), floori(y / tam)]
 	return colision.has(k) or not teselas.has(k)
