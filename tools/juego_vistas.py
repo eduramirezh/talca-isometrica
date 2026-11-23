@@ -18,9 +18,9 @@ un cambio: dónde pararse frente a un edificio, las capturas y una hoja para com
       edificios, triángulos, ms). Sin --vista ni --vistas, las de VISTAS (un tipo de edificio cada una, algunas
       esquinas del centro, dos techos y una de noche: ~8 min); --vistas: un archivo con una vista por línea
       (nombre=argumentos; # comenta)
-  uv run tools/juego_vistas.py hoja shots/hoja.jpg shots/antes shots/despues -- adobe pobl [--ancho 800]
+  uv run tools/juego_vistas.py hoja shots/hoja.jpg shots/antes shots/despues [--ancho 800] -- adobe pobl
       una hoja con las capturas sin la ayuda de arriba: con un directorio, de a dos por fila; con varios, una columna
-      por vista y una fila por directorio (antes sobre después)
+      por vista y una fila por directorio (antes sobre después); lo que va después de -- son nombres de vistas
 
 Así se revisó en noviembre de 2026 la fachada gruesa, los aleros y el repertorio del centro de fachadas_ciudad.gd
 (docs/METODOLOGIA.md §16). Una captura tarda ~17 s con la GPU de NVIDIA en Linux (Xvfb); sin ella, con
@@ -71,8 +71,12 @@ def frente(e, lado_i, dist, lado):
 
 
 def tesela(x, y):
-    """los edificios de las nueve teselas de 500 m alrededor de (x, y)"""
-    i, j = math.floor(x / 500), math.floor(y / 500)
+    """los edificios de las nueve teselas alrededor de (x, y) (de tesela_m de indice.json: 500 m)"""
+    try:
+        tam = json.loads((MAPA / 'indice.json').read_text()).get('tesela_m', 500)
+    except (OSError, ValueError):
+        tam = 500
+    i, j = math.floor(x / tam), math.floor(y / tam)
     out = []
     for di in (-1, 0, 1):
         for dj in (-1, 0, 1):
