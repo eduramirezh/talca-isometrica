@@ -11,7 +11,9 @@ GODOT ?= $(or $(shell command -v godot 2>/dev/null),$(shell command -v godot4 2>
 endif
 PORT ?= 8765
 DRY_RUN ?= 0
-M3D ?= modelo3d                # adónde escribe make modelo3d (mapa/ y datos/); otro proyecto de Godot que use la maqueta pasa el suyo
+# adónde escribe make modelo3d (mapa/ y datos/); otro proyecto de Godot que use la maqueta pasa el suyo. El comentario va
+# arriba: en la misma línea, make deja en el valor los espacios antes del #, y «--teselas $(M3D)/mapa» se parte en dos
+M3D ?= modelo3d
 .PHONY: all fetch osm data elevation ruta5 sentidos edificios edificios-ml golf pois build check golden lint smoke hooks validate diagnostics shots site-assets modelo3d deploy serve clean
 
 all: data elevation edificios golf pois build         ## pipeline completo (requiere raw/: make fetch)
