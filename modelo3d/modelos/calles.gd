@@ -572,15 +572,12 @@ func senales(m: Malla) -> void:
 
 # ---------------------------------------------------------------- autos
 
-# un auto (modelos/entorno/auto.gd): sedán, hatchback, SUV, camioneta o colectivo (sedán negro con letrero), de un
-# color de Auto.COLORES; en un marco con v hacia adelante
+# un vehículo (modelos/entorno/auto.gd) de un tipo y un color al azar, con las proporciones de los que se ven en las
+# calles de Talca (Auto.elegir: config/autos.json); en un marco con v hacia adelante
 func auto(m: Malla, p: Vector2, adelante: Vector2) -> void:
 	var f := Malla.Marco.new(p.x, p.y, atan2(adelante.y, adelante.x), S.E(p.x, p.y) + Plano.ALTO_CALZADA)
-	var tipo: int = [0, 0, 0, 1, 1, 2, 2, 3, 4][rng.randi() % 9]  # sedán, hatchback, SUV, camioneta, colectivo (sedán negro con letrero)
-	var col: Color = Auto.COLORES[rng.randi() % Auto.COLORES.size()]
-	if tipo == Auto.COLECTIVO:
-		col = Auto.NEGRO_COLECTIVO
-	Auto.modelo(m, f, tipo, col, choques)
+	var e := Auto.elegir(rng)
+	Auto.modelo(m, f, e[0], e[1], choques)
 
 
 func autos(m: Malla) -> void:

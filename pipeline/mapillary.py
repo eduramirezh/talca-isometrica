@@ -24,6 +24,11 @@
   uv run --with pillow python mapillary.py postes 320 511 425 511 [--paso 5] [--alto 4] [--radio 60] [--desde 2021]
                        [--n 12] [--ids a,b] [--nombre juegos]   # postes cada 5 m a lo largo de un segmento, dibujados
                                                   # en las panorámicas que lo ven -> diagnostics/fotos/<nombre>/<id>.jpg
+  uv run --with pillow python mapillary.py autos [--n 150] [--desde 2022] [--celda 300] [--semilla 1] [--minimo 56]
+                       [--nombre autos]   # los vehículos de una muestra al azar de fotos de la ciudad, recortados y
+                                                  # numerados en hojas -> diagnostics/autos/<nombre>-NN.jpg y <nombre>.tsv
+  python mapillary.py autos --resumen             # cuántos de cada tipo y color hay en config/autos.json (la muestra
+                                                  # clasificada, que dibujan la página y el 3D)
   python mapillary.py cruce 320 511 425 511 2804659613044828:370 1520358651907062:367.4:3.7   # dónde está lo que esas
                                                   # dos ven en esos postes (con :3.7, la corrección de esa pasada)
   uv run --with pillow python mapillary.py eje avenida-san-miguel-oriente [--paso 40] [--radio 12] [--desde 2022]
@@ -101,6 +106,23 @@ largo del segmento, mueve juntas la cámara y la lectura: la de su pasada contra
 más cercano a todas (mínimos cuadrados), con la distancia de cada recta a él. Dos cámaras de lados casi opuestos se
 cruzan en ángulo agudo y un grado de error corre el punto varios metros a lo largo de ellas: avisa bajo 25°. En los
 juegos de la Alameda, ±2 m a lo largo del bandejón y ±4 m a lo ancho.
+
+autos: qué vehículos andan por Talca, para los autos de la página (parkedCars, la Ruta 5) y del 3D
+(modelo3d/modelos/entorno/auto.gd). De raw/mapillary/imagenes.json (corra antes cobertura) toma las fotos desde --desde
+en el área urbana (a menos de 100 m de un vértice de una manzana del Censo), las agrupa en celdas de --celda m, recorre
+las celdas en un orden al azar (--semilla) y elige una foto al azar de cada una, a lo más tres por pasada, hasta --n
+fotos: así la muestra cubre la ciudad entera y no las calles donde un auto pasó muchas veces. De cada foto pide a la
+API sus detecciones (la segmentación de Mapillary; caché en raw/mapillary/detecciones/<id>.json): los autos, camiones,
+buses, casas rodantes, carros y «otros vehículos» (no las motos) de al menos --minimo píxeles de alto y de ancho en la
+miniatura de 2048 (en una panorámica, el 60 %), sin el capó del auto que tomó la foto (ancho y en el borde de abajo).
+Los recorta con un margen y los numera, de a 30 por hoja, en diagnostics/autos/<nombre>-NN.jpg, con su clase de
+Mapillary cuando no es «auto», y escribe de dónde sale cada uno en <nombre>.tsv. Se clasifican a ojo (tipo, color,
+nota) en config/autos.json («vehiculos»: n, tipo, color, nota, foto, fecha), con los tipos de «tipos» (los de auto.gd;
+lo que el mapa no dibuja, como bus, minibus u otro, también se anota) y «no» cuando el recorte no deja ver qué es o
+repite un vehículo de la misma foto. Así se hizo en noviembre de 2026 (--n 450 --celda 200: 422 recortes de 157
+fotos, leídos por tres subagentes). La segmentación rara vez toma otra cosa por un vehículo, pero su clase falla
+seguido (un furgón o un tracto como bus): la que vale es la de config/autos.json. Una muestra de la calle mezcla autos
+estacionados y en marcha, y las fotos son de pasadas de 2022 a 2026, casi todas de día.
 
 Licencia: las fotos son CC BY-SA 4.0 («© <autor>, Mapillary, CC BY-SA 4.0»). Se bajan para mirarlas al modelar
 (diagnostics/, fuera de git), como las de Commons; los términos de Mapillary piden su logo y un enlace si se publican.
@@ -969,6 +991,121 @@ def cmd_eje(clave: str, *, paso: float = 40, radio: float = 12, desde: int = 202
                                     + '\n'.join(rows) + '\n')
     print(f'{len(rows)} fotos -> {out.relative_to(ROOT)}/ (indice.txt)')
 
+# ---- autos: what drives around Talca -------------------------------------------------------------------------------
+
+VEHICULOS = {'object--vehicle--car': 'auto', 'object--vehicle--truck': 'camion', 'object--vehicle--bus': 'bus',
+             'object--vehicle--caravan': 'casa rodante', 'object--vehicle--other-vehicle': 'otro',
+             'object--vehicle--motorcycle': 'moto', 'object--vehicle--trailer': 'carro'}
+DETS = OUT / 'detecciones'           # the vehicle detections of each image asked for, <id>.json
+
+def urban_cells(c=100):
+    """The c-m cells of the grid with a vertex of a census block (data/geometry.json): the city and its villages."""
+    out = set()
+    for b in json.load(open(DATA / 'geometry.json'))['blocks']:
+        for x, y in dec(b[3]): out.add((math.floor(x / c), math.floor(y / c)))
+    return out
+
+def detections(iid, tok):
+    """The vehicles Mapillary's segmentation found in an image: [(class, x0, y0, x1, y1)] with the box in fractions
+    of the image (y downwards), from raw/mapillary/detecciones/<id>.json or the API."""
+    import base64
+    f = DETS / f'{iid}.json'
+    if f.exists(): return [tuple(v) for v in json.load(open(f))]
+    out = []
+    for d in graph(f'{iid}/detections', {'fields': 'value,geometry'}, tok).get('data', []):
+        if d.get('value') not in VEHICULOS or not d.get('geometry'): continue
+        for ext, feats in mvt(base64.b64decode(d['geometry'])).values():
+            pts = [p for _, _, parts in feats for part in parts for p in part]
+            if pts:
+                xs, ys = [p[0] / ext for p in pts], [p[1] / ext for p in pts]
+                out.append((VEHICULOS[d['value']], round(min(xs), 4), round(min(ys), 4), round(max(xs), 4), round(max(ys), 4)))
+    f.parent.mkdir(parents=True, exist_ok=True)
+    tmp = f.with_suffix(f'.{os.getpid()}.tmp'); tmp.write_text(json.dumps(out)); os.replace(tmp, f)
+    return out
+
+def cmd_autos(*, n: int = 150, desde: int = 2022, celda: float = 300, semilla: int = 1, minimo: int = 56,
+              por_hoja: int = 30, nombre: str = 'autos', resumen=False):
+    """A random sample of the vehicles in the streets: n photos from `desde` on in the urban area, one per celda-m cell
+    (the cells in random order, a random photo in each, at most 3 per sequence), and in each the vehicles that
+    Mapillary's segmentation found, at least `minimo` px tall in the 2048-px thumbnail, cut out and numbered in sheets."""
+    if resumen: return autos_resumen()
+    import random
+    from PIL import Image, ImageDraw, ImageFont
+    tok = token()
+    D = json.load(open(OUT / 'imagenes.json'))
+    t0 = time.mktime((desde, 1, 1, 0, 0, 0, 0, 0, 0)) * 1000
+    urb = urban_cells()
+    cells = {}
+    for im in D['imagenes']:
+        if im[3] < t0 or (math.floor(im[1] / 100), math.floor(im[2] / 100)) not in urb: continue
+        cells.setdefault((math.floor(im[1] / celda), math.floor(im[2] / celda)), []).append(im)
+    R = random.Random(semilla)
+    order = sorted(cells); R.shuffle(order)
+    print(f'{sum(len(v) for v in cells.values())} fotos desde {desde} en el área urbana, en {len(cells)} celdas de {celda:g} m')
+    per_seq, picked = {}, []
+    for c in order:
+        ims = [im for im in cells[c] if per_seq.get(im[6], 0) < 3]
+        if not ims: continue
+        im = R.choice(ims); per_seq[im[6]] = per_seq.get(im[6], 0) + 1; picked.append(im)
+        if len(picked) == n: break
+    out = ROOT / 'diagnostics' / 'autos'; out.mkdir(parents=True, exist_ok=True)
+    CW, CH = 300, 230
+    try: font, small = ImageFont.load_default(size=26), ImageFont.load_default(size=14)
+    except TypeError: font = small = ImageFont.load_default()
+    crops, rows, nfotos = [], [], 0
+    for im in picked:
+        dets = [d for d in detections(im[0], tok) if d[0] != 'moto']
+        when = time.strftime('%Y-%m-%d', time.gmtime(im[3] / 1000))
+        if not dets: continue
+        f = photo(im[0], tok)
+        if not f: continue
+        img = Image.open(f).convert('RGB'); W, H = img.size; usadas = 0
+        for cl, x0, y0, x1, y1 in dets:
+            bw, bh = (x1 - x0) * W, (y1 - y0) * H
+            # in a panorama's thumbnail (2048 × 1024) a car at the same distance is about half as big
+            mn = minimo * W / 2048 * (.6 if im[5] else 1)
+            if bh < mn or bw < mn: continue
+            # the capture car's own hood or roof: wide and on the bottom edge (a panorama's, or a camera on the dash)
+            if y1 > (.9 if im[5] else .97) and x1 - x0 > (.15 if im[5] else .5): continue
+            m = .12 * max(bw, bh)
+            box = (int(max(0, x0 * W - m)), int(max(0, y0 * H - m)), int(min(W, x1 * W + m)), int(min(H, y1 * H + m)))
+            crops.append((img.crop(box), cl)); usadas += 1
+            rows.append(f'{len(crops)}\t{cl}\t{im[0]}\t{when}\t{im[1]:g},{im[2]:g}\t{int(bw)}x{int(bh)}\thttps://www.mapillary.com/app/?pKey={im[0]}')
+        nfotos += usadas > 0
+        print(f'{im[0]} {when} ({im[1]:g}, {im[2]:g}): {len(dets)} vehículos, {usadas} de tamaño para mirar', flush=True)
+    cols = 6
+    for s in range(0, len(crops), por_hoja):
+        part = crops[s:s + por_hoja]; nr = (len(part) + cols - 1) // cols
+        sheet = Image.new('RGB', (CW * cols, CH * nr), (30, 30, 30)); d = ImageDraw.Draw(sheet)
+        for j, (cr, cl) in enumerate(part):
+            x, y = (j % cols) * CW, (j // cols) * CH
+            sc = min((CW - 6) / cr.width, (CH - 6) / cr.height); c2 = cr.resize((max(1, int(cr.width * sc)), max(1, int(cr.height * sc))))
+            sheet.paste(c2, (x + (CW - c2.width) // 2, y + (CH - c2.height) // 2))
+            d.rectangle((x, y, x + 62, y + 32), fill=(0, 0, 0)); d.text((x + 4, y + 2), str(s + j + 1), fill=(255, 230, 0), font=font)
+            if cl != 'auto': d.text((x + 4, y + 34), cl, fill=(255, 255, 255), font=small)
+            d.rectangle((x, y, x + CW - 1, y + CH - 1), outline=(90, 90, 90))
+        fn = out / f'{nombre}-{s // por_hoja + 1:02d}.jpg'; sheet.save(fn, quality=90); print(fn.relative_to(ROOT), sheet.size)
+    (out / f'{nombre}.tsv').write_text('n\tclase\tfoto\tfecha\tx,y\tcaja px\tenlace\n' + ''.join(r + '\n' for r in rows))
+    print(f'{len(crops)} vehículos de {nfotos} fotos (de {len(picked)} elegidas); fuentes en diagnostics/autos/{nombre}.tsv '
+          '(© <autor>, Mapillary, CC BY-SA 4.0)')
+
+def autos_resumen():
+    """The shares of config/autos.json: of each type (the ones the map draws, and the rest) and of each colour in each
+    palette, as build.py autos() counts them."""
+    A = json.load(open(CONFIG / 'autos.json'))
+    V, T = A['vehiculos'], A['tipos']
+    ok = [v for v in V if v[1] != 'no']
+    print(f'{len(V)} recortes: {len(ok)} vehículos y {len(V) - len(ok)} descartados (borrosos, tapados, repetidos o no son vehículos)')
+    def share(rows, key):
+        c = {}
+        for v in rows: c[key(v)] = c.get(key(v), 0) + 1
+        for k, m in sorted(c.items(), key=lambda kv: -kv[1]): print(f'  {k or "-":<28} {m:4d}  {100 * m / len(rows):5.1f} %')
+    print('tipo:'); share(ok, lambda v: v[1] if any(t['id'] == v[1] for t in T) else v[1] + ' (no se dibuja)')
+    for p in dict.fromkeys(t['paleta'] for t in T if 'paleta' in t):
+        ids = [t['id'] for t in T if t.get('paleta') == p]
+        rows = [v for v in ok if v[1] in ids and v[2] in A['colores']]
+        print(f'colores de «{p}» ({", ".join(ids)}: {len(rows)}):'); share(rows, lambda v: v[2])
+
 if __name__ == '__main__':
     cli.run({'clave': cmd_clave, 'cobertura': cmd_cobertura, 'lugares': cmd_lugares, 'fachada': cmd_fachada, 'punto': cmd_punto,
-             'mirar': cmd_mirar, 'postes': cmd_postes, 'cruce': cmd_cruce, 'eje': cmd_eje}, __doc__)
+             'mirar': cmd_mirar, 'postes': cmd_postes, 'cruce': cmd_cruce, 'eje': cmd_eje, 'autos': cmd_autos}, __doc__)

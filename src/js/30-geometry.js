@@ -170,10 +170,11 @@ const setStrips=on=>{stripsOn=on!==false;dirty=true;}; // window.__strips
 // tree at the grid origin), so the 215 thousand trees were drawn whole in every pass. Each tile's geometry shares
 // geo's attributes and carries a bounding sphere around its own instances, and culling is turned back on. With far, a
 // cheaper geometry for when the instances are a few pixels wide: each tile keeps both (userData.lod) and goes to LODS,
-// which setLod() switches.
+// which setLod() switches. With tag, a number per instance (tag(item), 0–255) in the tile's userData.tag, in the order
+// of its instances: the cars' type, which tools/export.js writes for the 3D (modelo3d/autos.gd).
 const LODS=[];
 const instTiled=(...a)=>drain(instTiledGen(...a));
-function* instTiledGen(geo,mat,list,set,far){
+function* instTiledGen(geo,mat,list,set,far,tag){
   const n=list.length,M=new Float32Array(n*16),Cl=new Float32Array(n*3),key=new Int32Array(n),m=new T.Matrix4(),col=new T.Color(),by=new Map();
   for(let i=0;i<n;i++){set(list[i],m,col);m.toArray(M,i*16);col.toArray(Cl,i*3);const e=m.elements;
     key[i]=(Math.floor(e[12]/TILE)+TILE_N)*2*TILE_N+Math.floor(e[14]/TILE)+TILE_N;if(!by.has(key[i]))by.set(key[i],[]);by.get(key[i]).push(i);if(i%8192===8191)yield;}
@@ -185,6 +186,7 @@ function* instTiledGen(geo,mat,list,set,far){
       box.expandByPoint(v.set(e[12],e[13],e[14]));sc=Math.max(sc,Math.hypot(e[0],e[1],e[2]),Math.hypot(e[4],e[5],e[6]),Math.hypot(e[8],e[9],e[10]));});
     mesh.instanceColor=new T.InstancedBufferAttribute(IC,3);g.boundingSphere=box.getBoundingSphere(new T.Sphere());g.boundingSphere.radius+=r0*sc;
     mesh.frustumCulled=true;mesh.instanceMatrix.onUpload(dropArray);mesh.instanceColor.onUpload(dropArray);grp.add(mesh);
+    if(tag)mesh.userData.tag=Uint8Array.from(ids,i=>tag(list[i]));
     if(far){const f=share(far);f.boundingSphere=g.boundingSphere;mesh.userData.lod=[g,f];LODS.push(mesh);}yield;}
   return grp;}
 // drape(src): src holds flat ground layers (y = small layer offset). Each triangle is cut along the terrain mesh's

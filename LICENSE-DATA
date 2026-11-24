@@ -1,7 +1,8 @@
 Talca Isométrica: licencias de los datos y los textos
 =====================================================
 
-El código y los modelos de los hitos hechos a mano están bajo la licencia MIT (LICENSE).
+El código y los modelos hechos a mano están bajo la Licencia de Talca Isométrica
+(LICENSE): uso privado libre; publicar algo hecho con ellos requiere permiso.
 Este archivo cubre lo que no es código.
 
 1. Bases de datos derivadas de OpenStreetMap: ODbL 1.0
@@ -31,8 +32,9 @@ Los archivos siguientes contienen datos derivados de OpenStreetMap
 - lo que exporta tools/export.py (los glb y STL, y las teselas, los datos por
   tesela e indice.json que `make modelo3d` escribe en modelo3d/mapa/, con
   modelo3d/datos/plano.json): la maqueta en 3D, hecha con todos los datos de
-  arriba y con los del punto 3 y el 4 (sus atribuciones van con ella). El código de
-  modelo3d/ (los modelos de cerca, en GDScript) es MIT, como el resto del código.
+  arriba y con los de los puntos 3, 4 y 5 (sus atribuciones van con ella). El
+  código de modelo3d/ (el visor y los modelos de cerca, en GDScript) no es parte
+  de estas bases de datos: está bajo LICENSE, como el resto del código.
 
 Estas bases de datos derivadas se ponen a disposición bajo la Open Database
 License 1.0 (ODbL): https://opendatacommons.org/licenses/odbl/1-0/
@@ -47,7 +49,7 @@ OpenStreetMap y compartirla bajo la misma licencia. Una obra producida con ellas
 Los textos de las fichas de los lugares (descripción, dato e instituciones en
 pipeline/pois.py, data/pois.json y data/pois.csv) y la
 documentación de docs/ son obra de Edu Ramírez, © 2026, y no están bajo la
-licencia MIT ni la ODbL. Se pueden citar con atribución y enlace al proyecto;
+licencia del código (LICENSE) ni la ODbL. Se pueden citar con atribución y enlace al proyecto;
 para reproducirlos de otra forma, pida permiso abriendo un issue en
 https://github.com/eduramirezh/talca-isometrica/issues.
 
@@ -56,7 +58,7 @@ https://github.com/eduramirezh/talca-isometrica/issues.
 
 - Manzanas: Censo de Población y Vivienda 2017, Instituto Nacional de
   Estadísticas de Chile (datos públicos; citar la fuente).
-- Elevación (data/elevation.json): Copernicus DEM GLO-30; ver el punto 4.
+- Elevación (data/elevation.json): Copernicus DEM GLO-30; ver el punto 5.
 - Imagen satelital: las teselas de Esri World Imagery que baja
   pipeline/satellite.py se usan solo para revisar a mano; nada de ellas se
   redistribuye (ni las teselas ni imágenes hechas con ellas están en el
@@ -87,7 +89,7 @@ publicada bajo Creative Commons Atribución-CompartirIgual 4.0
 adaptación y se comparte con la misma licencia; la página del mapa, que las
 dibuja, lleva la atribución en la pestaña «Acerca».
 
-4. Relieve: Copernicus DEM GLO-30
+5. Relieve: Copernicus DEM GLO-30
 ---------------------------------
 
 data/elevation.json (el relieve de la maqueta) se obtuvo del Copernicus DEM

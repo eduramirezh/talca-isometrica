@@ -133,8 +133,9 @@
   // Los autos (tipo auto en LAYERS: autos, autos-ruta5; modelo3d/autos.gd) llevan un décimo número: la inclinación en
   // torno a su eje transversal (radianes, la trompa hacia arriba si es positiva; carsMesh de 60-streets.js gira con
   // el Euler YZX: el giro y luego la pendiente). Su escala horizontal es la del largo (× 4,5 m: el auto de carGeo) y
-  // la vertical, la del alto (1, un furgón 1,3, un camión de la Ruta 5 2,1). __exInstN(capa): los números de cada una.
-  const INST_N = cat => LAYERS[cat] && LAYERS[cat].tipo === 'auto' ? 10 : 9;
+  // la vertical, la del alto (la de su tipo en config/autos.json). Y un undécimo: su tipo, el índice en «tipos» de
+  // config/autos.json (userData.tag de la tesela: instTiledGen). __exInstN(capa): los números de cada una.
+  const INST_N = cat => LAYERS[cat] && LAYERS[cat].tipo === 'auto' ? 11 : 9;
   window.__exInstN = INST_N;
   window.__exInst = (box, cats) => {
     const [x0, y0, x1, y1] = box, want = new Set(cats), out = {}, m = new T.Matrix4(), mi = new T.Matrix4(), sph = new T.Sphere();
@@ -143,14 +144,14 @@
       if (!want.has(cat) || !obj.isInstancedMesh || !obj.instanceMatrix.array) continue;
       if (geo.boundingSphere) { sph.copy(geo.boundingSphere).applyMatrix4(obj.matrixWorld); const c = sph.center, r = sph.radius;
         if (c.x + r < x0 || c.x - r > x1 || -c.z + r < y0 || -c.z - r > y1) continue; }
-      const A = out[cat] || (out[cat] = []), IC = obj.instanceColor && obj.instanceColor.array;
+      const A = out[cat] || (out[cat] = []), IC = obj.instanceColor && obj.instanceColor.array, TG = obj.userData.tag;
       for (let i = 0; i < obj.count; i++) {
         mi.fromArray(obj.instanceMatrix.array, i * 16); m.multiplyMatrices(obj.matrixWorld, mi);
         const e = m.elements; if (e[12] < x0 || e[12] >= x1 || -e[14] < y0 || -e[14] >= y1) continue;
         const sh = Math.hypot(e[0], e[1], e[2]);
         A.push(r2(e[12]), r2(-e[14]), r2(e[13]), r3(sh), r3(Math.hypot(e[4], e[5], e[6])), r3(Math.atan2(-e[2], e[0])),
           ...(IC ? [r3(IC[i * 3]), r3(IC[i * 3 + 1]), r3(IC[i * 3 + 2])] : [1, 1, 1]));
-        if (INST_N(cat) === 10) A.push(r3(Math.asin(Math.max(-1, Math.min(1, e[1] / (sh || 1))))));
+        if (INST_N(cat) === 11) A.push(r3(Math.asin(Math.max(-1, Math.min(1, e[1] / (sh || 1))))), TG ? TG[i] : 0);
       }
     }
     return out;

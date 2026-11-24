@@ -85,6 +85,7 @@ config/
   edificios.json         dónde se dibujan los edificios reales de OpenStreetMap en vez de los generados o junto a ellos (áreas, umbrales de cobertura, correcciones)
   techos.json            la familia del techo (teja, óxido, zinc, claro…) de cada edificio de OSM, clasificada con la imagen satelital (y, en "ml", de las huellas de aprendizaje automático de unas cajas: techos --ml)
   copas.json             las cajas de los barrios arbolados donde pipeline/copas.py lee las copas de los árboles de la imagen satelital
+  autos.json             los vehículos de 157 fotos de Mapillary de la ciudad, clasificados por tipo y color: cuántos autos de cada tipo y color dibujan la página y el 3D
   perfiles.json          la sección de las avenidas medidas en fotos (la Avenida Las Rastras): pistas, bandejón, ciclovías, soleras, veredas, postes, paraderos e hileras de árboles a lo largo de su eje
 pipeline/
   common.py              rutas, proyección (origen en la Plaza de Armas, grilla girada 5°) y el límite de la comuna (OSM)
@@ -115,7 +116,7 @@ pipeline/
   rutas.py               los nombres de las rutas del mapa contra los roles de la Red Vial del MOP
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos (Commons por nombre, ubicación o
                          categoría; Panoramax; Mapillary y Flickr con clave)
-  mapillary.py           Mapillary: la clave, las fotos de la comuna (teselas vectoriales), qué lugares tienen fotos que los miran
+  mapillary.py           Mapillary: la clave, las fotos de la comuna (teselas vectoriales), qué lugares tienen fotos que los miran, una muestra de los vehículos de la ciudad (autos)
                          y lo que dejan ver de un punto las panorámicas lejanas (mirar);
                          la búsqueda y la elección (una por pasada, de frente) que usa landmark.py photos --mapillary;
                          una foto por tramo y sentido a lo largo del eje de un perfil (eje);
@@ -170,7 +171,8 @@ modelo3d/ver.gd          el visor: una cámara que orbita (arrastrar gira, rueda
 modelo3d/mundo.gd        el mundo, sobre el nodo que lo extiende: las teselas, el cielo, los modelos de cerca y sus recortes, la captura (--png); la base de ver.gd y de cualquier proyecto que use la maqueta
 modelo3d/mapa.gd, arboleda.gd   las teselas alrededor de la cámara (en hilos, con los edificios solos hasta 3 km, lo de lejos y la colisión cercana; cuantizado.gd: el formato liviano) y los árboles de la página como los de la plaza; recorte.gd: los recortes de los modelos sobre cada tesela; pasos.gd: los pasos bajo la Ruta 5 en la colisión
 modelo3d/ambiente.gd     el cielo, el sol y la luna de Talca a cualquier hora y día, las nubes, la niebla, la noche y el posproceso (--hora, --dia, --reloj, --calidad, --sin)
-modelo3d/autos.gd, faroles.gd   los autos de la página como los de calles.gd (modelos/entorno/auto.gd) de cerca, y los faroles de las calles de noche: postes, brillo y las luces más cercanas
+modelo3d/autos.gd, faroles.gd   los autos de la página, de cerca con el modelo de su tipo (modelos/entorno/auto.gd: sedán, hatchback, SUV, camionetas de cabina doble y simple, colectivo, furgones, camión liviano y camión, en las proporciones y colores de config/autos.json), y los faroles de las calles de noche: postes, brillo y las luces más cercanas
+modelo3d/vitrina.gd      los vehículos de auto.gd en fila, para revisarlos sin exportar el mapa (tools/godot_oculto.sh --path modelo3d -s res://vitrina.gd -- --png x.png)
 modelo3d/fachadas_ciudad.gd   las fachadas de cerca de los edificios de toda la comuna, por tipo (casa antigua, población, pareada, block…), de modelo3d/mapa/f_<i>_<j>.json (tools/export.py --fachadas): a la calle, un muro grueso con los vanos hundidos y el repertorio de las fachadas medidas alrededor de la plaza; aleros en los techos inclinados
 modelo3d/letreros.gd     los letreros con el nombre de las calles en los cruces de la comuna (tools/export.py --letreros): poste, placas con la numeración de la cuadra y la flecha del sentido; el texto, en los más cercanos
 modelo3d/modelos/plaza.gd   la Plaza de Armas en detalle (árboles, quiosco, piletas, faroles, escaños; plaza/: árboles, piezas y texturas en código); calles.gd, catedral.gd y fachadas.gd: sus calles, la Catedral y los edificios de alrededor
@@ -192,7 +194,7 @@ docs/                    metodología, fuentes, investigación de proyectos simi
 
 ¿Un lugar mal ubicado, una dirección vieja, un dato que no calza? Use «Reportar un error en este lugar» en su ficha, que abre un [issue en GitHub](https://github.com/eduramirezh/talca-isometrica/issues) con el lugar ya escrito, o abra uno a mano con el lugar (su nombre o el `#id` de su enlace), qué está mal y una fuente: una página oficial, una foto fechada o el objeto de OpenStreetMap. Las correcciones de OSM conviene hacerlas también en [OpenStreetMap](https://www.openstreetmap.org), de donde salen calles, ríos y plantas.
 
-Los cambios de código o de datos se reciben como pull request en GitHub. Antes de enviarlo: `make hooks` una vez (deja `make check` antes de cada commit) y, si el cambio se ve, una captura con `tools/screenshot.py`. Los lugares van en `pipeline/pois.py` con fuente y confianza honesta, y los textos en español de Chile; las convenciones y las trampas conocidas están en [CLAUDE.md](CLAUDE.md) y [docs/METODOLOGIA.md](docs/METODOLOGIA.md).
+Los cambios de código o de datos se reciben como pull request en GitHub. Antes de enviarlo: `make hooks` una vez (deja `make check` antes de cada commit) y, si el cambio se ve, una captura con `tools/screenshot.py`. Los lugares van en `pipeline/pois.py` con fuente y confianza honesta, y los textos en español de Chile; las convenciones y las trampas conocidas están en [CLAUDE.md](CLAUDE.md) y [docs/METODOLOGIA.md](docs/METODOLOGIA.md). Quien envía un cambio autoriza a publicarlo como parte del proyecto, bajo su licencia ([LICENSE](LICENSE), cláusula 6).
 
 ## Documentación
 
@@ -211,8 +213,8 @@ Los cambios de código o de datos se reciben como pull request en GitHub. Antes 
 
 ## Licencia
 
-- **Código y modelos de los hitos** (`pipeline/`, `tools/`, `src/`, incluidos los hitos hechos a mano de `src/js/hitos/`): licencia MIT, en [LICENSE](LICENSE).
-- **Datos derivados de OpenStreetMap** (`data/geometry.json`, `data/ruta5.json`, `data/sentidos.json`, `data/edificios.json` y las partes de OSM de `config/trazados.json`, `config/usos.json` y las coordenadas de los lugares): ODbL 1.0, © colaboradores de OpenStreetMap, en [LICENSE-DATA](LICENSE-DATA). Toda publicación debe mantener la atribución (está en la pestaña «Acerca»).
+- **Código y modelos hechos a mano** (`pipeline/`, `tools/`, `src/`, `modelo3d/`, incluidos los hitos de `src/js/hitos/` y los modelos de cerca de `modelo3d/modelos/`): la Licencia de Talca Isométrica, en [LICENSE](LICENSE). Se puede bajar, correr, estudiar y cambiar para uso privado (una persona con su familia y sus conocidos, o una organización puertas adentro), gratis y sin avisar. Publicar algo hecho con ellos (otro sitio, un juego, la maqueta de otra ciudad, un impreso) requiere permiso: pídalo con un [issue](https://github.com/eduramirezh/talca-isometrica/issues) o a hola@eduramirez.com, diciendo qué quiere hacer y dónde. Mostrarla en una clase, enlazarla y publicar capturas o videos cortos con atribución no lo requieren. Las versiones anteriores a noviembre de 2026 se publicaron con la licencia MIT y siguen bajo ella para quien las tenga.
+- **Datos derivados de OpenStreetMap** (`data/geometry.json`, `data/ruta5.json`, `data/sentidos.json`, `data/edificios.json` y las partes de OSM de `config/trazados.json`, `config/usos.json` y las coordenadas de los lugares): ODbL 1.0, © colaboradores de OpenStreetMap, en [LICENSE-DATA](LICENSE-DATA). Toda publicación debe mantener la atribución (está en la pestaña «Acerca»). La maqueta en 3D exportada (`modelo3d/mapa/`, `modelo3d/datos/`) es parte de estos datos.
 - **Textos de las fichas y de `docs/`:** obra propia de Edu Ramírez; se pueden citar con atribución (ver [LICENSE-DATA](LICENSE-DATA)).
 - **Huellas de edificios de aprendizaje automático** (en `data/edificios.json`): Microsoft y Google vía Overture Maps Foundation, ODbL 1.0; alturas de Google Open Buildings 2.5D Temporal (elegida bajo ODbL; contiene datos modificados de Copernicus Sentinel-2). Ver [LICENSE-DATA](LICENSE-DATA).
 - **Manzanas:** Censo de Población y Vivienda 2017, Instituto Nacional de Estadísticas de Chile; las construidas desde 2017 (`config/usos-censo2024.json`), del Censo 2024 del INE, bajo CC BY-SA 4.0.

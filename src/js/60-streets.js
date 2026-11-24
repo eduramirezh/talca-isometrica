@@ -139,7 +139,11 @@ function streetTrees(ws){const out=[]; // the trees along the sidewalks of ws (a
 // the rail's crossings, landmarks), on the Alameda's park or the Diagonal's median; on carriageways narrower than 7 m,
 // on one side only. Their own rng, so the city stays as it was. One InstancedMesh (carGeo), coloured per instance.
 const ZEB=[]; // the crosswalks (crossings()): [x, y of the centre, tx, ty along the street, cw half the carriageway]
-const CAR_COLS=[[.93,.93,.91,30],[.72,.74,.76,22],[.45,.47,.49,18],[.13,.13,.14,14],[.68,.13,.11,8],[.16,.23,.43,8]]; // white, silver, grey, black, red, dark blue; % of cars
+// The vehicle types (config/autos.json -> DATA.autos, build.py autos()), in the order of the constants of
+// modelo3d/modelos/entorno/auto.gd: n, how many of a sample of 379 vehicles in Mapillary photos of the city (2022-2026)
+// are of that type (r5: the share on the Ruta 5), l its length in m, h its height (x carGeo's) and c its colours
+// [r, g, b, count]. A car's type goes with it to the 3D (car[10], instTiledGen's tag; tools/export.js).
+const CAR_T=DATA.autos,CAR_TRUCK=CAR_T.findIndex(t=>t.id==='camion');
 let ZEB_G=null; // the crosswalks by 50 m cell, made on the first call (ZEB is complete after walkBase)
 function parkedCars(ws){const t0=performance.now(),out=[],ZC=50;
   if(!ZEB_G){ZEB_G=new Map();for(const z of ZEB){const k=Math.floor(z[0]/ZC)+','+Math.floor(z[1]/ZC);(ZEB_G.get(k)||ZEB_G.set(k,[]).get(k)).push(z);}}const zg=ZEB_G;
@@ -158,11 +162,11 @@ function parkedCars(ws){const t0=performance.now(),out=[],ZC=50;
     for(let k=0;k<n;k++){on=r()<(on?a:b);if(!on)continue;
       const u=u0+k*g+(r()-.5)*.5,i=path.seg(u),acc=path.S[i];
       const A=P[i],B=P[i+1],l=Math.hypot(B[0]-A[0],B[1]-A[1])||1,tx=(B[0]-A[0])/l,ty=(B[1]-A[1])/l,nx=-ty*w.side,ny=tx*w.side,v=u-acc,off=cw-.95;
-      const x=A[0]+tx*v+nx*off,y=A[1]+ty*v+ny*off,van=r()<.07,len=(van?4.9:4.1+r()*.6)/4.5;
+      const x=A[0]+tx*v+nx*off,y=A[1]+ty*v+ny*off,ti=wpick(r,CAR_T,t=>t.n),T_=CAR_T[ti],len=T_.l/4.5;
       const q=rotRect(x,y,4.5*len,1.8,Math.atan2(ty,tx));
       if(q.some(c=>occAt(c[0],c[1])===1||inMedian(c[0],c[1]))||onZebra(x,y))continue;
-      const col=CAR_COLS[wpick(r,CAR_COLS,c=>c[3])];
-      const car=[x,y,-tx*w.side,-ty*w.side,len,van?1.3:1,col,r()];if(!q.some(c=>inClear(c[0],c[1])))out.push(car);}}
+      const col=T_.c[wpick(r,T_.c,c=>c[3])];
+      const car=[x,y,-tx*w.side,-ty*w.side,len,T_.h,col,r(),undefined,undefined,ti];if(!q.some(c=>inClear(c[0],c[1])))out.push(car);}}
   STREET.cars=(STREET.cars||0)+out.length;STREET.carMs=(STREET.carMs||0)+Math.round(performance.now()-t0);return out;}
 // a car, 4.5 x 1.8 m, in local x (forward), y (up), z: a body 0.8 m tall, and over it the cabin, its windows a band of
 // one art pixel (0.5 m) in a dark tone and its roof in the body's colour (instanceColor multiplies the vertex colour)
@@ -174,12 +178,12 @@ function carGeo(){const P=[],N=[],C=[],I=[],W=[1,1,1],G=[.2,.23,.28];
   box(-2.25,2.25,0,.8,-.9,.9,W,W);box(-1.35,.85,.8,1.3,-.74,.74,G,W);
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(P,3));g.setAttribute('normal',new T.Float32BufferAttribute(N,3));
   g.setAttribute('color',new T.Float32BufferAttribute(C,3));g.setIndex(I);return g;}
-// carsMesh(list): cars [x, y, dx, dy (heading), length (x 4.5 m), height (x 1), colour, k (its shade), h, pitch]
+// carsMesh(list): cars [x, y, dx, dy (heading), length (x 4.5 m), height (x 1), colour, k (its shade), h, pitch, type]
 // instanced by tile; without h and pitch a car stands on the ground (E at its front and back), with them at that
 // height (the Ruta 5's, on its decks). instCars: the parked cars, in the commune only
 function carsMesh(list){const q=new T.Quaternion(),e=new T.Euler(0,0,0,'YZX'),s=new T.Vector3(),p=new T.Vector3();
   return instTiled(carGeo(),new T.MeshLambertMaterial({vertexColors:true}),list,([x,y,dx,dy,len,hs,c,k,h,sl],m,col)=>{
     if(h===undefined){const hl=2.25*len,f=E(x+dx*hl,y+dy*hl),b=E(x-dx*hl,y-dy*hl);sl=Math.atan2(f-b,2*hl);h=(f+b)/2+.13;}
     e.set(0,Math.atan2(dy,dx),sl);q.setFromEuler(e);s.set(len,hs,1);p.set(x,h,-y);m.compose(p,q,s);
-    const v=.96+k*.08;col.setRGB(c[0]*v,c[1]*v,c[2]*v);});}
+    const v=.96+k*.08;col.setRGB(c[0]*v,c[1]*v,c[2]*v);},undefined,c=>c[10]||0);}
 const instCars=list=>carsMesh(list.filter(c=>inTerrain(c[0],c[1])));

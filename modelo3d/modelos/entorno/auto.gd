@@ -13,9 +13,17 @@
 # los espejos. Las medidas son las de antes (CUERPOS, ANCHO, RUEDA_*: las de la página y de la colisión); las formas,
 # de autos comunes en Chile en 2015–2025, a ojo: el sedán como un Chevrolet Sail o un Nissan Versa, el hatchback un
 # Suzuki Swift o un Kia Morning, el SUV un Hyundai Tucson, la camioneta una doble cabina (Hilux, L200) con la caja
-# abierta, el furgón un Hyundai H-1 con ventanas hasta atrás, y el camión de reparto (un Mercedes Atego o un Hyundai
-# HD) con cabina chata, deflector y furgón de carga. El colectivo es el sedán negro con el letrero amarillo atravesado
-# en el techo, con su número en negro adelante y atrás.
+# abierta, y el camión de reparto (un Mercedes Atego o un Hyundai HD) con cabina chata, deflector y furgón de carga. El
+# colectivo es el sedán negro con el letrero amarillo atravesado en el techo, con su número en negro adelante y atrás.
+#
+# Desde noviembre de 2026, los tipos y sus colores son los que se ven en Talca: config/autos.json (la copia de
+# res://datos/autos.json) clasifica 422 vehículos de 157 fotos de Mapillary de la ciudad (2022–2026), y tipos() y
+# elegir() cuentan de ahí cuántos hay de cada tipo y de cada color, como build.py autos() para la página (DATA.autos,
+# que decide el tipo de cada auto del mapa: autos.gd lo lee de los datos). Más de la cuarta parte son SUV, una de cada
+# siete camionetas (una de cada cuatro de cabina simple, y una de cada cuatro roja), y lo que faltaba: la camioneta de
+# cabina simple (una Chevrolet LUV o una Nissan D21), el furgón chico (un Peugeot Partner o un Citroën Berlingo) y el
+# camión liviano (un Hyundai Porter: cabina chata y plataforma de aluminio con barandas). El furgón pasó de un Hyundai
+# H-1 a uno de techo alto (un Peugeot Boxer o un Mercedes Sprinter), casi siempre blanco, con ventanas solo en la cabina.
 #
 #   const Auto := preload("res://modelos/entorno/auto.gd")
 #   Auto.modelo(m, marco, Auto.SEDAN, Color(0.6, 0.08, 0.07), choques)   # choques: una Malla para la caja de colisión
@@ -24,6 +32,8 @@
 #   Auto.caja(Auto.SUV)                             # [medio ancho, v de atrás, v de adelante, alto]: la de colisión
 #   Auto.modelo(m, marco, Auto.SEDAN, col, null, false)   # sin neumáticos ni llantas: el auto de vehiculo.gd, que pone
 #                                                   # sus ruedas aparte para que giren
+#   var e := Auto.elegir(rng)                       # [tipo, Color]: uno al azar con las proporciones de config/autos.json
+#                                                   # (los que se estacionan en la calle)
 extends RefCounted
 
 const Malla := preload("res://malla.gd")
@@ -35,9 +45,16 @@ const CAMIONETA := 3
 const COLECTIVO := 4
 const FURGON := 5
 const CAMION := 6
-const TIPOS := 7
+const CAMIONETA_SIMPLE := 7
+const FURGON_CHICO := 8
+const CAMION_LIVIANO := 9
+const TIPOS := 10
+# los «id» de los tipos de config/autos.json, en el orden de las constantes (la página los numera igual: DATA.autos)
+const NOMBRES := ["sedan", "hatchback", "suv", "camioneta", "colectivo", "furgon", "camion", "camioneta_simple", "furgon_chico",
+	"camion_liviano"]
+const DATOS := "res://datos/autos.json"  # config/autos.json, que copia make modelo3d
 
-# los colores de calles.gd (los más comunes en Chile: blanco, gris, plata, negro, rojo, azul)
+# los colores de antes de config/autos.json: los de elegir() si no está
 const COLORES := [Color(0.92, 0.92, 0.9), Color(0.92, 0.92, 0.9), Color(0.62, 0.64, 0.66), Color(0.75, 0.76, 0.77),
 	Color(0.1, 0.1, 0.11), Color(0.35, 0.36, 0.38), Color(0.6, 0.08, 0.07), Color(0.12, 0.2, 0.42), Color(0.45, 0.06, 0.08)]
 const NEGRO_COLECTIVO := Color(0.07, 0.07, 0.08)
@@ -59,12 +76,18 @@ const CUERPOS := [
 	[[[-2.2, 0.4], [2.2, 0.4], [2.27, 0.72], [2.05, 0.98], [1.0, 1.05], [-2.15, 1.08], [-2.25, 0.75]], [[1.0, 1.05], [-2.15, 1.08], [-2.05, 1.7], [0.45, 1.72]]],
 	[[[-2.6, 0.45], [2.6, 0.45], [2.67, 0.8], [2.42, 1.05], [1.35, 1.1], [-0.4, 1.12], [-0.4, 1.12], [-2.6, 1.12]], [[1.35, 1.1], [-0.4, 1.12], [-0.3, 1.78], [0.85, 1.8]]],
 	[[[-2.25, 0.32], [2.25, 0.32], [2.32, 0.58], [2.1, 0.8], [1.0, 0.9], [-1.65, 0.93], [-2.22, 0.86]], [[1.0, 0.9], [-1.65, 0.93], [-0.95, 1.42], [0.3, 1.44]]],
-	# el furgón: 4,9 m, la cabina alta hasta atrás (en la página, 1,3 veces el alto de un auto)
-	[[[-2.45, 0.36], [2.45, 0.36], [2.52, 0.68], [2.3, 0.98], [1.45, 1.06], [-2.45, 1.08]], [[1.45, 1.06], [-2.45, 1.08], [-2.45, 2.02], [0.8, 2.04]]]]
-const ANCHO := [0.86, 0.85, 0.92, 0.93, 0.86, 0.95]  # medio ancho de la carrocería
-const RUEDA_V := [1.4, 1.25, 1.4, 1.75, 1.4, 1.6]  # el eje, desde el medio
-const RUEDA_R := [0.31, 0.31, 0.36, 0.38, 0.31, 0.33]
+	# el furgón de techo alto (Boxer, Sprinter): 5,4 m y 2,45 de alto
+	[[[-2.7, 0.36], [2.7, 0.36], [2.72, 0.85], [2.55, 1.05], [1.95, 1.14], [-2.7, 1.12]], [[1.95, 1.14], [-2.7, 1.12], [-2.64, 2.45], [1.3, 2.45]]],
+	[],  # el camión: camion()
+	# la camioneta de cabina simple: 4,9 m
+	[[[-2.45, 0.42], [2.45, 0.42], [2.45, 0.9], [2.2, 1.02], [1.1, 1.04], [-0.15, 1.04], [-2.45, 1.08]], [[1.1, 1.04], [-0.15, 1.04], [-0.05, 1.66], [0.6, 1.68]]],
+	# el furgón chico (Partner, Berlingo): 4,4 m y 1,84 de alto
+	[[[-2.2, 0.34], [2.2, 0.34], [2.2, 0.86], [1.95, 0.98], [1.15, 1.04], [-2.2, 1.02]], [[1.15, 1.04], [-2.2, 1.02], [-2.12, 1.82], [0.55, 1.84]]]]
+const ANCHO := [0.86, 0.85, 0.92, 0.93, 0.86, 1.0, 1.25, 0.86, 0.88, 0.87]  # medio ancho de la carrocería
+const RUEDA_V := [1.4, 1.25, 1.4, 1.75, 1.4, 1.8, 0.0, 1.45, 1.38, 0.0]  # el eje, desde el medio
+const RUEDA_R := [0.31, 0.31, 0.36, 0.38, 0.31, 0.34, 0.5, 0.34, 0.31, 0.3]
 const CAMION_L := 11.5  # m: el camión de modelo (autos.gd lo estira al largo de la página, 10,8–12,6 m)
+const LIVIANO_L := 5.1  # m: el camión liviano
 
 # el barrido de cada tipo (el colectivo usa el del sedán), con los mismos largos y altos que CUERPOS. Listas de [v, h]
 # (o [v, fracción del medio ancho]) que se interpolan entre puntos:
@@ -105,18 +128,37 @@ const PERFILES := [
 		"k": 0.84, "riel": 0.09, "frente": [0.85, 1.31], "atras": [-0.47, -0.42], "lado": [-0.42, 1.31],
 		"pilares": [[0.38, 0.5]], "puertas": [1.28, 0.44, -0.38], "caja": [-2.53, -0.47], "h_caja": 0.78},
 	{},  # el colectivo: el del sedán
-	{  # furgón (Hyundai H-1): trompa corta, ventanas hasta atrás, puerta corredera
-		"techo": [[-2.45, 1.99], [-2.4, 2.04], [0.8, 2.04], [1.39, 1.1], [2.3, 0.98], [2.45, 0.86]],
-		"cintura": [[-2.45, 1.04], [1.39, 1.06], [2.3, 0.94], [2.45, 0.82]],
-		"piso": [[-2.45, 0.44], [-2.4, 0.34], [2.3, 0.34], [2.45, 0.4]],
-		"ancho": [[-2.45, 0.96], [-2.4, 1.0], [2.3, 1.0], [2.45, 0.88]],
-		"k": 0.92, "riel": 0.07, "frente": [0.8, 1.39], "atras": [], "lado": [-2.4, 1.39],
-		"pilares": [[0.44, 0.57], [-0.78, -0.68]], "puertas": [1.36, 0.5, -0.66]}]
+	{  # furgón de techo alto (Peugeot Boxer, Mercedes Sprinter): capó corto, el parabrisas tendido, el techo alto hasta
+		# atrás, sin ventanas detrás de la cabina; la puerta corredera
+		"techo": [[-2.7, 2.38], [-2.64, 2.45], [1.3, 2.45], [1.95, 1.2], [2.55, 1.05], [2.7, 0.85]],
+		"cintura": [[-2.7, 1.12], [1.95, 1.14], [2.55, 1.0], [2.7, 0.8]],
+		"piso": [[-2.7, 0.46], [-2.64, 0.36], [2.55, 0.36], [2.7, 0.42]],
+		"ancho": [[-2.7, 0.97], [-2.64, 1.0], [2.55, 1.0], [2.7, 0.88]],
+		"k": 0.95, "riel": 0.06, "frente": [1.3, 1.95], "atras": [], "lado": [0.62, 1.95],
+		"pilares": [], "puertas": [1.92, 0.62, -0.55]},
+	{},  # el camión: camion()
+	{  # camioneta de cabina simple (Chevrolet LUV, Nissan D21, Toyota Hilux de trabajo): la cabina corta y la caja larga
+		"techo": [[-2.45, 1.08], [-2.38, 1.08], [-0.2, 1.08], [-0.15, 1.62], [-0.05, 1.66], [0.6, 1.68], [1.1, 1.08], [2.2, 1.02], [2.45, 0.9]],
+		"cintura": [[-2.45, 1.04], [-0.15, 1.04], [1.1, 1.04], [2.2, 0.98], [2.45, 0.86]],
+		"piso": [[-2.45, 0.5], [-2.38, 0.42], [2.2, 0.42], [2.45, 0.48]],
+		"ancho": [[-2.45, 0.98], [-2.38, 1.0], [2.2, 1.0], [2.45, 0.9]],
+		"k": 0.86, "riel": 0.08, "frente": [0.6, 1.1], "atras": [-0.2, -0.15], "lado": [-0.15, 1.1],
+		"pilares": [[-0.15, -0.03]], "puertas": [1.07, -0.05], "caja": [-2.38, -0.2], "h_caja": 0.74},
+	{  # furgón chico (Peugeot Partner, Citroën Berlingo, Fiat Fiorino): un auto con una caja alta detrás, ventanas solo
+		# en las puertas de adelante, la puerta corredera
+		"techo": [[-2.2, 1.74], [-2.12, 1.82], [0.55, 1.84], [1.15, 1.08], [1.95, 0.98], [2.2, 0.86]],
+		"cintura": [[-2.2, 1.02], [1.15, 1.04], [1.95, 0.94], [2.2, 0.82]],
+		"piso": [[-2.2, 0.44], [-2.12, 0.34], [1.95, 0.34], [2.2, 0.4]],
+		"ancho": [[-2.2, 0.95], [-2.12, 1.0], [1.95, 1.0], [2.2, 0.88]],
+		"k": 0.9, "riel": 0.07, "frente": [0.55, 1.15], "atras": [], "lado": [-0.1, 1.15],
+		"pilares": [], "puertas": [1.12, -0.1, -1.15]}]
 
 
 static func caja(tipo: int) -> Array:
 	if tipo == CAMION:
 		return [1.25, -CAMION_L / 2.0, CAMION_L / 2.0, 3.6]
+	if tipo == CAMION_LIVIANO:
+		return [0.87, -LIVIANO_L / 2.0, LIVIANO_L / 2.0, 1.97]
 	var c: Array = CUERPOS[tipo]
 	return [ANCHO[tipo], c[0][0][0], c[0][1][0], c[1][3][1]]
 
@@ -125,13 +167,16 @@ static func modelo(m: Malla, f: Malla.Marco, tipo: int, col: Color, choques: Mal
 	if tipo == CAMION:
 		camion(m, f, col, choques)
 		return
+	if tipo == CAMION_LIVIANO:
+		camion_liviano(m, f, col, choques, llantas)
+		return
 	var ancho: float = ANCHO[tipo]
 	var cuerpos: Array = CUERPOS[tipo]
 	if choques:
 		choques.caja(f, -ancho, cuerpos[0][0][0], ancho, cuerpos[0][1][0], 0.2, cuerpos[1][3][1], col)
 	var p: Dictionary = _perfil(tipo)
 	var est := _estaciones(tipo)
-	_carroceria(m, f, p, est, col)
+	_carroceria(m, f, p, est, col, tipo)
 	_tapas(m, f, est, col, tipo)
 	_costados(m, f, p, tipo, col)
 	if tipo == COLECTIVO:
@@ -145,6 +190,77 @@ static func modelo(m: Malla, f: Malla.Marco, tipo: int, col: Color, choques: Mal
 				OSCURO, "pintura", f.N(0, sv))
 	if llantas:
 		_neumaticos(m, f, ancho, [-RUEDA_V[tipo], RUEDA_V[tipo]], RUEDA_R[tipo])
+
+
+# ---------------------------------------------------------------- cuántos de cada tipo y color
+
+static var _tipos: Array = []
+
+
+# los tipos de config/autos.json (res://datos/autos.json), en el orden de las constantes: {n (cuántos de la muestra,
+# 0 si no se estaciona en la calle), colores: [[Color, cuántos]…]}, contados como build.py autos(); [] si no está
+static func tipos() -> Array:
+	if not _tipos.is_empty() or not FileAccess.file_exists(DATOS):
+		return _tipos
+	var A: Variant = JSON.parse_string(FileAccess.get_file_as_string(DATOS))
+	if not A is Dictionary:
+		push_warning("auto.gd: %s no se pudo leer" % DATOS)
+		return _tipos
+	var V: Array = A["vehiculos"]
+	var C: Dictionary = A["colores"]
+	var paleta := {}
+	for t in A["tipos"]:
+		paleta[t["id"]] = t.get("paleta", "")
+	var out := []
+	for i in A["tipos"].size():
+		var t: Dictionary = A["tipos"][i]
+		if i >= TIPOS or t["id"] != NOMBRES[i]:
+			push_warning("auto.gd: el tipo %d de config/autos.json es «%s», no «%s» (NOMBRES)" % [i, t["id"], NOMBRES[i] if i < TIPOS else "?"])
+		var n := 0
+		var k := {}
+		for v in V:
+			n += int(v[1] == t["id"])
+			if not t.has("color") and paleta.get(v[1], "") == t.get("paleta") and C.has(v[2]):
+				k[v[2]] = k.get(v[2], 0) + 1
+		if t.has("color"):
+			k = {t["color"]: 1}
+		var cols := []
+		for c in k:
+			cols.append([Color(C[c][0], C[c][1], C[c][2]), k[c]])
+		cols.sort_custom(func(a, b): return a[1] > b[1])  # el más común primero, como build.py
+		var c_ := caja(i) if i < TIPOS else [0, 0, 0, 0]
+		if i < TIPOS and abs(c_[2] - c_[1] - float(t["largo"])) > 0.05:
+			push_warning("auto.gd: %s mide %.2f m y config/autos.json dice %.2f" % [t["id"], c_[2] - c_[1], t["largo"]])
+		out.append({"n": n if t.get("calle", true) else 0, "colores": cols})
+	_tipos = out
+	return _tipos
+
+
+# un vehículo al azar de los que se estacionan en la calle: [tipo, Color], con las proporciones de config/autos.json
+# (sin ella, los de antes: sedán, hatchback, SUV, camioneta o colectivo, de COLORES)
+static func elegir(rng: RandomNumberGenerator) -> Array:
+	var T := tipos()
+	if T.is_empty():
+		var t: int = [0, 0, 0, 1, 1, 2, 2, 3, 4][rng.randi() % 9]
+		return [t, NEGRO_COLECTIVO if t == COLECTIVO else COLORES[rng.randi() % COLORES.size()]]
+	var total := 0
+	for t in T:
+		total += t["n"]
+	var x := rng.randi() % total
+	var tipo := 0
+	while x >= T[tipo]["n"]:
+		x -= T[tipo]["n"]
+		tipo += 1
+	var cols: Array = T[tipo]["colores"]
+	total = 0
+	for c in cols:
+		total += c[1]
+	x = rng.randi() % total
+	for c in cols:
+		x -= c[1]
+		if x < 0:
+			return [tipo, c[0]]
+	return [tipo, cols[0][0]]
 
 
 # ---------------------------------------------------------------- el barrido
@@ -255,7 +371,7 @@ static func _cara(m: Malla, f: Malla.Marco, q: Array, col: Color, mat: String, c
 	m.cara(w, col, mat, f.N(n.x, n.y, n.z))
 
 
-static func _carroceria(m: Malla, f: Malla.Marco, p: Dictionary, est: Array, col: Color) -> void:
+static func _carroceria(m: Malla, f: Malla.Marco, p: Dictionary, est: Array, col: Color, tipo: int) -> void:
 	var hcaja: float = p.get("h_caja", 0.0)
 	for i in est.size() - 1:
 		var a: Array = est[i]
@@ -300,7 +416,7 @@ static func _carroceria(m: Malla, f: Malla.Marco, p: Dictionary, est: Array, col
 		var ca: Array = p["caja"]
 		for j in 2:
 			var v: float = ca[j]
-			var e := _seccion(p, CAMIONETA, v)
+			var e := _seccion(p, tipo, v)
 			var u: float = _pts(e)[3].x
 			_cara(m, f, [Vector3(-u, v, hcaja), Vector3(u, v, hcaja), Vector3(u, v, e[3]), Vector3(-u, v, e[3])], GRIS, "pintura",
 				Vector3(0, v + (-1.0 if j == 0 else 1.0), e[3] / 2.0))
@@ -338,7 +454,7 @@ static func _tapas(m: Malla, f: Malla.Marco, est: Array, col: Color, tipo: int) 
 				_rect(m, f, vv, -(wb - 0.22), wb - 0.22, hb + 0.03, hb + 0.08, OSCURO, "pintura", sv)
 			_patente(m, f, vv, hb + 0.06 + (0.05 if alto > 0.42 else 0.0), sv)
 		else:
-			var vert := tipo in [SUV, CAMIONETA, FURGON]
+			var vert := tipo in [SUV, CAMIONETA, FURGON, CAMIONETA_SIMPLE, FURGON_CHICO]
 			for s: float in [-1.0, 1.0]:
 				if vert:
 					# las luces traseras verticales de los SUV, las camionetas y los furgones
@@ -511,3 +627,73 @@ static func camion(m: Malla, f: Malla.Marco, col: Color, choques: Malla = null) 
 	m.caja(f, -1.1, -L - 0.12, 1.1, -L + 0.1, 0.5, 0.66, gris, "metal")  # la barra de atrás
 	_patente(m, f, -L - 0.126, 0.69, -1.0)
 	ruedas(m, f, 1.18, [L - 1.45, -L + 3.3, -L + 1.9], 0.5)
+
+
+# un camión liviano (Hyundai Porter, Kia Frontier) de 5,1 m: la cabina chata del color de la instancia (parrilla, focos,
+# el parabrisas, ventanas, espejos), y detrás la plataforma de aluminio con sus barandas y su cabecera; ruedas chicas
+# (llantas falso: solo los tapabarros, como modelo())
+static func camion_liviano(m: Malla, f: Malla.Marco, col: Color, choques: Malla = null, llantas := true) -> void:
+	var L := LIVIANO_L / 2.0
+	var w := 0.87
+	if choques:
+		choques.caja(f, -w, -L, w, L, 0.2, 1.97, col)
+	var alu := Color(0.7, 0.72, 0.74)
+	var gris := Color(0.22, 0.22, 0.23)
+	var vc := L - 1.7
+	m.caja(f, -0.55, -L + 0.15, 0.55, vc, 0.42, 0.68, gris, "metal")  # el chasis
+	# la cabina de perfil, extruida a lo ancho: la trompa, el parabrisas tendido y el techo
+	var perfil := [Vector2(vc, 0.62), Vector2(L, 0.62), Vector2(L, 1.18), Vector2(L - 0.06, 1.3), Vector2(L - 0.32, 1.9),
+		Vector2(L - 0.45, 1.97), Vector2(vc, 1.97)]
+	var poli := PackedVector2Array(perfil)
+	var idx := Geometry2D.triangulate_polygon(poli)
+	for s: float in [-1.0, 1.0]:
+		for t in range(0, idx.size(), 3):
+			m.cara([f.V(s * w, poli[idx[t]].x, poli[idx[t]].y), f.V(s * w, poli[idx[t + 1]].x, poli[idx[t + 1]].y),
+				f.V(s * w, poli[idx[t + 2]].x, poli[idx[t + 2]].y)], col, "pintura", f.N(s, 0))
+	for i in perfil.size():
+		var p0: Vector2 = perfil[i]
+		var p1: Vector2 = perfil[(i + 1) % perfil.size()]
+		var e := p1 - p0
+		var n := Vector2(e.y, -e.x).normalized()
+		var vid := i == 3
+		m.cara([f.V(-w, p0.x, p0.y), f.V(w, p0.x, p0.y), f.V(w, p1.x, p1.y), f.V(-w, p1.x, p1.y)], VIDRIO if vid else col,
+			"vidrio" if vid else "pintura", f.N(0, n.x, n.y))
+	# la trompa: parrilla, focos, parachoques negro y patente
+	var vf := L + 0.006
+	_rect(m, f, vf, -0.42, 0.42, 0.92, 1.12, OSCURO, "pintura", 1.0)
+	for s: float in [-1.0, 1.0]:
+		_rect(m, f, vf, s * 0.5, s * 0.82, 0.9, 1.1, FOCO, "pintura", 1.0)
+	m.caja(f, -0.9, L - 0.06, 0.9, L + 0.08, 0.5, 0.78, GRIS, "pintura")
+	_patente(m, f, L + 0.086, 0.58, 1.0)
+	for s: float in [-1.0, 1.0]:
+		var us := s * (w + 0.005)
+		# la ventana de la puerta, la línea de la puerta y el espejo en su brazo
+		m.cara([f.V(us, vc + 0.35, 1.32), f.V(us, L - 0.12, 1.32), f.V(us, L - 0.36, 1.86), f.V(us, vc + 0.35, 1.86)], VIDRIO,
+			"vidrio", f.N(s, 0))
+		m.cara([f.V(us, vc + 0.25, 0.66), f.V(us, vc + 0.28, 0.66), f.V(us, vc + 0.28, 1.92), f.V(us, vc + 0.25, 1.92)], OSCURO,
+			"pintura", f.N(s, 0))
+		m.caja(f, min(s * w, s * (w + 0.2)), L - 0.3, max(s * w, s * (w + 0.2)), L - 0.27, 1.62, 1.66, OSCURO, "pintura")
+		m.caja(f, min(s * (w + 0.14), s * (w + 0.22)), L - 0.32, max(s * (w + 0.14), s * (w + 0.22)), L - 0.25, 1.3, 1.68,
+			OSCURO, "pintura")
+	# la plataforma: el piso, la cabecera (con su rejilla hasta el techo) y las barandas de aluminio, abatibles
+	var vb := vc - 0.08
+	m.caja(f, -w, -L, w, vb, 0.68, 0.8, alu, "metal")
+	m.caja(f, -w, vb - 0.06, w, vb, 0.8, 1.62, alu, "metal")
+	for s: float in [-1.0, 1.0]:
+		m.caja(f, min(s * w, s * (w - 0.04)), -L, max(s * w, s * (w - 0.04)), vb - 0.06, 0.8, 1.18, alu, "metal")
+		# las bisagras: dos líneas oscuras por baranda
+		for vv: float in [-L + 1.05, -L + 2.1]:
+			m.cara([f.V(s * (w + 0.003), vv - 0.015, 0.8), f.V(s * (w + 0.003), vv + 0.015, 0.8),
+				f.V(s * (w + 0.003), vv + 0.015, 1.18), f.V(s * (w + 0.003), vv - 0.015, 1.18)], gris, "metal", f.N(s, 0))
+	m.caja(f, -w, -L, w, -L + 0.04, 0.8, 1.18, alu, "metal")  # la baranda de atrás
+	var vt := -L - 0.006
+	for s: float in [-1.0, 1.0]:
+		_rect(m, f, vt, s * 0.62, s * 0.84, 0.62, 0.76, ROJO, "pintura", -1.0)
+	_patente(m, f, vt, 0.48, -1.0)
+	var ejes := [L - 0.62, -L + 1.25]
+	if llantas:
+		ruedas(m, f, 0.88, ejes, RUEDA_R[CAMION_LIVIANO])
+	else:
+		for cv: float in ejes:
+			for su: float in [-1.0, 1.0]:
+				tapabarro(m, f, 0.88, cv, RUEDA_R[CAMION_LIVIANO], su)

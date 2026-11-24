@@ -1,11 +1,12 @@
 # Los autos del mapa: las capas «autos» (los estacionados de las calles, parkedCars de src/js/60-streets.js) y
 # «autos-ruta5» (los de la Ruta 5, ruta5Objects de 66-ruta5.js), que tools/export.py --instancias escribe como datos en
-# mapa/t_<i>_<j>.json (x, y, altura, largo, alto, giro, color e inclinación de cada uno; __exInst de tools/export.js).
+# mapa/t_<i>_<j>.json (x, y, altura, largo, alto, giro, color, inclinación y tipo de cada uno; __exInst de tools/export.js).
 # Los pone mapa.gd, tesela por tesela, como los árboles (arboleda.gd).
 #
 # Cerca de la cámara (CERCA) son los autos de calles.gd (modelos/entorno/auto.gd), uno por cada auto de la página: el
-# tipo sale de su largo y su alto (un furgón 1,3 veces el alto, un camión de la Ruta 5 2,1; de los autos, los más
-# cortos son hatchback, los más largos SUV o camioneta), el color es el de la página y la inclinación, la de la calle.
+# tipo es el que eligió la página (el índice en los tipos de config/autos.json, DATA.autos: el orden de las constantes
+# de auto.gd), el color es el de la página y la inclinación, la de la calle. Hasta noviembre de 2026 los datos no
+# traían el tipo y salía del largo y el alto.
 # Más lejos, el auto de la página (carGeo: dos cajas, 20 triángulos) con su largo y su alto. Cada tesela tiene un
 # MultiMesh de lejos por capa; los de cerca van en un MultiMesh por tipo, que se rehace cuando la cámara se mueve
 # REHACER metros: los que entran ahí se esconden en el de su tesela (su transformación en cero). Así nunca se dibujan
@@ -24,7 +25,7 @@ const Args := preload("res://args.gd")
 const Auto := preload("res://modelos/entorno/auto.gd")
 const Malla := preload("res://malla.gd")
 const Mat := preload("res://materiales.gd")
-const N := 10  # números por auto en los datos (__exInstN)
+const N := 11  # números por auto en los datos (__exInstN)
 const CAPAS := ["autos", "autos-ruta5"]
 const CERCA := 90.0  # m: hasta aquí, los autos de calles.gd
 const REHACER := 12.0  # m que se mueve la cámara antes de volver a elegir los de cerca
@@ -143,21 +144,9 @@ func _process(_dt: float) -> void:
 		rehacer(p)
 
 
-# el tipo de auto.gd de un auto de la página: por su alto y su largo; entre los de un mismo largo, por su lugar
-static func tipo(d: PackedFloat32Array, k: int, capa: String) -> int:
-	var alto := d[k + 4]
-	if alto > 1.8:
-		return Auto.CAMION
-	if alto > 1.15:
-		return Auto.FURGON
-	var l := d[k + 3] * LARGO
-	var h := posmod(int(floor(d[k] * 7.0 + d[k + 1] * 13.0)), 6)
-	if l < 4.25:
-		return Auto.HATCHBACK
-	if l < 4.45:
-		# los colectivos (sedanes negros con letrero) entre los negros de las calles, uno de cada tres
-		return Auto.COLECTIVO if capa == "autos" and d[k + 6] < 0.2 and h < 2 else Auto.SEDAN
-	return Auto.SUV if h < 3 else Auto.CAMIONETA
+# el tipo de auto.gd de un auto de la página: el que ella eligió (el undécimo número)
+static func tipo(d: PackedFloat32Array, k: int) -> int:
+	return clampi(int(d[k + 10]), 0, Auto.TIPOS - 1)
 
 
 # los autos de cerca alrededor de p (grilla): uno de auto.gd por cada uno de la página a menos de CERCA, y la
@@ -182,7 +171,7 @@ func rehacer(p: Vector2) -> void:
 					if q >= r2:
 						continue
 					ocultos.append(k / N)
-					var t := tipo(d, k, capa)
+					var t := tipo(d, k)
 					if not lotes.has(t):
 						lotes[t] = PackedFloat32Array()
 					# el camión, al largo de la página; los demás, del suyo
