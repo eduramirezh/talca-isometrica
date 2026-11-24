@@ -6,7 +6,7 @@ Los datos son data/geometry.json (más los usos de config/usos.json y de los arc
 como `usos`; config/manzanas.json reclasifica como construidas, tipo 3, manzanas «sin información» del Censo, y las
 entradas `vivienda` de los usos agregan manzanas construidas donde el Censo no tiene), data/elevation.json,
 data/ruta5.json, data/edificios.json, data/golf.json, data/cobertura.json (si está) y data/pois.json (más data/copas.json,
-data/perfiles.json y data/plaza-osm.json, dentro de la geometría): un archivo
+data/perfiles.json, data/plaza-osm.json y los tipos de vehículos de config/autos.json, dentro de la geometría): un archivo
 cada uno, que la página pide con fetch apenas empieza (src/page.html, el marcador /*DATA*/) y el script espera
 (src/js/00-start.js). Con el hash en el nombre se guardan en la caché del navegador sin fecha de vencimiento
 (src/site/_headers): un cambio del código no vuelve a bajar los datos, ni al revés.
@@ -148,6 +148,29 @@ def asset(name, data):
     f = DIST / 'assets' / f'{stem}.{hashlib.sha256(data).hexdigest()[:10]}.{ext}'
     f.write_bytes(data); return f.relative_to(DIST).as_posix()
 
+def autos():
+    """config/autos.json -> DATA.autos: each vehicle type, in the order of modelo3d/modelos/entorno/auto.gd's constants,
+    with n, how many of the classified sample of Mapillary photos are of it (0 for the types that are not parked in the
+    streets, "calle": false), r5 the same for the Ruta 5 ("ruta5": false: none), l its length (m), h its height (× the
+    page's car) and c its colours, [r, g, b, count]: its own "color", or the count of each colour among the vehicles
+    of the types that share its "paleta". modelo3d/modelos/entorno/auto.gd counts the same from its copy."""
+    A = json.load(open(CONFIG / 'autos.json'))
+    V, T, C = A['vehiculos'], A['tipos'], A['colores']
+    paleta = {t['id']: t.get('paleta') for t in T}
+    out = []
+    for t in T:
+        n = sum(v[1] == t['id'] for v in V)
+        if 'color' in t: cols = [C[t['color']] + [1]]
+        else:
+            k = {}
+            for v in V:
+                if paleta.get(v[1]) == t['paleta'] and v[2] in C: k[v[2]] = k.get(v[2], 0) + 1
+            cols = [C[c] + [m] for c, m in sorted(k.items(), key=lambda kv: -kv[1])]
+        calle = t.get('calle', True)
+        out.append({'id': t['id'], 'n': n if calle else 0, 'r5': n if calle and t.get('ruta5', True) else 0,
+                    'l': t['largo'], 'h': t['alto'], 'c': cols})
+    return out
+
 # what the page takes of config/fachadas.json (src/js/52-edificios.js)
 FACHADA = ('alto', 'pisos', 'color', 'zocalo', 'zocalo_alto', 'techo', 'pb', 'estilo')
 
@@ -181,6 +204,9 @@ def main(*, where=None):
     # the paint and the cable spans are for the 3D only
     cr = json.load(open(require(DATA / 'cruces.json', 'Ejecute: make perfiles')))
     geo['cruces'] = {k: {'suelo': c['suelo'], 'objetos': c['objetos']} for k, c in cr.items()}
+    # the vehicle types and colours counted in Mapillary photos (config/autos.json): DATA.autos, for the parked cars
+    # (parkedCars, 60-streets.js) and the Ruta 5's (66-ruta5.js)
+    geo['autos'] = autos()
     if (DATA / 'cobertura.json').exists():   # la cobertura vegetal de CONAF (pipeline/cobertura.py; sin ella, solo la pendiente)
         files['cob'] = ('cobertura.json', json.load(open(DATA / 'cobertura.json')))
     require(THREE, 'Ejecute: npm install')

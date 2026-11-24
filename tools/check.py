@@ -20,7 +20,8 @@ Comprueba:
     igual a las trampas de las reglas, y cada cita de una trampa en el código y los docs, el comienzo de un título;
   - que data/pois.json tenga ids únicos y que cada recorrido apunte a lugares que existen;
   - que lo que modelo3d/ y tools/ copian de la página siga igual (modelo3d_contratos: el contorno y los prados de la plaza,
-    LEJOS, config/fachadas.json, data/plaza-osm.json, las fórmulas del relieve de tools/relieve.py);
+    LEJOS, config/fachadas.json, data/plaza-osm.json, los tipos de config/autos.json contra auto.gd, las fórmulas del
+    relieve de tools/relieve.py);
   - que el script de dist/assets/ compile (node --check; el error da el archivo de src/ y la línea, con build.where()),
     que cada archivo que pide dist/index.html (src, href, srcset y lo que pide desde JS en assets/) exista en dist/, y que
     dist/assets/ no tenga otros;
@@ -117,6 +118,9 @@ FACHADAS = {'estilo': {'comercial', 'clasico', 'deco', 'torre', 'moderno', 'colo
             'pilastras': bool, 'color': 'hex', 'zocalo': 'hex', 'toldo': 'hex', 'marco': 'hex', 'friso': str,
             'letreros': 'letreros'}
 
+# config/autos.json: what the sample may also hold besides the types the map draws (pipeline/mapillary.py autos)
+OTROS_AUTOS = {'bus', 'minibus', 'taxi', 'moto', 'otro', 'no'}
+
 def _nums(text, name, src):
     """The numbers of the array literal `name` (GDScript `const name := [...]`, JS `const name=[...]` or `=f([...])`)."""
     m = re.search(r'\b' + name + r'\s*:?=\s*(?:\w+\()?\[([^\[\]]*)\]', text)
@@ -125,7 +129,8 @@ def _nums(text, name, src):
 
 def modelo3d_contratos(fail):
     """What the 3D model (modelo3d/) and the tools copy from the page, compared with it: the plaza's outline and lawns, how
-    far the street models go, config/fachadas.json and data/plaza-osm.json, and the relief formulas of tools/relieve.py."""
+    far the street models go, config/fachadas.json, data/plaza-osm.json and config/autos.json, and the relief formulas of
+    tools/relieve.py."""
     js = lambda f: (ROOT / 'src' / 'js' / 'hitos' / f).read_text()
     gd = lambda f: (ROOT / 'modelo3d' / f).read_text()
     try:
@@ -162,6 +167,20 @@ def modelo3d_contratos(fail):
             fail(f'data/plaza-osm.json: edificio sin id, tags o anillo: {str(b)[:80]}'); break
     for nd in osm.get('nodos', []):
         if not ({'id', 'tipo', 'x', 'y'} <= set(nd)): fail(f'data/plaza-osm.json: nodo sin id, tipo, x o y: {nd}'); break
+
+    # config/autos.json: the page (DATA.autos) and the 3D (auto.gd) number its types alike, so they must be NOMBRES of
+    # auto.gd in that order; each vehicle of the sample, of a type the map draws or one of OTROS_AUTOS, and a colour it defines
+    A = json.load(open(ROOT / 'config' / 'autos.json'))
+    m = re.search(r'const NOMBRES := \[(.*?)\]', gd('modelos/entorno/auto.gd'), re.S)
+    ids = [t.get('id') for t in A.get('tipos', [])]
+    if not m or re.findall(r'"(\w+)"', m.group(1)) != ids:
+        fail(f'config/autos.json: los «tipos» ({", ".join(map(str, ids))}) no son NOMBRES de modelo3d/modelos/entorno/auto.gd, en ese orden')
+    for t in A.get('tipos', []):
+        if not ('color' in t) ^ ('paleta' in t): fail(f'config/autos.json: el tipo {t.get("id")} lleva «color» o «paleta», uno de los dos')
+        if t.get('color', 'blanco') not in A['colores']: fail(f'config/autos.json: el tipo {t["id"]}: color «{t["color"]}» sin definir en «colores»')
+    for v in A.get('vehiculos', []):
+        if len(v) != 6 or v[1] not in set(ids) | OTROS_AUTOS or v[2] not in ('', 'otro') and v[2] not in A['colores']:
+            fail(f'config/autos.json: vehículo {v[:4]}: tipo o color desconocido (los tipos de «tipos», {", ".join(sorted(OTROS_AUTOS))}; los colores de «colores», "otro" o "")'); break
 
     try:
         sys.path.insert(0, str(ROOT / 'tools')); import relieve; relieve.formulas()

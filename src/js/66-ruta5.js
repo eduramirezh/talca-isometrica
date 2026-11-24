@@ -92,13 +92,14 @@ function ruta5Objects(){const K=R5K,G=new GB(1<<15),A=R5C[0];
   for(let k=0;k<2;k++)for(let d=(k?32.5:10);d<R5C[k].L;d+=45){const p=r5at(k,d);if(!p.lit||r5gap(k,d)||!inTerrain(p.x,p.y))continue;
     if(p.hs<9){if(k)continue;const c=r5off(p,p.hs);if(r5under(...c))continue;post(...c,[r5off(p,p.hs-3),r5off(p,p.hs+3)]);posts++;}
     else{const c=r5off(p,R5R(p)-1),h=r5off(p,R5R(p)+2);if(r5under(...c))continue;post(...c,[h]);posts++;}}
-  // cars: one every ~110 m in each direction, a fifth of them lorries in the right lane; on the decks at their height
+  // cars: one every ~110 m in each direction, a fifth of them lorries in the right lane (the rest of the types of
+  // DATA.autos, by their share in town, r5); on the decks at their height
   const r=rng(5005),list=[];
   const H=(k,d)=>{const g=r5gap(k,d);if(g)return g[2](d);const p=r5at(k,d);return E(p.x,p.y)+Y_LAYER.r5;};
   for(let k=0;k<2;k++)for(let d=30+r()*60;d<R5C[k].L-10;d+=20+r()*180){const p=r5at(k,d);if(!inTerrain(p.x,p.y))continue;
-    const truck=r()<.2,o=truck||r()<.55?-1.75:1.75,c=r5off(p,p.e>.9&&r()<.3?-5.25:o),len=truck?2.4+r()*.4:(4.1+r()*.6)/4.5;
-    const col=CAR_COLS[wpick(r,CAR_COLS,cc=>cc[3])];
-    list.push([c[0],c[1],p.tx,p.ty,len,truck?2.1:1,col,r(),(H(k,d-2)+H(k,d+2))/2,Math.atan2(H(k,d+2)-H(k,d-2),4)]);}
+    const truck=r()<.2,o=truck||r()<.55?-1.75:1.75,c=r5off(p,p.e>.9&&r()<.3?-5.25:o),ti=truck?CAR_TRUCK:wpick(r,CAR_T,t=>t.r5),T_=CAR_T[ti];
+    const len=truck?2.4+r()*.4:T_.l/4.5,col=T_.c[wpick(r,T_.c,cc=>cc[3])];
+    list.push([c[0],c[1],p.tx,p.ty,len,T_.h,col,r(),(H(k,d-2)+H(k,d+2))/2,Math.atan2(H(k,d+2)-H(k,d-2),4),ti]);}
   const cars=carsMesh(list);
   Object.assign(STATS.r5,{posts,cars:list.length,gaps:R5C.map(c=>c.gaps.length)});R5_CARS=cars;
   const mesh=tiled(G,matFlat);for(const o of [mesh,cars])o.traverse(c=>c.castShadow=true);

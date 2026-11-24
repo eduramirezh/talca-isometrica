@@ -278,7 +278,7 @@ async def export_glb(pg, box, skip, path, lugares=True, liviano=False, medio=Non
 
 async def datos_tesela(pg, caja, inst, faroles, sin_poste, letreros=False):
     """los objetos de una tesela como datos (t_<i>_<j>.json): {capa: números} de las capas instanciadas (__exInst: 9 por
-    árbol, 10 por auto, __exInstN) y, con faroles, los de las calles (__exLamps: «faroles», 6 por farol, y «luces», los
+    árbol, 11 por auto, __exInstN) y, con faroles, los de las calles (__exLamps: «faroles», 6 por farol, y «luces», los
     de la Alameda, 3); con letreros, los nombres de las calles en los cruces (__exSigns: «letreros», 11 por letrero, y
     «nombres», sus rótulos); y cuántos hay de cada uno, para indice.json"""
     o, n = {}, {}

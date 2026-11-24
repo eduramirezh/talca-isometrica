@@ -74,6 +74,7 @@ config/
   edificios.json         dónde se dibujan los edificios reales de OpenStreetMap en vez de los generados o junto a ellos (áreas, umbrales de cobertura, correcciones)
   techos.json            la familia del techo (teja, óxido, zinc, claro…) de cada edificio de OSM, clasificada con la imagen satelital (y, en "ml", de las huellas de aprendizaje automático de unas cajas: techos --ml)
   copas.json             las cajas de los barrios arbolados donde pipeline/copas.py lee las copas de los árboles de la imagen satelital
+  autos.json             los vehículos de 157 fotos de Mapillary de la ciudad, clasificados por tipo y color: cuántos autos de cada tipo y color dibujan la página y el 3D
   perfiles.json          la sección de las avenidas medidas en fotos (la Avenida Las Rastras): pistas, bandejón, ciclovías, soleras, veredas, postes, paraderos e hileras de árboles a lo largo de su eje
 pipeline/
   common.py              rutas, proyección (origen en la Plaza de Armas, grilla girada 5°) y el límite de la comuna (OSM)
@@ -104,7 +105,7 @@ pipeline/
   rutas.py               los nombres de las rutas del mapa contra los roles de la Red Vial del MOP
   landmark.py            insumos para modelar un hito: planta OSM, marco local, fotos (Commons por nombre, ubicación o
                          categoría; Panoramax; Mapillary y Flickr con clave)
-  mapillary.py           Mapillary: la clave, las fotos de la comuna (teselas vectoriales), qué lugares tienen fotos que los miran
+  mapillary.py           Mapillary: la clave, las fotos de la comuna (teselas vectoriales), qué lugares tienen fotos que los miran, una muestra de los vehículos de la ciudad (autos)
                          y lo que dejan ver de un punto las panorámicas lejanas (mirar);
                          la búsqueda y la elección (una por pasada, de frente) que usa landmark.py photos --mapillary;
                          una foto por tramo y sentido a lo largo del eje de un perfil (eje);
@@ -157,7 +158,8 @@ modelo3d/ver.gd          el visor: una cámara que orbita (arrastrar gira, rueda
 modelo3d/mundo.gd        el mundo, sobre el nodo que lo extiende: las teselas, el cielo, los modelos de cerca y sus recortes, la captura (--png); la base de ver.gd y de cualquier proyecto que use la maqueta
 modelo3d/mapa.gd, arboleda.gd   las teselas alrededor de la cámara (en hilos, con los edificios solos hasta 3 km, lo de lejos y la colisión cercana; cuantizado.gd: el formato liviano) y los árboles de la página como los de la plaza; recorte.gd: los recortes de los modelos sobre cada tesela; pasos.gd: los pasos bajo la Ruta 5 en la colisión
 modelo3d/ambiente.gd     el cielo, el sol y la luna de Talca a cualquier hora y día, las nubes, la niebla, la noche y el posproceso (--hora, --dia, --reloj, --calidad, --sin)
-modelo3d/autos.gd, faroles.gd   los autos de la página como los de calles.gd (modelos/entorno/auto.gd) de cerca, y los faroles de las calles de noche: postes, brillo y las luces más cercanas
+modelo3d/autos.gd, faroles.gd   los autos de la página, de cerca con el modelo de su tipo (modelos/entorno/auto.gd: sedán, hatchback, SUV, camionetas de cabina doble y simple, colectivo, furgones, camión liviano y camión, en las proporciones y colores de config/autos.json), y los faroles de las calles de noche: postes, brillo y las luces más cercanas
+modelo3d/vitrina.gd      los vehículos de auto.gd en fila, para revisarlos sin exportar el mapa (tools/godot_oculto.sh --path modelo3d -s res://vitrina.gd -- --png x.png)
 modelo3d/fachadas_ciudad.gd   las fachadas de cerca de los edificios de toda la comuna, por tipo (casa antigua, población, pareada, block…), de modelo3d/mapa/f_<i>_<j>.json (tools/export.py --fachadas): a la calle, un muro grueso con los vanos hundidos y el repertorio de las fachadas medidas alrededor de la plaza; aleros en los techos inclinados
 modelo3d/letreros.gd     los letreros con el nombre de las calles en los cruces de la comuna (tools/export.py --letreros): poste, placas con la numeración de la cuadra y la flecha del sentido; el texto, en los más cercanos
 modelo3d/modelos/plaza.gd   la Plaza de Armas en detalle (árboles, quiosco, piletas, faroles, escaños; plaza/: árboles, piezas y texturas en código); calles.gd, catedral.gd y fachadas.gd: sus calles, la Catedral y los edificios de alrededor
