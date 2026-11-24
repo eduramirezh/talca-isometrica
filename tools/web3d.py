@@ -26,7 +26,7 @@ window.__m3d.estado sea «listo» (web.gd: lo que pide la cámara está cargado)
 --fps s y guarda la captura. Imprime window.__m3d (MB bajados, teselas) y la consola. Por omisión con la GPU del
 equipo (--gl gpu, tools/page.py GL); con --gl swiftshader Godot dibuja, pero a pocos cuadros por segundo.
 """
-import argparse, concurrent.futures, gzip, hashlib, json, os, shutil, subprocess, sys, time
+import argparse, concurrent.futures, gzip, hashlib, json, os, re, shutil, subprocess, sys, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -66,6 +66,28 @@ def faltan_en(mapa):
     return [n for n in nombres if not (mapa / n).exists()]
 
 
+def autos_malos(mapa):
+    """Por qué los autos de mapa/ no son los que lee modelo3d/autos.gd (N números por auto), o None. Con otro número,
+    cada auto toma los de otro y los de lejos salen como planos de kilómetros (el 24 de noviembre de 2026, en el
+    sitio: unas teselas de diez números y un autos.gd que lee once). Mira «numeros» de indice.json (tools/export.py) y,
+    si no está, que cada t_<i>_<j>.json traiga un múltiplo de N."""
+    n = int(re.search(r'^const N := (\d+)', (M3D / 'autos.gd').read_text(), re.M).group(1))
+    capas = ('autos', 'autos-ruta5')
+    i = json.loads((mapa / 'indice.json').read_text())
+    for c in capas:
+        if c in i.get('numeros', {}) and i['numeros'][c] != n:
+            return f'indice.json dice {i["numeros"][c]} números por auto en «{c}» y modelo3d/autos.gd lee {n}'
+    if 'numeros' in i: return None
+    for t in i['teselas']:
+        if 'instancias' not in t: continue
+        f = mapa / (t['archivo'].rsplit('.', 1)[0] + '.json')
+        d = json.loads(f.read_text())
+        for c in capas:
+            if len(d.get(c, [])) % n:
+                return f'{f.name} trae {len(d[c])} números en «{c}», que no son {n} por auto (modelo3d/autos.gd)'
+    return None
+
+
 def armar(a):
     out = DIST / '3d'
     mapa = M3D / 'mapa'
@@ -75,6 +97,9 @@ def armar(a):
     if faltan:   # publicarlo así dejaría huecos en el sitio
         sys.exit(f'web3d.py: modelo3d/mapa/ está incompleto ({len(faltan)} archivos de indice.json no están, p. ej. '
                  f'{faltan[0]}): ¿make modelo3d está corriendo? Espere a que termine')
+    malos = autos_malos(mapa)
+    if malos:   # el sitio mostraría planos de kilómetros
+        sys.exit(f'web3d.py: modelo3d/mapa/ es de otra versión: {malos}. Corra `make modelo3d` con este código')
     out.mkdir(parents=True, exist_ok=True)
     for f in out.glob('index.*'): f.unlink()
     t0 = time.time()
