@@ -8,7 +8,9 @@
 # misma idea que ambiente.gd copas() para los icosaedros del glb) y un tronco, con el material de la capa «arboles»
 # (materiales.gd) y el tinte de la página. Cada tesela tiene un MultiMesh de copas por capa; los árboles de cerca van en
 # un MultiMesh por variante, que se rehace cuando la cámara se mueve REHACER metros: los que entran ahí se esconden en el
-# de su tesela (su transformación en cero). Así nunca se dibujan los dos.
+# de su tesela (su transformación en cero). Así nunca se dibujan los dos. todos_de_cerca() (recorrido.gd, en una toma
+# de video, con el mapa quieto) pone los de la plaza en todos los árboles cargados, una vez, y no los vuelve a elegir:
+# ningún árbol cambia de forma a media toma.
 #
 # Sin colisión, como en el glb (los árboles se atraviesan). Los recortes de los modelos (modelos/*.gd, recortes()) que
 # nombran la capa, o ninguna, quitan los árboles cuyo pie cae dentro (preparar()).
@@ -30,6 +32,8 @@ var alto_var := {}  # "capa/variante" -> el alto de la malla de la plaza
 var centro := Vector2(INF, INF)
 var copas := {}  # capa -> Mesh: la copa de lejos
 var n_cerca := 0
+var radio := CERCA  # m: hasta aquí, los de la plaza (todos_de_cerca(): todos)
+var fijo := false  # todos_de_cerca(): no se vuelven a elegir
 
 
 func _ready() -> void:
@@ -112,8 +116,15 @@ func _process(_dt: float) -> void:
 	if cam == null:
 		return
 	var p := Vector2(cam.global_position.x, -cam.global_position.z)
-	if p.distance_to(centro) > REHACER:
+	if p.distance_to(centro) > REHACER and not fijo:
 		rehacer(p)
+
+
+# todos los árboles cargados como los de la plaza, una vez (con el mapa quieto: mapa.gd no agrega ni quita teselas)
+func todos_de_cerca() -> void:
+	radio = 1.0e7
+	rehacer(Vector2.ZERO)
+	fijo = true
 
 
 # los árboles de cerca alrededor de p (grilla): uno de la plaza por cada uno de la página a menos de CERCA
@@ -122,14 +133,14 @@ func rehacer(p: Vector2) -> void:
 	if arb == null:
 		arb = Arboles.new()
 	var lotes := {}  # "capa/variante" -> PackedFloat32Array (16 por árbol)
-	var r2 := CERCA * CERCA
+	var r2 := radio * radio
 	for clave in teselas:
 		for capa in teselas[clave]:
 			var e: Dictionary = teselas[clave][capa]
 			var d: PackedFloat32Array = e["d"]
 			var ocultos := PackedInt32Array()
 			var caja: Rect2 = e["caja"]
-			if caja.grow(CERCA).has_point(p):
+			if caja.grow(radio).has_point(p):
 				for k in range(0, d.size(), N):
 					var dx := d[k] - p.x
 					var dy := d[k + 1] - p.y

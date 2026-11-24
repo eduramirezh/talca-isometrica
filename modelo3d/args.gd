@@ -32,8 +32,10 @@ const BANDERAS := {
 	"--calidad": ["baja", "ambiente.gd: baja = --sin ssil,ssao,blandas"],
 	"--hora": ["h", "ambiente.gd: la hora del día, quieta (sin ella, jugando, la del computador o la del anfitrión, que corre; en una captura, las 17:00; T la avanza; L, día o noche)"],
 	"--dia": ["día del año", "ambiente.gd: el sol de ese día"],
-	"--reloj": ["ahora|aaaa-mm-ddThh:mm", "ambiente.gd: la hora del computador también en una captura (--png, --fps, --cine, --trailer, --vp), o la de ese momento como si fuera la del computador"],
+	"--reloj": ["ahora|aaaa-mm-ddThh:mm", "ambiente.gd: la hora del computador también en una captura (--png, --fps, --recorrido, --cine, --trailer, --vp), o la de ese momento como si fuera la del computador"],
 	"--cenital": ["x,y,lado", "modelos/calles.gd: cámara ortográfica desde arriba"],
+	"--recorrido": ["toma.json", "ver.gd y recorrido.gd: la cámara sigue una toma de video y sale al terminar (con --write-movie; tools/video3d.py)"],
+	"--instantes": ["s,s,…", "recorrido.gd: con --recorrido y --png x.png, solo esos segundos de la toma (x-t<s>.png) de una sola carga, y sale"],
 }
 
 # lo que apaga --sin (y quién lo lee)

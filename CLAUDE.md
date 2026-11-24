@@ -54,7 +54,7 @@ uv run --with "playwright==1.63" --with pillow python tools/regress.py --against
 
 Cada script de `pipeline/` y `tools/` documenta su uso en su docstring (`python <script> --help`); los comandos de cada tema están en su regla. Después de cualquier cambio en la plantilla, `make check` (~1 s; el hook de pre-commit lo corre solo) y una captura con `tools/screenshot.py` (`make smoke` es la mínima que falla sola); las opciones de las herramientas de Playwright (`--gl gpu`, `uv run`, `--view`) están en `herramientas.md`.
 
-**Godot, siempre oculto.** Una sesión de Claude nunca corre el binario de Godot a la vista: al partir se pone al frente y le quita a Edu el teclado y el mouse. Se corre con `tools/godot_oculto.sh … --png|--fps|--cuadro` (sin una de esas tres quedaría corriendo oculto) o con `--headless` cuando no dibuja (`modelo3d.md`).
+**Godot, siempre oculto.** Una sesión de Claude nunca corre el binario de Godot a la vista: al partir se pone al frente y le quita a Edu el teclado y el mouse. Se corre con `tools/godot_oculto.sh … --png|--fps|--recorrido|--cuadro` (sin una de esas quedaría corriendo oculto) o con `--headless` cuando no dibuja (`modelo3d.md`).
 
 ## Arquitectura
 

@@ -25,8 +25,9 @@
 # Vulkan de Mesa por CPU (llvmpipe), que sí, pero lento (la misma captura, 213 s) y sin cuadros por segundo que sirvan.
 # La salida de Godot sale a medida que llega.
 #
-# Sale con 1 si hubo un SCRIPT ERROR o un ERROR, o si Godot salió con error. Sin --png, --fps ni --cuadro Godot no
-# sale solo: quedaría corriendo oculto (en el Mac, Cmd+Tab lo muestra; en Linux no se ve: Ctrl+C lo termina).
+# Sale con 1 si hubo un SCRIPT ERROR o un ERROR, o si Godot salió con error. Sin --png, --fps, --recorrido (una toma
+# de video, que sale al terminar) ni --cuadro Godot no sale solo: quedaría corriendo oculto (en el Mac, Cmd+Tab lo
+# muestra; en Linux no se ve: Ctrl+C lo termina).
 set -e
 out=$(mktemp "${TMPDIR:-/tmp}/godot_oculto.XXXXXX")
 trap 'rm -f "$out"' EXIT

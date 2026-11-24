@@ -84,6 +84,9 @@ modelo3d: build               ## modelo3d/mapa/: la comuna en teselas de 500 m, 
 web3d: build                  ## dist/3d/: la maqueta en 3D en el navegador (talca.eduramirez.com/3d/; tools/web3d.py armar: Godot exportado a la web, con las plantillas web de su versión, y modelo3d/mapa/ y datos/ en gzip, solo lo que cambió; ~5 s). Requiere modelo3d/mapa/ (make modelo3d o python3 tools/bajar_mapa.py). Probarla: python3 tools/web3d.py servir
 	GODOT="$(GODOT)" $(PY) tools/web3d.py armar
 
+video3d: build                ## shots/video3d/talca-3d.mp4: el video de la maqueta en 3D (tools/video3d.py: las tomas de config/video3d.json con Movie Maker de Godot, oculto, los textos y los fundidos; solo graba las tomas que cambiaron; ~11 min la primera vez). Requiere modelo3d/mapa/ y ffmpeg. Cuadros sueltos para encuadrar: uv run tools/video3d.py --cuadros
+	$(PIL) tools/video3d.py
+
 deploy:                       ## make build (y make web3d) y sube dist/ a Cloudflare Pages (talca.eduramirez.com); DRY_RUN=1 arma sin subir
 	DRY_RUN=$(DRY_RUN) ./scripts/deploy-cloudflare.sh
 

@@ -2,8 +2,8 @@
 #
 # El sol está donde está en Talca (35,43° S, 71,67° O) el día y a la hora del juego. Jugando, son los del computador, y
 # el reloj corre con el suyo (al_reloj(); la diferencia con UTC, la de Chile ese día: utc_chile()); en una partida de la
-# red local, los del anfitrión (la_hora()). Con --hora, o en una captura o una toma (FIJA: --png, --fps, --cine,
-# --trailer, --vp), la hora queda quieta, para que salga igual cada vez: el 15 de enero a las 17:00 (UTC−3, la hora de
+# red local, los del anfitrión (la_hora()). Con --hora, o en una captura o una toma (FIJA: --png, --fps, --recorrido,
+# --cine, --trailer, --vp), la hora queda quieta, para que salga igual cada vez: el 15 de enero a las 17:00 (UTC−3, la hora de
 # verano; el sol a ~45°, al poniente nor-poniente) o la pedida. La tecla T avanza una hora (Mayús+T
 # retrocede) y L pasa del día a la noche o de la noche al día (el reloj corre hacia adelante, en ~3 s, hasta la noche
 # cerrada o hasta la hora de día del comienzo; con el reloj, hasta la suya si es de día), con atardecer, crepúsculo y noche: de noche la luz es la de la luna, las ventanas se encienden y los
@@ -28,7 +28,7 @@ const LAT := -35.4265
 const LON := -71.666
 const UTC := -3.0  # la hora de verano: la de --hora y las capturas
 const GIRO := 5.0  # grados: la grilla está girada; el norte verdadero queda 5° al poniente del norte de la grilla
-const FIJA := ["--png", "--fps", "--cine", "--trailer", "--vp"]  # la hora quieta de siempre (salvo con --reloj)
+const FIJA := ["--png", "--fps", "--recorrido", "--cine", "--trailer", "--vp"]  # la hora quieta de siempre (salvo con --reloj)
 # Con el renderizador Compatibility (WebGL 2: el del navegador, web.gd y `make web3d`; en el computador,
 # --rendering-method gl_compatibility) no hay SSIL ni SSAO, y el cielo y la exposición no salen como con Forward+: estos
 # factores los acercan (la exposición y la luz ambiente, de día y de noche), medidos contra capturas de Forward+
