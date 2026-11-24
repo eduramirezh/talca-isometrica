@@ -45,7 +45,7 @@ edificios-ml:                 ## raw/overture, raw/msbuildings, raw/google-open-
 golf:                         ## la imagen de Esri sobre el Talca Country Club (su contorno, en config/usos.json) -> data/golf.json (pasto cortado y copas; Pillow, por uv)
 	cd pipeline && $(PIL) golf.py
 
-perfiles:                     ## config/perfiles.json + raw/osm/map-comuna.json + data/geometry.json -> data/perfiles.json (los perfiles de calles medidos en fotos, con su eje de OSM, sus cruces y sus postes: la Avenida Las Rastras; después de make data)
+perfiles:                     ## config/perfiles.json y config/cruces.json + raw/osm/map-comuna.json + data/geometry.json -> data/perfiles.json y data/cruces.json (los perfiles de calles medidos en fotos, con su eje de OSM corrido a la imagen, sus bocas y sus postes, y sus cruces: Las Rastras, San Miguel, la K-353; después de make data)
 	cd pipeline && $(PY) perfiles.py
 
 copas:                        ## la imagen de Esri en las cajas de config/copas.json -> data/copas.json (las copas de los árboles de los barrios arbolados; Pillow, por uv)
@@ -77,7 +77,7 @@ hooks:                        ## instala .githooks/ (pre-commit = make check; pr
 modelo3d: build               ## modelo3d/mapa/: la comuna en teselas de 500 m, sus árboles, autos, faroles y letreros de las calles (con data/sentidos.json) como datos, sus edificios solos (de 1,8 a 3 km) y lo de lejos (tools/export.py --teselas; ~3 min, ~540 MB); modelo3d/datos/: lo que comparte con la página y el plano de las calles (pipeline/plano.py); y la importación en Godot. Luego: Godot --path modelo3d. M3D=<dir>: a otro proyecto
 	$(PW) tools/export.py --teselas $(M3D)/mapa --comuna --tam 500 --instancias arboles,alamos,autos,autos-ruta5 --faroles --letreros --fachadas --lejos --medio --liviano
 	touch $(M3D)/mapa/.gdignore    # Godot no importa los glb: mapa.gd los lee mientras se mira
-	mkdir -p $(M3D)/datos && cp config/fachadas.json data/plaza-osm.json data/ruta5.json data/perfiles.json $(M3D)/datos/   # lo que el 3D comparte con la página
+	mkdir -p $(M3D)/datos && cp config/fachadas.json data/plaza-osm.json data/ruta5.json data/perfiles.json data/cruces.json $(M3D)/datos/   # lo que el 3D comparte con la página
 	cd pipeline && $(PY) plano.py $(abspath $(M3D))/datos/plano.json   # las calles, el agua y la red de calles (para mapas y caminos)
 	$(GODOT) --headless --path $(M3D) --import
 

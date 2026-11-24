@@ -1,0 +1,91 @@
+{
+  "_doc": "Cruces de los perfiles medidos (config/perfiles.json): donde parten varios perfiles (su s = 0 está en el cruce). pipeline/perfiles.py los arma en data/cruces.json, que dibujan la página (DATA.cruces: src/js/12-perfiles.js) y la maqueta en 3D (modelo3d/modelos/perfiles.gd): cada esquina entre dos brazos vecinos es un arco de solera de «radio» m tangente a los bordes de sus calzadas, el asfalto es lo que encierran los arcos y los cortes de los brazos, y cada brazo se dibuja desde donde terminan sus esquinas. brazos: {perfil: {corte (m: desde dónde se dibuja, como mínimo), nariz (m: dónde empieza su bandejón)}}. esquinas: entre (dos brazos), radio, bandas (de la solera hacia afuera, como las de un perfil; la última llega a los cierros), o isla (la esquina es una línea pintada con una isla detrás: radio de la solera de la isla, rampa (el perfil del enlace que la cierra por fuera), nariz (la s de la rampa desde donde las dos soleras se separan: antes es asfalto pintado), solera, suelo, baranda; la media luna entre la línea y la isla va achurada). pasos (cruces peatonales: brazo, s, tipo «lineas» o «cebra»), detenciones (la línea de detención de la calzada que llega: brazo, s), flechas (brazo, s, pista: 0 la junto al eje, tipo: recta, izquierda, derecha). objetos: tipo (semaforo, poste, letrero, bandera, palmera, cerco, senal), en [perfil, s, d] (d: m a la derecha del eje, o [lado, m más allá de la solera]), mira (llegada: hacia el tránsito que llega al cruce por ese brazo; salida; calzada: hacia el eje; afuera; o grados desde la tangente), id y lo propio de cada tipo; un cerco va a_lo_largo [perfil, s0, s1, lado(, m más allá de la línea de cierre)], con forma (malla, seto, tablas, muro, defensa, tubo), alto y color. vanos: [poste, poste, cables de telecomunicaciones], cada poste un id de objeto o [perfil, lado, tipo]: el primero de esa línea.",
+  "las-rastras-san-miguel": {
+    "nombre": "Cruce de la Avenida Las Rastras con la Avenida San Miguel y la Ruta K-353",
+    "fuente": "OSM (las calzadas, el enlace, los semáforos y los cruces peatonales; noviembre de 2026), fotos de Mapillary en el cruce y en sus cuatro brazos (2022 a junio de 2026: las panorámicas del centro del 7 de junio de 2023 y del 29 de enero de 2026, y las pasadas de diciembre de 2022 y junio de 2026; pipeline/mapillary.py eje) y la imagen de Esri para los ejes (perfiles.py panel); los radios, ±2 m; los objetos, ±2 m",
+    "brazos": {
+      "avenida-las-rastras": {"corte": 12},
+      "avenida-san-miguel-poniente": {"corte": 12, "nariz": 20},
+      "avenida-san-miguel-oriente": {"corte": 12},
+      "ruta-k-353": {"corte": 10}
+    },
+    "esquinas": [
+      {"entre": ["ruta-k-353", "avenida-san-miguel-oriente"], "radio": 10, "nota": "la esquina de la farmacia: vereda de hormigón que dobla, y detrás un jardín en talud con setos y palmeras (panorámica de 2026, fotos de 2022)",
+       "bandas": [["solera", 0.15], ["vereda", 2.0], ["pasto", 0]]},
+      {"entre": ["avenida-san-miguel-oriente", "avenida-las-rastras"], "radio": 16, "nota": "la esquina del enlace: una línea pintada, un achurado y la isla triangular de soleras amarillas con su baranda de tubo (fotos de diciembre de 2022 y panorámica de 2026)",
+       "isla": {"radio": 5, "rampa": "enlace-san-miguel-las-rastras", "nariz": 25, "solera": "amarilla", "suelo": "pasto", "baranda": true}},
+      {"entre": ["avenida-las-rastras", "avenida-san-miguel-poniente"], "radio": 9, "nota": "la esquina de la escuela: vereda y tierra hasta su reja, postes de alta tensión y una palmera",
+       "bandas": [["solera", 0.15], ["vereda", 1.8], ["tierra", 0]]},
+      {"entre": ["avenida-san-miguel-poniente", "ruta-k-353"], "radio": 8, "nota": "la esquina de Sargent Agrícola: vereda de hormigón de 2,5 m con su rebaje, y la malla verde del patio de tractores",
+       "bandas": [["solera", 0.15], ["vereda", 2.5], ["tierra", 0]]}
+    ],
+    "pasos": [
+      {"brazo": "avenida-san-miguel-poniente", "s": 10, "tipo": "lineas", "nota": "dos líneas, no una cebra (fotos de 2026)"},
+      {"brazo": "avenida-san-miguel-oriente", "s": 13, "tipo": "lineas", "nota": "OSM: crossing=traffic_signals en las dos calzadas"},
+      {"brazo": "ruta-k-353", "s": 9, "tipo": "lineas", "nota": "OSM: crossing=traffic_signals"}
+    ],
+    "detenciones": [
+      {"brazo": "avenida-san-miguel-poniente", "s": 13},
+      {"brazo": "avenida-san-miguel-oriente", "s": 16},
+      {"brazo": "ruta-k-353", "s": 12},
+      {"brazo": "avenida-las-rastras", "s": 16}
+    ],
+    "flechas": [
+      {"brazo": "avenida-san-miguel-poniente", "s": 22, "pista": 0, "tipo": "izquierda", "nota": "inferida: la pista junto al bandejón espera con su cola mientras la del medio pasa"},
+      {"brazo": "avenida-san-miguel-poniente", "s": 22, "pista": 1, "tipo": "recta", "nota": "foto del 3 de junio de 2026"},
+      {"brazo": "avenida-san-miguel-poniente", "s": 22, "pista": 2, "tipo": "recta"},
+      {"brazo": "avenida-san-miguel-oriente", "s": 30, "pista": 0, "tipo": "recta"},
+      {"brazo": "avenida-san-miguel-oriente", "s": 30, "pista": 1, "tipo": "recta"}
+    ],
+    "objetos": [
+      {"tipo": "semaforo", "en": ["avenida-san-miguel-poniente", 9, ["O", 0.8]], "mira": "llegada", "forma": "mastil", "largo": 7.0, "cabezas": 2, "nota": "el mástil en L galvanizado de la esquina de Sargent, con una cabeza sobre las pistas y otra en el poste"},
+      {"tipo": "semaforo", "en": ["avenida-san-miguel-oriente", 6, ["E", 0.8]], "mira": "salida", "forma": "poste", "nota": "al otro lado, para el que llega desde el poniente"},
+      {"tipo": "semaforo", "en": ["avenida-las-rastras", 15, ["O", 0.8]], "mira": "llegada", "forma": "poste", "nota": "con su caja de letrero (foto de diciembre de 2022)"},
+      {"tipo": "semaforo", "en": ["ruta-k-353", 6, ["E", 0.8]], "mira": "salida", "forma": "poste"},
+      {"tipo": "semaforo", "en": ["ruta-k-353", 4, ["O", 0.8]], "mira": "llegada", "forma": "poste", "nota": "una cabeza en un poste simple al oriente, a s≈3 (fotos de 2023)"},
+      {"tipo": "semaforo", "en": ["avenida-las-rastras", 12, 7.0], "mira": "llegada", "forma": "poste", "nota": "en la punta de la isla, hacia el que baja por Las Rastras"},
+      {"tipo": "semaforo", "en": ["avenida-san-miguel-oriente", 30, 0.0], "mira": "llegada", "forma": "poste", "nota": "en la nariz del bandejón (foto de 2026, de espaldas)"},
+      {"tipo": "semaforo", "en": ["avenida-san-miguel-oriente", 15, ["O", 0.8]], "mira": "llegada", "forma": "poste"},
+      {"tipo": "semaforo", "en": ["avenida-san-miguel-poniente", 6, ["E", 0.8]], "mira": "salida", "forma": "poste", "camara": true, "nota": "un poste alto con un brazo corto y una cámara encima"},
+      {"tipo": "poste", "id": "so", "en": ["avenida-san-miguel-poniente", 3, ["O", 1.6]], "mira": "calzada", "poste": "media", "telecom": 12, "nota": "el poste de la esquina de Sargent, con el mazo de cables"},
+      {"tipo": "poste", "id": "se", "en": ["avenida-san-miguel-oriente", 4, ["E", 0.5]], "mira": "calzada", "poste": "media", "telecom": 10, "pintado": "rojo", "nota": "pintado de rojo y blanco hasta los 2,5 m (panorámica de 2026)"},
+      {"tipo": "poste", "id": "ne", "en": ["avenida-las-rastras", 22, 9.0], "mira": "calzada", "poste": "alta", "nota": "un poste alto con tres crucetas en la isla"},
+      {"tipo": "poste", "id": "farmacia", "en": ["ruta-k-353", 5, ["O", 1.2]], "mira": "calzada", "poste": "simple", "letrero": "FARMACIA", "nota": "el letrero azul vertical «FARMACIA 200 MT» en un poste de hormigón"},
+      {"tipo": "letrero", "en": ["avenida-san-miguel-oriente", 11, ["E", 4.0]], "mira": "llegada", "ancho": 7.5, "alto": 3.6, "base": 4.2, "caras": 2, "colores": ["24303e", "e8e4da"], "nota": "el letrero doble sobre un marco de acero (en 2026, un auto nuevo sobre fondo oscuro)"},
+      {"tipo": "letrero", "en": ["ruta-k-353", 2, ["O", 3.0]], "mira": -120, "ancho": 2.4, "alto": 3.6, "base": 2.6, "caras": 1, "colores": ["2f5fa8", "c8402f"], "pie": "rojo", "nota": "el de un loteo («Lomas de San Miguel»), azul con una franja roja, en un poste rojo y blanco; mira a quien llega por San Miguel desde el poniente (foto 1786758282286139, 2026)"},
+      {"tipo": "letrero", "en": ["avenida-san-miguel-poniente", 30, ["O", 2.8]], "mira": "llegada", "ancho": 6.0, "alto": 3.0, "base": 5.0, "caras": 2, "colores": ["e9ecef", "2b4f7a"], "nota": "el letrero doble de un solo pie frente a Sargent"},
+      {"tipo": "letrero", "en": ["avenida-las-rastras", 26, 8.5], "mira": "calzada", "ancho": 1.3, "alto": 3.4, "base": 2.2, "caras": 2, "colores": ["1f78c8", "f2f2f2"], "nota": "el letrero azul angosto de la isla"},
+      {"tipo": "bandera", "en": ["avenida-san-miguel-poniente", 16, ["O", 3.2]], "alto": 6.5, "color": "2e8b3e"},
+      {"tipo": "bandera", "en": ["avenida-san-miguel-poniente", 20, ["O", 3.2]], "alto": 6.5, "color": "e4c21e"},
+      {"tipo": "bandera", "en": ["avenida-san-miguel-poniente", 24, ["O", 3.2]], "alto": 6.5, "color": "c8302f"},
+      {"tipo": "bandera", "en": ["avenida-san-miguel-poniente", 28, ["O", 3.2]], "alto": 6.5, "color": "2e8b3e"},
+      {"tipo": "bandera", "en": ["avenida-san-miguel-poniente", 34, ["O", 3.2]], "alto": 6.5, "color": "1f4f9a"},
+      {"tipo": "bandera", "en": ["avenida-san-miguel-poniente", 38, ["O", 3.2]], "alto": 6.5, "color": "e4c21e"},
+      {"tipo": "bandera", "en": ["avenida-san-miguel-poniente", 42, ["O", 3.2]], "alto": 6.5, "color": "2e8b3e"},
+      {"tipo": "bandera", "en": ["ruta-k-353", 12, ["E", 3.5]], "alto": 6.5, "color": "2e8b3e"},
+      {"tipo": "bandera", "en": ["ruta-k-353", 17, ["E", 3.5]], "alto": 6.5, "color": "c8302f"},
+      {"tipo": "bandera", "en": ["ruta-k-353", 22, ["E", 3.5]], "alto": 6.5, "color": "e4c21e"},
+      {"tipo": "palmera", "en": ["avenida-san-miguel-oriente", 9, ["E", 6.5]], "alto": 13.0, "forma": "canaria", "nota": "las dos palmeras canarias del jardín de la esquina (fotos de 2022 y 2026)"},
+      {"tipo": "palmera", "en": ["avenida-san-miguel-oriente", 22, ["E", 7.0]], "alto": 12.0, "forma": "canaria"},
+      {"tipo": "palmera", "en": ["avenida-san-miguel-oriente", 31, ["E", 4.5]], "alto": 8.0, "forma": "abanico"},
+      {"tipo": "palmera", "en": ["avenida-las-rastras", 26, ["O", 7.0]], "alto": 11.0, "forma": "canaria", "nota": "la de la esquina de la escuela, detrás del poste de alta tensión"},
+      {"tipo": "cerco", "a_lo_largo": ["avenida-san-miguel-poniente", 12, 45, "O"], "forma": "malla", "alto": 1.9, "color": "3f7d4a", "nota": "la malla verde de Sargent"},
+      {"tipo": "cerco", "a_lo_largo": ["ruta-k-353", 10, 40, "E"], "forma": "malla", "alto": 1.9, "color": "3f7d4a"},
+      {"tipo": "cerco", "a_lo_largo": ["avenida-san-miguel-oriente", 12, 80, "E"], "forma": "seto", "alto": 2.2, "color": "3e6b34", "nota": "el seto tupido de los jardines del sur"},
+      {"tipo": "cerco", "a_lo_largo": ["ruta-k-353", 10, 30, "O"], "forma": "tablas", "alto": 2.0, "color": "4a3a2c", "nota": "el cierro de tablas oscuro"},
+      {"tipo": "cerco", "a_lo_largo": ["ruta-k-353", 30, 110, "O"], "forma": "muro", "alto": 2.2, "color": "b9b4aa", "nota": "el muro de placas de hormigón"},
+      {"tipo": "cerco", "a_lo_largo": ["avenida-san-miguel-poniente", 30, 70, "E"], "forma": "muro", "alto": 1.3, "color": "9a4a3a", "nota": "el muro bajo rojo de pilares crema"},
+      {"tipo": "cerco", "a_lo_largo": ["avenida-san-miguel-poniente", 60, 160, "E", 0.6], "forma": "defensa", "alto": 0.75, "color": "b8bcbf", "nota": "la defensa caminera del borde norte"},
+      {"tipo": "senal", "en": ["enlace-san-miguel-las-rastras", 84, ["O", 0.6]], "mira": "salida", "forma": "pare"},
+      {"tipo": "senal", "en": ["enlace-san-miguel-las-rastras", 25, ["O", 0.6]], "mira": "salida", "forma": "disco"}
+    ],
+    "vanos": [
+      ["so", ["avenida-san-miguel-poniente", "O", "media"], 12],
+      ["so", ["ruta-k-353", "E", "media"], 15],
+      ["so", "se", 10],
+      ["se", ["avenida-san-miguel-oriente", "E", "media"], 10],
+      ["ne", ["avenida-las-rastras", "E", "media"], 0],
+      ["ne", ["avenida-san-miguel-poniente", "E", "alta"], 0]
+    ]
+  }
+}

@@ -67,6 +67,7 @@ El Estadio Fiscal y la Catedral son los ejemplos de referencia. Para casos parti
 - un tramo entero de la Alameda, que la Alameda deja de dibujar (`ALAM_OWN`: su paseo, su plaza, sus faroles y sus árboles), con lo que hay adentro ubicado por rumbos desde las panorámicas de las dos calzadas (`mapillary.py postes` y `cruce`), sin explanada (`groundLayer`) y con los árboles de OSM uno por uno: los juegos entre 3 y 4 Oriente (`juegos-alameda`);
 - un recinto fuera de las manzanas que reemplaza un uso del campo sin correr las parcelas vecinas (`u.keep`): el Colegio Inglés (`colegio-ingles`);
 - un recinto dibujado desde datos leídos de la imagen (`DATA.golf`, de `pipeline/golf.py`): el Talca Country Club (`talca-country-club`);
+- los muebles de un cruce dibujados desde datos que comparte con el 3D (`DATA.cruces`: palmeras con `palmS`, letreros, banderas y cierros, cada uno sobre `E()` en su pie, sin explanada ni `MODELS`), que el 3D quita de la capa `hitos` porque los dibuja él: los cruces (`cruces`);
 - calles vestidas sin reemplazar el mapa (la calzada pintada por zonas con `s.paint`, líneas de pista con `s.lanes`, faroles con `LAMP_SKIP`, árboles reales con `CLEAR_T`, objetos sobre la vereda de la calle del mapa y no sobre la solera real): las calles de la plaza (`calles-plaza`, con `DATA.plaza`: los semáforos y árboles de OSM de `modelo3d/modelos/calles.gd`).
 
 ## Trampas

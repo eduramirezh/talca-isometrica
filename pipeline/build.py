@@ -177,6 +177,10 @@ def main(*, where=None):
     geo['copas'] = {'areas': cp['areas'], 'trees': [v for t in cp['trees'] for v in t]}
     # the street profiles measured in photos (pipeline/perfiles.py): DATA.perfiles, which src/js/12-perfiles.js draws
     geo['perfiles'] = json.load(open(require(DATA / 'perfiles.json', 'Ejecute: make perfiles')))
+    # and their junctions: DATA.cruces, their ground (12-perfiles.js) and furniture (hitos/cruces.js); the kerb faces,
+    # the paint and the cable spans are for the 3D only
+    cr = json.load(open(require(DATA / 'cruces.json', 'Ejecute: make perfiles')))
+    geo['cruces'] = {k: {'suelo': c['suelo'], 'objetos': c['objetos']} for k, c in cr.items()}
     if (DATA / 'cobertura.json').exists():   # la cobertura vegetal de CONAF (pipeline/cobertura.py; sin ella, solo la pendiente)
         files['cob'] = ('cobertura.json', json.load(open(DATA / 'cobertura.json')))
     require(THREE, 'Ejecute: npm install')

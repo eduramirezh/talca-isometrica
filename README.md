@@ -96,7 +96,9 @@ pipeline/
   edificios.py           los edificios de OSM (manzanas enteras y mixtas) y las huellas de aprendizaje automático -> data/edificios.json; panel de cobertura; techos
   golf.py                la imagen de Esri sobre el Talca Country Club -> data/golf.json (pasto cortado y copas)
   copas.py               la imagen de Esri en las cajas de config/copas.json -> data/copas.json (las copas de los barrios arbolados)
-  perfiles.py            config/perfiles.json + el eje de OSM + las calles del mapa -> data/perfiles.json (los perfiles de calles medidos en fotos, para la página y el 3D)
+  perfiles.py            config/perfiles.json y config/cruces.json + el eje de OSM + las calles del mapa -> data/perfiles.json y
+                         data/cruces.json (los perfiles de calles medidos en fotos y sus cruces, para la página y el 3D);
+                         panel (la imagen enderezada a lo largo de un eje) y plano (un cruce sobre la imagen)
   fuentes_cl.py          fuentes públicas chilenas (CIREN, CONAF, INE Censo 2024, MINVU, MINEDUC, DEIS): descarga a raw/cl/, lectura y paneles sobre la imagen satelital
   cobertura.py           la cobertura vegetal de CONAF 2024 -> data/cobertura.json (una clase cada 40 m)
   rutas.py               los nombres de las rutas del mapa contra los roles de la Red Vial del MOP
@@ -105,6 +107,7 @@ pipeline/
   mapillary.py           Mapillary: la clave, las fotos de la comuna (teselas vectoriales), qué lugares tienen fotos que los miran
                          y lo que dejan ver de un punto las panorámicas lejanas (mirar);
                          la búsqueda y la elección (una por pasada, de frente) que usa landmark.py photos --mapillary;
+                         una foto por tramo y sentido a lo largo del eje de un perfil (eje);
                          fachada y punto: las fotos de un edificio o un punto con su planta y una regla dibujadas encima;
                          postes y cruce: ubicar por rumbos lo que no tiene fotos de cerca (los juegos tras una reja)
   traces.py              revisión de trazados contra OSM (cruces, puentes, manzanas en el agua), paneles satelitales, líneas de OSM;
@@ -161,7 +164,7 @@ modelo3d/modelos/plaza.gd   la Plaza de Armas en detalle (árboles, quiosco, pil
 modelo3d/modelos/raices.gd  el Edificio Raíces (3 Oriente 1645) de cerca: balcones con baranda de vidrio, ventanas hundidas, hall, azoteas, jardín y reja; se arma cuando llega su tesela
 modelo3d/modelos/juegos_alameda.gd   los juegos de la Alameda entre 3 y 4 Oriente y su tramo: plataformas con escaleras, toboganes (sus canaletas llevan la meta «tobogan»), columpios que se mecen, faroles; se arma cuando llegan sus dos teselas
 modelo3d/modelos/torre_talca.gd   la Torre Talca de cerca: ventanas y cintas hundidas, planta baja vidriada, azotea, sala de máquinas y el letrero
-modelo3d/modelos/las_rastras.gd   la Avenida Las Rastras de cerca (data/perfiles.json): demarcación, bandejón, ciclovías, soleras, postes con sus cables, paraderos, resaltos y semáforos; se arma por tramos a medida que llegan sus teselas
+modelo3d/modelos/perfiles.gd   las calles medidas en fotos y sus cruces de cerca (data/perfiles.json, data/cruces.json): entorno/perfil.gd, cada calle (demarcación, bandejón, ciclovías, soleras, postes con sus cables, paraderos, resaltos y semáforos), por tramos a medida que llegan sus teselas; entorno/cruce.gd, cada cruce (asfalto, esquinas, isla, pintura, semáforos, letreros, palmeras, cierros); entorno/mobiliario.gd, las piezas de los dos
 modelo3d/malla.gd, materiales.gd   el constructor de mallas y los materiales de todos los modelos (shaders/: capa, patron, follaje, cielo, brillo, plaza/)
 modelo3d/args.gd, fps.gd, glb.gd   las banderas de la línea de comandos (más las de res://banderas.gd del proyecto que use la maqueta), el arnés de --fps y lo que tools/export.py escribe en modelo3d/mapa/indice.json (capas, luces, lugares, teselas)
 tools/check.py           revisión rápida del repo (make check), con las trampas de config/ y data/ que se pueden comprobar; .githooks/pre-commit la corre antes de cada commit (make hooks)

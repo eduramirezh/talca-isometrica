@@ -94,7 +94,7 @@ function boot(){
   setTimeout(()=>{
     const B=new GB(1<<19),S=new GB(1<<16);
     const TT={};let tl=performance.now();const tm=k=>{const n=performance.now();TT[k]=Math.round(n-tl);tl=n;memAt(k);}; // ms per phase: __stats.t; the heap: __mem
-    riversLevel();riversOcc();linesOcc();tm('rivers');   // level water; no lots or trees in the rivers, the Ruta 5 or the rail
+    riversLevel();riversOcc();linesOcc();perfilesOcc();tm('rivers');   // level water; no lots or trees in the rivers, the Ruta 5, the rail or a measured junction
     buildModels(B,S);tm('models');TT.hitos=HITOS_T; // records the landmark pads... (ms per landmark: __stats.t.hitos)
     edificiosPlan();tm('edPlan');           // the OSM buildings: those the landmarks leave, cut at the sidewalks, in occ (3)
     usosPlan();tm('usosPlan');              // land uses: their ground in occ, like a landmark

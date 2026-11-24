@@ -26,6 +26,12 @@
                                                   # en las panorámicas que lo ven -> diagnostics/fotos/<nombre>/<id>.jpg
   python mapillary.py cruce 320 511 425 511 2804659613044828:370 1520358651907062:367.4:3.7   # dónde está lo que esas
                                                   # dos ven en esos postes (con :3.7, la corrección de esa pasada)
+  uv run --with pillow python mapillary.py eje avenida-san-miguel-oriente [--paso 40] [--radio 12] [--desde 2022]
+                       [--s0 0 --s1 300] [--nombre x]   # para medir un perfil (config/perfiles.json): a lo largo de su eje
+                                                  # (data/perfiles.json), la foto más nueva de cada tramo de 40 m en cada
+                                                  # sentido, de frente a la marcha (una panorámica, recortada hacia
+                                                  # adelante), con su estación s y su distancia al eje en el nombre y en
+                                                  # indice.txt -> diagnostics/fotos/perfil-<clave>/
 
 clave: Mapillary pide una clave de cliente para todo, también para las teselas. Es gratis: con una cuenta de
 mapillary.com, https://www.mapillary.com/dashboard/developers → «Register application» (nombre y descripción
@@ -907,6 +913,62 @@ def cmd_cruce(x0: float, y0: float, x1: float, y1: float, *lecturas):
         print(f'  {iid}: cámara en {cx:.1f},{cy:.1f}, a {t:.1f} m; el punto queda a {off:.1f} m de su recta' + ('  ¡detrás de la cámara!' if t < 0 else ''))
     if ang < 25: print('Aviso: a menos de 25° (cámaras de lados casi opuestos, o muy juntas), un grado de error en el rumbo corre el punto varios metros a lo largo de las rectas: lea también desde cámaras más apartadas.')
 
+def cmd_eje(clave: str, *, paso: float = 40, radio: float = 12, desde: int = 2022, s0: float = 0, s1: float = 1e9,
+            nombre: str = ''):
+    """eje CLAVE: las fotos a lo largo del eje de un perfil de data/perfiles.json, para medir su sección."""
+    from PIL import Image
+    from perfiles import Eje
+    pf = json.load(open(DATA / 'perfiles.json')).get(clave)
+    if not pf: raise SystemExit(f'data/perfiles.json no tiene «{clave}» (make perfiles)')
+    E = Eje([(x / 10, y / 10) for x, y in dec(pf['eje'])])
+    D = json.load(open(OUT / 'imagenes.json'))
+    t0 = time.mktime((desde, 1, 1, 0, 0, 0, 0, 0, 0)) * 1000
+    x0, x1 = min(p[0] for p in E.P) - radio, max(p[0] for p in E.P) + radio
+    y0, y1 = min(p[1] for p in E.P) - radio, max(p[1] for p in E.P) + radio
+    best = {}                     # (station bin, +1 growing s | -1 decreasing) -> the newest image
+    for im in D['imagenes']:
+        if im[3] < t0 or not (x0 < im[1] < x1 and y0 < im[2] < y1): continue
+        s, d = E.proj((im[1], im[2]))
+        if abs(d) > radio or not (s0 <= s <= min(s1, E.L)): continue
+        p, t = E.at(s)
+        az = bearing(p[0], p[1], p[0] + t[0], p[1] + t[1])
+        dirs = (1, -1) if im[5] else (1,) if off(im[4], az) < 45 else (-1,) if off(im[4], az + 180) < 45 else ()
+        for sentido in dirs:
+            k = (int(s // paso), sentido)
+            if k not in best or im[3] > best[k][0][3]: best[k] = (im, s, d, az if sentido > 0 else (az + 180) % 360)
+    if not best: raise SystemExit(f'Sin fotos desde {desde} a menos de {radio:.0f} m del eje de {clave}.')
+    tok = token()
+    ids = sorted({b[0][0] for b in best.values()})
+    info = {}
+    for k in range(0, len(ids), 50):
+        for r in graph('images', {'image_ids': ','.join(ids[k:k + 50]),
+                                  'fields': 'id,thumb_original_url,thumb_2048_url,computed_compass_angle,camera_type'}, tok).get('data', []):
+            info[r['id']] = r
+    out = ROOT / 'diagnostics' / 'fotos' / (nombre or f'perfil-{clave}')
+    rows = []
+    for (b, sentido), (im, s, d, az) in sorted(best.items(), key=lambda kv: (kv[0][1] < 0, kv[0][0])):
+        r = info.get(im[0], {})
+        pano = im[5] or r.get('camera_type') in ('spherical', 'equirectangular')
+        url = r.get('thumb_original_url') if pano else r.get('thumb_2048_url') or r.get('thumb_original_url')
+        if not url or r.get('camera_type') == 'fisheye': continue
+        f = original(im[0], url, out / 'originales')
+        if not f: continue
+        img = Image.open(f).convert('RGB')
+        if pano:                  # equirectangular: 100° around the direction of travel along the axis, -25° to +30°
+            W, H = img.size; cca = r.get('computed_compass_angle', im[4]) or 0
+            c = W * (((az - cca) % 360) / 360 + .5); band = Image.new('RGB', (W * 3, H))
+            for i in range(3): band.paste(img, (W * i, 0))
+            img = band.crop((int(c - W * 50 / 360) + W, int(H / 2 - H * 30 / 180), int(c + W * 50 / 360) + W, int(H / 2 + H * 25 / 180)))
+        img.thumbnail((1600, 1600))
+        fecha = time.strftime('%Y-%m-%d', time.gmtime(im[3] / 1000))
+        name = f's{s:04.0f}-{"crece" if sentido > 0 else "decrece"}-{fecha}-{im[0]}.jpg'
+        img.save(out / name, quality=88)
+        rows.append(f'{name}  s {s:.0f} m, a {d:+.1f} m del eje (+: a la derecha), mirando hacia donde {"crece" if sentido > 0 else "decrece"} s'
+                    f'{" (panorámica recortada)" if pano else ""}\n    https://www.mapillary.com/app/?pKey={im[0]}')
+    (out / 'indice.txt').write_text(f'{clave}: eje de {E.L:.0f} m; una foto cada {paso:.0f} m en cada sentido, la más nueva desde {desde}\n'
+                                    + '\n'.join(rows) + '\n')
+    print(f'{len(rows)} fotos -> {out.relative_to(ROOT)}/ (indice.txt)')
+
 if __name__ == '__main__':
     cli.run({'clave': cmd_clave, 'cobertura': cmd_cobertura, 'lugares': cmd_lugares, 'fachada': cmd_fachada, 'punto': cmd_punto,
-             'mirar': cmd_mirar, 'postes': cmd_postes, 'cruce': cmd_cruce}, __doc__)
+             'mirar': cmd_mirar, 'postes': cmd_postes, 'cruce': cmd_cruce, 'eje': cmd_eje}, __doc__)
