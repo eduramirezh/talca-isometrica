@@ -46,7 +46,7 @@ extends Node3D
 const Malla := preload("res://malla.gd")
 const Mat := preload("res://materiales.gd")
 const Glb := preload("res://glb.gd")
-const DIR := "res://mapa/"
+const Fuente := preload("res://fuente.gd")
 const CELDA := 125.0
 const CERCA := 280.0  # m de la cámara al borde de la celda
 const SOLTAR := 420.0
@@ -128,7 +128,8 @@ func cerca_de(p: Vector2, r: float) -> Array:
 			if dist(caja(k), p) > r:
 				continue
 			var t: Dictionary = mapa.teselas.get(tesela(k), {})
-			if int(t.get("fachadas", 0)) > 0:
+			# en el navegador, su f_<i>_<j>.json está mientras la tesela está cargada (mapa.gd lo baja con ella)
+			if int(t.get("fachadas", 0)) > 0 and (not Fuente.web or mapa.cargadas.has(tesela(k))):
 				out.append(k)
 	out.sort_custom(func(a, b): return dist(caja(a), p) < dist(caja(b), p))
 	return out
@@ -204,37 +205,35 @@ func tesela_de(celda: String) -> Dictionary:
 	if not cache.has(t):
 		var por := {}
 		var idx := {}
-		var f := DIR + "f_%s.json" % t
-		if FileAccess.file_exists(f):
-			var j: Variant = JSON.parse_string(FileAccess.get_file_as_string(f))
-			if j is Array:
-				for e in j:
-					var q := PackedVector2Array()
-					for p in e["q"]:
-						q.append(Vector2(p[0], p[1]))
-					if q.size() < 3:
-						continue
-					var c := Vector2.ZERO
-					for p in q:
-						c += p
-					c /= q.size()
-					if recortado(c):
-						continue
-					e["Q"] = q
-					var k := "%d_%d" % [floori(c.x / CELDA), floori(c.y / CELDA)]
-					if not por.has(k):
-						por[k] = []
-					por[k].append(e)
-					# el índice: la planta en cada celda de INDICE m que toca su caja
-					var bb := Rect2(q[0], Vector2.ZERO)
-					for p in q:
-						bb = bb.expand(p)
-					for iy in range(floori(bb.position.y / INDICE), floori(bb.end.y / INDICE) + 1):
-						for ix in range(floori(bb.position.x / INDICE), floori(bb.end.x / INDICE) + 1):
-							var ki := Vector2i(ix, iy)
-							if not idx.has(ki):
-								idx[ki] = []
-							idx[ki].append(e)
+		var j: Variant = Fuente.json("f_%s.json" % t)
+		if j is Array:
+			for e in j:
+				var q := PackedVector2Array()
+				for p in e["q"]:
+					q.append(Vector2(p[0], p[1]))
+				if q.size() < 3:
+					continue
+				var c := Vector2.ZERO
+				for p in q:
+					c += p
+				c /= q.size()
+				if recortado(c):
+					continue
+				e["Q"] = q
+				var k := "%d_%d" % [floori(c.x / CELDA), floori(c.y / CELDA)]
+				if not por.has(k):
+					por[k] = []
+				por[k].append(e)
+				# el índice: la planta en cada celda de INDICE m que toca su caja
+				var bb := Rect2(q[0], Vector2.ZERO)
+				for p in q:
+					bb = bb.expand(p)
+				for iy in range(floori(bb.position.y / INDICE), floori(bb.end.y / INDICE) + 1):
+					for ix in range(floori(bb.position.x / INDICE), floori(bb.end.x / INDICE) + 1):
+						var ki := Vector2i(ix, iy)
+						if not idx.has(ki):
+							idx[ki] = []
+						idx[ki].append(e)
 		cache[t] = {"por": por, "idx": idx}
 	var out: Dictionary = cache[t]
 	cerrojo_t.unlock()

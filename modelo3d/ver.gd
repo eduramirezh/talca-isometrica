@@ -64,7 +64,7 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventMouseMotion and arrastre:
 		yaw -= e.relative.x * 0.005
 		pitch = clampf(pitch - e.relative.y * 0.005, deg_to_rad(-89.0), deg_to_rad(89.0))
-	elif e is InputEventKey and e.pressed and e.physical_keycode == KEY_ESCAPE:
+	elif e is InputEventKey and e.pressed and e.physical_keycode == KEY_ESCAPE and not OS.has_feature("web"):
 		get_tree().quit()
 
 

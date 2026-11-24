@@ -33,7 +33,7 @@ site_assets. Tiene:
   diff()         los píxeles que difieren entre dos imágenes (un canal por más de 8) y su imagen en magenta
   ease()         0..1 suavizado (smoothstep), acotado
 """
-import asyncio, email.utils, functools, gzip, http.server, mimetypes, os, subprocess, sys, threading
+import asyncio, email.utils, fnmatch, functools, gzip, http.server, mimetypes, os, subprocess, sys, threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -43,14 +43,42 @@ LOAD_MS = int(float(os.environ.get('TALCA_ESPERA', 300)) * 1000)
 _SERVED = {}
 
 
+def headers_rules(text):
+    """Cloudflare Pages' _headers (src/site/_headers): [(pattern, [(name, value)])], a pattern being a path where *
+    stands for anything (https://developers.cloudflare.com/pages/configuration/headers/)."""
+    rules = []
+    for line in text.splitlines():
+        if not line.strip() or line.lstrip().startswith('#'): continue
+        if not line[0].isspace(): rules.append((line.strip(), []))
+        elif rules and ':' in line: rules[-1][1].append(tuple(x.strip() for x in line.split(':', 1)))
+    return rules
+
+
+def headers_for(rules, path):
+    """The headers of every rule whose pattern matches path (all of them apply, as in Pages)."""
+    out = []
+    for pat, hs in rules:
+        if fnmatch.fnmatchcase(path, pat): out += hs
+    return out
+
+
 class Site(http.server.SimpleHTTPRequestHandler):
     """dist/ as Cloudflare Pages serves it, so that the downloads weigh what they weigh on the site: text compressed
-    (gzip; the site uses brotli, ~15 % smaller), assets/ cached without asking again (src/site/_headers), the rest
-    revalidated (Last-Modified / If-Modified-Since)."""
+    (gzip; the site uses brotli, ~15 % smaller), the headers of dist/_headers (src/site/_headers: assets/ cached
+    without asking again, the cross-origin isolation of /3d/), the rest revalidated (Last-Modified /
+    If-Modified-Since)."""
     _gz = {}
+    _rules = {}
+    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map, '.wasm': 'application/wasm',
+                      '.gz': 'application/gzip', '.pck': 'application/octet-stream'}
     def log_message(self, *a): pass
+    def guess_type(self, path):   # x.glb.gz is a gzip file, not a glb (Pages serves it without Content-Encoding)
+        return 'application/gzip' if str(path).endswith('.gz') else super().guess_type(path)
     def end_headers(self):
-        if self.path.startswith('/assets/'): self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+        f = Path(self.directory) / '_headers'
+        key = (f, f.stat().st_mtime_ns if f.exists() else 0)
+        if key not in self._rules: self._rules[key] = headers_rules(f.read_text()) if f.exists() else []
+        for k, v in headers_for(self._rules[key], self.path.split('?')[0]): self.send_header(k, v)
         super().end_headers()
     def do_GET(self):
         f = Path(self.translate_path(self.path))

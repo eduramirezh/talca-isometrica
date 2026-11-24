@@ -3,7 +3,9 @@
 # 500·i a 500·(i+1), y de 500·j a 500·(j+1)), sus árboles como datos (t_<i>_<j>.json, arboleda.gd), lejos.glb (un nodo
 # por tesela con solo el relieve, el agua y el borde) e indice.json (las teselas, las capas, los lugares, las luces de
 # los hitos y el límite de la comuna). mapa/ lleva un .gdignore: Godot no importa los glb, se leen al jugar
-# (GLTFDocument), en hilos (WorkerThreadPool), mientras se juega.
+# (GLTFDocument), en hilos (WorkerThreadPool), mientras se juega. Los archivos se leen por fuente.gd: en el navegador
+# (`make web3d`) no están en el paquete, y antes de leer una tesela en un hilo lanzar() baja sus archivos por HTTP en el
+# hilo principal (bajada.gd); los de arrancar() los bajó antes web.gd (archivos_arranque()).
 #
 # Alrededor de la cámara (la que esté en uso: el personaje, cine.gd, vp.gd) se cargan las teselas a menos de CARGA y
 # se sueltan las que pasan de SOLTAR; donde no hay una cargada se ve la de lejos.glb. Entre CARGA y MEDIO (el fin de
@@ -33,6 +35,7 @@ const Faroles := preload("res://faroles.gd")
 const Letreros := preload("res://letreros.gd")
 const Pasos := preload("res://pasos.gd")
 const Fachadas := preload("res://fachadas_ciudad.gd")
+const Fuente := preload("res://fuente.gd")
 const Args := preload("res://args.gd")
 const DIR := "res://mapa/"
 const CARGA := 1800.0  # m de la cámara al borde de la tesela
@@ -43,6 +46,7 @@ const COLISION := 250.0
 const SIN_COLISION := 500.0
 const ARRANQUE := 250.0
 const HILOS := 3  # teselas que se leen a la vez
+const HILOS_WEB := 6  # en el navegador, las que se bajan o se leen a la vez (lo que tarda es bajarlas)
 const VISTA := {"autos": 450.0, "autos-ruta5": 600.0, "trenes": 900.0, "veredas": 900.0, "patios": 1100.0}
 
 var recs := []  # los recortes de los modelos (mundo.gd)
@@ -55,6 +59,8 @@ var colision := {}  # "i_j" -> true: tiene su colisión
 var lejos := {}  # "i_j" -> MeshInstance3D de lejos.glb
 var medios := {}  # "i_j" -> Node3D (la raíz de m_<i>_<j>.glb), solo donde no está la tesela completa
 var tareas := {}  # id de WorkerThreadPool -> ["leer" | "colision" | "medio", clave]
+var bajando := {}  # en el navegador: clave -> "leer" | "medio", mientras se bajan sus archivos
+var cupo := HILOS_WEB if Fuente.web else HILOS
 var hechas := []  # lo que terminaron los hilos: [tipo, clave, resultado]
 var cerrojo := Mutex.new()
 var arboleda: Node3D
@@ -101,6 +107,7 @@ func cargar_lejos() -> void:
 	if l.is_empty():
 		return
 	var raiz := leer_glb(DIR + String(l["archivo"]))
+	Fuente.soltar(String(l["archivo"]))
 	if raiz == null:
 		return
 	raiz.name = "lejos"
@@ -117,14 +124,9 @@ func cargar_lejos() -> void:
 		mi.visible = not cargadas.has(clave)
 
 
+# ruta: en res://mapa/ (DIR + nombre)
 static func leer_glb(ruta: String) -> Node3D:
-	var doc := GLTFDocument.new()
-	var st := GLTFState.new()
-	var err := doc.append_from_file(ProjectSettings.globalize_path(ruta), st)
-	if err != OK:
-		push_error("mapa.gd: no pude leer %s (%s)" % [ruta, error_string(err)])
-		return null
-	return doc.generate_scene(st) as Node3D
+	return Fuente.glb(ruta.trim_prefix(DIR))
 
 
 # Las capas sin material propio en el juego (tipo null en LAYERS: borde, via, ruta5, cerro, trenes, otros) quedan con
@@ -197,6 +199,7 @@ func leer(clave: String, con_colision: bool) -> Dictionary:
 	var t0 := Time.get_ticks_msec()
 	var t: Dictionary = teselas[clave]
 	var raiz := leer_glb(DIR + String(t["archivo"]))
+	Fuente.soltar(String(t["archivo"]))
 	var out := {"raiz": raiz, "arboles": {}, "autos": {}, "faroles": {}, "letreros": {}, "formas": {}}
 	if raiz == null:
 		return out
@@ -204,9 +207,10 @@ func leer(clave: String, con_colision: bool) -> Dictionary:
 	if Recorte.toca(recs, caja(clave)):
 		for mi in raiz.find_children("*", "MeshInstance3D", true, false):
 			Recorte.recortar(mi, recs)
-	var f := DIR + String(t["archivo"]).get_basename() + ".json"
-	if t.has("instancias") and FileAccess.file_exists(f):
-		var j: Variant = JSON.parse_string(FileAccess.get_file_as_string(f))
+	var f := String(t["archivo"]).get_basename() + ".json"
+	if t.has("instancias"):
+		var j: Variant = Fuente.json(f)
+		Fuente.soltar(f)
 		if j is Dictionary:
 			out["arboles"] = Arboleda.preparar(j, recs)
 			out["autos"] = Autos.preparar(j, recs)
@@ -320,6 +324,7 @@ func quitar_colision(clave: String) -> void:
 func soltar(clave: String) -> void:
 	cargadas[clave].queue_free()
 	cargadas.erase(clave)
+	Fuente.soltar("f_%s.json" % clave)  # en el navegador, lo que fachadas_ciudad.gd lee mientras está la tesela
 	colision.erase(clave)
 	arboleda.quitar(clave)
 	autos.quitar(clave)
@@ -339,6 +344,7 @@ func tiene_medio(clave: String) -> bool:
 func leer_medio(clave: String) -> Dictionary:
 	var t0 := Time.get_ticks_msec()
 	var raiz := leer_glb(DIR + String(teselas[clave]["medio"]["archivo"]))
+	Fuente.soltar(String(teselas[clave]["medio"]["archivo"]))
 	if raiz:
 		raiz.name = "m_" + clave
 		if Recorte.toca(recs, caja(clave)):
@@ -391,6 +397,31 @@ func arrancar(puntos: Array, r := ARRANQUE) -> void:
 		roundi(_mb(cargadas.keys()))])
 
 
+# los archivos que arrancar(puntos, r) va a leer (web.gd los baja antes de abrir ver.tscn)
+func archivos_arranque(puntos: Array, r := ARRANQUE) -> Array:
+	var out := []
+	for p in puntos:
+		for k in cerca_de(p, r):
+			for f in archivos("leer", k):
+				if not f in out:
+					out.append(f)
+	return out
+
+
+# los archivos de mapa/ que lee una tarea: la tesela con sus datos y, si tiene edificios, los de fachadas_ciudad.gd
+# (que quedan hasta que se suelta la tesela); o su media
+func archivos(tipo: String, clave: String) -> Array:
+	var t: Dictionary = teselas[clave]
+	if tipo == "medio":
+		return [String(t["medio"]["archivo"])]
+	var out := [String(t["archivo"])]
+	if t.has("instancias"):
+		out.append(String(t["archivo"]).get_basename() + ".json")
+	if int(t.get("fachadas", 0)) > 0 and not "fachadas" in Args.sin_():
+		out.append("f_%s.json" % clave)
+	return out
+
+
 func _mb(claves: Array) -> float:
 	var s := 0.0
 	for k in claves:
@@ -418,20 +449,20 @@ func revisar(p: Vector2) -> void:
 		if d > SOLTAR and not ocupada(k):
 			if d > MEDIO or not tiene_medio(k) or medios.has(k):
 				soltar(k)
-			elif tareas.size() < HILOS:  # primero su media, para que los edificios no desaparezcan un momento
+			elif ocupados() < cupo:  # primero su media, para que los edificios no desaparezcan un momento
 				lanzar("medio", k, false)
 		elif d > SIN_COLISION and colision.has(k):
 			quitar_colision(k)
 	for k in medios.keys():
 		if distancia(k, p) > SOLTAR_MEDIO:
 			quitar_medio(k)
-	if tareas.size() >= HILOS:
+	if ocupados() >= cupo:
 		return  # los hilos están ocupados: no hay qué lanzar
 	var cerca := cerca_con_distancia(p, MEDIO)  # una sola vez: las de CARGA son las primeras
 	var claves: Array = cerca[0]
 	var dist: PackedFloat64Array = cerca[1]
 	for n in claves.size():
-		if tareas.size() >= HILOS or dist[n] > CARGA:
+		if ocupados() >= cupo or dist[n] > CARGA:
 			break
 		var k: String = claves[n]
 		if ocupada(k):
@@ -442,13 +473,19 @@ func revisar(p: Vector2) -> void:
 		elif con and not colision.has(k):
 			lanzar("colision", k, true)
 	for k in claves:  # después de las completas: los edificios de en medio
-		if tareas.size() >= HILOS:
+		if ocupados() >= cupo:
 			break
 		if not cargadas.has(k) and not medios.has(k) and tiene_medio(k) and not ocupada(k):
 			lanzar("medio", k, false)
 
 
+func ocupados() -> int:
+	return tareas.size() + bajando.size()
+
+
 func ocupada(clave: String) -> bool:
+	if bajando.has(clave):
+		return true
 	for id in tareas:
 		if tareas[id][1] == clave:
 			return true
@@ -456,6 +493,18 @@ func ocupada(clave: String) -> bool:
 
 
 func lanzar(tipo: String, clave: String, con: bool) -> void:
+	if Fuente.web and tipo != "colision":
+		var fs := archivos(tipo, clave)
+		if not fs.all(Fuente.tiene):
+			bajando[clave] = tipo
+			Fuente.bajada.pedir(fs, func():
+				bajando.erase(clave)
+				lanzar_ya(tipo, clave, con))
+			return
+	lanzar_ya(tipo, clave, con)
+
+
+func lanzar_ya(tipo: String, clave: String, con: bool) -> void:
 	var f: Callable
 	if tipo == "leer":
 		f = func():
@@ -507,7 +556,7 @@ func recoger() -> void:
 # si ya está todo lo que pide la cámara: las teselas a menos de CARGA, la colisión a menos de COLISION y los
 # edificios de en medio hasta MEDIO
 func listo() -> bool:
-	if not tareas.is_empty():
+	if not tareas.is_empty() or not bajando.is_empty():
 		return false
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:

@@ -13,14 +13,14 @@
 extends RefCounted
 
 const RUTA := "res://mapa/indice.json"
+const Fuente := preload("res://fuente.gd")  # en el navegador, indice.json lo bajó web.gd
 
 static var _info := {}
 
 
 static func info() -> Dictionary:
 	if _info.is_empty():
-		var f := FileAccess.open(RUTA, FileAccess.READ)
-		var j: Variant = JSON.parse_string(f.get_as_text()) if f else null
+		var j: Variant = Fuente.json(RUTA.get_file())
 		if not (j is Dictionary) or not j.has("capas"):
 			push_error("glb.gd: falta %s: corra `make modelo3d` en la raíz del repositorio" % RUTA)
 			j = {"capas": {}, "lugares": [], "luces": [], "teselas": []}

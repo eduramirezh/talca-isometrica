@@ -29,6 +29,15 @@ const LON := -71.666
 const UTC := -3.0  # la hora de verano: la de --hora y las capturas
 const GIRO := 5.0  # grados: la grilla está girada; el norte verdadero queda 5° al poniente del norte de la grilla
 const FIJA := ["--png", "--fps", "--cine", "--trailer", "--vp"]  # la hora quieta de siempre (salvo con --reloj)
+# Con el renderizador Compatibility (WebGL 2: el del navegador, web.gd y `make web3d`; en el computador,
+# --rendering-method gl_compatibility) no hay SSIL ni SSAO, y el cielo y la exposición no salen como con Forward+: estos
+# factores los acercan (la exposición y la luz ambiente, de día y de noche), medidos contra capturas de Forward+
+# de la vista inicial a las 17:00, 21:30 y 23:30 (el brillo medio del cielo, la plaza, los muros y los techos; CHANGELOG). Tampoco tiene la perspectiva aérea
+# de la niebla (que toma el color del cielo): sin ella, al atardecer la niebla naranja (fog_light_color) y el sol
+# en la niebla (fog_sun_scatter) tapaban la ciudad; con Compatibility la niebla lleva el color del cielo
+# (niebla_compat()) y no dispersa el sol.
+const COMPAT := {"exposicion": 1.65, "exposicion_noche": 2.4, "ambiente": 0.6, "ambiente_noche": 1.6, "cielo": 1.2,
+	"cielo_sat": 0.5}
 
 var dia := 15
 var hora := 17.0
@@ -45,6 +54,7 @@ var de := ""  # de quién es la hora mientras nadie la mueve aquí («computador
 var con_anfitrion := false  # ya llegó la hora del anfitrión de la partida (la primera salta; las que siguen, corren)
 var red: Node  # red.gd del juego (su main.gd lo pone; null en ver.gd): si es el anfitrión de una partida, manda la hora a los demás
 var env: Environment
+var compat := RenderingServer.get_current_rendering_method() == "gl_compatibility"
 var sky: Sky
 var cielo: ShaderMaterial
 var sol: DirectionalLight3D
@@ -99,6 +109,9 @@ func calidad() -> void:
 func entorno() -> void:
 	cielo = ShaderMaterial.new()
 	cielo.shader = preload("res://shaders/cielo.gdshader")
+	if compat:
+		cielo.set_shader_parameter("brillo", COMPAT["cielo"])
+		cielo.set_shader_parameter("saturacion", COMPAT["cielo_sat"])
 	sky = Sky.new()
 	sky.sky_material = cielo
 	sky.radiance_size = Sky.RADIANCE_SIZE_256
@@ -132,7 +145,7 @@ func entorno() -> void:
 	env.fog_density = 0.0011
 	env.fog_aerial_perspective = 0.85
 	env.fog_sky_affect = 0.0
-	env.fog_sun_scatter = 0.12
+	env.fog_sun_scatter = 0.0 if compat else 0.12
 	env.adjustment_enabled = true
 	env.adjustment_saturation = 1.08
 	env.adjustment_contrast = 1.04
@@ -300,9 +313,11 @@ func poner_hora(h: float) -> void:
 		sol.light_energy = 0.22 * smoothstep(-0.03, -0.16, elev)
 		sol.shadow_opacity = 0.8
 	sol.light_angular_distance = 0.53 if elev > 0.0 else 1.5
-	env.ambient_light_energy = lerp(0.9, 0.5, dia_k)
-	env.tonemap_exposure = lerp(2.0, 0.5, smoothstep(-0.2, 0.05, elev))
+	env.ambient_light_energy = lerp(0.9, 0.5, dia_k) * (lerpf(COMPAT["ambiente_noche"], COMPAT["ambiente"], dia_k) if compat else 1.0)
+	env.tonemap_exposure = lerp(2.0, 0.5, smoothstep(-0.2, 0.05, elev)) * (lerpf(COMPAT["exposicion_noche"], COMPAT["exposicion"], dia_k) if compat else 1.0)
 	env.fog_light_color = Color(0.55, 0.65, 0.8).lerp(Color(0.95, 0.6, 0.4), 1.0 - smoothstep(0.0, 0.25, elev))
+	if compat:
+		env.fog_light_color = niebla_compat(elev, noche)
 	env.glow_intensity = lerp(0.9, 0.35, dia_k)
 	env.glow_hdr_threshold = lerp(0.8, 1.1, dia_k)
 	for f in faroles:
@@ -314,7 +329,9 @@ func poner_hora(h: float) -> void:
 	if fz:
 		fz.noche(noche)
 	if reloj:
-		reloj.text = "%02d:%02d  ·  T: avanzar la hora (Mayús+T: retroceder)  ·  L: día o noche" % [int(h24), int(fmod(h24, 1.0) * 60.0)]
+		# en el navegador, solo la hora: las teclas están en «Cómo moverse» (web/shell.html), y en un teléfono no cabían
+		var teclas := "" if OS.has_feature("web") else "  ·  T: avanzar la hora (Mayús+T: retroceder)  ·  L: día o noche"
+		reloj.text = "%02d:%02d%s" % [int(h24), int(fmod(h24, 1.0) * 60.0), teclas]
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -549,6 +566,13 @@ func buscar_faroles() -> void:
 
 
 # ---------- rendimiento ----------
+
+
+# el color de la niebla con Compatibility, que no la tiñe con el cielo (COMPAT): la bruma azulada de día, malva al
+# atardecer y de noche un naranja oscuro (el resplandor de la ciudad), como la que da la perspectiva aérea con Forward+
+func niebla_compat(elev: float, noche: float) -> Color:
+	var c := Color(0.62, 0.69, 0.78).lerp(Color(0.62, 0.48, 0.44), 1.0 - smoothstep(0.0, 0.25, elev))
+	return c.lerp(Color(0.2, 0.12, 0.09), noche)
 
 # --sin ssil,ssao,glow,niebla,sombras,blandas,lejos,nubes: apaga partes para medir cuánto cuestan (--calidad baja:
 # ssil, ssao y blandas)

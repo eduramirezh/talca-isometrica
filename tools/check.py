@@ -320,7 +320,10 @@ def main(dist=True):
             if not re.search(r'"assets/geometry\.\w+\.json"', html): fail('dist/index.html: no pide los datos (/*DATA*/ en src/page.html)')
             local = {u.split('#')[0] for u in asked if not re.match(r'[a-z]+:|//|#', u)}
             for u in sorted(local):
-                if not (ROOT / 'dist' / u).is_file(): fail(f'dist/index.html pide {u}, que no está en dist/')
+                f = ROOT / 'dist' / (u + 'index.html' if u.endswith('/') else u)
+                # 3d/ (la maqueta en 3D) la arma make web3d, no make build: puede faltar aquí, y la publicación la exige
+                if u == '3d/' and not f.parent.exists(): continue
+                if not f.is_file(): fail(f'dist/index.html pide {u}, que no está en dist/')
             for f in sorted((ROOT / 'dist' / 'assets').glob('*')):
                 if f'assets/{f.name}' not in local: fail(f'dist/assets/{f.name}: ningún archivo lo pide (¿quedó de otro build?)')
             app = [u for u in local if re.fullmatch(r'assets/app\.\w+\.js', u)]

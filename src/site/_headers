@@ -4,3 +4,10 @@
 # (revalidados en cada visita), para que una publicación nueva se vea de inmediato.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# La maqueta en 3D (dist/3d/: tools/web3d.py armar, Godot en el navegador). Sus hilos (SharedArrayBuffer) necesitan
+# que la página esté aislada de otros orígenes: nada de /3d/ puede pedir algo a otro sitio. mapa/ son las teselas en
+# gzip (<nombre>.gz), que Godot descomprime: van como archivos, sin Content-Encoding.
+/3d/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp

@@ -14,7 +14,7 @@ DRY_RUN ?= 0
 # adónde escribe make modelo3d (mapa/ y datos/); otro proyecto de Godot que use la maqueta pasa el suyo. El comentario va
 # arriba: en la misma línea, make deja en el valor los espacios antes del #, y «--teselas $(M3D)/mapa» se parte en dos
 M3D ?= modelo3d
-.PHONY: all fetch osm data elevation ruta5 sentidos edificios edificios-ml golf copas perfiles pois build check golden lint smoke hooks validate diagnostics shots site-assets modelo3d deploy serve clean
+.PHONY: all fetch osm data elevation ruta5 sentidos edificios edificios-ml golf copas perfiles pois build check golden lint smoke hooks validate diagnostics shots site-assets modelo3d web3d deploy serve clean
 
 all: data elevation edificios golf copas pois build         ## pipeline completo (requiere raw/: make fetch)
 
@@ -81,7 +81,10 @@ modelo3d: build               ## modelo3d/mapa/: la comuna en teselas de 500 m, 
 	cd pipeline && $(PY) plano.py $(abspath $(M3D))/datos/plano.json   # las calles, el agua y la red de calles (para mapas y caminos)
 	$(GODOT) --headless --path $(M3D) --import
 
-deploy:                       ## make build y sube dist/ a Cloudflare Pages (talca.eduramirez.com); DRY_RUN=1 arma sin subir
+web3d: build                  ## dist/3d/: la maqueta en 3D en el navegador (talca.eduramirez.com/3d/; tools/web3d.py armar: Godot exportado a la web, con las plantillas web de su versión, y modelo3d/mapa/ y datos/ en gzip, solo lo que cambió; ~5 s). Requiere modelo3d/mapa/ (make modelo3d o python3 tools/bajar_mapa.py). Probarla: python3 tools/web3d.py servir
+	GODOT="$(GODOT)" $(PY) tools/web3d.py armar
+
+deploy:                       ## make build (y make web3d) y sube dist/ a Cloudflare Pages (talca.eduramirez.com); DRY_RUN=1 arma sin subir
 	DRY_RUN=$(DRY_RUN) ./scripts/deploy-cloudflare.sh
 
 validate:                     ## compara cada lugar con su dirección en la grilla (requiere raw/)
