@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<!--
+  La página de la maqueta en 3D en el navegador (talca.eduramirez.com/3d/): la plantilla de Godot (html/custom_html_shell
+  de export_presets.cfg; Godot reemplaza los $GODOT_…). Dos cosas propias:
+  - godot.wasm se publica comprimido, godot.wasm.gz (~10 MB en vez de ~39: Cloudflare Pages no sirve archivos de más de
+    25 MiB; `make web3d`), y el fetch() de abajo lo descomprime en el navegador (DecompressionStream).
+  - Los controles, la vuelta al mapa y cómo correrla en el computador. Sin fuentes ni nada de otro origen: la página va
+    con Cross-Origin-Embedder-Policy (src/site/_headers, /3d/*), que los hilos de Godot necesitan.
+-->
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<title>Talca Isométrica en 3D</title>
+		<meta name="description" content="La maqueta de Talca en 3D, en el navegador: la comuna entera, con la Plaza de Armas, la Catedral y sus calles modeladas de cerca.">
+		<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+		<style>
+:root {
+	--fondo: #e9e4d8;
+	--panel: rgba(250, 247, 240, 0.92);
+	--texto: #2b2a26;
+	--suave: #6b675d;
+	--acento: #8a3a2a;
+	--borde: rgba(43, 42, 38, 0.18);
+	--error: #8a2c26;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--fondo: #16171a;
+		--panel: rgba(28, 29, 33, 0.92);
+		--texto: #ecebe6;
+		--suave: #a3a19a;
+		--acento: #e0a080;
+		--borde: rgba(236, 235, 230, 0.18);
+		--error: #e0867c;
+	}
+}
+html, body, #canvas { margin: 0; padding: 0; border: 0; }
+body {
+	background: var(--fondo);
+	color: var(--texto);
+	font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	overflow: hidden;
+	touch-action: none;
+}
+#canvas { display: block; }
+#canvas:focus { outline: none; }
+a { color: var(--acento); }
+code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+#status {
+	position: absolute; inset: 0;
+	display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px;
+	background: var(--fondo);
+	padding: 16px; text-align: center;
+	visibility: hidden;
+}
+#status h1 { margin: 0; font-size: 22px; font-weight: 600; }
+#status p { margin: 0; color: var(--suave); max-width: 32em; }
+#status-progress { width: min(320px, 80vw); display: none; }
+#status-notice { display: none; color: var(--error); max-width: 36em; }
+#panel {
+	position: absolute; right: 12px; bottom: 12px;
+	max-width: min(360px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto;
+	background: var(--panel); border: 1px solid var(--borde); border-radius: 8px;
+	padding: 8px 12px;
+	-webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+#panel summary { cursor: pointer; font-weight: 600; }
+#panel h2 { font-size: 14px; margin: 12px 0 4px; }
+#panel ul, #panel ol { margin: 0; padding-left: 18px; }
+#panel p { margin: 6px 0; }
+#volver {
+	position: absolute; left: 12px; bottom: 12px;
+	background: var(--panel); border: 1px solid var(--borde); border-radius: 8px;
+	padding: 6px 10px; text-decoration: none; font-weight: 600;
+}
+		</style>
+		$GODOT_HEAD_INCLUDE
+	</head>
+	<body>
+		<canvas id="canvas">Su navegador no puede dibujar la maqueta (falta canvas).</canvas>
+		<noscript>La maqueta en 3D necesita JavaScript.</noscript>
+
+		<div id="status">
+			<h1>Talca Isométrica en 3D</h1>
+			<p id="status-text">Bajando el visor (unos 10 MB)…</p>
+			<progress id="status-progress"></progress>
+			<div id="status-notice"></div>
+		</div>
+
+		<a id="volver" href="../">← Volver al mapa</a>
+
+		<details id="panel">
+			<summary>Cómo moverse</summary>
+			<ul>
+				<li>Arrastrar: girar alrededor del punto.</li>
+				<li>Rueda o dos dedos en el panel táctil: acercar y alejar.</li>
+				<li>W A S D o flechas: mover el punto (Mayús: más rápido). Q y E: bajarlo y subirlo.</li>
+				<li>T: avanzar la hora (Mayús+T: retroceder). L: día o noche.</li>
+			</ul>
+			<p>La comuna se baja por partes a medida que se mira (unos 100 MB alrededor de la plaza). En un teléfono puede andar lento.</p>
+			<h2>En su computador</h2>
+			<p>Se ve mejor (con luz indirecta y sombras blandas) y anda más fluido:</p>
+			<ol>
+				<li>Instale <a href="https://godotengine.org/download/archive/4.7.2-stable/" target="_blank" rel="noopener">Godot 4.7</a>.</li>
+				<li>Baje el código: <code>git clone https://github.com/eduramirezh/talca-isometrica</code></li>
+				<li>Baje la maqueta (~580 MB, de este sitio): <code>python3 tools/bajar_mapa.py</code></li>
+				<li>Ábrala: <code>godot --path modelo3d</code> (o abra <code>modelo3d/project.godot</code> en Godot).</li>
+			</ol>
+			<p>Los datos son de OpenStreetMap y otras fuentes públicas: <a href="https://github.com/eduramirezh/talca-isometrica/blob/main/docs/FUENTES.md" target="_blank" rel="noopener">fuentes y licencias</a>.</p>
+		</details>
+
+		<script>
+// godot.wasm viene comprimido (godot.wasm.gz): se descomprime aquí, antes de que Godot lo pida
+(function () {
+	const fetchOriginal = window.fetch.bind(window);
+	window.fetch = function (input, init) {
+		const url = typeof input === 'string' ? input : input.url;
+		if (url && /\.wasm(\?|$)/.test(url) && 'DecompressionStream' in window) {
+			return fetchOriginal(url.replace(/\.wasm(\?|$)/, '.wasm.gz$1'), init).then((r) => {
+				if (!r.ok) return r;
+				return new Response(r.body.pipeThrough(new DecompressionStream('gzip')), {
+					status: 200, headers: { 'Content-Type': 'application/wasm' },
+				});
+			});
+		}
+		return fetchOriginal(input, init);
+	};
+	// la vuelta al mapa, al mismo lugar si el # es el id de un lugar
+	const h = decodeURIComponent(location.hash.slice(1)).split('&')[0];
+	if (/^[a-z0-9-]+$/.test(h)) document.getElementById('volver').href = '../#' + h;
+}());
+		</script>
+		<script src="$GODOT_URL"></script>
+		<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const statusText = document.getElementById('status-text');
+	const statusProgress = document.getElementById('status-progress');
+	const statusNotice = document.getElementById('status-notice');
+	let initializing = true;
+
+	function mostrar(modo) {
+		if (!initializing) return;
+		if (modo === 'oculto') {
+			statusOverlay.remove();
+			initializing = false;
+			return;
+		}
+		statusOverlay.style.visibility = 'visible';
+		statusProgress.style.display = modo === 'progreso' ? 'block' : 'none';
+		statusNotice.style.display = modo === 'aviso' ? 'block' : 'none';
+	}
+
+	function fallo(err) {
+		console.error(err);
+		statusText.textContent = 'No se pudo abrir la maqueta en este navegador.';
+		statusNotice.textContent = err instanceof Error ? err.message : String(err || 'Error desconocido.');
+		mostrar('aviso');
+		initializing = false;
+	}
+
+	const faltan = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	if (faltan.length !== 0) {
+		fallo('A este navegador le falta: ' + faltan.join(', ') + '. Pruebe con una versión reciente de Chrome, Firefox, Edge o Safari.');
+		return;
+	}
+	mostrar('progreso');
+	engine.startGame({
+		onProgress: function (actual, total) {
+			if (actual > 0 && total > 0) {
+				statusProgress.value = actual;
+				statusProgress.max = total;
+			} else {
+				statusProgress.removeAttribute('value');
+				statusProgress.removeAttribute('max');
+			}
+		},
+	}).then(() => mostrar('oculto'), fallo);
+}());
+		</script>
+	</body>
+</html>

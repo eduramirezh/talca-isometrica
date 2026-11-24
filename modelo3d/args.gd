@@ -16,6 +16,7 @@ extends RefCounted
 const EXTRA := "res://banderas.gd"  # las banderas del proyecto que usa la maqueta, si las tiene
 
 static var _banderas := {}
+static var extra := PackedStringArray()  # las del navegador, donde no hay línea de comandos (web.gd: el # de la dirección)
 static var _sin := {}
 
 # nombre -> [valor que espera ("" si ninguno), quién la lee y qué hace]
@@ -66,7 +67,7 @@ static func sin_todo() -> Dictionary:
 
 
 static func _args() -> PackedStringArray:
-	return OS.get_cmdline_user_args()
+	return OS.get_cmdline_user_args() + extra
 
 
 static func has(nombre: String) -> bool:

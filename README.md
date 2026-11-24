@@ -2,7 +2,7 @@
 
 Maqueta isométrica interactiva de Talca (Región del Maule, Chile) que destaca los lugares del ámbito jurídico (tribunales, fiscalías, defensorías, notarías, registros, academia y la historia legal de la ciudad) junto a sus hitos urbanos. Cubre toda la comuna de Talca (232 km²), recortada por su límite: la ciudad y el campo que la rodea. Está hecha sobre datos reales: las manzanas del Censo 2017 de la comuna y la red vial de OpenStreetMap.
 
-**Verla en línea: [talca.eduramirez.com](https://talca.eduramirez.com/)** · Código: [github.com/eduramirezh/talca-isometrica](https://github.com/eduramirezh/talca-isometrica) · Un proyecto de [Edu Ramírez](https://eduramirez.com/).
+**Verla en línea: [talca.eduramirez.com](https://talca.eduramirez.com/)** · En 3D: [talca.eduramirez.com/3d](https://talca.eduramirez.com/3d/) · Código: [github.com/eduramirezh/talca-isometrica](https://github.com/eduramirezh/talca-isometrica) · Un proyecto de [Edu Ramírez](https://eduramirez.com/).
 
 ![Vista del barrio judicial de la Alameda](docs/img/barrio-judicial.jpg)
 
@@ -23,6 +23,14 @@ make build          # -> dist/: index.html y assets/ (el script, three.js y los 
 make serve          # sirve en http://localhost:8765 y lo abre en el navegador (desde file:// no carga: pide sus datos con fetch)
 make check          # revisión rápida (<1 s): JSON, marcadores, hitos, node --check, los archivos que pide la página; make hooks la deja en el pre-commit
 make smoke          # carga la página en Chromium y falla si hay errores o la generación sale vacía (~1 min)
+```
+
+La maqueta en 3D (Godot 4.7, `modelo3d/`) sin armarla, con las teselas del sitio:
+
+```bash
+python3 tools/bajar_mapa.py                 # modelo3d/mapa/ y datos/ de talca.eduramirez.com/3d/ (~170 MB, ~600 MB en disco)
+godot --headless --path modelo3d --import   # la primera vez
+godot --path modelo3d                       # el visor: arrastrar gira, rueda acerca, WASD mueve
 ```
 
 Para regenerar todo desde las fuentes originales:
@@ -50,12 +58,15 @@ Probado en Linux Mint 22.3 (base Ubuntu 24.04, X11) con una GTX 1650, en noviemb
 
 ## Publicar
 
-El sitio [talca.eduramirez.com](https://talca.eduramirez.com/) es `dist/index.html` en Cloudflare Pages (proyecto `talca-isometrica`):
+El sitio [talca.eduramirez.com](https://talca.eduramirez.com/) es `dist/` en Cloudflare Pages (proyecto `talca-isometrica`): `index.html` y `assets/`, y en `3d/` la maqueta en 3D para el navegador (`make web3d`: Godot exportado a la web, con las plantillas de exportación web de Godot 4.7 instaladas, y las teselas de `modelo3d/mapa/` en gzip, ~180 MB):
 
 ```bash
 make deploy DRY_RUN=1   # arma dist/ y lista lo que se subiría, sin subir nada
-make deploy             # make build + wrangler pages deploy (el de scripts/deploy/, versión fija; una vez: scripts/deploy/node_modules/.bin/wrangler login)
+make deploy             # make build + make web3d + wrangler pages deploy (el de scripts/deploy/, versión fija; una vez: scripts/deploy/node_modules/.bin/wrangler login)
+python3 tools/web3d.py servir   # dist/ en http://localhost:8765 con las cabeceras del sitio (/3d/ las necesita)
 ```
+
+Sin `modelo3d/mapa/` (`make modelo3d` o `tools/bajar_mapa.py`) la publicación se detiene, porque `/3d/` desaparecería del sitio; `TALCA_SIN_3D=1` publica igual.
 
 Con `make hooks`, un `git push` que actualiza `main` en `origin` (GitHub) publica solo (`.githooks/pre-push`). Nunca bloquea el push: si la publicación falla, avisa y el push sigue; tampoco publica si hay cambios sin commit. Para saltarlo: `git push --no-verify` o `TALCA_SKIP_DEPLOY=1 git push`.
 
@@ -147,6 +158,8 @@ tools/blender_ver.py     abre en Blender un glb o STL exportado, con sus colores
 tools/preparar.sh        un worktree listo para trabajar: raw/, node_modules/ y las teselas de modelo3d/ enlazados a los de la copia principal (lo corre el hook WorktreeCreate de .claude/settings.json: .claude/hooks/)
 tools/godot_oculto.sh    corre Godot lanzado oculto (en el Mac con open -j -g; en Linux en Xvfb), sin quitarle el teclado a quien trabaja: así lo revisan las sesiones de Claude
 tools/godot/             proyecto de Godot que carga un glb exportado (ver.gd: cámara ortográfica, colores por vértice; --png); comparar.gd: dos exportaciones de teselas en lo que Godot guarda, vértice por vértice
+tools/web3d.py           la maqueta en 3D en el navegador: armar (dist/3d/: Godot exportado, el wasm y las teselas en gzip; make web3d), servir (dist/ con las cabeceras de _headers) y probar (Chromium: carga, captura y cuadros por segundo)
+tools/bajar_mapa.py      baja modelo3d/mapa/ y datos/ del sitio, para abrir la maqueta en 3D con Godot sin el pipeline
 tools/juego_osm.py       las plantas y los nodos de la calle de OSM alrededor de la plaza para modelo3d/modelos/ y la página (data/plaza-osm.json)
 tools/modelo3d_vistas.py   vistas de la maqueta en 3D frente a las fachadas de la ciudad: dónde pararse frente a un edificio (punto, buscar), las capturas con el visor (tomar) y una hoja antes/después (hoja)
 modelo3d/                la maqueta en 3D en Godot 4.7: la comuna entera en teselas de 500 m (make modelo3d exporta modelo3d/mapa/), con la Plaza de Armas y sus calles, la Catedral, el Edificio Raíces y la Torre Talca de cerca; Godot --path modelo3d
@@ -163,6 +176,8 @@ modelo3d/modelos/juegos_alameda.gd   los juegos de la Alameda entre 3 y 4 Orient
 modelo3d/modelos/torre_talca.gd   la Torre Talca de cerca: ventanas y cintas hundidas, planta baja vidriada, azotea, sala de máquinas y el letrero
 modelo3d/modelos/las_rastras.gd   la Avenida Las Rastras de cerca (data/perfiles.json): demarcación, bandejón, ciclovías, soleras, postes con sus cables, paraderos, resaltos y semáforos; se arma por tramos a medida que llegan sus teselas
 modelo3d/malla.gd, materiales.gd   el constructor de mallas y los materiales de todos los modelos (shaders/: capa, patron, follaje, cielo, brillo, plaza/)
+modelo3d/fuente.gd, bajada.gd, web.gd   en el navegador: todo lo de mapa/ se lee por fuente.gd (del disco, o en gzip bajado por HTTP con bajada.gd); web.gd arranca el visor (el # de la dirección: un lugar, x,y, girar=, hora=…)
+modelo3d/web/shell.html, export_presets.cfg   la página de talca.eduramirez.com/3d/ (controles, vuelta al mapa, cómo correrla en el computador) y la exportación al navegador
 modelo3d/args.gd, fps.gd, glb.gd   las banderas de la línea de comandos (más las de res://banderas.gd del proyecto que use la maqueta), el arnés de --fps y lo que tools/export.py escribe en modelo3d/mapa/indice.json (capas, luces, lugares, teselas)
 tools/check.py           revisión rápida del repo (make check), con las trampas de config/ y data/ que se pueden comprobar; .githooks/pre-commit la corre antes de cada commit (make hooks)
 tools/datadiff.py        qué cambió en los data/*.json (de una línea): claves, tamaños y elementos distintos contra HEAD u otra versión

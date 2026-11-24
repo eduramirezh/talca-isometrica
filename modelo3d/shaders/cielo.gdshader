@@ -17,6 +17,7 @@ uniform float cobertura : hint_range(0.0, 1.0) = 0.38;  // fracción del cielo c
 uniform float nubes_altura = 1800.0;                     // m
 uniform vec2 viento = vec2(9.0, 3.0);                    // m/s (en X y Z del juego): del sur poniente, como la brisa de la tarde
 uniform float brillo = 1.0;
+uniform float saturacion = 1.0;  // ambiente.gd COMPAT: con el renderizador Compatibility el cielo sale más saturado
 
 // colores del cielo en el cénit y el horizonte para una altura del sol h (seno de su elevación)
 void colores(float h, out vec3 cenit, out vec3 horiz) {
@@ -158,5 +159,6 @@ void sky() {
 		}
 	}
 
+	col = mix(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), col, saturacion);
 	COLOR = col * brillo;
 }

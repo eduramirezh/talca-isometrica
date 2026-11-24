@@ -45,7 +45,7 @@ func abs_path(p: String) -> String:
 # el mapa, el ambiente y los modelos, y fps.gd si se pide (--fps); false (y sale con 1) si falta mapa/. puntos y
 # alcance van a mapa.arrancar(): lo que se carga sin hilos antes del primer cuadro
 func armar(puntos: Array, alcance: float = Mapa.ARRANQUE) -> bool:
-	if not FileAccess.file_exists(Glb.RUTA):
+	if not preload("res://fuente.gd").existe(Glb.RUTA.get_file()):
 		push_error("falta mapa/: corra `make modelo3d` en la raíz de talca-isometrica")
 		get_tree().quit(1)
 		return false

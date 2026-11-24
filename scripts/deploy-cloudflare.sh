@@ -2,8 +2,10 @@
 # Publica el sitio en Cloudflare Pages (subida directa): talca.eduramirez.com.
 #
 # `make build` arma dist/ (index.html, assets/ con el script, three.js y los datos, y los archivos de src/site/, entre
-# ellos _headers: la caché de assets/); este script sube dist/ al proyecto de Cloudflare Pages con Wrangler. Se corre a
-# mano (`make deploy`) o lo corre el hook de pre-push cuando se empuja main (.githooks/pre-push).
+# ellos _headers: la caché de assets/), y `make web3d`, dist/3d/ (la maqueta en 3D en el navegador: tools/web3d.py; sin
+# modelo3d/mapa/ ni un dist/3d/ anterior no publica, salvo con TALCA_SIN_3D=1); este script sube dist/ al proyecto de
+# Cloudflare Pages con Wrangler (la primera vez con dist/3d/, ~180 MB; después, solo lo que cambió). Se corre a mano
+# (`make deploy`) o lo corre el hook de pre-push cuando se empuja main (.githooks/pre-push).
 #
 # Wrangler es el de scripts/deploy/ (versión fija en su package.json y package-lock.json, que sube Dependabot; aparte de
 # la raíz para que make build no baje sus ~270 MB): este script corre `npm ci` ahí la primera vez y cuando cambia el
@@ -31,6 +33,15 @@ cd "$root"
 
 say "armando (make build)…"
 make -s build >/dev/null
+# la maqueta en 3D (dist/3d/, tools/web3d.py): Pages publica una foto de dist/ entera, así que sin ella /3d/
+# desaparecería del sitio
+if [ -f modelo3d/mapa/indice.json ]; then
+  say "armando la maqueta en 3D (make web3d)…"
+  make -s web3d >/dev/null
+elif [ ! -f dist/3d/index.html ] && [ "${TALCA_SIN_3D:-0}" = "0" ]; then
+  say "falta modelo3d/mapa/ (make modelo3d, o python3 tools/bajar_mapa.py): sin ella /3d/ desaparecería del sitio; TALCA_SIN_3D=1 publica igual" >&2
+  exit 1
+fi
 
 [ -f dist/index.html ] || { say "falta dist/index.html: ¿make build falló?" >&2; exit 1; }
 stage=dist

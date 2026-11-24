@@ -30,7 +30,7 @@ function renderCard(p){
     ${p.sub?`<ul class="sub">${p.sub.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`:''}
     ${p.f?`<div class="fact">${esc(p.f)}</div>`:''}
     ${srcs.length?`<div class="src">Fuentes: ${srcs.map(s=>`<a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join(' · ')}</div>`:''}
-    <div class="actions"><button class="btn ghost" id="cz">Acercar</button><a class="btn ghost" href="${osm}" target="_blank" rel="noopener">Ver en OpenStreetMap</a></div>
+    <div class="actions"><button class="btn ghost" id="cz">Acercar</button><a class="btn ghost" href="3d/#${encodeURIComponent(p.id)}" title="La maqueta en 3D, en este lugar (Godot en el navegador)">Ver en 3D</a><a class="btn ghost" href="${osm}" target="_blank" rel="noopener">Ver en OpenStreetMap</a></div>
     <a class="report" href="${issue}" target="_blank" rel="noopener">Reportar un error en este lugar</a>
     ${tn}</div>`;
   card.hidden=false;
