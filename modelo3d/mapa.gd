@@ -77,6 +77,7 @@ var fachadas: Node3D  # fachadas_ciudad.gd (null con --sin fachadas)
 var foco := Vector2(INF, INF)
 var fijos := PackedVector2Array()  # puntos que cuentan como la cámara (ver arriba; fachadas_ciudad.gd también los usa)
 var quieto := false  # no carga ni suelta nada (ver arriba; fachadas_ciudad.gd tampoco)
+var vista := VISTA  # el fin de vista de las capas chicas (sin_vista(): ninguno)
 var t_revisar := 0.0
 var stats := {"leidas": 0, "ms": 0, "medios": 0, "ms_medios": 0}
 
@@ -281,8 +282,8 @@ func poner(clave: String, r: Dictionary) -> void:
 			mi.material_override = Mat.capa(capa, Glb.tipo(capa))
 		else:
 			colores(mi.mesh)
-		if VISTA.has(capa):
-			mi.visibility_range_end = VISTA[capa]
+		if vista.has(capa):
+			mi.visibility_range_end = vista[capa]
 	add_child(raiz)
 	cargadas[clave] = raiz
 	quitar_medio(clave)
@@ -327,6 +328,16 @@ func quitar_colision(clave: String) -> void:
 		for c in raiz.find_children("colision", "StaticBody3D", true, false):
 			c.queue_free()
 	colision.erase(clave)
+
+
+# las capas chicas sin fin de vista, en las cargadas y las que vengan (recorrido.gd, la comuna entera: alejándose, las
+# veredas y los patios se iban tesela por tesela)
+func sin_vista() -> void:
+	vista = {}
+	for k in cargadas:
+		for mi in cargadas[k].find_children("*", "MeshInstance3D", true, false):
+			if VISTA.has(String(mi.name)):
+				mi.visibility_range_end = 0.0
 
 
 func soltar(clave: String) -> void:

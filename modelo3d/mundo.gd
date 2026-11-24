@@ -111,6 +111,9 @@ func png() -> void:
 	var f := Args.texto("--png")
 	if f == "":
 		return
+	# Godot no dibuja si ninguna de sus ventanas está a la vista (en el Mac, la de tools/godot_oculto.sh queda tapada a
+	# ratos), y la captura esperaba para siempre: una salida adicional lo hace dibujar igual (también recorrido.gd)
+	DisplayServer.register_additional_output(self)
 	await mapa.esperar()
 	await antes_de_la_captura()
 	for i in 10:

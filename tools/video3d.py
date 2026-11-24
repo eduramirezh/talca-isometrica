@@ -26,7 +26,8 @@ por tools/godot_oculto.sh (Godot nunca a la vista). El tamaño de lo que graba e
 (--resolution no lo cambia): este script escribe modelo3d/override.cfg con el tamaño y la calidad del MJPEG (1,0: con
 la de omisión, 0,75, las copas oscuras y el cielo de noche salen con una grilla de 8 × 8) y lo borra al terminar.
 Movie Maker graba también los cuadros de la carga: recorrido.gd imprime cuántos son de la toma y se toman esos, del
-final. Cada toma queda en shots/video3d/tomas/<id>.mp4 (H.264 casi sin pérdida) con un .json que dice con qué se grabó:
+final. Cada toma se revisa (congelada(): tramos sin cambio; tirones(): saltos y cuadros repetidos) y, si algo salió mal,
+se graba otra vez. Cada toma queda en shots/video3d/tomas/<id>.mp4 (H.264 casi sin pérdida) con un .json que dice con qué se grabó:
 se vuelve a grabar solo si cambió su entrada en config/video3d.json (salvo el texto), el tamaño, la exportación del
 mapa (modelo3d/mapa/indice.json) o el código de modelo3d/ (los .gd y los sombreadores). El montaje pone el texto de cada toma (Pillow), la une con la siguiente con un fundido
 cruzado de «fundido» s y comprime el video a CRF 20 con un tope de 9 Mbit/s (~45 MB por 50 s).
@@ -61,7 +62,7 @@ FONTS = {  # nombre -> (ruta en google/fonts, sha256)
 }
 
 # lo de una toma que cambia lo que graba Godot (el texto no: va en el montaje)
-GRABA = ('dur', 'hora', 'dia', 'fov', 'suave', 'claves', 'claves_vertical')
+GRABA = ('dur', 'hora', 'dia', 'fov', 'suave', 'toda_la_comuna', 'claves', 'claves_vertical')
 
 
 def sh(cmd, **kw):
@@ -121,12 +122,13 @@ def override(size):
 
 
 def godot(args, plazo=600):
-    """Godot oculto con esos argumentos; devuelve su salida (y la imprime si falló). Una vez, oculto en el Mac, se quedó
-    esperando cuadros que no llegaban después de cargar (sin CPU): pasado el plazo (s) se mata y se corre otra vez."""
-    # En el Mac, con la pantalla apagada (por omisión, a los pocos minutos sin usar el computador) la ventana oculta de
-    # Godot deja de presentar cuadros: Movie Maker graba el último una y otra vez (la toma se congela) y una captura
-    # espera para siempre. caffeinate la mantiene encendida mientras corre Godot (-u la enciende si estaba apagada).
-    pre = ['caffeinate', '-d', '-i', '-u'] if sys.platform == 'darwin' and shutil.which('caffeinate') else []
+    """Godot oculto con esos argumentos; devuelve su salida (y la imprime si falló). Antes de la salida adicional de
+    recorrido.gd, una captura esperaba para siempre cuadros que no llegaban: pasado el plazo (s) se mata y se corre otra
+    vez."""
+    # Godot no dibuja si ninguna de sus ventanas está a la vista, y en el Mac la de godot_oculto.sh queda tapada a ratos:
+    # recorrido.gd se registra como salida adicional y lo hace dibujar igual. caffeinate (que el Mac no se duerma ni
+    # apague la pantalla mientras graba) queda de respaldo.
+    pre = ['caffeinate', '-d', '-i'] if sys.platform == 'darwin' and shutil.which('caffeinate') else []
     for intento in (1, 2):
         try:
             r = subprocess.run([*pre, str(GODOT), '--path', str(M3D), *map(str, args)], cwd=ROOT, capture_output=True,
@@ -151,25 +153,46 @@ def godot(args, plazo=600):
 
 def congelada(video):
     """Los tramos de más de 0,5 s en que el video no cambia (freezedetect de ffmpeg): una toma se mueve siempre, así que
-    uno así es Godot que dejó de dibujar y Movie Maker que grabó el último cuadro otra vez. Pasa con la pantalla apagada
-    y, aun con caffeinate, en algunas tomas (noviembre de 2026: dos de las primeras cinco de una corrida); la causa
-    probable es que macOS da por tapada la ventana oculta y Godot no dibuja una ventana tapada (no se comprobó)."""
+    uno así es Godot que dejó de dibujar y Movie Maker que grabó el último cuadro otra vez: pasaba con la ventana oculta
+    tapada (Godot no dibuja si ninguna ventana está a la vista; en una corrida, la Catedral cuatro veces seguidas), hasta
+    que recorrido.gd se registró como salida adicional (DisplayServer.register_additional_output()). Queda como revisión."""
     r = subprocess.run([FFMPEG, '-hide_banner', '-i', str(video), '-vf', 'freezedetect=n=-60dB:d=0.5', '-map', '0:v',
                         '-f', 'null', '-'], capture_output=True, text=True)
     return [float(s) for s in re.findall(r'freeze_start: ([\d.]+)', r.stderr)]
 
 
+def tirones(video, fps=30):
+    """Los cuadros de una toma que no siguen el movimiento de sus vecinos: un salto (el cambio con el anterior, más de
+    tres veces el de los cuadros de alrededor) o un cuadro repetido (menos de un sexto, con la cámara en movimiento).
+    Una toma es un movimiento continuo; así salieron la cámara que partía fuera de lugar y saltaba a su sitio (un salto) y los cuadros
+    que Godot no dibujó (repetidos, más cortos que los que ve congelada()). El cambio, en grises a 160 × 90."""
+    w, h = 160, 90
+    raw = subprocess.run([FFMPEG, '-v', 'error', '-i', str(video), '-vf', f'scale={w}:{h},format=gray', '-f', 'rawvideo', '-'],
+                         capture_output=True, check=True).stdout
+    fr = [raw[i:i + w * h] for i in range(0, len(raw) - w * h + 1, w * h)]
+    d = [sum(abs(a - b) for a, b in zip(fr[i], fr[i + 1])) / (w * h) for i in range(len(fr) - 1)]
+    malos = []
+    for i, x in enumerate(d):
+        vecinos = sorted(d[max(0, i - 6):i] + d[i + 1:i + 7])
+        med = vecinos[len(vecinos) // 2] if vecinos else 0.0
+        if (x > 3 * med and x > 4.0) or (med > 0.8 and x < med / 6):
+            malos.append((i + 1) / fps)
+    return malos
+
+
 def grabar(t, c, size, dirt, vertical=False, intentos=4):
-    """Una toma con Movie Maker -> dirt/<id>.mp4 (los cuadros de la toma, sin los de la carga); si sale congelada, otra
-    vez (hasta `intentos`)."""
+    """Una toma con Movie Maker -> dirt/<id>.mp4 (los cuadros de la toma, sin los de la carga); si sale congelada o con
+    tirones, otra vez (hasta `intentos`)."""
     for i in range(intentos):
         _grabar(t, c, size, dirt, vertical)
         mp4 = dirt / f'{t["id"]}.mp4'
         tramos = congelada(mp4)
-        if not tramos:
+        saltos = tirones(mp4, c.get('fps', 30))
+        if not tramos and not saltos:
             return
-        print(f'video3d.py: {t["id"]}: congelada desde {", ".join(f"{s:.1f}" for s in tramos)} s'
-              + (': otra vez' if i + 1 < intentos else ''), flush=True)
+        malo = (f'congelada desde {", ".join(f"{s:.1f}" for s in tramos)} s' if tramos else
+                f'tirones en {", ".join(f"{s:.2f}" for s in saltos[:8])} s')
+        print(f'video3d.py: {t["id"]}: {malo}' + (': otra vez' if i + 1 < intentos else ''), flush=True)
     meta = dirt / f'{t["id"]}.meta.json'
     meta.unlink(missing_ok=True)  # que la próxima corrida la vuelva a grabar
     sys.exit(f'video3d.py: la toma {t["id"]} salió congelada {intentos} veces (¿la pantalla apagada?)')

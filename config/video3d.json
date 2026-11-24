@@ -1,5 +1,5 @@
 {
-  "_": "El video de la maqueta en 3D (tools/video3d.py): la apertura con el mapa isométrico (tools/video.py), las tomas de modelo3d/recorrido.gd en este orden, con fundidos de «fundido» s entre ellas, y el cierre. Cada clave de una toma: t (s de la toma), x, y (el punto que se mira, en metros de grilla: x al oriente, y al norte, la Plaza de Armas en 0, 0), alto (m del punto sobre el suelo; 1,7 por omisión), girar (grados de la vista a la izquierda; 0: mirando al norte), mirar (grados de inclinación, + arriba) y camara (m de la cámara al punto; 0,01: en el punto). hora: [al comenzar, al terminar] (hora de verano). texto: el título y, si hay, una línea más; aparece y se va con la toma. Los números de los textos, revisados contra CHANGELOG.md y config/ (noviembre de 2026).",
+  "_": "El video de la maqueta en 3D (tools/video3d.py): la apertura con el mapa isométrico (tools/video.py), las tomas de modelo3d/recorrido.gd en este orden, con fundidos de «fundido» s entre ellas, y el cierre. Cada clave de una toma: t (s de la toma), x, y (el punto que se mira, en metros de grilla: x al oriente, y al norte, la Plaza de Armas en 0, 0), alto (m del punto sobre el suelo; 1,7 por omisión), girar (grados de la vista a la izquierda; 0: mirando al norte), mirar (grados de inclinación, + arriba) y camara (m de la cámara al punto; 0,01: en el punto). hora: [al comenzar, al terminar] (hora de verano; el 15 de enero el sol se pone a las 21:00, y las tomas van de la tarde a la noche, una tras otra). toda_la_comuna: carga todas las teselas antes (para ver los campos desde lejos). texto: el título y, si hay, una línea más; aparece y se va con la toma. Los números de los textos, revisados contra CHANGELOG.md, README.md y config/ (noviembre de 2026).",
   "tamano": [1920, 1080],
   "fps": 30,
   "fundido": 0.6,
@@ -14,74 +14,55 @@
   "tomas": [
     {
       "id": "plaza",
-      "dur": 7.0,
-      "hora": [17.5, 17.5],
+      "dur": 8.0,
+      "hora": [20.1, 20.2],
       "texto": ["Plaza de Armas", "La misma maqueta, en 3D"],
       "claves": [
         {"t": 0, "x": 0, "y": 0, "alto": 0, "girar": 45, "mirar": -35, "camara": 700},
-        {"t": 4.2, "x": -25, "y": 32, "alto": 4, "girar": 72, "mirar": -20, "camara": 95},
-        {"t": 7, "x": -45, "y": 40.5, "alto": 8, "girar": 90, "mirar": -7, "camara": 58}
+        {"t": 4.8, "x": -25, "y": 32, "alto": 4, "girar": 72, "mirar": -20, "camara": 95},
+        {"t": 8, "x": -45, "y": 40.5, "alto": 8, "girar": 90, "mirar": -7, "camara": 58}
       ]
     },
     {
       "id": "catedral",
-      "dur": 5.5,
-      "hora": [17.5, 17.5],
+      "dur": 6.5,
+      "hora": [20.3, 20.4],
       "texto": ["Catedral de Talca"],
       "claves": [
         {"t": 0, "x": -10, "y": 40.5, "alto": 2.2, "girar": 90, "mirar": 4, "camara": 0.01},
-        {"t": 5.5, "x": -22, "y": 40.5, "alto": 3.0, "girar": 90, "mirar": 9, "camara": 0.01}
+        {"t": 6.5, "x": -24, "y": 40.5, "alto": 3.0, "girar": 90, "mirar": 9, "camara": 0.01}
       ]
     },
     {
       "id": "alameda",
-      "dur": 5.5,
-      "hora": [18.5, 18.5],
+      "dur": 7.0,
+      "hora": [20.45, 20.55],
       "texto": ["Alameda Bernardo O'Higgins"],
       "claves": [
         {"t": 0, "x": -560, "y": 505, "alto": 2, "girar": 90, "mirar": -22, "camara": 110},
-        {"t": 5.5, "x": -640, "y": 505, "alto": 2, "girar": 94, "mirar": -22, "camara": 115}
-      ]
-    },
-    {
-      "id": "las-rastras",
-      "dur": 6.5,
-      "hora": [19.0, 19.0],
-      "texto": ["Avenida Las Rastras", "Medida en 78 fotos de calle"],
-      "claves": [
-        {"t": 0, "x": 5000.4, "y": -811.0, "alto": 4.0, "girar": 150.5, "mirar": -5, "camara": 0.01},
-        {"t": 6.5, "x": 4930.5, "y": -934.2, "alto": 7.0, "girar": 150.5, "mirar": -10, "camara": 0.01}
-      ]
-    },
-    {
-      "id": "autos",
-      "dur": 5.5,
-      "hora": [17.0, 17.0],
-      "texto": ["9.739 autos estacionados", "Tipos y colores contados en fotos de Mapillary"],
-      "claves": [
-        {"t": 0, "x": 61, "y": 222, "alto": 1.4, "girar": 0, "mirar": -4, "camara": 0.01},
-        {"t": 5.5, "x": 61, "y": 240, "alto": 1.4, "girar": 0, "mirar": -4, "camara": 0.01}
+        {"t": 7, "x": -650, "y": 505, "alto": 2, "girar": 95, "mirar": -22, "camara": 115}
       ]
     },
     {
       "id": "comuna",
-      "dur": 7.0,
-      "hora": [19.6, 19.6],
+      "dur": 8.0,
+      "hora": [20.6, 20.7],
+      "toda_la_comuna": true,
       "texto": ["La comuna entera: 232 km²"],
       "claves": [
         {"t": 0, "x": 0, "y": 0, "alto": 0, "girar": 45, "mirar": -35, "camara": 500},
-        {"t": 3.5, "x": 2200, "y": 400, "alto": 0, "girar": 45, "mirar": -50, "camara": 7000},
-        {"t": 7, "x": 5200, "y": -1500, "alto": 0, "girar": 45, "mirar": -70, "camara": 50000}
+        {"t": 4, "x": 2200, "y": 400, "alto": 0, "girar": 45, "mirar": -50, "camara": 7000},
+        {"t": 8, "x": 5000, "y": -3000, "alto": 0, "girar": 45, "mirar": -70, "camara": 58000}
       ]
     },
     {
       "id": "torre",
-      "dur": 7.5,
-      "hora": [20.6, 21.9],
-      "texto": ["Torre Talca", "15 de enero, de las 20:36 a las 21:54"],
+      "dur": 9.0,
+      "hora": [20.75, 22.0],
+      "texto": ["Torre Talca", "15 de enero, de las 20:45 a las 22:00"],
       "claves": [
         {"t": 0, "x": 161, "y": -15, "alto": 24, "girar": 20, "mirar": -5, "camara": 200},
-        {"t": 7.5, "x": 161, "y": -15, "alto": 24, "girar": 60, "mirar": -6, "camara": 180}
+        {"t": 9, "x": 161, "y": -15, "alto": 24, "girar": 64, "mirar": -6, "camara": 178}
       ]
     }
   ],

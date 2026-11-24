@@ -18,6 +18,7 @@ Este archivo se carga en cada sesión y es corto a propósito: lo que vale para 
 | [`pagina.md`](.claude/rules/pagina.md) | La página y el sitio publicado | `src/page.html`, `src/style.css`, `src/site/**`, `src/js/05-categories.js` y 8 más |
 | [`modelo3d.md`](.claude/rules/modelo3d.md) | La maqueta en 3D (modelo3d/: Godot) y la exportación | `modelo3d/**`, `tools/export.py`, `tools/export.js`, `tools/godot/**` y 5 más |
 | [`modelo3d-fachadas.md`](.claude/rules/modelo3d-fachadas.md) | Las fachadas de cerca en 3D (fachadas_ciudad.gd) | `modelo3d/fachadas_ciudad.gd`, `modelo3d/modelos/fachadas.gd`, `tools/modelo3d_vistas.py` |
+| [`video3d.md`](.claude/rules/video3d.md) | El video de la maqueta en 3D (tools/video3d.py) | `tools/video3d.py`, `config/video3d.json`, `modelo3d/recorrido.gd` |
 | [`herramientas.md`](.claude/rules/herramientas.md) | Las herramientas de tools/ (Playwright, rendimiento) | `tools/**` |
 
 Además:
@@ -144,4 +145,5 @@ Las demás están en su regla, que se carga al tocar los archivos de su tema. Su
 - **`pagina.md`**: «El póster del arranque»
 - **`modelo3d.md`**: «Exportar lo generado (`tools/export.py`)» · «La maqueta en 3D se carga por teselas» · «Los pasos bajo la Ruta 5 en la colisión» · «Un modelo propio lejos de la plaza espera su tesela» · «La red de calles de `plano.py` no sale de los vértices compartidos» · «Los letreros de las calles en 3D» · «Los autos y los faroles en 3D son datos, como los árboles» · «La maqueta en el navegador»
 - **`modelo3d-fachadas.md`**: «Las fachadas de cerca son un registro por edificio, no la geometría del glb» · «La fachada gruesa y los aleros»
+- **`video3d.md`**: «Una toma que se mueve carga su camino antes» · «Godot no dibuja una ventana tapada»
 - **`herramientas.md`**: «Navegadores sin GPU» · «Rotar en `--js`» · «`__look` no limita el zoom»

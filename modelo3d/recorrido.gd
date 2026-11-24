@@ -12,6 +12,7 @@
 #   camara   m de la cámara al punto (0,01: en el punto; --camara)
 #   hora     la hora al comenzar y al terminar (avanza con una curva suave); dia, el día del año (15 de enero)
 #   suave    false: la cámara no parte ni llega detenida (por omisión sí)
+#   toda_la_comuna   true: carga todas las teselas completas antes de comenzar (alejarse hasta ver los campos)
 #
 # Entre las claves, cada número sigue una curva de Hermite con las tangentes de Catmull-Rom (por el tiempo de cada
 # clave), detenida en la primera y la última (parte y se posa sola); la distancia, en logaritmo (un
@@ -49,7 +50,7 @@ const COLA := 8  # cuadros con la cámara quieta al terminar (tools/video3d.py l
 const FPS := 30.0  # el de --fixed-fps (los cuadros de la toma)
 const NO_SUELO := ["edificio", "hito", "auto"]  # lo que el rayo del suelo atraviesa (Glb.tipo de la capa)
 const ALTO_FIJO := 1500.0  # m de la cámara sobre el suelo: más arriba, su camino no fija teselas
-const NIEBLA_ALTO := 300.0  # m: con la cámara más alta, la niebla se adelgaza en proporción (con 600, las vistas desde 400 m salían lavadas)
+const NIEBLA_ALTO := 300.0  # m: con la cámara más alta, la niebla se adelgaza con el cuadrado de la altura (en proporción, desde 47 km al atardecer quedaba un 30 % de niebla naranja; con 600 m, las vistas desde 400 m salían lavadas)
 
 var toma := {}
 var main: Node  # ver.gd
@@ -87,6 +88,10 @@ func _init(t: Dictionary) -> void:
 	name = "recorrido"
 
 
+func _exit_tree() -> void:
+	DisplayServer.unregister_additional_output(self)
+
+
 func dur() -> float:
 	return float(toma.get("dur", claves[-1][0] if claves.size() else 1.0))
 
@@ -94,6 +99,11 @@ func dur() -> float:
 func _ready() -> void:
 	main = get_parent()
 	ambiente = main.ambiente
+	# Godot no dibuja si ninguna de sus ventanas está a la vista: en el Mac, la de tools/godot_oculto.sh queda tapada a
+	# ratos (con la pantalla apagada, siempre), y Movie Maker grababa el último cuadro una y otra vez (la toma congelada)
+	# o una captura esperaba para siempre. Una salida adicional (como la del visor de un casco de realidad virtual) le
+	# dice que dibuje igual
+	DisplayServer.register_additional_output(self)
 	if ambiente:
 		ambiente.dia = int(toma.get("dia", 15))
 		if ambiente.reloj:
@@ -147,7 +157,12 @@ func preparar() -> void:
 	for i in n + 1:
 		var v := valor(dur() * i / n)
 		suelos[i] = await suelo_en(v[0], v[1])
-	print("recorrido.gd: el suelo del camino en %d ms" % (Time.get_ticks_msec() - t0))
+	var smin := INF
+	var smax := -INF
+	for s in suelos:
+		smin = minf(smin, s)
+		smax = maxf(smax, s)
+	print("recorrido.gd: el suelo del camino en %d ms (de %.1f a %.1f m)" % [Time.get_ticks_msec() - t0, smin, smax])
 	poner(0.0)
 	await main.mapa.esperar()
 	for i in ESPERA:
@@ -155,24 +170,50 @@ func preparar() -> void:
 	await main.mapa.esperar()  # lo que hayan pedido los modelos que se armaron en la espera
 	main.mapa.quieto = true
 	main.mapa.arboleda.todos_de_cerca()  # los árboles de la plaza en todos: ninguno cambia de forma a media toma
+	if toma.get("toda_la_comuna", false):
+		await toda_la_comuna()
 	print("recorrido.gd: toma %s lista en %d ms (%d puntos fijos, %d teselas cargadas)" % [toma.get("id", "?"),
 		Time.get_ticks_msec() - t0, fijos.size(), main.mapa.cargadas.size()])
 
 
-# el suelo bajo (x, y): la cámara va arriba del punto y espera su colisión (mapa.gd la arma solo alrededor de ella)
+# "toda_la_comuna": las 1.028 teselas completas, sin hilos (~1 min), para alejarse hasta ver la comuna entera con sus
+# campos: lejos.glb solo trae el relieve, el agua y el borde. Con el mapa ya quieto (no suelta nada), los árboles que
+# llegan quedan como copas, y ni las copas ni las capas chicas tienen fin de vista (se irían tesela por tesela)
+func toda_la_comuna() -> void:
+	var t0 := Time.get_ticks_msec()
+	main.mapa.arboleda.sin_limite()
+	main.mapa.sin_vista()
+	main.mapa.arrancar([inicio(toma)], 1.0e6)
+	for i in 10:
+		await get_tree().process_frame
+	print("recorrido.gd: toda la comuna en %d ms" % (Time.get_ticks_msec() - t0))
+
+
+# el suelo bajo (x, y): la cámara va arriba del punto y espera su colisión (mapa.gd la arma solo alrededor de ella) y a
+# que el rayo dé en algo. Que mapa.solido() diga que está no basta: la colisión recién puesta puede no estar todavía en
+# el espacio de la física, y el rayo no daba en nada (0 m): lejos de la plaza, donde el suelo está más abajo o más
+# arriba, la toma partía con la cámara fuera de lugar y saltaba a su sitio en el primer medio segundo (la Alameda, 10–19 m
+# más abajo, caía; Las Rastras subía atravesando el suelo)
 func suelo_en(x: float, y: float) -> float:
 	if not main.mapa.solido(x, y):
 		cam.global_position = Vector3(x, 50.0, -y)
 		main.mapa.t_revisar = 0.0
 		while not main.mapa.solido(x, y):
 			await get_tree().physics_frame
-	await get_tree().physics_frame
-	return suelo(x, y)
+	for i in 300:
+		await get_tree().physics_frame
+		var h := suelo(x, y)
+		if not is_nan(h):
+			return h
+		cam.global_position = Vector3(x, 50.0, -y)  # por si la colisión es la de otro lugar
+		main.mapa.t_revisar = 0.0
+	push_warning("recorrido.gd: el rayo no da con el suelo en %.0f, %.0f: 0 m" % [x, y])
+	return 0.0
 
 
 # un rayo desde arriba que solo se detiene en las capas de suelo de las teselas (el terreno, la calle, la vereda, el
 # pasto): atraviesa edificios, hitos, autos, fachadas y los modelos propios (la Torre Talca tiene su colisión). Donde un
-# modelo recortó el suelo de la tesela (la plaza), el primero que encuentre; si nada, 0 (la plaza)
+# modelo recortó el suelo de la tesela (la plaza), el primero que encuentre; si nada, NAN
 func suelo(x: float, y: float) -> float:
 	var q := PhysicsRayQueryParameters3D.create(Vector3(x, 1500, -y), Vector3(x, -500, -y))
 	var fuera := []
@@ -187,7 +228,7 @@ func suelo(x: float, y: float) -> float:
 		if es_suelo(r["collider"]):
 			return r["position"].y
 		fuera.append(r["rid"])
-	return 0.0 if is_nan(primero) else primero
+	return primero
 
 
 func es_suelo(o: Object) -> bool:
@@ -263,7 +304,7 @@ func poner(t: float) -> void:
 	cam.far = maxf(6000.0, d + 30000.0)
 	if ambiente and ambiente.env and niebla > 0.0:
 		var alto: float = l[0].y - suelo_t(t)
-		ambiente.env.fog_density = niebla * NIEBLA_ALTO / maxf(alto, NIEBLA_ALTO)
+		ambiente.env.fog_density = niebla * pow(NIEBLA_ALTO / maxf(alto, NIEBLA_ALTO), 2.0)
 	if ambiente:
 		var h: Array = toma.get("hora", [17.0, 17.0])
 		var hh := lerpf(float(h[0]), float(h[-1]), smoothstep(0.0, 1.0, t / dur()))

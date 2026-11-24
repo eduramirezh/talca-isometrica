@@ -34,6 +34,7 @@ var copas := {}  # capa -> Mesh: la copa de lejos
 var n_cerca := 0
 var radio := CERCA  # m: hasta aquí, los de la plaza (todos_de_cerca(): todos)
 var fijo := false  # todos_de_cerca(): no se vuelven a elegir
+var lejos := LEJOS  # m: el fin de las copas de cada tesela (sin_limite(): 0, sin fin)
 
 
 func _ready() -> void:
@@ -93,7 +94,7 @@ func agregar(clave: String, prep: Dictionary) -> void:
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
 		mmi.material_override = Mat.capa("arboles", "arbol")
-		mmi.visibility_range_end = LEJOS
+		mmi.visibility_range_end = lejos
 		add_child(mmi)
 		e["mmi"] = mmi
 		e["oculta"] = false
@@ -118,6 +119,14 @@ func _process(_dt: float) -> void:
 	var p := Vector2(cam.global_position.x, -cam.global_position.z)
 	if p.distance_to(centro) > REHACER and not fijo:
 		rehacer(p)
+
+
+# las copas de lejos sin fin de vista (recorrido.gd, la comuna entera: alejándose, se iban tesela por tesela a LEJOS)
+func sin_limite() -> void:
+	lejos = 0.0
+	for clave in teselas:
+		for capa in teselas[clave]:
+			teselas[clave][capa]["mmi"].visibility_range_end = 0.0
 
 
 # todos los árboles cargados como los de la plaza, una vez (con el mapa quieto: mapa.gd no agrega ni quita teselas)
