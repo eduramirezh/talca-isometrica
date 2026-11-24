@@ -2,10 +2,10 @@
 
 ## Licencias de este repositorio
 
-- El código y los modelos de los hitos hechos a mano: MIT ([LICENSE](../LICENSE)).
+- El código y los modelos hechos a mano (los hitos y los modelos de cerca del 3D): la Licencia de Talca Isométrica ([LICENSE](../LICENSE)). El uso privado es libre; publicar algo hecho con ellos requiere permiso del autor. Hasta noviembre de 2026 fue la licencia MIT, que sigue valiendo para las versiones publicadas con ella.
 - Las bases de datos derivadas de OpenStreetMap (las filas con **ODbL 1.0** de la tabla siguiente, tal como quedan en `data/geometry.json`, `data/ruta5.json`, `config/trazados.json`, `config/usos.json` y las coordenadas de `data/pois.json`): ODbL 1.0, © colaboradores de OpenStreetMap ([LICENSE-DATA](../LICENSE-DATA)).
 - Los textos de las fichas y de esta documentación: obra de Edu Ramírez, citables con atribución ([LICENSE-DATA](../LICENSE-DATA)).
-- El relieve (`data/elevation.json`): la licencia del Copernicus DEM, con su aviso y la frase de responsabilidad ([LICENSE-DATA](../LICENSE-DATA), punto 4).
+- El relieve (`data/elevation.json`): la licencia del Copernicus DEM, con su aviso y la frase de responsabilidad ([LICENSE-DATA](../LICENSE-DATA), punto 5).
 - Las manzanas del Censo 2024 (`config/usos-censo2024.json`): CC BY-SA 4.0, del INE ([LICENSE-DATA](../LICENSE-DATA)).
 - Lo demás tiene la licencia de su fuente, en la tabla. De la imagen satelital de Esri no se redistribuye nada.
 

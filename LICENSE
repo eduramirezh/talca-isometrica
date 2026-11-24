@@ -1,21 +1,139 @@
-MIT License
+Licencia de Talca Isométrica, versión 1.0
+=========================================
 
-Copyright (c) 2026 Edu Ramírez
+24 de noviembre de 2026
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+© 2026 Edu Ramírez. Todos los derechos reservados, salvo los que esta licencia
+concede.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+En corto: puede bajar la maqueta, correrla, estudiarla y cambiarla para su uso
+privado, gratis y sin avisar a nadie. Para publicar algo hecho con ella, pida
+permiso antes. Este resumen no reemplaza las cláusulas que siguen.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+1. Qué cubre
+------------
+
+«La obra» es lo que hay en este repositorio y en el sitio talca.eduramirez.com
+que es de autoría de Edu Ramírez («el autor»):
+
+- el código: pipeline/, tools/, src/, modelo3d/, scripts/, tests/ y los archivos
+  de la raíz;
+- los modelos hechos a mano: los hitos de src/js/hitos/ y los modelos de cerca
+  de modelo3d/modelos/;
+- lo escrito a mano en config/ (las fachadas, los perfiles de las calles, los
+  cruces, los autos, los techos), en lo que no viene de una fuente de
+  LICENSE-DATA;
+- el diseño de la página y del visor en 3D, y lo que `make build` y
+  `make web3d` arman con lo anterior.
+
+No cubre lo siguiente, que sigue con su propia licencia:
+
+- los datos de terceros y lo que se deriva de ellos (OpenStreetMap, el INE,
+  Copernicus, CIREN, CONAF, MINVU y los demás), incluida la maqueta en 3D
+  exportada (modelo3d/mapa/ y modelo3d/datos/): ver LICENSE-DATA;
+- los textos de las fichas de los lugares y de docs/: ver LICENSE-DATA, punto 2;
+- el software de terceros que la obra usa o que va en el sitio publicado, como
+  three.js y Godot Engine.
+
+Una «obra derivada» es la que resulta de adaptar, transformar o incorporar la
+obra o una parte de ella.
+
+2. Lo que puede hacer sin pedir permiso
+---------------------------------------
+
+Gratis, en todo el mundo, sin límite de copias y por todo el plazo de
+protección de la obra, cualquier persona u organización puede:
+
+a) bajar la obra, copiarla y correrla;
+b) estudiarla, cambiarla y hacer obras derivadas, para su uso privado
+   (cláusula 3);
+c) mostrarla tal como está publicada en una clase, una charla o una reunión,
+   sin cobrar por ello;
+d) publicar capturas y videos cortos de la obra para comentarla, enseñar con
+   ella o informar sobre ella, con la atribución de la cláusula 5;
+e) enlazarla;
+f) tener en GitHub una copia pública del repositorio (un fork) para proponer
+   cambios al autor (cláusula 6).
+
+3. Uso privado
+--------------
+
+Es uso privado el que una persona hace sola o con su familia y sus conocidos, y
+el que una organización (un colegio, una universidad, una municipalidad, una
+empresa) hace puertas adentro, con sus alumnos, funcionarios o trabajadores.
+
+Deja de ser privado cuando la obra o una obra derivada queda al alcance del
+público: cuando se publica en internet, se distribuye, se vende, se exhibe o se
+entrega a terceros.
+
+4. Lo que necesita permiso
+--------------------------
+
+Todo uso público que la cláusula 2 no nombra necesita el permiso previo y por
+escrito del autor. En particular:
+
+a) publicar, distribuir o poner a disposición del público la obra o una copia
+   de ella, entera o en parte, cambiada o no;
+b) publicar, distribuir o poner a disposición del público una obra derivada:
+   otro sitio, una aplicación, un juego, la maqueta de otra ciudad, un impreso,
+   un modelo impreso en 3D, un video que no sea de los de la cláusula 2 d);
+c) vender o arrendar la obra o una obra derivada, o cobrar por el acceso a
+   ellas;
+d) usar el nombre «Talca Isométrica» o el del autor de un modo que dé a
+   entender que respalda otra obra.
+
+El permiso se pide con un issue en
+https://github.com/eduramirezh/talca-isometrica/issues o escribiendo al autor
+(https://eduramirez.com/), y dice quién lo pide, qué quiere hacer y dónde lo va
+a publicar. Vale solo por escrito (la respuesta en el issue basta), para lo que
+dice y con las condiciones que ponga. El silencio no es permiso.
+
+5. Atribución y avisos
+----------------------
+
+Toda copia de la obra conserva este archivo, LICENSE-DATA y los avisos de
+autoría.
+
+Lo que se publique según la cláusula 2 o con un permiso dice de dónde viene
+(«Talca Isométrica, de Edu Ramírez, talca.eduramirez.com») y mantiene las
+atribuciones de los datos que pide LICENSE-DATA, entre ellas
+«© colaboradores de OpenStreetMap».
+
+6. Aportes
+----------
+
+Quien envía un cambio al repositorio (un pull request, un parche) declara que
+es suyo o que puede aportarlo. Autoriza al autor, gratis, sin exclusividad, en
+todo el mundo y por todo el plazo de protección, a usarlo, cambiarlo y
+publicarlo como parte de la obra, bajo esta licencia o una versión posterior, y
+a dar sobre él los permisos de la cláusula 4. El aporte sigue siendo de quien lo
+hizo.
+
+7. Versiones anteriores
+-----------------------
+
+Cada versión del repositorio se rige por el archivo LICENSE que trae. Las que
+se publicaron con la licencia MIT, hasta noviembre de 2026, siguen bajo esa
+licencia para quien las tenga.
+
+8. Sin garantía
+---------------
+
+La obra se entrega como está, sin garantía de ningún tipo. No es una fuente
+oficial: la ubicación de un lugar, una dirección o un dato pueden estar
+equivocados o viejos. En la medida en que la ley lo permita, el autor no
+responde por los daños que resulten de usarla.
+
+9. Término
+----------
+
+Quien no cumple esta licencia pierde lo que ella le concede desde que deja de
+cumplirla. Lo recupera si corrige la falta dentro de los 30 días siguientes a
+que el autor se la avise; después, solo con un permiso nuevo.
+
+10. Ley aplicable
+-----------------
+
+Esta licencia se rige por la ley chilena, en especial la Ley N° 17.336 sobre
+Propiedad Intelectual. No limita las excepciones que la ley establece, como el
+derecho de cita. Lo que no concede de forma expresa queda reservado al autor.
