@@ -12,8 +12,10 @@
 # norte), --mirar P la inclina P grados (+ arriba; -30 por omisión) y --camara L pone la cámara a L m del punto (160;
 # 0.01: en el punto, que está 1,7 m sobre el suelo, a la altura de los ojos, como las vistas de
 # tools/modelo3d_vistas.py). Las demás banderas (--hora, --sin, --calidad, --fps, --cenital) son las de args.gd.
+# --recorrido toma.json cambia esta cámara por la de una toma de video (recorrido.gd; tools/video3d.py).
 extends "res://mundo.gd"
 
+const Recorrido := preload("res://recorrido.gd")
 const INICIO := Vector2(0, 0)  # x, y de grilla: el centro de la plaza
 const RAPIDEZ := 30.0  # m/s del punto con WASD (Mayús: por 4), a 40 m del punto (más lejos, más rápido)
 
@@ -28,7 +30,16 @@ var arrastre := false
 func _ready() -> void:
 	Args.revisar()
 	var desde := Args.vec2("--desde", INICIO)
+	var toma := Recorrido.pedida()  # --recorrido toma.json: la cámara de la toma en vez de la que orbita
+	if not toma.is_empty():
+		desde = Recorrido.inicio(toma)
 	if not armar([Vector2.ZERO, desde]):
+		return
+	if not toma.is_empty():
+		add_child(Recorrido.new(toma))
+		return
+	if Args.has("--recorrido"):  # no se pudo leer (recorrido.gd ya dijo por qué)
+		get_tree().quit(1)
 		return
 	yaw = deg_to_rad(Args.num("--girar", 0.0))
 	pitch = deg_to_rad(Args.num("--mirar", -30.0, -89.0, 89.0))

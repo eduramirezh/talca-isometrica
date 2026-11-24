@@ -22,6 +22,12 @@
 #                                    # (arrancar(puntos, mapa.CARGA): todo lo que pide la cámara ahí, para --cine)
 #   await mapa.esperar()             # hasta que esté cargado todo lo que pide la cámara (capturas, --cine, --fps)
 #   mapa.solido(x, y)                # si la colisión bajo ese punto de grilla ya está
+#   mapa.fijos = PackedVector2Array([...])   # puntos de grilla que cuentan como si la cámara estuviera ahí: lo que
+#                                    # pediría en cada uno se carga y no se suelta, y esperar() espera también por ellos
+#                                    # (recorrido.gd: todo el camino de una toma, para que nada aparezca a media toma);
+#                                    # la colisión sigue siendo solo la de alrededor de la cámara
+#   mapa.quieto = true               # no carga ni suelta nada (recorrido.gd, mientras corre una toma: lo que se ve
+#                                    # es lo que estaba al comenzar, y nada aparece ni se va a media toma)
 extends Node3D
 
 const Glb := preload("res://glb.gd")
@@ -69,6 +75,9 @@ var faroles: Node3D  # faroles.gd
 var letreros: Node3D  # letreros.gd
 var fachadas: Node3D  # fachadas_ciudad.gd (null con --sin fachadas)
 var foco := Vector2(INF, INF)
+var fijos := PackedVector2Array()  # puntos que cuentan como la cámara (ver arriba; fachadas_ciudad.gd también los usa)
+var quieto := false  # no carga ni suelta nada (ver arriba; fachadas_ciudad.gd tampoco)
+var vista := VISTA  # el fin de vista de las capas chicas (sin_vista(): ninguno)
 var t_revisar := 0.0
 var stats := {"leidas": 0, "ms": 0, "medios": 0, "ms_medios": 0}
 
@@ -273,8 +282,8 @@ func poner(clave: String, r: Dictionary) -> void:
 			mi.material_override = Mat.capa(capa, Glb.tipo(capa))
 		else:
 			colores(mi.mesh)
-		if VISTA.has(capa):
-			mi.visibility_range_end = VISTA[capa]
+		if vista.has(capa):
+			mi.visibility_range_end = vista[capa]
 	add_child(raiz)
 	cargadas[clave] = raiz
 	quitar_medio(clave)
@@ -321,6 +330,16 @@ func quitar_colision(clave: String) -> void:
 	colision.erase(clave)
 
 
+# las capas chicas sin fin de vista, en las cargadas y las que vengan (recorrido.gd, la comuna entera: alejándose, las
+# veredas y los patios se iban tesela por tesela)
+func sin_vista() -> void:
+	vista = {}
+	for k in cargadas:
+		for mi in cargadas[k].find_children("*", "MeshInstance3D", true, false):
+			if VISTA.has(String(mi.name)):
+				mi.visibility_range_end = 0.0
+
+
 func soltar(clave: String) -> void:
 	cargadas[clave].queue_free()
 	cargadas.erase(clave)
@@ -359,7 +378,7 @@ func poner_medio(clave: String, r: Dictionary) -> void:
 		return
 	# con la tesela completa: si ya pasó de SOLTAR, la media la reemplaza (revisar() la pidió para eso); si no, la
 	# completa llegó o volvió a hacer falta mientras se leía
-	var reemplaza := cargadas.has(clave) and distancia(clave, foco) > SOLTAR
+	var reemplaza := cargadas.has(clave) and distancia_focos(clave, focos(foco)) > SOLTAR
 	if medios.has(clave) or (cargadas.has(clave) and not reemplaza):
 		raiz.free()
 		return
@@ -432,7 +451,7 @@ func _mb(claves: Array) -> float:
 func _process(dt: float) -> void:
 	recoger()
 	t_revisar -= dt
-	if t_revisar > 0.0:
+	if t_revisar > 0.0 or quieto:
 		return
 	t_revisar = 0.2
 	var cam := get_viewport().get_camera_3d()
@@ -442,23 +461,57 @@ func _process(dt: float) -> void:
 	revisar(foco)
 
 
-# lo que falta y lo que sobra alrededor de p
+# la cámara en p y los puntos fijos
+func focos(p: Vector2) -> PackedVector2Array:
+	var out := PackedVector2Array([p])
+	out.append_array(fijos)
+	return out
+
+
+# la distancia de la tesela al más cercano de los focos
+func distancia_focos(clave: String, fs: PackedVector2Array) -> float:
+	var d := INF
+	for f in fs:
+		d = minf(d, distancia(clave, f))
+	return d
+
+
+# como cerca_con_distancia(), pero a menos de r de cualquiera de los focos (con la distancia al más cercano)
+func cerca_de_focos(fs: PackedVector2Array, r: float) -> Array:
+	if fs.size() == 1:
+		return cerca_con_distancia(fs[0], r)
+	var mejor := {}
+	for f in fs:
+		var c := cerca_con_distancia(f, r)
+		for n in c[0].size():
+			var k: String = c[0][n]
+			mejor[k] = minf(mejor.get(k, INF), c[1][n])
+	var claves := mejor.keys()
+	claves.sort_custom(func(a, b): return mejor[a] < mejor[b])
+	var dist := PackedFloat64Array()
+	for k in claves:
+		dist.append(mejor[k])
+	return [claves, dist]
+
+
+# lo que falta y lo que sobra alrededor de p (la cámara) y de los puntos fijos
 func revisar(p: Vector2) -> void:
+	var fs := focos(p)
 	for k in cargadas.keys():
-		var d := distancia(k, p)
+		var d := distancia_focos(k, fs)
 		if d > SOLTAR and not ocupada(k):
 			if d > MEDIO or not tiene_medio(k) or medios.has(k):
 				soltar(k)
 			elif ocupados() < cupo:  # primero su media, para que los edificios no desaparezcan un momento
 				lanzar("medio", k, false)
-		elif d > SIN_COLISION and colision.has(k):
+		elif distancia(k, p) > SIN_COLISION and colision.has(k):
 			quitar_colision(k)
 	for k in medios.keys():
-		if distancia(k, p) > SOLTAR_MEDIO:
+		if distancia_focos(k, fs) > SOLTAR_MEDIO:
 			quitar_medio(k)
 	if ocupados() >= cupo:
 		return  # los hilos están ocupados: no hay qué lanzar
-	var cerca := cerca_con_distancia(p, MEDIO)  # una sola vez: las de CARGA son las primeras
+	var cerca := cerca_de_focos(fs, MEDIO)  # una sola vez: las de CARGA son las primeras
 	var claves: Array = cerca[0]
 	var dist: PackedFloat64Array = cerca[1]
 	for n in claves.size():
@@ -467,7 +520,7 @@ func revisar(p: Vector2) -> void:
 		var k: String = claves[n]
 		if ocupada(k):
 			continue
-		var con := dist[n] <= COLISION
+		var con := distancia(k, p) <= COLISION  # la colisión, solo alrededor de la cámara
 		if not cargadas.has(k):
 			lanzar("leer", k, con)
 		elif con and not colision.has(k):
@@ -553,8 +606,8 @@ func recoger() -> void:
 			descartar({"formas": h[2]})
 
 
-# si ya está todo lo que pide la cámara: las teselas a menos de CARGA, la colisión a menos de COLISION y los
-# edificios de en medio hasta MEDIO
+# si ya está todo lo que pide la cámara (y lo que pedirían los puntos fijos): las teselas a menos de CARGA, la
+# colisión a menos de COLISION de la cámara y los edificios de en medio hasta MEDIO
 func listo() -> bool:
 	if not tareas.is_empty() or not bajando.is_empty():
 		return false
@@ -562,12 +615,16 @@ func listo() -> bool:
 	if cam == null:
 		return true
 	var p := Vector2(cam.global_position.x, -cam.global_position.z)
-	for k in cerca_de(p, CARGA):
-		if not cargadas.has(k) or (distancia(k, p) <= COLISION and not colision.has(k)):
+	for k in cerca_de(p, COLISION):
+		if not colision.has(k):
 			return false
-	for k in cerca_de(p, MEDIO):
-		if tiene_medio(k) and not cargadas.has(k) and not medios.has(k):
-			return false
+	for f in focos(p):
+		for k in cerca_de(f, CARGA):
+			if not cargadas.has(k):
+				return false
+		for k in cerca_de(f, MEDIO):
+			if tiene_medio(k) and not cargadas.has(k) and not medios.has(k):
+				return false
 	return fachadas == null or fachadas.listo(p)
 
 

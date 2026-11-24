@@ -35,8 +35,8 @@
 # El color de muro y techo es el de la página (el glb debajo es el mismo); lo demás sale de una semilla por edificio
 # (s), siempre igual (estilo(): todos los números en el mismo orden, aunque el tipo no los use).
 #
-# Por celdas de CELDA m: las que caen a menos de CERCA de la cámara se arman en hilos (WorkerThreadPool) y se sueltan
-# pasado SOLTAR; cada una se deja de dibujar a VISTA m (más lejos queda la caja del glb, con su grilla de ventanas).
+# Por celdas de CELDA m: las que caen a menos de CERCA de la cámara (o de un punto fijo de mapa.gd: el camino de una toma
+# de recorrido.gd) se arman en hilos (WorkerThreadPool) y se sueltan pasado SOLTAR de todos; cada una se deja de dibujar a VISTA m (más lejos queda la caja del glb, con su grilla de ventanas).
 # Un edificio cuyo centro cae en un recorte de las capas edificios o ciudad (los modelos propios: la plaza) no se viste.
 # Da sombra: las rejas sobre la vereda, los aleros, los derrames de los vanos (con la fachada gruesa, 0,1–0,3 ms de GPU
 # más que las pieles planas sin sombra de antes, en noviembre de 2026); la colisión, solo el plano de cada fachada
@@ -103,11 +103,19 @@ func _ready() -> void:
 func _process(dt: float) -> void:
 	recoger()
 	t_revisar -= dt
-	if t_revisar > 0.0:
+	if t_revisar > 0.0 or mapa.quieto:  # mapa.gd quieto: una toma de recorrido.gd que corre
 		return
 	t_revisar = 0.3
 	if mapa.foco.x != INF:
 		revisar(mapa.foco)
+
+
+# la distancia de la celda al más cercano de los focos de mapa.gd (la cámara y los puntos fijos)
+func dist_focos(clave: String, fs: PackedVector2Array) -> float:
+	var d := INF
+	for f in fs:
+		d = minf(d, dist(caja(clave), f))
+	return d
 
 
 func caja(clave: String) -> Rect2:
@@ -141,8 +149,9 @@ func tesela(celda: String) -> String:
 
 
 func revisar(p: Vector2) -> void:
+	var fs: PackedVector2Array = mapa.focos(p)
 	for k in celdas.keys():
-		if dist(caja(k), p) > SOLTAR:
+		if dist_focos(k, fs) > SOLTAR:
 			if celdas[k]:
 				celdas[k].queue_free()
 			celdas.erase(k)
@@ -150,10 +159,10 @@ func revisar(p: Vector2) -> void:
 	cerrojo_t.lock()
 	for t in cache.keys():
 		var c := Rect2(int(t.split("_")[0]) * mapa.tam, int(t.split("_")[1]) * mapa.tam, mapa.tam, mapa.tam)
-		if dist(c, p) > SOLTAR + CELDA:
+		if Array(fs).all(func(f: Vector2) -> bool: return dist(c, f) > SOLTAR + CELDA):
 			cache.erase(t)
 	cerrojo_t.unlock()
-	for k in cerca_de(p, CERCA):
+	for k in cerca_de_focos(fs, CERCA):
 		if tareas.size() >= HILOS:
 			break
 		if celdas.has(k) or k in tareas.values():
@@ -177,7 +186,7 @@ func recoger() -> void:
 	cerrojo.unlock()
 	for h in l:
 		var nodo: Node3D = h[1]
-		if mapa.foco.x != INF and dist(caja(h[0]), mapa.foco) > SOLTAR:
+		if mapa.foco.x != INF and dist_focos(h[0], mapa.focos(mapa.foco)) > SOLTAR:
 			if nodo:
 				nodo.free()
 			continue
@@ -186,11 +195,25 @@ func recoger() -> void:
 		celdas[h[0]] = nodo
 
 
-# si están todas las celdas que pide la cámara (mapa.gd listo(), para las capturas)
+# las celdas a menos de r de alguno de los focos, sin repetir (de la más cercana a la más lejana de cada uno)
+func cerca_de_focos(fs: PackedVector2Array, r: float) -> Array:
+	if fs.size() == 1:
+		return cerca_de(fs[0], r)
+	var out := []
+	var vistas := {}
+	for f in fs:
+		for k in cerca_de(f, r):
+			if not vistas.has(k):
+				vistas[k] = true
+				out.append(k)
+	return out
+
+
+# si están todas las celdas que pide la cámara y los puntos fijos (mapa.gd listo(), para las capturas y las tomas)
 func listo(p: Vector2) -> bool:
 	if not tareas.is_empty():
 		return false
-	for k in cerca_de(p, CERCA):
+	for k in cerca_de_focos(mapa.focos(p), CERCA):
 		if not celdas.has(k):
 			return false
 	return true
