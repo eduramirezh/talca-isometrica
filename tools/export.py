@@ -385,6 +385,9 @@ async def main(a):
             limite = await pg.evaluate('__export.LIM.map(p => [+p[0].toFixed(1), +p[1].toFixed(1)])')
             ind = {**meta({'box': box}, None), 'capas': capas, 'tesela_m': t, 'teselas': lista, 'lugares': pois, 'luces': luces,
                    'limite': limite, 'instancias': inst, 'liviano': a.liviano}
+            # cuántos números lleva cada instancia por capa (__exInstN): modelo3d/autos.gd y tools/web3d.py armar no
+            # leen datos de otra versión (con otro número, cada auto toma los de otro)
+            ind['numeros'] = {c: await pg.evaluate('c => __exInstN(c)', c) for c in inst}
             if medio: ind['medio'] = {'capas': medio, 'MB': round(sum(x['medio']['MB'] for x in lista if 'medio' in x), 1)}
             if a.fachadas: ind['fachadas'] = fach_info(sum(x.get('fachadas', 0) for x in lista))
             if a.lejos is not None:  # lo de lejos: un nodo por tesela (t_<i>_<j>), con las capas de --lejos

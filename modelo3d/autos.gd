@@ -19,9 +19,17 @@
 # la cámara llega a CHOQUE, o de golpe alrededor del personaje si viaja (Tab, --desde) a donde hay un auto, y de una
 # forma convexa el motor lo saca; de una cóncava con caras por los dos lados quedaba encerrado. Los recortes de los modelos (recortes()) que nombran la capa,
 # o ninguna, quitan los autos cuyo centro cae dentro (preparar()), como el recorte del glb quitaba un auto entero.
+#
+# Datos de otra versión: con N números leídos de unos que traen otro número por auto, cada auto toma los de otro (el
+# x de uno como el largo del siguiente) y los de lejos salen como planos de kilómetros sobre la ciudad (así estuvo
+# talca.eduramirez.com/3d/ el 24 de noviembre de 2026: las teselas traían diez números y este código leía once).
+# tools/export.py escribe en indice.json cuántos lleva cada capa («numeros»); si no son N, o si una tesela no trae un
+# múltiplo de N (un indice.json sin «numeros»), no se dibuja ningún auto y sale un error en la consola (lo ve
+# tools/web3d.py probar; tools/web3d.py armar no publica esos datos): `make modelo3d`.
 extends Node3D
 
 const Args := preload("res://args.gd")
+const Glb := preload("res://glb.gd")
 const Auto := preload("res://modelos/entorno/auto.gd")
 const Malla := preload("res://malla.gd")
 const Mat := preload("res://materiales.gd")
@@ -32,6 +40,8 @@ const REHACER := 12.0  # m que se mueve la cámara antes de volver a elegir los 
 const CHOQUE := 60.0  # m: los autos con colisión
 const LEJOS := {"autos": 450.0, "autos-ruta5": 600.0}  # m: más allá no se dibujan (lo que hacía VISTA de mapa.gd)
 const LARGO := 4.5  # m: el auto de la página a escala 1 (carGeo)
+
+static var datos_malos := ""  # por qué los datos de mapa/ no se pueden leer (revisar_numeros()); "" si se pueden
 
 var teselas := {}  # clave -> {capa: {"d": PackedFloat32Array (N por auto), "b": PackedFloat32Array (16 por auto), "caja": Rect2, "mmi": MultiMeshInstance3D, "oculta": bool}}
 var cerca := {}  # tipo -> MultiMeshInstance3D
@@ -46,6 +56,7 @@ var n_cerca := 0
 func _ready() -> void:
 	name = "autos"
 	visible = not ("autos" in Args.sin_())  # --sin autos: para medir cuánto cuestan con --fps
+	revisar_numeros(Glb.info())
 	lejos = auto_lejos()
 	choques = StaticBody3D.new()
 	choques.name = "autos-colision"
@@ -68,14 +79,34 @@ static func empacar(b: PackedFloat32Array, t: Transform3D, c: Color) -> void:
 	b.append_array([s.x.x, s.y.x, s.z.x, t.origin.x, s.x.y, s.y.y, s.z.y, t.origin.y, s.x.z, s.y.z, s.z.z, t.origin.z, c.r, c.g, c.b, 1.0])
 
 
+# cuántos números por auto trae mapa/ según indice.json («numeros», de tools/export.py); si no son N, ningún auto
+static func revisar_numeros(info: Dictionary) -> void:
+	var num: Dictionary = info.get("numeros", {})
+	for capa in CAPAS:
+		if num.has(capa) and int(num[capa]) != N:
+			malos("mapa/indice.json dice %d números por auto en «%s» y autos.gd lee %d" % [int(num[capa]), capa, N])
+			return
+
+
+# los datos no son de esta versión: ningún auto, y un error (una vez)
+static func malos(por_que: String) -> void:
+	if datos_malos != "":
+		return
+	datos_malos = por_que
+	push_error("autos.gd: %s; no dibujo los autos: corra `make modelo3d`" % por_que)
+
+
 # en un hilo (mapa.gd): los autos de una tesela ({capa: Array de números}, solo las de CAPAS) sin lo que quitan los
 # recortes, y los búferes de los de lejos (MultiMesh: 12 números de la transformación y 4 de los datos propios, el color)
 static func preparar(datos: Dictionary, recs: Array) -> Dictionary:
 	var out := {}
 	for capa in CAPAS:
-		if not datos.has(capa):
+		if not datos.has(capa) or datos_malos != "":
 			continue
 		var a: Array = datos[capa]
+		if a.size() % N != 0:
+			malos("una tesela trae %d números en «%s», que no son %d por auto" % [a.size(), capa, N])
+			continue
 		var pols := []
 		for r in recs:
 			var capas: Array = r.get("capas", [])

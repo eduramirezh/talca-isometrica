@@ -182,6 +182,14 @@ def modelo3d_contratos(fail):
         if len(v) != 6 or v[1] not in set(ids) | OTROS_AUTOS or v[2] not in ('', 'otro') and v[2] not in A['colores']:
             fail(f'config/autos.json: vehículo {v[:4]}: tipo o color desconocido (los tipos de «tipos», {", ".join(sorted(OTROS_AUTOS))}; los colores de «colores», "otro" o "")'); break
 
+    # the numbers per instance in the tiles' t_<i>_<j>.json: what tools/export.js writes (__exInstN) is what autos.gd and
+    # arboleda.gd read (N); with another count each car takes another's numbers (km-long planes over the city)
+    m = re.search(r"const INST_N = cat => .*?tipo === 'auto' \? (\d+) : (\d+);", (ROOT / 'tools' / 'export.js').read_text())
+    for f, k in (('autos.gd', 1), ('arboleda.gd', 2)):
+        n = re.search(r'^const N := (\d+)', gd(f), re.M)
+        if not m or not n or n.group(1) != m.group(k):
+            fail(f'modelo3d/{f}: N ({n and n.group(1)}) no es lo que escribe tools/export.js INST_N ({m and m.group(k)})')
+
     try:
         sys.path.insert(0, str(ROOT / 'tools')); import relieve; relieve.formulas()
     except ValueError as e: fail(str(e))
