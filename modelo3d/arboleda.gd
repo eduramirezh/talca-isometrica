@@ -140,7 +140,7 @@ func todos_de_cerca() -> void:
 func rehacer(p: Vector2) -> void:
 	centro = p
 	if arb == null:
-		arb = Arboles.new()
+		arb = Arboles.comun() as Arboles
 	var lotes := {}  # "capa/variante" -> PackedFloat32Array (16 por árbol)
 	var r2 := radio * radio
 	for clave in teselas:

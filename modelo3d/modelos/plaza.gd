@@ -101,7 +101,7 @@ func _ready() -> void:
 		return
 	var t0 := Time.get_ticks_msec()
 	rng.seed = 1541  # el año de la fundación... de Santiago; cualquier semilla fija sirve
-	arb = Arboles.new()
+	arb = Arboles.comun()
 	suelo()
 	prados_y_soleras()
 	var pz_ := Piezas.new(self)

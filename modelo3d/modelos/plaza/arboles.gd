@@ -34,6 +34,7 @@ const ESPECIES := {
 	"alamo": {"corteza": Color(0.42, 0.40, 0.36), "tipo": 0, "hojas": Color(0.36, 0.52, 0.22)},
 }
 const VARIANTES := 3
+static var _comun: RefCounted  # comun()
 
 var mat_corteza := {}
 var mat_follaje := {}
@@ -43,6 +44,16 @@ var cache := {}
 var radios := {}  # especie/variante -> radio del tronco a 1 m (colisión)
 var sombras := {}  # especie/variante -> la malla de la sombra
 const SOMBRA_K := {"frondoso": 2, "podado": 2, "arbusto": 2, "cedro": 2, "araucaria": 3, "alamo": 2}  # una tarjeta de cada k
+
+
+# la instancia que comparten la plaza (plaza.gd), los árboles del mapa (arboleda.gd) y los cruces (cruce.gd): las
+# texturas de _init() tardan ~0,75 s, y cada uno armaba las suyas, iguales (la arboleda, en el primer cuadro). Nadie
+# cambia sus materiales, y cada variante sale de su semilla: las mallas son las mismas que con una instancia propia.
+# Solo en el hilo principal (cache no tiene candado)
+static func comun() -> RefCounted:
+	if _comun == null:
+		_comun = (load("res://modelos/plaza/arboles.gd") as GDScript).new()
+	return _comun
 
 
 func _init() -> void:

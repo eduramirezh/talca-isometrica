@@ -142,7 +142,7 @@ func cosas(m: Malla, raiz: Node3D) -> void:
 # entre las de la plaza) va como una canaria más chica y angosta
 func palmera(raiz: Node3D, x: float, y: float, alto: float, forma: String) -> void:
 	if arboles == null:
-		arboles = Arboles.new()  # ~0,8 s: sus texturas
+		arboles = Arboles.comun() as Arboles
 	var v := int(absf(x * 7.0 + y * 13.0)) % Arboles.VARIANTES
 	var mi := MeshInstance3D.new()
 	mi.mesh = arboles.malla("palmera", v)
