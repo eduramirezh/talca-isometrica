@@ -106,6 +106,27 @@ func textura(refuerzo := 0.35) -> ImageTexture:
 
 # ---- las texturas ----
 
+# varias texturas a la vez, en hilos (WorkerThreadPool): {clave: Callable de una de las de abajo, con sus argumentos}
+# -> {clave: ImageTexture}. Cada una se dibuja en su lienzo, con su semilla: salen las mismas que una tras otra. Las
+# ocho de arboles.gd tardaban ~0,75 s antes del primer cuadro (en el navegador, ~1 s); así, lo que tarda la más lenta.
+# Godot crea texturas y mallas desde los hilos (mapa.gd lee los glb de las teselas en ellos)
+static func en_paralelo(pedidos: Dictionary) -> Dictionary:
+	var claves := pedidos.keys()
+	var hechas := []
+	hechas.resize(claves.size())
+	var candado := Mutex.new()
+	var id := WorkerThreadPool.add_group_task(func(i: int) -> void:
+		var t: ImageTexture = pedidos[claves[i]].call()
+		candado.lock()
+		hechas[i] = t
+		candado.unlock(), claves.size(), -1, true, "texturas de la plaza")  # antes que las teselas de mapa.gd
+	WorkerThreadPool.wait_for_group_task_completion(id)
+	var out := {}
+	for i in claves.size():
+		out[claves[i]] = hechas[i]
+	return out
+
+
 static func _lienzo(ancho: int, alto: int, semilla: int, fondo: Color) -> RefCounted:
 	return load("res://modelos/plaza/texturas.gd").new(ancho, alto, semilla, fondo)
 

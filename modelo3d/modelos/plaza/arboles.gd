@@ -47,7 +47,8 @@ const SOMBRA_K := {"frondoso": 2, "podado": 2, "arbusto": 2, "cedro": 2, "arauca
 
 
 # la instancia que comparten la plaza (plaza.gd), los árboles del mapa (arboleda.gd) y los cruces (cruce.gd): las
-# texturas de _init() tardan ~0,75 s, y cada uno armaba las suyas, iguales (la arboleda, en el primer cuadro). Nadie
+# texturas de _init() tardan ~0,75 s una tras otra (en hilos, Tx.en_paralelo(), lo que tarda la más lenta), y cada uno
+# armaba las suyas, iguales (la arboleda, en el primer cuadro). Nadie
 # cambia sus materiales, y cada variante sale de su semilla: las mallas son las mismas que con una instancia propia.
 # Solo en el hilo principal (cache no tiene candado)
 static func comun() -> RefCounted:
@@ -57,15 +58,16 @@ static func comun() -> RefCounted:
 
 
 func _init() -> void:
-	var tex := {
-		"palmera": Tx.fronda(11, Color(0.42, 0.55, 0.22)),
-		"cedro": Tx.agujas(12, Color(0.32, 0.44, 0.38)),
-		"araucaria": Tx.araucaria(13, Color(0.22, 0.36, 0.19)),
-		"frondoso": Tx.hojas(14, Color(0.36, 0.54, 0.22)),
-		"podado": Tx.hojas(15, Color(0.28, 0.45, 0.18), 520, 6.0, 3.2),
-		"arbusto": Tx.hojas(16, Color(0.26, 0.43, 0.17), 480, 6.0, 3.0),
-		"alamo": Tx.hojas(18, Color(0.38, 0.55, 0.23), 420, 7.0, 4.0),
-	}
+	var tex := Tx.en_paralelo({
+		"palmera": Callable(Tx, "fronda").bind(11, Color(0.42, 0.55, 0.22)),
+		"cedro": Callable(Tx, "agujas").bind(12, Color(0.32, 0.44, 0.38)),
+		"araucaria": Callable(Tx, "araucaria").bind(13, Color(0.22, 0.36, 0.19)),
+		"frondoso": Callable(Tx, "hojas").bind(14, Color(0.36, 0.54, 0.22)),
+		"podado": Callable(Tx, "hojas").bind(15, Color(0.28, 0.45, 0.18), 520, 6.0, 3.2),
+		"arbusto": Callable(Tx, "hojas").bind(16, Color(0.26, 0.43, 0.17), 480, 6.0, 3.0),
+		"alamo": Callable(Tx, "hojas").bind(18, Color(0.38, 0.55, 0.23), 420, 7.0, 4.0),
+		"datiles": Callable(Tx, "flores").bind(17, [Color(0.9, 0.5, 0.12), Color(0.95, 0.62, 0.15), Color(0.8, 0.42, 0.1)], 70),
+	})
 	for e in ESPECIES:
 		mat_corteza[e] = Mat.plaza("corteza", {"tipo": ESPECIES[e]["tipo"], "vueltas": 10.0 if e == "palmera" else 6.0})
 		if e in tex:
@@ -77,7 +79,7 @@ func _init() -> void:
 	mat_solido.roughness = 0.7
 	mat_solido.backlight_enabled = true
 	mat_solido.backlight = Color(0.25, 0.35, 0.12)
-	mat_datiles = Mat.plaza("follaje", {"tex": Tx.flores(17, [Color(0.9, 0.5, 0.12), Color(0.95, 0.62, 0.15), Color(0.8, 0.42, 0.1)], 70)})
+	mat_datiles = Mat.plaza("follaje", {"tex": tex["datiles"]})
 
 
 # la malla de una variante (se arma una vez)
