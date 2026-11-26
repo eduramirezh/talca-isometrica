@@ -29,6 +29,13 @@ const VERTICAL := 0.2  # |normal.y| bajo esto: un muro
 const SUBDIV := 6  # cuántas veces partir en cuatro un triángulo con un recorte entero adentro (un hueco)
 const OBJETO := 25.0  # m: una pieza de este lado o menos en planta, y de más de ALTO_OBJETO de alto, es un objeto
 const ALTO_OBJETO := 0.3
+const CELDA := 20.0  # m: el lado de las celdas en que se anotan los recortes (_celdas), para no probar cada triángulo contra todos
+# m: un triángulo cuya caja queda a más de esto de la de todo recorte no se corta ni es parte de un objeto que se quita
+# (un objeto mide OBJETO o menos y se quita si su centro cae en uno: todos sus vértices quedan a menos de OBJETO / 2 de
+# su caja). Las piezas y los objetos se buscan solo entre los triángulos más cercanos (_cerca); una pieza que sigue
+# más allá queda partida, pero cada parte que importa toca la caja de un recorte y sale de CERCA: mide más de OBJETO,
+# no es un objeto, igual que la pieza entera
+const CERCA := OBJETO + 1.0
 
 
 static func recortar(mi: MeshInstance3D, recs: Array, xf := Transform3D.IDENTITY) -> void:
@@ -41,6 +48,11 @@ static func recortar(mi: MeshInstance3D, recs: Array, xf := Transform3D.IDENTITY
 			pols.append([pol, _caja(pol)])
 	if pols.is_empty():
 		return
+	var celdas := _celdas(pols)
+	var grandes := []  # las cajas de los recortes, con CERCA m más por lado
+	for pb in pols:
+		grandes.append([null, (pb[1] as Rect2).grow(CERCA)])
+	var celdas_cerca := _celdas(grandes)
 	var am := mi.mesh as ArrayMesh
 	var nuevo := ArrayMesh.new()
 	var n := {"quitados": 0, "cortados": 0}
@@ -54,29 +66,44 @@ static func recortar(mi: MeshInstance3D, recs: Array, xf := Transform3D.IDENTITY
 		w.resize(v.size())
 		for i in v.size():
 			w[i] = xf * v[i]
-		var pieza := _piezas(w, idx)  # por vértice: el índice de su pieza
-		var objeto := _objetos(w, idx, pieza, pols)
+		var cerca := _cerca(w, idx, grandes, celdas_cerca)  # por triángulo: 1 si su caja toca una de grandes
+		var pieza := _piezas(w, idx, cerca)  # por vértice (de los triángulos cerca): el índice de su pieza
+		var objeto := _objetos(w, idx, cerca, pieza, pols)
 		var out := {"a": a, "base": v.size(), "nuevos": {}}  # los vértices nuevos, por atributo (Array: por referencia)
 		var keep := []
 		for t in range(0, idx.size(), 3):
 			var i0 := idx[t]
 			var i1 := idx[t + 1]
 			var i2 := idx[t + 2]
+			if cerca[t / 3] == 0:
+				keep.append(i0)
+				keep.append(i1)
+				keep.append(i2)
+				continue
 			if objeto.has(pieza[i0]):  # antes de la prueba de cajas: un objeto se va entero
 				if objeto[pieza[i0]]:
 					n.quitados += 1
 				else:
-					keep.append_array([i0, i1, i2])
+					keep.append(i0)
+					keep.append(i1)
+					keep.append(i2)
 				continue
-			var tri := PackedVector2Array([Vector2(w[i0].x, -w[i0].z), Vector2(w[i1].x, -w[i1].z), Vector2(w[i2].x, -w[i2].z)])
-			var tb := _caja(tri)
+			var p0 := w[i0]
+			var p1 := w[i1]
+			var p2 := w[i2]
+			var x0 := minf(p0.x, minf(p1.x, p2.x))
+			var y0 := minf(-p0.z, minf(-p1.z, -p2.z))
+			var tb := Rect2(x0, y0, maxf(p0.x, maxf(p1.x, p2.x)) - x0, maxf(-p0.z, maxf(-p1.z, -p2.z)) - y0)
 			var hits := []
-			for pb in pols:
-				if pb[1].intersects(tb, true):
-					hits.append(pb)
+			for i in _candidatos(celdas, tb):
+				if pols[i][1].intersects(tb, true):
+					hits.append(pols[i])
 			if hits.is_empty():
-				keep.append_array([i0, i1, i2])
+				keep.append(i0)
+				keep.append(i1)
+				keep.append(i2)
 				continue
+			var tri := PackedVector2Array([Vector2(p0.x, -p0.z), Vector2(p1.x, -p1.z), Vector2(p2.x, -p2.z)])
 			var nm := (w[i1] - w[i0]).cross(w[i2] - w[i0])
 			if absf(nm.y) < VERTICAL * nm.length():  # un muro: por su centro
 				var c := (tri[0] + tri[1] + tri[2]) / 3.0
@@ -107,11 +134,15 @@ static func recortar(mi: MeshInstance3D, recs: Array, xf := Transform3D.IDENTITY
 
 # las piezas que son objetos (chicas en planta y con alto: un árbol, un auto, un farol) -> si se quitan (el centro de su
 # planta cae en un recorte)
-static func _objetos(w: PackedVector3Array, idx: PackedInt32Array, pieza: PackedInt32Array, pols: Array) -> Dictionary:
+static func _objetos(w: PackedVector3Array, idx: PackedInt32Array, cerca: PackedByteArray, pieza: PackedInt32Array, pols: Array) -> Dictionary:
 	var cajas := {}  # pieza -> AABB en el mundo
-	for i in idx:
-		var k: int = pieza[i]
-		cajas[k] = cajas[k].expand(w[i]) if cajas.has(k) else AABB(w[i], Vector3.ZERO)
+	for t in range(0, idx.size(), 3):
+		if cerca[t / 3] == 0:
+			continue
+		for j in 3:
+			var i := idx[t + j]
+			var k: int = pieza[i]
+			cajas[k] = cajas[k].expand(w[i]) if cajas.has(k) else AABB(w[i], Vector3.ZERO)
 	var objeto := {}
 	for k in cajas:
 		var bb: AABB = cajas[k]
@@ -225,18 +256,48 @@ static func _juntar(a: Array, nv: Dictionary) -> void:
 		a[k] = x
 
 
-# las piezas de una malla: los triángulos unidos por vértices en el mismo lugar (al milímetro); por vértice, el
-# representante de su pieza
-static func _piezas(w: PackedVector3Array, idx: PackedInt32Array) -> PackedInt32Array:
+# por triángulo, 1 si su caja (en planta) toca una de las cajas de grandes (anotadas en celdas)
+static func _cerca(w: PackedVector3Array, idx: PackedInt32Array, grandes: Array, celdas: Dictionary) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(idx.size() / 3)
+	for t in range(0, idx.size(), 3):
+		var p0 := w[idx[t]]
+		var p1 := w[idx[t + 1]]
+		var p2 := w[idx[t + 2]]
+		var x0 := minf(p0.x, minf(p1.x, p2.x))
+		var y0 := minf(-p0.z, minf(-p1.z, -p2.z))
+		var tb := Rect2(x0, y0, maxf(p0.x, maxf(p1.x, p2.x)) - x0, maxf(-p0.z, maxf(-p1.z, -p2.z)) - y0)
+		for i in _candidatos(celdas, tb):
+			if grandes[i][1].intersects(tb, true):
+				out[t / 3] = 1
+				break
+	return out
+
+
+# las piezas de los triángulos cerca (_cerca): los unidos por vértices en el mismo lugar (al milímetro); por vértice,
+# el representante de su pieza (los vértices de los demás quedan solos)
+static func _piezas(w: PackedVector3Array, idx: PackedInt32Array, cerca: PackedByteArray) -> PackedInt32Array:
 	var padre := PackedInt32Array()
 	padre.resize(w.size())
-	var en := {}
 	for i in w.size():
-		var key := Vector3i((w[i] * 1000.0).round())
-		padre[i] = en.get(key, i)
-		if not en.has(key):
-			en[key] = i
+		padre[i] = i
+	var en := {}
 	for t in range(0, idx.size(), 3):
+		if cerca[t / 3] == 0:
+			continue
+		for j in 3:
+			var i := idx[t + j]
+			if padre[i] != i:
+				continue  # ya soldado a otro
+			var key := Vector3i((w[i] * 1000.0).round())
+			var e: int = en.get(key, -1)
+			if e == -1:
+				en[key] = i
+			elif e != i:
+				padre[i] = e
+	for t in range(0, idx.size(), 3):
+		if cerca[t / 3] == 0:
+			continue
 		var r0 := _raiz(padre, idx[t])
 		for j in [1, 2]:
 			var r := _raiz(padre, idx[t + j])
@@ -252,6 +313,43 @@ static func _raiz(padre: PackedInt32Array, i: int) -> int:
 		padre[i] = padre[padre[i]]
 		i = padre[i]
 	return i
+
+
+# los recortes anotados por celda de CELDA m (Vector2i -> PackedInt32Array de índices en pols, en orden): cada uno en
+# las celdas que toca su caja. Probar los ~33.000 triángulos de los patios de una tesela de la plaza contra las cajas de
+# sus 189 recortes tomaba ~380 ms de los ~550 de recortarla; con las celdas, cada triángulo prueba solo los de las suyas
+# (y con _cerca, las piezas se buscan solo cerca de los recortes: las cuatro teselas del arranque, de 3,9 s a 0,45 s
+# con --headless, las mismas mallas byte a byte)
+static func _celdas(pols: Array) -> Dictionary:
+	var celdas := {}
+	for i in pols.size():
+		var bb: Rect2 = pols[i][1]
+		for cy in range(floori(bb.position.y / CELDA), floori(bb.end.y / CELDA) + 1):
+			for cx in range(floori(bb.position.x / CELDA), floori(bb.end.x / CELDA) + 1):
+				var c := Vector2i(cx, cy)
+				if not celdas.has(c):
+					celdas[c] = PackedInt32Array()
+				celdas[c].append(i)
+	return celdas
+
+
+# los índices de los recortes cuya caja puede tocar la caja tb (los de sus celdas), en el orden de pols: _recorte()
+# los corta en ese orden. Dos cajas que se tocan, aunque sea en el borde, comparten un punto, y su celda está en las dos
+static func _candidatos(celdas: Dictionary, tb: Rect2) -> PackedInt32Array:
+	var x0 := floori(tb.position.x / CELDA)
+	var x1 := floori(tb.end.x / CELDA)
+	var y0 := floori(tb.position.y / CELDA)
+	var y1 := floori(tb.end.y / CELDA)
+	if x0 == x1 and y0 == y1:
+		return celdas.get(Vector2i(x0, y0), PackedInt32Array())
+	var visto := {}
+	for cy in range(y0, y1 + 1):
+		for cx in range(x0, x1 + 1):
+			for i in celdas.get(Vector2i(cx, cy), PackedInt32Array()):
+				visto[i] = true
+	var out := PackedInt32Array(visto.keys())
+	out.sort()
+	return out
 
 
 static func _dentro(p: Vector2, hits: Array) -> bool:
