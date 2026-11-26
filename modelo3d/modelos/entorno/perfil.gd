@@ -155,9 +155,9 @@ func color(tipo: String, extra: String) -> Array:
 		"ciclovia": return [K["azul2"] if extra == "azul" else K["gris"], "asfalto" if extra != "azul" else "pintura"]
 		"solera": return [K["amarillo"] if extra == "amarilla" else K["solera"], "pintura" if extra == "amarilla" else "granito"]
 		"vereda": return [K["vereda"], "hormigon"]
-		"pasto": return [K["pasto"], "liso"]
-		"tierra": return [K["tierra"], "liso"]
-	return [K["tierra"], "liso"]
+		"pasto": return [K["pasto"], "maleza"]
+		"tierra": return [K["tierra"], "tierra"]
+	return [K["tierra"], "tierra"]
 
 
 # ---- lo que se arma ----
@@ -336,7 +336,7 @@ func bandejon(m: Malla, sa: float, sb: float, sec: Dictionary, med: float, nariz
 	var amarilla: bool = sec.get("solera_mediana", "") == "amarilla"
 	var cs: Color = K["amarillo"] if amarilla else K["solera"]
 	var ms := "pintura" if amarilla else "granito"
-	cinta(m, sa, sb, -med + 0.15, med - 0.15, H_SOLERA - 0.03, cr, "liso")
+	cinta(m, sa, sb, -med + 0.15, med - 0.15, H_SOLERA - 0.03, cr, "tierra" if rel == "tierra" else "maleza")
 	for l in [-1, 1]:
 		cinta(m, sa, sb, l * med, l * (med - 0.15), H_SOLERA, cs, ms)
 		escalon(m, sa, sb, l * med, H_CALZADA, H_SOLERA, l, cs, ms)

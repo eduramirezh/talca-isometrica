@@ -51,8 +51,9 @@ func _ready() -> void:
 	if not Args.has("--cenital"):  # modelos/calles.gd pone la suya
 		cam.make_current()
 	colocar()
-	# la altura del punto: la colisión bajo él (mapa.gd la arma alrededor de la cámara)
-	while not mapa.solido(desde.x, desde.y):
+	# la altura del punto: la colisión bajo él (mapa.gd la arma alrededor de la cámara; un modelo que recorta el
+	# terreno, cuando arma el suyo: mundo.gd solido())
+	while not solido(desde.x, desde.y):
 		await get_tree().physics_frame
 	punto.y = suelo(punto.x, punto.z).y + 1.7
 	colocar()

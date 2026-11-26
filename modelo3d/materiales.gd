@@ -44,9 +44,13 @@ const PIEDRA := 13
 # microvibrada» de las veredas de Talca, foto de 1 Norte), teja (hileras de teja de arcilla), granito (soleras y
 # peldaños), pizarra (escamas del chapitel), asfalto (1 Oriente: OSM dice surface=asphalt al sur de la plaza, y las
 # fotos de 2022 de la esquina de 1 Norte lo muestran también al norte), metal y vidrio (sin dibujo), ventana (el vidrio de
-# fachadas_ciudad.gd: de noche se encienden las de alfa 1)
+# fachadas_ciudad.gd: de noche se encienden las de alfa 1), moldaje (hormigón vaciado contra tablas: los muros de la
+# trinchera de la Ruta 5, sus estribos y pilas, en las fotos de Mapillary de 2022 a 2025), maleza (pasto seco o verde en
+# matas, del color del vértice: taludes, bandejones y bermas), tierra (apisonada, con piedrecillas) y rejilla (la
+# malla de alambre de los cierros y barandas, que deja ver lo de atrás: mobiliario.gd cerco «malla»)
 const PATRON := {"liso": 0, "ladrillo": 1, "hormigon": 2, "baldosa": 3, "teja": 4, "granito": 5, "pizarra": 6,
-	"metal": 7, "vidrio": 8, "pintura": 9, "tela": 10, "emisivo": 11, "asfalto": 12, "ventana": 13}
+	"metal": 7, "vidrio": 8, "pintura": 9, "tela": 10, "emisivo": 11, "asfalto": 12, "ventana": 13, "moldaje": 14,
+	"maleza": 15, "tierra": 16, "rejilla": 17}
 const RUGOSIDAD := {"metal": 0.38, "pintura": 0.55, "granito": 0.7, "emisivo": 0.5, "pizarra": 0.6}
 
 const ALZAR_AGUA := 0.06  # m: el agua sobre el ripio de las orillas, que está a su misma altura (trampa «Los ríos están sobre las manzanas, a 0,11»)

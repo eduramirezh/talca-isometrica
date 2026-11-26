@@ -226,8 +226,8 @@ static func senal(m: Malla, f: Malla.Marco, forma: String) -> void:
 		m.cara(q, col if l < 0.045 else K["galvanizado"], "pintura", f.N(0, 1 if l < 0.045 else -1))
 
 
-# un cierro a lo largo de puntos del suelo (Vector3, cada uno a su altura): «malla» (postes cada 2,5 m y una malla de
-# alambre), «seto» (un seto tupido), «tablas», «muro» (con pilares cada 3 m), «defensa» (una defensa caminera de
+# un cierro a lo largo de puntos del suelo (Vector3, cada uno a su altura): «malla» (postes cada 2,5 m, una malla de
+# alambre que deja ver lo de atrás, Mat «rejilla», y un tubo arriba), «seto» (un seto tupido), «tablas», «muro» (con pilares cada 3 m), «defensa» (una defensa caminera de
 # perfil W en postes), «tubo» (una baranda de tubo de dos barras)
 static func cerco(m: Malla, pts: Array, forma: String, alto: float, col: Color) -> void:
 	for i in pts.size() - 1:
@@ -255,8 +255,9 @@ static func cerco(m: Malla, pts: Array, forma: String, alto: float, col: Color) 
 					k += 2.5
 				var solido := m.solido
 				m.solido = false
-				m.cara([a + Vector3(0, 0.05, 0), b + Vector3(0, 0.05, 0), b + Vector3(0, alto, 0), a + Vector3(0, alto, 0)], col.lightened(0.15), "tela", n)
-				m.cara([b + Vector3(0, 0.05, 0), a + Vector3(0, 0.05, 0), a + Vector3(0, alto, 0), b + Vector3(0, alto, 0)], col.lightened(0.15), "tela", -n)
+				m.cara([a + Vector3(0, 0.05, 0), b + Vector3(0, 0.05, 0), b + Vector3(0, alto, 0), a + Vector3(0, alto, 0)], col.lightened(0.15), "rejilla", n)
+				m.cara([b + Vector3(0, 0.05, 0), a + Vector3(0, 0.05, 0), a + Vector3(0, alto, 0), b + Vector3(0, alto, 0)], col.lightened(0.15), "rejilla", -n)
+				m.tubo(a + Vector3(0, alto, 0), b + Vector3(0, alto, 0), 0.025, 0.025, 5, col.darkened(0.3), col.darkened(0.3))
 				m.solido = solido
 			"defensa":
 				var k := 0.0

@@ -94,6 +94,19 @@ func recortado(p: Vector2, capa: String) -> bool:
 	return false
 
 
+# si hay suelo con colisión bajo (x, y) de grilla: la tesela (mapa.solido()) y, donde un modelo recorta el terreno
+# y arma el suyo después (modelos/trinchera_ruta5.gd), ese modelo (pendiente(p): true mientras no lo arma). Quien
+# pone algo sobre el suelo (ver.gd, el personaje del juego) espera esto, no solo mapa.solido(): un rayo en la trinchera
+# antes de que esté no da en nada
+func solido(x: float, y: float) -> bool:
+	if mapa == null or not mapa.solido(x, y):
+		return false
+	for m in get_children():
+		if m.has_method("pendiente") and m.pendiente(Vector2(x, y)):
+			return false
+	return true
+
+
 # el suelo bajo (X, Z): un rayo desde arriba contra la colisión
 func suelo(x: float, z: float) -> Vector3:
 	var q := PhysicsRayQueryParameters3D.create(Vector3(x, 1500, z), Vector3(x, -500, z))  # el Cerro La Virgen llega a ~223 m (el relieve exagerado)

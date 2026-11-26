@@ -47,6 +47,7 @@ const SIN := {
 	"autos": "autos.gd (los autos del mapa, de cerca y de lejos)", "luces": "faroles.gd (las luces de verdad: quedan lámparas y brillos)",
 	"fachadas": "mapa.gd (las fachadas de cerca de toda la comuna, fachadas_ciudad.gd: queda la caja del glb)",
 	"letreros": "letreros.gd (los de las calles de la comuna; los de calles.gd quedan)",
+	"trinchera": "modelos/trinchera_ruta5.gd (el modelo entero: la Ruta 5 y los pasos de la página quedan)",
 }
 
 

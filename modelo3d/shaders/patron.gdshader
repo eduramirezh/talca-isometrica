@@ -104,6 +104,61 @@ void fragment() {
 		r = 0.95;
 	} else if (patron == 10) {
 		c *= 0.92 + 0.08 * step(0.5, fract(q.x / 0.5));
+	} else if (patron == 14) {
+		// moldaje: hormigón vaciado contra tablas (los muros de la trinchera de la Ruta 5, sus estribos y pilas): tablas
+		// horizontales de 15 cm, cada una de su tono, paneles de 2,4 × 1,2 m con su junta, las perforaciones de los
+		// amarres cada 0,6 m y chorreaduras de agua hacia abajo; en un suelo (la tapa de un muro), solo las manchas
+		vec2 fw = fwidth(q);
+		float lejos = smoothstep(0.05, 0.2, max(fw.x, fw.y));
+		float tabla = floor(q.y / 0.15);
+		float panel = floor(q.x / 2.4);
+		float tono = 0.94 + 0.08 * h21(vec2(tabla, panel)) + 0.05 * fbm(vec2(q.x * 0.6, tabla * 0.7));
+		vec2 p = q / vec2(2.4, 1.2);
+		float j = suelo ? 0.0 : junta(fract(p), vec2(0.004, 0.006), fwidth(p));
+		float ft = fract(q.y / 0.15);
+		float t = 1.0 - smoothstep(0.004, 0.004 + fw.y, min(ft, 1.0 - ft) * 0.15);
+		vec2 a = fract(q / 0.6) - 0.5;
+		float amarre = suelo ? 0.0 : 1.0 - smoothstep(0.018, 0.03 + fw.x, length(a * 0.6));
+		float chorro = suelo ? 0.0 : smoothstep(0.45, 0.85, fbm(vec2(q.x * 2.2, q.y * 0.12))) * 0.22;
+		float man = fbm(q * 0.4) * 0.6 + fbm(q * 3.1) * 0.4;
+		vec3 h = c * mix(tono, 1.0, lejos) * (0.88 + 0.2 * man) * (1.0 - chorro);
+		h = mix(h, h * 0.72, max(j, amarre) * (1.0 - lejos));
+		h = mix(h, h * 0.9, t * 0.5 * (1.0 - lejos) * (suelo ? 0.0 : 1.0));
+		c = h;
+		r = 0.92;
+	} else if (patron == 15) {
+		// maleza: pasto seco o verde (el color del vértice) en matas, con tallos claros y tierra que asoma entre ellas
+		// (los taludes de la trinchera, los bandejones y las bermas de los perfiles medidos)
+		vec2 fw = fwidth(q);
+		float lejos = smoothstep(0.03, 0.12, max(fw.x, fw.y));
+		float mata = fbm(q * 0.9) * 0.65 + fbm(q * 4.5) * 0.35;
+		float tallo = h21(floor(q * 28.0));
+		vec3 suelo_t = c * vec3(0.78, 0.72, 0.62);
+		vec3 h = c * (0.66 + 0.62 * mata) * mix(0.8 + 0.4 * tallo, 1.0, lejos);
+		c = mix(h, suelo_t, smoothstep(0.62, 0.78, fbm(q * 0.35 + 7.0)) * 0.7);
+		r = 0.97;
+	} else if (patron == 16) {
+		// tierra: tierra apisonada con piedrecillas claras y huellas más oscuras (bermas, bandejones de tierra)
+		vec2 fw = fwidth(q);
+		float lejos = smoothstep(0.02, 0.08, max(fw.x, fw.y));
+		float piedra = step(0.93, h21(floor(q * 18.0)));
+		float man = fbm(q * 0.5) * 0.6 + fbm(q * 4.0) * 0.4;
+		c *= (0.86 + 0.24 * man) * mix(1.0 + 0.25 * piedra, 1.0, lejos);
+		r = 0.98;
+	}
+	if (patron == 17) {
+		// rejilla: la malla de alambre de un cierro o una baranda (rombos de 5,5 cm, alambre de ~4 mm), que deja ver
+		// lo que hay detrás: de cerca, los alambres; de lejos, cuando el rombo mide menos de un píxel, un tramado fijo en
+		// la pantalla que cubre un 35 % (no titila: el umbral es del píxel, no del mundo)
+		vec2 rq = vec2(q.x + q.y, q.x - q.y) * 0.7071 / 0.055;
+		vec2 fw = fwidth(rq);
+		float alambre = junta(fract(rq), vec2(0.04), fw);
+		float cub = mix(alambre, 0.35, smoothstep(0.25, 0.7, max(fw.x, fw.y)));
+		float umbral = fract(52.9829189 * fract(dot(FRAGCOORD.xy, vec2(0.06711056, 0.00583715))));
+		if (cub < umbral) {
+			discard;
+		}
+		r = 0.45;
 	}
 	vec3 em = c * emision;
 	if (patron == 13) {

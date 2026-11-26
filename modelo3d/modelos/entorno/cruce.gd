@@ -14,8 +14,8 @@ const CAPAS := ["suelo", "usos", "patios", "autos"]
 const H_PINTURA := 0.132
 const H_SOLERA := 0.27
 const SUELO := {   # tipo -> [color, material]
-	"calzada": ["asfalto", "asfalto"], "vereda": ["vereda", "hormigon"], "pasto": ["pasto", "liso"],
-	"tierra": ["tierra", "liso"], "solera": ["solera", "granito"], "solera-amarilla": ["amarillo", "pintura"],
+	"calzada": ["asfalto", "asfalto"], "vereda": ["vereda", "hormigon"], "pasto": ["pasto", "maleza"],
+	"tierra": ["tierra", "tierra"], "solera": ["solera", "granito"], "solera-amarilla": ["amarillo", "pintura"],
 }
 
 var clave: String
@@ -81,7 +81,7 @@ func V(p: Vector2, h: float) -> Vector3:
 # el suelo, las caras de las soleras y los faldones, y la pintura
 func suelo(m: Malla) -> void:
 	for s in D["suelo"]:
-		var t: Array = SUELO.get(s[0], ["tierra", "liso"])
+		var t: Array = SUELO.get(s[0], ["tierra", "tierra"])
 		m.capa(G, S, Array(pol(s[2])), float(s[1]), K[t[0]], t[1])
 	for b in D["bordes"]:
 		var p := pol(b[3])
