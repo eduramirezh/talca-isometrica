@@ -406,7 +406,11 @@ func recortes() -> Array:
 		for pol in corredor(k):
 			out.append({"poligono": pol, "capas": []})
 	for p in pasos:
-		out.append({"poligono": cinta(p["pts"], p["hw"] + 0.5), "capas": ["hitos", "veredas"]})
+		# 3 m más allá de cada punta: el paso de la página pone ahí sus reflectores
+		var pts: PackedVector2Array = p["pts"].duplicate()
+		pts[0] += (pts[0] - pts[1]).normalized() * 3.0
+		pts[-1] += (pts[-1] - pts[-2]).normalized() * 3.0
+		out.append({"poligono": cinta(pts, p["hw"] + 0.5), "capas": ["hitos", "veredas"]})
 	return out
 
 
