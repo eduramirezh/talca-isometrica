@@ -15,7 +15,7 @@ Un video del 3D por un recorrido de cámara escrito como datos: `config/video3d.
 make video3d                     # o uv run tools/video3d.py: graba las tomas que cambiaron (su entrada, el tamaño, la exportación o el código de modelo3d/; ~75–140 s cada una) y arma el video (~10 min desde cero)
 uv run tools/video3d.py --cuadros [--solo torre --instantes 0,4.5,9]   # tres cuadros de cada toma (o esos segundos) con su texto, y una hoja: para encuadrar (~20 s por toma)
 uv run tools/video3d.py --montar     # solo el montaje (textos, orden, fundidos), con las tomas ya grabadas (~1 min)
-uv run tools/video3d.py --vertical   # además, el corte de 1080x1920 (las claves de «claves_vertical» de cada toma; aún sin encuadrar)
+uv run tools/video3d.py --vertical   # solo el corte de 1080x1920 para Instagram, talca-3d-vertical.mp4 (las claves de «claves_vertical» de la toma, si las tiene; con --cuadros, para encuadrarlo)
 tools/godot_oculto.sh --path modelo3d -- --recorrido toma.json --png x.png --instantes 0,3   # una toma suelta, sin video.py: x-t0.00.png, x-t3.00.png
 ```
 

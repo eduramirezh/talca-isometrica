@@ -1,5 +1,5 @@
 {
-  "_": "El video de la maqueta en 3D (tools/video3d.py): la apertura con el mapa isométrico (tools/video.py), las tomas de modelo3d/recorrido.gd en este orden, con fundidos de «fundido» s entre ellas, y el cierre. Cada clave de una toma: t (s de la toma), x, y (el punto que se mira, en metros de grilla: x al oriente, y al norte, la Plaza de Armas en 0, 0), alto (m del punto sobre el suelo; 1,7 por omisión), girar (grados de la vista a la izquierda; 0: mirando al norte), mirar (grados de inclinación, + arriba) y camara (m de la cámara al punto; 0,01: en el punto). hora: [al comenzar, al terminar] (hora de verano; el 15 de enero el sol se pone a las 21:00, y las tomas van de la tarde a la noche, una tras otra). toda_la_comuna: carga todas las teselas antes (para ver los campos desde lejos). texto: el título y, si hay, una línea más; aparece y se va con la toma. Los números de los textos, revisados contra CHANGELOG.md, README.md y config/ (noviembre de 2026).",
+  "_": "El video de la maqueta en 3D (tools/video3d.py): la apertura con el mapa isométrico (tools/video.py), las tomas de modelo3d/recorrido.gd en este orden, con fundidos de «fundido» s entre ellas, y el cierre. Cada clave de una toma: t (s de la toma), x, y (el punto que se mira, en metros de grilla: x al oriente, y al norte, la Plaza de Armas en 0, 0), alto (m del punto sobre el suelo; 1,7 por omisión), girar (grados de la vista a la izquierda; 0: mirando al norte), mirar (grados de inclinación, + arriba) y camara (m de la cámara al punto; 0,01: en el punto; recorrido.gd la deja en 20.000 como mucho). claves_vertical: las claves del corte vertical (1080x1920, --vertical), si las de 16:9 no le sirven. hora: [al comenzar, al terminar] (hora de verano; el 15 de enero el sol se pone a las 21:00, y las tomas van de la tarde a la noche, una tras otra). toda_la_comuna: carga todas las teselas antes (para ver los campos desde lejos). texto: el título y, si hay, una línea más; aparece y se va con la toma. Los números de los textos, revisados contra CHANGELOG.md, README.md y config/ (noviembre de 2026).",
   "tamano": [1920, 1080],
   "fps": 30,
   "fundido": 0.6,
@@ -53,6 +53,11 @@
         {"t": 0, "x": 0, "y": 0, "alto": 0, "girar": 45, "mirar": -35, "camara": 500},
         {"t": 4, "x": 2200, "y": 400, "alto": 0, "girar": 45, "mirar": -50, "camara": 7000},
         {"t": 8, "x": 5000, "y": -3000, "alto": 0, "girar": 45, "mirar": -70, "camara": 58000}
+      ],
+      "claves_vertical": [
+        {"t": 0, "x": 0, "y": 0, "alto": 0, "girar": 45, "mirar": -35, "camara": 500},
+        {"t": 4, "x": 2200, "y": 400, "alto": 0, "girar": 45, "mirar": -50, "camara": 7000},
+        {"t": 8, "x": 5000, "y": -3000, "alto": 0, "girar": 45, "mirar": -70, "camara": 17000}
       ]
     },
     {
@@ -63,6 +68,10 @@
       "claves": [
         {"t": 0, "x": 161, "y": -15, "alto": 24, "girar": 20, "mirar": -5, "camara": 200},
         {"t": 9, "x": 161, "y": -15, "alto": 24, "girar": 64, "mirar": -6, "camara": 178}
+      ],
+      "claves_vertical": [
+        {"t": 0, "x": 161, "y": -15, "alto": 20, "girar": 20, "mirar": -6, "camara": 75},
+        {"t": 9, "x": 161, "y": -15, "alto": 20, "girar": 64, "mirar": -5, "camara": 66}
       ]
     }
   ],

@@ -3,18 +3,20 @@
 # dependencies = ["pillow==13.0.0"]
 # ///
 """Un video de la maqueta en 3D por un recorrido de cámara escrito como datos: shots/video3d/talca-3d.mp4 (H.264,
-yuv420p, sin audio, 1920x1080 a 30 cuadros por segundo; --vertical, además, talca-3d-vertical.mp4 de 1080x1920).
+yuv420p, sin audio, 1920x1080 a 30 cuadros por segundo; con --vertical, en vez de ese, talca-3d-vertical.mp4 de 1080x1920,
+para Instagram y otras redes de video vertical).
 
   uv run tools/video3d.py                      # graba las tomas que falten o cambiaron, y arma el video (make video3d)
   uv run tools/video3d.py --cuadros            # solo cuadros sueltos de cada toma (PNG) y una hoja, en segundos
   uv run tools/video3d.py --cuadros --solo autos --instantes 0,2.5,5.5   # los de una toma, en esos segundos
   uv run tools/video3d.py --solo plaza,torre   # vuelve a grabar esas tomas (las demás, de shots/video3d/tomas/)
   uv run tools/video3d.py --montar             # solo arma el video con las tomas ya grabadas
-  uv run tools/video3d.py --vertical           # además, el corte vertical (otras tomas: más altas que anchas)
+  uv run tools/video3d.py --vertical           # solo el corte vertical (sus propias tomas: más altas que anchas)
 
-El corte vertical graba cada toma otra vez a 1080x1920, con el mismo ancho de vista que el horizontal y las claves de
-«claves_vertical» si la toma las tiene (si no, las de 16:9). En noviembre de 2026 ninguna las tiene y el encuadre de
-16:9 no sirve tal cual (la Torre Talca queda fuera del cuadro): falta encuadrarlo con --cuadros --vertical.
+El corte vertical graba cada toma aparte, a 1080x1920 (en shots/video3d/tomas-vertical/), con el ancho de vista del
+alto del horizontal y las claves de «claves_vertical» si la toma las tiene (si no, las de 16:9): la torre se ve de más
+cerca para que llene el cuadro alto, y la comuna se acerca menos al final. Se encuadra con --cuadros --vertical. En el
+vertical, una línea de texto que no cabe en el ancho se parte entre palabras.
 
 Lo que se ve está en config/video3d.json: la apertura (el mapa isométrico de la página, con tools/video.py), las tomas
 en orden, cada una con sus claves de cámara (el punto que se mira en metros de grilla, giro, inclinación, distancia),
@@ -285,8 +287,25 @@ def capa_texto(size, lineas, path, vertical=False):
     tit, txt = 96 * u, 64 * u
     if vertical:
         tit, txt = 100 * u, 66 * u
-    fts = [fuente('titulo', tit)] + [fuente('texto', txt)] * (len(lineas) - 1)
-    alto = [tit * 1.15] + [txt * 1.3] * (len(lineas) - 1)
+    # una línea que no cabe en el ancho (en el vertical, «Alameda Bernardo O'Higgins») se parte entre palabras; una
+    # palabra que sola no cabe achica su línea
+    ancho = W - 2 * margen
+    filas = []  # (texto, fuente, alto de la fila)
+    for i, s in enumerate(lineas):
+        cual, px, interlinea = ('titulo', tit, 1.15) if i == 0 else ('texto', txt, 1.3)
+        f = fuente(cual, px)
+        partes, fila = [], ''
+        for w in s.split():
+            if fila and f.getlength(f'{fila} {w}') > ancho:
+                partes.append(fila)
+                fila = w
+            else:
+                fila = f'{fila} {w}' if fila else w
+        partes.append(fila)
+        for p in partes:
+            fp = f if f.getlength(p) <= ancho else fuente(cual, px * ancho / f.getlength(p))
+            filas.append((p, fp, px * interlinea))
+    lineas, fts, alto = [r[0] for r in filas], [r[1] for r in filas], [r[2] for r in filas]
     y = base - sum(alto[1:])
     sombra = Image.new('RGBA', size, (0, 0, 0, 0))
     ds = ImageDraw.Draw(sombra)
@@ -311,10 +330,13 @@ def carta_cierre(size, cierre, path):
     u = min(W, H) / 1080
     img = Image.new('RGB', size, (22, 20, 18))
     d = ImageDraw.Draw(img)
-    d.text((W / 2, H * 0.42), cierre['titulo'], font=fuente('titulo', 120 * u), fill=(246, 240, 228), anchor='mm')
-    d.text((W / 2, H * 0.56), cierre['url'], font=fuente('dato', 56 * u), fill=(232, 182, 120), anchor='mm')
+    def cabe(cual, px, s):  # en el vertical, la nota llenaba el ancho: cada línea, en el 90 % como mucho
+        f = fuente(cual, px)
+        return f if f.getlength(s) <= W * 0.9 else fuente(cual, px * W * 0.9 / f.getlength(s))
+    d.text((W / 2, H * 0.42), cierre['titulo'], font=cabe('titulo', 120 * u, cierre['titulo']), fill=(246, 240, 228), anchor='mm')
+    d.text((W / 2, H * 0.56), cierre['url'], font=cabe('dato', 56 * u, cierre['url']), fill=(232, 182, 120), anchor='mm')
     if cierre.get('nota'):
-        d.text((W / 2, H * 0.86), cierre['nota'], font=fuente('texto', 40 * u), fill=(170, 164, 152), anchor='mm')
+        d.text((W / 2, H * 0.86), cierre['nota'], font=cabe('texto', 40 * u, cierre['nota']), fill=(170, 164, 152), anchor='mm')
     img.save(path)
 
 
@@ -426,7 +448,7 @@ def main():
     ap.add_argument('--montar', action='store_true', help='no graba: solo arma el video con las tomas ya grabadas')
     ap.add_argument('--cuadros', action='store_true', help='solo cuadros sueltos de cada toma, con su texto, y una hoja')
     ap.add_argument('--instantes', default='', help='con --cuadros: los segundos de cada toma (por omisión, el comienzo, la mitad y el final)')
-    ap.add_argument('--vertical', action='store_true', help='además (o con --cuadros, en vez del horizontal), el corte de 1080x1920')
+    ap.add_argument('--vertical', action='store_true', help='el corte de 1080x1920 en vez del horizontal')
     ap.add_argument('--salida', default='', help='el video (por omisión shots/video3d/talca-3d.mp4)')
     a = ap.parse_args()
     for exe in (FFMPEG, FFPROBE):
@@ -443,7 +465,7 @@ def main():
     W, H = c.get('tamano', [1920, 1080])
     cortes = [((W, H), OUT / 'tomas', False)]
     if a.vertical:
-        cortes = ([] if a.cuadros else cortes) + [((H, W), OUT / 'tomas-vertical', True)]
+        cortes = [((H, W), OUT / 'tomas-vertical', True)]
     t0 = time.time()
     for size, dirt, vertical in cortes:
         dirt.mkdir(parents=True, exist_ok=True)
